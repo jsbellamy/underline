@@ -10,7 +10,6 @@
     "prototype:strip:adversarial": "python3 prototype/strip-coherence/adversarial.py",
     "prototype:strip:corpus": "python3 prototype/strip-coherence/corpus.py",
     "prototype:strip:derive-budgets": "python3 prototype/strip-coherence/derive_budgets.py",
-    "prototype:strip:align": "python3 prototype/strip-coherence/align.py",
     "prototype:strip:displacement": "python3 prototype/strip-coherence/displacement_probe.py",
     "prototype:strip:sharpness": "python3 prototype/strip-coherence/alignment_sharpness.py"
   }

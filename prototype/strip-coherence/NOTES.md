@@ -2,26 +2,57 @@
 
 **Question:** Can strip-in-one-render animation be coherence-gated after grid recovery?
 
-**Answer:** **GO on the mechanism, not yet on the numbers.**
+**Answer:** **GO — mechanism and numbers, inside a documented envelope.**
 
-Splitting the gate into silhouette (motion) and palette drift (recolour) is correct and
-holds up on a nine-sample corpus: the negative controls are caught by exactly the gate
-that should catch them, at exactly the right layer. The earlier "partial GO" with
-loosened provider budgets (0.55 / 0.45) is retired — it was measuring the wrong thing.
+Coherence gating works. On a 23-sample corpus (19 good strips across 6 motion classes,
+4 negative controls) every control is caught by the gate that should catch it, and
+every good strip passes. The gates are:
+
+| gate | reads | catches |
+|------|-------|---------|
+| `silhouette_budget` | occupancy flips, adjacent frames | motion beyond the class budget |
+| `palette_drift_pass` | per-frame colour histograms | recolour |
+| `min_pair_cohort_pass` | closest frame pair | "is this one subject?" — wholesale identity drift |
+| `displacement_pass` | best-alignment shift vectors | a frame translated (hop/slide) |
+| `baseline_row_stable` | declared anchor from frame 0 | subject leaving the ground |
+
+Budgets are **per motion class**, derived gate-agnostically from manifest-good strips —
+see [`docs/strip-acquisition-contract.md`](../../docs/strip-acquisition-contract.md),
+which is the authority. Port the mechanism *and* the derivation rule; re-derive the
+constants against production strips.
 
 **The consumer is Underline, the mining game.** Nightglass supplies the recovery
-primitives only; its frozen animation contract does not constrain what this gate must
-accept. Underline has no design docs yet, so the motion-class list is an open input.
+primitives only; its frozen animation contract does not constrain what this gate
+accepts.
 
-What is not settled: **budgets are per-motion-class** — see
-[`docs/strip-acquisition-contract.md`](../../docs/strip-acquisition-contract.md)
-for the six classes, derived budgets, and separation margins. Port the split, not
-the constants.
+### The envelope
+
+Four things are true and not fixable by another prototype pass:
+
+- **Cohorts are n≈3.** Every budget rests on three observations. Thin margins follow:
+  swing silhouette 0.034 over its control, airborne drift 0.049, the displacement
+  sharpness threshold 0.0014 over 16-moth-flap.
+- **Budgets widen monotonically.** `worst-good + margin` only grows as samples
+  accumulate while the negative controls stay fixed, so every class drifts toward
+  UNSEPARATED. `airborne` already lost its silhouette gate this way. The derivation
+  rule needs replacing (a percentile, or separation-aware fitting) before the corpus
+  gets much larger.
+- **`min_pair` has no independent kill.** Every strip it catches, palette drift also
+  catches. It is justified by construction (occupancy vs colour are disjoint signals),
+  not by evidence.
+- **`airborne` is the weak class.** Silhouette is `None` (UNSEPARATED, confirmed
+  against a subject-matched control at 0.652 vs good-worst 0.644), and displacement is
+  inapplicable on strips with a degenerate alignment minimum. See the contract's
+  known-gaps table.
+
+Growing n by hand has hit diminishing returns. The next real evidence comes from use —
+see Open 1.
 
 ## Session 2: why the provider strip needed loose budgets
 
 The old gate diffed **cell colours** and called the result "motion". Decomposing the
-changed cells on `inbox/miner-idle-strip.png` (`prototype:strip:sweep`, `probe.py`):
+changed cells on `inbox/miner-idle-strip.png` (`sweep.py` and `probe.py`, one-off
+probes, both since deleted):
 
 | pair | changed frac | silhouette flips | shading flips |
 |------|--------------|------------------|---------------|
@@ -169,8 +200,8 @@ are genuinely independent on real provider output, which is what 07 existed to p
 ### The two surprises are different failures
 
 Six of nine samples carry the uneven-width confound, so every silhouette failure was
-re-checked under a ±3 col / ±1 row shift scan on the *raw* segments
-(`prototype:strip:align`).
+re-checked under a ±3 col / ±1 row shift scan on the *raw* segments (`align.py`, a
+one-off probe, deleted once pitch slicing settled the question).
 
 - **02-slime-idle was a false failure.** Best shift drops max-adjacent
   `0.385 → 0.256` (below 0.28) with dx/dy of ±1 on every pair. The gate is not keyed
@@ -277,28 +308,30 @@ class list settled first.
 
 ## Open
 
-1. **Alignment: fix the slicer, not the diff.** Both candidate repairs act too late.
-   The real defect is that `slice_frames_auto` returns content bboxes, so frames lose
-   their position within the strip before anything compares them. Slice on the
-   *declared* frame pitch (position preserved) and both the left-crop confound and
-   the search-vs-adversary tradeoff disappear. Anchoring and shift-search are dead
-   ends — see session 4.
-2. **Budgets are per-motion-class.** Settled in issue #4 — see
-   [`docs/strip-acquisition-contract.md`](../../docs/strip-acquisition-contract.md).
-3. **Airborne anchor.** `baseline_row` re-derives the anchor per frame as the lowest
-   opaque row; for a flying subject that is the wingtip and it moves. Declare the
-   anchor per strip instead.
-4. **The 0.15 drift budget is not evidenced.** Worst pass 0.145 (03) vs negative
-   control 0.290 (07) — 03 clears by 0.005. Needs more emissive samples before the
-   number can be trusted.
-5. **Port into Underline** — Underline is the consumer and has no pipeline of its own
-   yet, only this prototype and borrowed `../nightglass/pipeline` primitives. Porting
-   means Underline gets a strip-acquisition path plus a motion-class contract. (If
-   Nightglass ever wants strips too, that is a separate ask under its own frozen
+Closed since session 5: pitch slicing with bounded registration (issue #2), the
+declared strip anchor (#3), per-motion-class budgets (#4), and the drift budget, now
+re-derived at n=3 per class. The alignment question is settled — `align.py` and
+`sweep.py` are deleted.
+
+1. **Port into Underline.** Underline is the consumer and has no pipeline of its own,
+   only this prototype and borrowed `../nightglass/pipeline` primitives. Porting gives
+   it a strip-acquisition path plus the motion-class contract — and is the only thing
+   that grows the corpus as a byproduct of real work rather than as a special exercise.
+   (If Nightglass ever wants strips, that is a separate ask under its own frozen
    contract — do not conflate them again.)
-6. **Vertical trim** — recovered grid is 43 rows (full image height); frames are 13–14
+2. **Replace the budget derivation rule.** `worst-good + margin` cannot converge:
+   budgets only widen, controls are fixed. Needs a percentile or a separation-aware
+   fit before the corpus grows much further. See the envelope above.
+3. **Is `min_pair` load-bearing?** No strip in the corpus is caught by it alone. The
+   discriminating case — identity drift under a genuinely tight shared palette — is a
+   question about what the provider actually emits, not about the gate.
+4. **`airborne` per-frame tamper.** hop/slide are gated only where the alignment
+   minimum is non-degenerate; mirror is out of scope under `facing: free`. If Underline
+   ever requires flight-direction facing, `airborne` moves to `fixed` and mirror
+   becomes a hole needing a chirality gate.
+5. **Vertical trim** — recovered grid is 43 rows (full image height); frames are 13–14
    cols vs declared 16. Content bbox trim may want normalizing before gates.
-7. **Pitch score** — recovered scores are low (~0.04–0.06) and pass via an `or`
+6. **Pitch score** — recovered scores are low (~0.04–0.06) and pass via an `or`
    threshold; worth validating against `MIN_GRID_SCORE` intent.
 
 ## Commands
@@ -306,9 +339,11 @@ class list settled first.
 ```bash
 npm run prototype:strip              # TUI: [1-3] synthetic, [4] inbox
 npm run prototype:strip:smoke        # synthetic pass/fail fixtures
-npm run prototype:strip:adversarial  # mutated real strip — gates must reject
+npm run prototype:strip:adversarial  # per-class mutations — gates must reject
 npm run prototype:strip:inbox        # JSON on latest inbox PNG
-npm run prototype:strip:sweep        # quantizer sweep evidence (24 combos)
 npm run prototype:strip:corpus       # score inbox/ against prompts/manifest.json
-npm run prototype:strip:align        # shift scan: is a silhouette failure misalignment?
+npm run prototype:strip:derive-budgets  # per-class worst-good → budgets
+npm run prototype:strip:displacement # antisymmetric displacement falsification + coverage
+npm run prototype:strip:sharpness    # alignment-minimum margins, corpus-wide
+npm test                             # pytest
 ```
