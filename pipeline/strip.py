@@ -1354,6 +1354,30 @@ def render_logical_strip(
     return im
 
 
+def export_frames(
+    frames: list[list[list[Cell]]],
+    out_dir: pathlib.Path,
+    stem: str,
+) -> list[pathlib.Path]:
+    """Write one RGBA PNG per logical frame; transparent cells use magenta alpha 0."""
+    out_dir.mkdir(parents=True, exist_ok=True)
+    paths: list[pathlib.Path] = []
+    for index, frame in enumerate(frames):
+        height = len(frame)
+        width = len(frame[0]) if frame else 0
+        image = Image.new("RGBA", (width, height), (*MAGENTA, 0))
+        pixels = image.load()
+        for y in range(height):
+            for x in range(width):
+                rgb = frame[y][x]
+                if rgb is not None:
+                    pixels[x, y] = (*rgb, 255)
+        path = out_dir / f"{stem}-f{index}.png"
+        image.save(path)
+        paths.append(path)
+    return paths
+
+
 def write_synthetic_fixture(
     out_path: pathlib.Path,
     layout: StripLayout,

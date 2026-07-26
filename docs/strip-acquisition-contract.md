@@ -345,6 +345,14 @@ Per-class negatives for the two thinnest claims are **done** (`22`, `23`). Furth
 negatives are lower priority than fixing the derivation estimator (monotonic worst-good
 vs fixed controls). Do not add more good strips to strengthen separation.
 
+## Consumers
+
+`python -m pipeline.ingest_strip` (npm `prototype:strip:ingest` / `strip:ingest`) is the
+production reader for this contract: it recovers a provider strip, gates it under the
+declared motion class via `coherence_split`, and on pass exports one logical-resolution
+RGBA frame per slice. Failing strips write no frames; inapplicable gates are reported
+explicitly in human and JSON output.
+
 ## Implementation
 
 `MOTION_CLASSES` in `pipeline/strip.py` is the runtime source.
