@@ -148,7 +148,7 @@ def _edge_profile(src: Image.Image, fg: np.ndarray, axis: str) -> list[float]:
 
 def detect_pitch(
     src: Image.Image,
-    fg: list[bool],
+    fg: np.ndarray,
     axis: str,
     minimum: float,
     maximum: float,
@@ -208,7 +208,7 @@ def _cell_indices(lo: int, hi: int, pitch: float, phase: float) -> list[int]:
 
 def sample_cells(
     src: Image.Image,
-    fg: list[bool],
+    fg: np.ndarray,
     bbox: tuple[int, int, int, int],
     pitch_x: dict,
     pitch_y: dict,

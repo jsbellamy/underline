@@ -41,6 +41,6 @@ overriding the earlier decision.
 
 ## Do not import a sibling project's domain
 
-The pipeline temporarily shares recovery *code* with a sibling checkout. It does
-not share vocabulary or contracts, and that project's contracts do not govern
-here. Define terms in `CONTEXT.md` rather than deferring to another repo.
+Grid-recovery *code* is vendored from Nightglass in `pipeline/recovery.py`. Underline
+does not share vocabulary or contracts with that repo, and Nightglass contracts do not
+govern here. Define terms in `CONTEXT.md` rather than deferring to another repo.

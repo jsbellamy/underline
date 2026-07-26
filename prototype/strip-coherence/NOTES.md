@@ -21,9 +21,9 @@ see [`docs/strip-acquisition-contract.md`](../../docs/strip-acquisition-contract
 which is the authority. Port the mechanism *and* the derivation rule; re-derive the
 constants against production strips.
 
-**The consumer is Underline, the mining game.** Nightglass supplies the recovery
-primitives only; its frozen animation contract does not constrain what this gate
-accepts.
+**The consumer is Underline, the mining game.** Recovery primitives are vendored from
+Nightglass in `pipeline/recovery.py` only; its frozen animation contract does not
+constrain what this gate accepts.
 
 ### The envelope
 
@@ -125,7 +125,7 @@ Clean 0.130 vs worst-bad 0.436 — the budget sits in a real gap, not on a knife
 - `baseline_cells_locked` and `palette_set_equal` are retired — ground shadow bleed
   makes the first always-false on provider output, and the second is trivially true
   after quantizing to a shared palette. Both were noise.
-- `nightglass` `acquire.sample_cells` already does a central-60% per-channel median,
+- `pipeline/recovery.py` `sample_cells` already does a central-60% per-channel median,
   so "per-cell majority vote instead of centre sample" (old open item #1) was moot —
   the sampling was never the problem.
 
@@ -241,7 +241,7 @@ alignment is not free — it buys 02 at the cost of the translation adversary.
 
 ## Session 5: scope belongs to Underline, not Nightglass
 
-This prototype **borrows Nightglass's recovery primitives** (`../nightglass/pipeline`)
+This prototype **vendors Nightglass recovery primitives** in `pipeline/recovery.py`
 but the consumer is **Underline, the mining game**. Nightglass's frozen
 `docs/animation-contract.md` — one hand-authored planted idle, everything else a runtime
 transform — governs Nightglass and **does not constrain Underline**. A mining game
@@ -313,10 +313,11 @@ declared strip anchor (#3), per-motion-class budgets (#4), and the drift budget,
 re-derived at n=3 per class. The alignment question is settled — `align.py` and
 `sweep.py` are deleted.
 
-1. **Port into Underline.** Underline is the consumer and has no pipeline of its own,
-   only this prototype and borrowed `../nightglass/pipeline` primitives. Porting gives
-   it a strip-acquisition path plus the motion-class contract — and is the only thing
-   that grows the corpus as a byproduct of real work rather than as a special exercise.
+1. **Port into Underline.** Underline is the consumer; grid recovery now lives in
+   `pipeline/recovery.py` while the gate library remains in this prototype. Porting the
+   gate library under `pipeline/` gives Underline a strip-acquisition path plus the
+   motion-class contract — and is the only thing that grows the corpus as a byproduct
+   of real work rather than as a special exercise.
    (If Nightglass ever wants strips, that is a separate ask under its own frozen
    contract — do not conflate them again.)
 2. **Replace the budget derivation rule.** `worst-good + margin` cannot converge:

@@ -1,1 +1,0 @@
-"""Underline asset pipeline package."""
