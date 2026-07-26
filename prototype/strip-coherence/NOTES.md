@@ -18,12 +18,16 @@ every good strip passes. The gates are:
 
 Budgets are **per motion class**, derived gate-agnostically from manifest-good strips —
 see [`docs/strip-acquisition-contract.md`](../../docs/strip-acquisition-contract.md),
-which is the authority. Port the mechanism *and* the derivation rule; re-derive the
-constants against production strips.
+which is the authority. The mechanism and derivation rule are ported; re-derive the
+constants when production strips change.
 
 **The consumer is Underline, the mining game.** Recovery primitives are vendored from
 Nightglass in `pipeline/recovery.py` only; its frozen animation contract does not
 constrain what this gate accepts.
+
+**Ported:** live artefacts are `pipeline/strip.py`, `pipeline/ingest_strip.py`, and
+[`docs/strip-acquisition-contract.md`](../../docs/strip-acquisition-contract.md).
+This file is the historical record of how those numbers were reached.
 
 ### The envelope
 
@@ -303,20 +307,20 @@ classes the mining game ships* is Jake's call, not something to infer from the c
 The corpus currently guesses idle / locomotion / one-shot / airborne / emissive. Steps
 1–3 do not depend on the answer.
 
-**Not in this pass:** the drift budget (Open 3) and the port (Open 4). Both need the
-class list settled first.
+**Not in this pass (session 5):** the drift budget and the port — both since closed
+(see ## Open).
 
 ## Open
 
 Closed since session 5: pitch slicing with bounded registration (issue #2), the
-declared strip anchor (#3), per-motion-class budgets (#4), and the drift budget, now
-re-derived at n=3 per class. The alignment question is settled — `align.py` and
-`sweep.py` are deleted.
+declared strip anchor (#3), per-motion-class budgets (#4), the drift budget (now
+re-derived at n=3 per class), and port into `pipeline/` (#9–#11, Open 1). The
+alignment question is settled — `align.py` and `sweep.py` are deleted.
 
-1. **Port into Underline.** Underline is the consumer; grid recovery lives in
-   `pipeline/recovery.py` and the gate library in `pipeline/strip.py`. The prototype
-   runners remain here for corpus scoring and budget derivation — they import the
-   production modules under `pipeline/`.
+1. ~~**Port into Underline.**~~ **Closed** (#9 `pipeline/recovery.py`, #10
+   `pipeline/strip.py`, #11 `pipeline/ingest_strip.py` CLI). Grid recovery and
+   the gate library live under `pipeline/`; prototype runners import them for
+   corpus scoring and budget derivation.
    (If Nightglass ever wants strips, that is a separate ask under its own frozen
    contract — do not conflate them again.)
 2. **Replace the budget derivation rule.** `worst-good + margin` cannot converge:
@@ -339,8 +343,9 @@ re-derived at n=3 per class. The alignment question is settled — `align.py` an
 ```bash
 npm run prototype:strip              # TUI: [1-3] synthetic, [4] inbox
 npm run prototype:strip:smoke        # synthetic pass/fail fixtures
+npm run prototype:strip:ingest       # CLI: gate strip PNG (--motion-class required)
+npm run strip:ingest                 # alias for prototype:strip:ingest
 npm run prototype:strip:adversarial  # per-class mutations — gates must reject
-npm run prototype:strip:inbox        # JSON on latest inbox PNG
 npm run prototype:strip:corpus       # score inbox/ against prompts/manifest.json
 npm run prototype:strip:derive-budgets  # per-class worst-good → budgets
 npm run prototype:strip:displacement # antisymmetric displacement falsification + coverage

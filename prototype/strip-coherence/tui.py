@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Throwaway TUI for the strip-coherence prototype. PROTOTYPE — delete when answered."""
+"""Interactive TUI for the strip coherence evidence suite."""
 
 from __future__ import annotations
 
@@ -139,7 +139,7 @@ def _run_fixture(scenario: str) -> tuple[IngestResult, str]:
     return result, f"synthetic/{scenario}"
 
 
-def _run_inbox() -> tuple[IngestResult | None, str]:
+def _ingest_latest_inbox() -> tuple[IngestResult | None, str]:
     INBOX.mkdir(parents=True, exist_ok=True)
     pngs = sorted(INBOX.glob("*.png"))
     if not pngs:
@@ -192,7 +192,7 @@ def main() -> None:
             elif key == "3":
                 last, last_label = _run_fixture("palette_fail")
             elif key == "4":
-                last, last_label = _run_inbox()
+                last, last_label = _ingest_latest_inbox()
             elif key in ("j", "J"):
                 if last:
                     print(json.dumps(last.as_dict(), indent=2))

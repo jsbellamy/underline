@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Non-interactive smoke check for the strip prototype. PROTOTYPE — delete when answered."""
+"""Non-interactive smoke check for the strip evidence suite."""
 
 from __future__ import annotations
 
