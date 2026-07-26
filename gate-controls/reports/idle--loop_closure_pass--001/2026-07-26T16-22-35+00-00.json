@@ -1,0 +1,84 @@
+{
+  "schema": "gate-control-measurement/0",
+  "raw": "/Users/jakebellamy/VSProjects/games/game_idea/underline/gate-controls/raw/idle--loop_closure_pass--001.png",
+  "raw_sha256": "b37f1f5c15c6c37a4ee56aaef12a0db5ac595744fd9b7bb49dcc793b6dbae5fa",
+  "scorer_gate_config_sha256": "833bf9b68c5de230",
+  "motion_class": "idle",
+  "target_gate": "loop_closure_pass",
+  "applicable_gates": [
+    "dimension_parity",
+    "baseline_row_stable",
+    "silhouette_budget",
+    "loop_closure_pass",
+    "min_pair_cohort_pass",
+    "palette_drift_pass"
+  ],
+  "structural": {
+    "recovered": true,
+    "pitch_x_score": 0.0461,
+    "pitch_y_score": 0.1554
+  },
+  "gates": {
+    "dimension_parity": {
+      "applicable_because": "structural",
+      "outcome": "pass",
+      "metric": null,
+      "budget": null,
+      "reason": null
+    },
+    "baseline_row_stable": {
+      "applicable_because": "grounded: true",
+      "outcome": "pass",
+      "metric": null,
+      "budget": null,
+      "reason": null
+    },
+    "silhouette_budget": {
+      "applicable_because": "max_silhouette=0.17",
+      "outcome": "fail",
+      "metric": 0.2025,
+      "budget": 0.17,
+      "reason": null
+    },
+    "loop_closure_pass": {
+      "applicable_because": "max_loop=0.3",
+      "outcome": "fail",
+      "metric": 0.3095,
+      "budget": 0.3,
+      "reason": null
+    },
+    "min_pair_cohort_pass": {
+      "applicable_because": "max_min_pair=0.07",
+      "outcome": "pass",
+      "metric": 0.0303,
+      "budget": 0.07,
+      "reason": null
+    },
+    "palette_drift_pass": {
+      "applicable_because": "always",
+      "outcome": "pass",
+      "metric": 0.127,
+      "budget": 0.14,
+      "reason": null
+    }
+  },
+  "isolation": "NOT_ISOLATED",
+  "blockers": [
+    "collateral failure: silhouette_budget"
+  ],
+  "caveats": [],
+  "primary_failure": {
+    "code": "COLLATERAL_GATE_FAILED",
+    "gate": "silhouette_budget",
+    "rationale": "silhouette_budget measured 0.2025 over budget 0.17"
+  },
+  "retry_action": {
+    "reason_code": "COLLATERAL_GATE_FAILED",
+    "gate": "silhouette_budget",
+    "intent": "hold the collateral dimension fixed",
+    "one_prompt_delta": true,
+    "direction": "decrease",
+    "metric_now": 0.2025,
+    "must_fall_below": 0.17
+  }
+}

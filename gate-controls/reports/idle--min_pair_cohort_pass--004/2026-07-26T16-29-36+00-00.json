@@ -1,0 +1,36 @@
+{
+  "schema": "gate-control-measurement/0",
+  "raw": "/Users/jakebellamy/VSProjects/games/game_idea/underline/gate-controls/raw/idle--min_pair_cohort_pass--004.png",
+  "raw_sha256": "c8416da5e5595a9766932f82de2b22342e06fa943d3065a7f06baa94a53386c8",
+  "scorer_gate_config_sha256": "833bf9b68c5de230",
+  "motion_class": "idle",
+  "target_gate": "min_pair_cohort_pass",
+  "applicable_gates": [
+    "dimension_parity",
+    "baseline_row_stable",
+    "silhouette_budget",
+    "loop_closure_pass",
+    "min_pair_cohort_pass",
+    "palette_drift_pass"
+  ],
+  "structural": {
+    "recovered": false,
+    "reason": "idle--min_pair_cohort_pass--004.png: border is not a flat (255, 0, 255) chroma key (5338/10223 pixels within tolerance 4"
+  },
+  "gates": {},
+  "isolation": "INDETERMINATE",
+  "blockers": [
+    "idle--min_pair_cohort_pass--004.png: border is not a flat (255, 0, 255) chroma key (5338/10223 pixels within tolerance 4"
+  ],
+  "primary_failure": {
+    "code": "STRUCTURAL_RECOVERY_FAILED",
+    "gate": null,
+    "rationale": "idle--min_pair_cohort_pass--004.png: border is not a flat (255, 0, 255) chroma key (5338/10223 pixels within tolerance 4"
+  },
+  "retry_action": {
+    "reason_code": "STRUCTURAL_RECOVERY_FAILED",
+    "gate": null,
+    "intent": "restate the grid/gutter constraint in the prompt",
+    "one_prompt_delta": true
+  }
+}

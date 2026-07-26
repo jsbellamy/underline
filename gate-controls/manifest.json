@@ -1,0 +1,37 @@
+{
+  "schema": "gate-control-manifest/0",
+  "specifications": [
+    {
+      "id": "idle/palette_drift_pass",
+      "motion_class": "idle",
+      "target_gate": "palette_drift_pass",
+      "active_promotion": "promo--idle--palette_drift_pass"
+    },
+    {
+      "id": "idle/silhouette_budget",
+      "motion_class": "idle",
+      "target_gate": "silhouette_budget",
+      "active_promotion": "promo--idle--silhouette_budget"
+    }
+  ],
+  "promotions": [
+    {
+      "id": "promo--idle--palette_drift_pass",
+      "specification_id": "idle/palette_drift_pass",
+      "attempt_id": "idle--palette_drift_pass--001",
+      "measurement_path": "gate-controls/reports/idle--palette_drift_pass--001/2026-07-26T16-21-45+00-00.json",
+      "status": "PENDING_VERIFICATION",
+      "recorded_at": "2026-07-26T16:21:45+00:00",
+      "note": "corpus 07 seed; visual review deferred to #27; full verification deferred to #30"
+    },
+    {
+      "id": "promo--idle--silhouette_budget",
+      "specification_id": "idle/silhouette_budget",
+      "attempt_id": "idle--silhouette_budget--001",
+      "measurement_path": "gate-controls/reports/idle--silhouette_budget--001/2026-07-26T16-22-34+00-00.json",
+      "status": "PENDING_VERIFICATION",
+      "recorded_at": "2026-07-26T16:30:00+00:00",
+      "note": "gc-idle-silhouette-a1; visual review deferred to #27; full verification deferred to #30"
+    }
+  ]
+}

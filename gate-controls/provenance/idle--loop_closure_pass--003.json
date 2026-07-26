@@ -1,0 +1,19 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "idle/loop_closure_pass",
+  "attempt_id": "idle--loop_closure_pass--003",
+  "generator": "cursor-image-gen",
+  "prompt_text": "TRUE chunky pixel art sprite strip ONLY. Four idle frames of a small fantasy MINER in one horizontal row, facing RIGHT.\n\n**Canvas:** very wide panoramic strip \u2014 aspect ratio roughly 3:1 (much wider than tall). The four frames must fill most of the width.\n\nEach frame on an exact **16\u00d724 logical pixel grid rendered large** \u2014 every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering.\n\nMiner: feet planted on the bottom row. **Same miner, same green tunic and blue helmet in every frame** \u2014 identical color scheme across all four frames.\n\n**IMPORTANT \u2014 loop is broken.** Frames 0, 1, and 2: subtle breathing idle with only tiny pose changes between neighbors. Frame 3: **a completely different standing pose** \u2014 miner turned slightly, one foot forward, arms at different angles \u2014 clearly NOT the same pose as frame 0. Adjacent transitions 0\u21921, 1\u21922, 2\u21923 stay small; only frame 3 vs frame 0 differs strongly.\n\nBetween each frame: **two full magenta logical cells** of empty gutter (no character pixels in gutter columns).\n\nFlat solid **magenta `#ff00ff`** background everywhere else. Selective 1px dark outline.\n\nFrame order left\u2192right: idle_0, idle_1, idle_2, idle_3.\n\nDo not add margins, labels, numbers, or extra rows. One row of four frames only.\n\n<!-- Gate control: idle / loop_closure_pass. Adjacent pairs small; frame 3 does not close to frame 0. -->\n",
+  "prompt_sha256": "0aab5c517eaab3e2fb9542993b16f6df0a80f136a023e7449276b16e7d952719",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-26T16:29:30+00:00",
+  "acquiring_agent": "cursor-agent",
+  "repository_commit": "d02c450401f9915a14772b7b48a5c798d11f55db",
+  "raw_path": "gate-controls/raw/idle--loop_closure_pass--003.png",
+  "raw_sha256": "d6ca662acd1f9c17e586020c94c077942d373bc04a4dfe4441a04a1e3807c441",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ]
+}

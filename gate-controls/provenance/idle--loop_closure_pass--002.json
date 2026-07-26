@@ -1,0 +1,19 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "idle/loop_closure_pass",
+  "attempt_id": "idle--loop_closure_pass--002",
+  "generator": "cursor-image-gen",
+  "prompt_text": "TRUE chunky pixel art sprite strip ONLY. Four idle frames of a small fantasy MINER in one horizontal row, facing RIGHT.\n\n**Canvas:** very wide panoramic strip \u2014 aspect ratio roughly 3:1 (much wider than tall). The four frames must fill most of the width.\n\nEach frame on an exact **16\u00d724 logical pixel grid rendered large** \u2014 every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering. **Large crisp square pixels only.**\n\nMiner: feet planted on the bottom row. **Same miner, same green tunic and blue helmet in every frame.**\n\n**IMPORTANT \u2014 loop broken with tiny neighbor steps.** Frames 0, 1, and 2 are **nearly identical** breathing idle \u2014 neighbors differ by only 1-2 pixels maximum. Frame 3 is a **different pose** (one arm raised, torso leaned) that clearly does NOT match frame 0, but the change from frame 2 to frame 3 is still small (only a few pixels different from frame 2).\n\nBetween each frame: **two full magenta logical cells** of empty gutter (no character pixels in gutter columns).\n\nFlat solid **magenta `#ff00ff`** background everywhere else. Selective 1px dark outline.\n\nFrame order left\u2192right: idle_0, idle_1, idle_2, idle_3.\n\nDo not add margins, labels, numbers, or extra rows. One row of four frames only.\n\n<!-- Gate control retry: idle / loop_closure_pass. Neighbors tiny; only f3 vs f0 breaks loop. -->\n",
+  "prompt_sha256": "aa2d6fad20e28b33fc72f7aed910e9d407e51f74a08a4a078389d1adfadc7ef7",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-26T16:29:25+00:00",
+  "acquiring_agent": "cursor-agent",
+  "repository_commit": "d02c450401f9915a14772b7b48a5c798d11f55db",
+  "raw_path": "gate-controls/raw/idle--loop_closure_pass--002.png",
+  "raw_sha256": "1d7a957a34ac87ad2454624f1e7c7b7b548b39703ba7ef119719b443dc3cc0e1",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ]
+}

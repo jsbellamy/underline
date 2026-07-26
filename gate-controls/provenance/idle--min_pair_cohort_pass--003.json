@@ -1,0 +1,19 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "idle/min_pair_cohort_pass",
+  "attempt_id": "idle--min_pair_cohort_pass--003",
+  "generator": "cursor-image-gen",
+  "prompt_text": "TRUE chunky pixel art sprite strip ONLY. Four idle frames of a small fantasy MINER in one horizontal row, facing RIGHT.\n\n**Canvas:** very wide panoramic strip \u2014 aspect ratio roughly 3:1 (much wider than tall). The four frames must fill most of the width.\n\nEach frame on an exact **16\u00d724 logical pixel grid rendered large** \u2014 every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering.\n\nMiner: feet planted on the bottom row. **Same miner character, same earthy palette** (green tunic, blue helmet) in every frame \u2014 no recolouring.\n\n**IMPORTANT \u2014 cohort similarity without identity swap.** Four slightly different idle micro-poses of the SAME miner: frame 0 neutral, frame 1 head tilted right, frame 2 head tilted left, frame 3 slight lean. Each neighbor differs only a little, but **no two frames are identical** \u2014 even the closest pair should show visible occupancy differences (~10% of cells). Do NOT use four different characters.\n\nBetween each frame: **two full magenta logical cells** of empty gutter (no character pixels in gutter columns).\n\nFlat solid **magenta `#ff00ff`** background everywhere else. Selective 1px dark outline.\n\nFrame order left\u2192right: idle_0, idle_1, idle_2, idle_3.\n\nDo not add margins, labels, numbers, or extra rows. One row of four frames only.\n\n<!-- Gate control: idle / min_pair_cohort_pass. Same subject; min pairwise silhouette above cohort budget. -->\n",
+  "prompt_sha256": "b5fe3a8ad16d2a43ed425ee58736f3e25d806df72c88f39258fa8758b8d1507d",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-26T16:29:35+00:00",
+  "acquiring_agent": "cursor-agent",
+  "repository_commit": "d02c450401f9915a14772b7b48a5c798d11f55db",
+  "raw_path": "gate-controls/raw/idle--min_pair_cohort_pass--003.png",
+  "raw_sha256": "d6a944da86fd4aa4891fb69078cdf5eb6e3bb778670751b0a2aae49610e5b771",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ]
+}

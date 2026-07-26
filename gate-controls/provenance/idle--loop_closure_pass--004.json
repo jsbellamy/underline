@@ -1,0 +1,19 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "idle/loop_closure_pass",
+  "attempt_id": "idle--loop_closure_pass--004",
+  "generator": "cursor-image-gen",
+  "prompt_text": "TRUE chunky pixel art sprite strip ONLY. Four idle frames of a small fantasy MINER in one horizontal row, facing RIGHT.\n\n**Canvas:** very wide panoramic strip \u2014 aspect ratio roughly 3:1. Each frame **16\u00d724 logical pixels rendered as large crisp square blocks**. No anti-aliasing.\n\nMiner: same green tunic and blue helmet every frame, feet on bottom row.\n\n**CRITICAL structure:**\n- Frame 0: neutral idle.\n- Frame 1: almost identical to frame 0 (only 1-2 pixels different).\n- Frame 2: small change from frame 1 (subtle arm shift) \u2014 still a small step from frame 1.\n- Frame 3: **almost identical to frame 2** (only 1-2 pixels different from frame 2).\n\nFrame 3 must NOT match frame 0 (loop broken), but frame 3 must match frame 2 closely.\n\nTwo magenta gutter cells between frames. Flat magenta `#ff00ff` background. One row only.\n\n<!-- Gate control: idle / loop_closure_pass. f3\u2248f2, sequential neighbors small, f3\u2249f0. -->\n",
+  "prompt_sha256": "9835eec61bbd2c4a0375b82143090c1479686493906a44059266cb458348d46d",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-26T16:29:31+00:00",
+  "acquiring_agent": "cursor-agent",
+  "repository_commit": "d02c450401f9915a14772b7b48a5c798d11f55db",
+  "raw_path": "gate-controls/raw/idle--loop_closure_pass--004.png",
+  "raw_sha256": "25480aebb1855579f835c51586b8815375e7d2e5a1212d671b930a7c347f4f78",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ]
+}

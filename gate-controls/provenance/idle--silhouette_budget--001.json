@@ -1,0 +1,19 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "idle/silhouette_budget",
+  "attempt_id": "idle--silhouette_budget--001",
+  "generator": "cursor-image-gen",
+  "prompt_text": "TRUE chunky pixel art sprite strip ONLY. Four idle frames of a small fantasy MINER in one horizontal row, facing RIGHT.\n\n**Canvas:** very wide panoramic strip \u2014 aspect ratio roughly 3:1 (much wider than tall). The four frames must fill most of the width.\n\nEach frame on an exact **16\u00d724 logical pixel grid rendered large** \u2014 every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering.\n\nMiner: feet planted on the bottom row. **Same miner, same green tunic and blue helmet in every frame** \u2014 identical color scheme across all four frames.\n\n**IMPORTANT \u2014 silhouette spike on ONE transition only.** Frame 0: normal idle. Frame 1: normal idle (barely different from 0). Frame 2: **dramatic pose spike** \u2014 both arms raised high above head, body stretched tall (much larger silhouette change from frame 1). Frame 3: return to the same normal idle pose as frame 0 (loop closure).\n\nBetween each frame: **two full magenta logical cells** of empty gutter (no character pixels in gutter columns).\n\nFlat solid **magenta `#ff00ff`** background everywhere else. Selective 1px dark outline.\n\nFrame order left\u2192right: idle_0, idle_1, idle_2, idle_3.\n\nDo not add margins, labels, numbers, or extra rows. One row of four frames only.\n\n<!-- Gate control: idle / silhouette_budget. Same subject and palette; one adjacent pair\n     has a large occupancy change; frame 3 matches frame 0 for loop closure. -->\n",
+  "prompt_sha256": "5c9b72fed5c588c2aadf4af5f6d4d01738da6fdc47928f151159127a6d3378c0",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-26T16:22:33+00:00",
+  "acquiring_agent": "cursor-agent",
+  "repository_commit": "d02c450401f9915a14772b7b48a5c798d11f55db",
+  "raw_path": "gate-controls/raw/idle--silhouette_budget--001.png",
+  "raw_sha256": "9c839f154edeff04b3217c7a5ca8eeedc820d3dd9825bf04c53df594f1226186",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ]
+}

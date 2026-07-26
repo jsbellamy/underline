@@ -1,0 +1,19 @@
+TRUE chunky pixel art sprite strip ONLY. Four idle frames of a small fantasy MINER in one horizontal row, facing RIGHT.
+
+**Canvas:** very wide panoramic strip — aspect ratio roughly 3:1 (much wider than tall). The four frames must fill most of the width.
+
+Each frame on an exact **16×24 logical pixel grid rendered large** — every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering. **Large crisp square pixels only.**
+
+Miner: feet planted on the bottom row. **Same miner, same green tunic and blue helmet in every frame.**
+
+**IMPORTANT — loop broken with tiny neighbor steps.** Frames 0, 1, and 2 are **nearly identical** breathing idle — neighbors differ by only 1-2 pixels maximum. Frame 3 is a **different pose** (one arm raised, torso leaned) that clearly does NOT match frame 0, but the change from frame 2 to frame 3 is still small (only a few pixels different from frame 2).
+
+Between each frame: **two full magenta logical cells** of empty gutter (no character pixels in gutter columns).
+
+Flat solid **magenta `#ff00ff`** background everywhere else. Selective 1px dark outline.
+
+Frame order left→right: idle_0, idle_1, idle_2, idle_3.
+
+Do not add margins, labels, numbers, or extra rows. One row of four frames only.
+
+<!-- Gate control retry: idle / loop_closure_pass. Neighbors tiny; only f3 vs f0 breaks loop. -->
