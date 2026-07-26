@@ -83,8 +83,13 @@ def evaluate(path: pathlib.Path, *, motion_class: str) -> dict:
     tripped = [g for g in GATES if coh.get(g) is False]
     sil = max((r["frac"] for r in coh.get("silhouette_adjacent", [])), default=0.0)
     loop = (coh.get("loop_closure") or {}).get("frac", 0.0)
+    pairwise = coh.get("silhouette_pairwise") or {}
 
-    note = f"sil={sil:.3f} loop={loop:.3f} drift={coh.get('worst_palette_drift', 0):.3f}"
+    note = (
+        f"sil={sil:.3f} loop={loop:.3f} drift={coh.get('worst_palette_drift', 0):.3f} "
+        f"min_pair={pairwise.get('min_pair', 0):.3f} "
+        f"max_pair={pairwise.get('max_pair', 0):.3f}"
+    )
     return {
         "pass": result.pass_,
         "tripped": tripped,

@@ -1,0 +1,15 @@
+TRUE chunky pixel art sprite strip ONLY. Four HAMMER SWING frames of a small fantasy BLACKSMITH in one horizontal row, facing RIGHT.
+
+**Canvas:** very wide panoramic strip — aspect ratio roughly 3:1 (much wider than tall). The four frames must fill most of the width.
+
+Each frame on an exact **16×24 logical pixel grid rendered large** — every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering.
+
+Blacksmith: leather apron, heavy hammer. **Feet planted on the bottom row and never moving.** Swing arc: frame 0 hammer raised high, frame 1 hammer at chest height, frame 2 hammer driving forward, frame 3 hammer at anvil height in front of the body.
+
+Between each frame: **two full magenta logical cells** of empty gutter (no character pixels in gutter columns).
+
+Flat solid **magenta `#ff00ff`** background everywhere else. Selective 1px dark warm outline. Upper-left light. **8–12 flat colors max** — same palette in every frame.
+
+Frame order left→right: swing_0, swing_1, swing_2, swing_3 — **same character**. One-shot action, **not a loop**.
+
+Do not add margins, labels, numbers, or extra rows. One row of four frames only.

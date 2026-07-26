@@ -3,38 +3,35 @@
 from __future__ import annotations
 
 import adversarial
+import pytest
 import strip as S
 
+ALL_CLASSES = tuple(adversarial.CLASS_BASELINES)
+MUTATION_CASES = [
+    (motion_class, mutation)
+    for motion_class, mutations in adversarial.MUST_FAIL.items()
+    for mutation in sorted(mutations)
+]
 
-def test_untouched_real_strip_passes() -> None:
-    frames = adversarial.real_frames()
-    result = S.coherence_split(frames, motion_class="idle")
+
+@pytest.mark.parametrize("motion_class", ALL_CLASSES)
+def test_untouched_passes_per_class(motion_class: str) -> None:
+    frames = adversarial.real_frames(motion_class)
+    result = S.coherence_split(frames, motion_class=motion_class)
     assert result["pass"] is True
 
 
-def test_recolour_fails() -> None:
-    frames = adversarial.real_frames()
-    mutated = adversarial.recolour(frames)
-    result = S.coherence_split(mutated, motion_class="idle")
+@pytest.mark.parametrize("motion_class,mutation", MUTATION_CASES)
+def test_required_mutation_fails_per_class(motion_class: str, mutation: str) -> None:
+    frames = adversarial.real_frames(motion_class)
+    mutated = adversarial._MUTATORS[mutation](frames)
+    result = S.coherence_split(mutated, motion_class=motion_class)
     assert result["pass"] is False
 
 
-def test_hop_fails() -> None:
-    frames = adversarial.real_frames()
-    mutated = adversarial.hop(frames)
-    result = S.coherence_split(mutated, motion_class="idle")
-    assert result["pass"] is False
-
-
-def test_wrong_pose_fails() -> None:
-    frames = adversarial.real_frames()
-    mutated = adversarial.wrong_pose(frames)
-    result = S.coherence_split(mutated, motion_class="idle")
-    assert result["pass"] is False
-
-
-def test_slide_fails() -> None:
-    frames = adversarial.real_frames()
-    mutated = adversarial.slide(frames)
-    result = S.coherence_split(mutated, motion_class="idle")
-    assert result["pass"] is False
+def test_airborne_silhouette_mutations_have_no_budget() -> None:
+    """Airborne has max_silhouette=None — hop/mirror/slide are not gated today."""
+    frames = adversarial.real_frames("airborne")
+    for mutate in (adversarial.hop, adversarial.wrong_pose, adversarial.slide):
+        result = S.coherence_split(mutate(frames), motion_class="airborne")
+        assert result.get("silhouette_budget") is None

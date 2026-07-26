@@ -296,6 +296,48 @@ def silhouette_diff(
     return best_changed, best_union
 
 
+def silhouette_pair_frac(
+    a: list[list[Cell]],
+    b: list[list[Cell]],
+    *,
+    anchor: int | None = None,
+) -> float:
+    changed, union = silhouette_diff(a, b, anchor=anchor)
+    return round(changed / union, 4) if union else 0.0
+
+
+def silhouette_pairwise(
+    frames: list[list[list[Cell]]],
+    *,
+    anchor: int | None = None,
+) -> dict[str, Any]:
+    """Pairwise silhouette stats — cohort signal alongside adjacent max-pair."""
+    n = len(frames)
+    pairs: list[dict[str, Any]] = []
+    fracs: list[float] = []
+    for i in range(n):
+        for j in range(i + 1, n):
+            frac = silhouette_pair_frac(frames[i], frames[j], anchor=anchor)
+            pairs.append({"pair": [i, j], "frac": frac})
+            fracs.append(frac)
+
+    orphan_fracs: list[float] = []
+    for i in range(n):
+        others = [
+            silhouette_pair_frac(frames[i], frames[j], anchor=anchor)
+            for j in range(n)
+            if j != i
+        ]
+        orphan_fracs.append(min(others) if others else 0.0)
+
+    return {
+        "pairs": pairs,
+        "max_pair": round(max(fracs), 4) if fracs else 0.0,
+        "min_pair": round(min(fracs), 4) if fracs else 0.0,
+        "orphan_max": round(max(orphan_fracs), 4) if orphan_fracs else 0.0,
+    }
+
+
 def palette_histogram(frame: list[list[Cell]]) -> dict[tuple[int, int, int], float]:
     counts = Counter(rgb for row in frame for rgb in row if rgb is not None)
     total = sum(counts.values()) or 1
@@ -400,6 +442,8 @@ def coherence_split(
 
     drift = palette_drift(q)
     worst_drift = max((d["tv"] for d in drift), default=0.0)
+    pairwise = silhouette_pairwise(q, anchor=sil_anchor)
+    adjacent_max = max((row["frac"] for row in adjacent), default=0.0)
 
     silhouette_budget: bool | None = None
     if max_silhouette_diff is not None:
@@ -415,6 +459,8 @@ def coherence_split(
         "baseline_row_stable": baseline_stable,
         "baseline_rows": baselines,
         "silhouette_adjacent": adjacent,
+        "silhouette_adjacent_max": adjacent_max,
+        "silhouette_pairwise": pairwise,
         "silhouette_budget": silhouette_budget,
         "loop_closure": loop,
         "loop_closure_pass": loop_closure_pass,

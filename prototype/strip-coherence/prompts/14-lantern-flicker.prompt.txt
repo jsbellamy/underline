@@ -1,0 +1,15 @@
+TRUE chunky pixel art sprite strip ONLY. Four flicker animation frames of a hanging LANTERN in one horizontal row.
+
+**Canvas:** very wide panoramic strip — aspect ratio roughly 3:1 (much wider than tall). The four frames must fill most of the width.
+
+Each frame on an exact **16×24 logical pixel grid rendered large** — every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering.
+
+Lantern: a dark iron hook and frame in the **upper third, identical in every frame — do not move or recolor the metal**. Inside, a warm glow of 6–10 blocks that flickers: the bright core shifts between yellow and orange and the outer glow outline changes by one block per frame.
+
+Between each frame: **two full magenta logical cells** of empty gutter (no character pixels in gutter columns).
+
+Flat solid **magenta `#ff00ff`** background everywhere else. Selective 1px dark outline. **8–12 flat colors max** — warm flame colors only in the glow.
+
+Frame order left→right: flicker_0, flicker_1, flicker_2, flicker_3 — **loopable**.
+
+Do not add margins, labels, numbers, or extra rows. One row of four frames only.

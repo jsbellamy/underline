@@ -1,0 +1,15 @@
+TRUE chunky pixel art sprite strip ONLY. Four idle animation frames of a small JELLY BLOB in one horizontal row.
+
+**Canvas:** very wide panoramic strip — aspect ratio roughly 3:1 (much wider than tall). The four frames must fill most of the width.
+
+Each frame on an exact **16×24 logical pixel grid rendered large** — every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering.
+
+Jelly: translucent blue dome with one white highlight and two dark eye pixels. It sits **flat on the bottom row of each frame**. Idle = a wobble — the dome stretches one column wider then returns. The **contact row against the ground never changes width or position**.
+
+Between each frame: **two full magenta logical cells** of empty gutter (no character pixels in gutter columns).
+
+Flat solid **magenta `#ff00ff`** background everywhere else. Selective 1px dark outline. **6–10 flat colors max**.
+
+Frame order left→right: idle_0, idle_1, idle_2, idle_3 — **same creature, same volume, loopable**.
+
+Do not add margins, labels, numbers, or extra rows. One row of four frames only.

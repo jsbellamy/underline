@@ -9,6 +9,7 @@
     "prototype:strip:inbox": "python3 prototype/strip-coherence/run_inbox.py",
     "prototype:strip:adversarial": "python3 prototype/strip-coherence/adversarial.py",
     "prototype:strip:corpus": "python3 prototype/strip-coherence/corpus.py",
+    "prototype:strip:derive-budgets": "python3 prototype/strip-coherence/derive_budgets.py",
     "prototype:strip:align": "python3 prototype/strip-coherence/align.py"
   }
 }

@@ -72,6 +72,102 @@
       "contract_expect": "FAIL",
       "contract_expect_gates": ["recover|slice"],
       "why": "no transparent columns — must fail before the coherence gates, not silently yield one frame. A ground line spanning the canvas trips raw_clipping first (verified synthetically), so either layer is an acceptable catch"
+    },
+    {
+      "id": "10-guard-idle",
+      "class": "idle",
+      "motion_class": "idle",
+      "contract_expect": "PASS",
+      "contract_expect_gates": [],
+      "why": "second idle sample — widen n for budget derivation"
+    },
+    {
+      "id": "11-dwarf-idle",
+      "class": "idle",
+      "motion_class": "idle",
+      "contract_expect": "PASS",
+      "contract_expect_gates": [],
+      "why": "third idle sample — different silhouette, same motion class"
+    },
+    {
+      "id": "12-jelly-idle",
+      "class": "idle",
+      "motion_class": "blob_idle",
+      "contract_expect": "PASS",
+      "contract_expect_gates": [],
+      "why": "second blob_idle sample"
+    },
+    {
+      "id": "13-ooze-idle",
+      "class": "idle",
+      "motion_class": "blob_idle",
+      "contract_expect": "PASS",
+      "contract_expect_gates": [],
+      "why": "third blob_idle sample"
+    },
+    {
+      "id": "14-lantern-flicker",
+      "class": "emissive",
+      "motion_class": "emissive",
+      "contract_expect": "PASS",
+      "contract_expect_gates": [],
+      "why": "second emissive sample — drift budget stress"
+    },
+    {
+      "id": "15-campfire-flicker",
+      "class": "emissive",
+      "motion_class": "emissive",
+      "contract_expect": "PASS",
+      "contract_expect_gates": [],
+      "why": "third emissive sample"
+    },
+    {
+      "id": "16-moth-flap",
+      "class": "airborne",
+      "motion_class": "airborne",
+      "contract_expect": "PASS",
+      "contract_expect_gates": [],
+      "why": "second airborne sample — cohort min_pair evidence"
+    },
+    {
+      "id": "17-wisp-float",
+      "class": "airborne",
+      "motion_class": "airborne",
+      "contract_expect": "PASS",
+      "contract_expect_gates": [],
+      "why": "third airborne sample"
+    },
+    {
+      "id": "18-guard-walk",
+      "class": "locomotion",
+      "motion_class": "walk",
+      "contract_expect": "PASS",
+      "contract_expect_gates": [],
+      "why": "second walk sample"
+    },
+    {
+      "id": "19-scout-walk",
+      "class": "locomotion",
+      "motion_class": "walk",
+      "contract_expect": "PASS",
+      "contract_expect_gates": [],
+      "why": "third walk sample"
+    },
+    {
+      "id": "20-axe-swing",
+      "class": "one-shot",
+      "motion_class": "swing",
+      "contract_expect": "PASS",
+      "contract_expect_gates": [],
+      "why": "second swing sample"
+    },
+    {
+      "id": "21-hammer-swing",
+      "class": "one-shot",
+      "motion_class": "swing",
+      "contract_expect": "PASS",
+      "contract_expect_gates": [],
+      "why": "third swing sample"
     }
   ]
 }

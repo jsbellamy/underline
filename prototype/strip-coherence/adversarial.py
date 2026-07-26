@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""PROTOTYPE — does the split gate still REJECT? Mutate the real strip's frames.
+"""PROTOTYPE — does the split gate still REJECT? Mutate each class's good strip.
 
-The strict budgets only mean something if a genuinely bad frame trips them.
-Each mutation targets one gate; every row should read FAIL.
+Each motion class runs the same mutation battery against its own corpus baseline.
+Silhouette mutations must fail wherever that class has a silhouette budget; recolour
+must fail wherever palette drift is gated. Airborne has no silhouette gate — only
+drift mutations are expected to fail there.
 """
 
 from __future__ import annotations
@@ -14,18 +16,73 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
 import strip as S  # noqa: E402
 
-INBOX = pathlib.Path(__file__).resolve().parent / "inbox" / "miner-idle-strip.png"
+HERE = pathlib.Path(__file__).resolve().parent
+INBOX = HERE / "inbox"
+
+CLASS_BASELINES: dict[str, str] = {
+    "idle": "01-miner-idle.png",
+    "blob_idle": "02-slime-idle.png",
+    "emissive": "03-torch-flicker.png",
+    "airborne": "04-bat-flap.png",
+    "walk": "05-miner-walk.png",
+    "swing": "06-miner-swing.png",
+}
+
+GATES = (
+    "dimension_parity",
+    "baseline_row_stable",
+    "silhouette_budget",
+    "loop_closure_pass",
+    "palette_drift_pass",
+)
+
+MUTATIONS = (
+    ("recolour frame 2", "recolour"),
+    ("hop frame 2 (+3 rows)", "hop"),
+    ("mirror frame 2", "wrong_pose"),
+    ("slide frame 2 (+3 cols)", "slide"),
+)
+
+# Mutations that must fail under each class's current contract.
+MUST_FAIL: dict[str, set[str]] = {
+    "idle": {"recolour", "hop", "wrong_pose", "slide"},
+    "blob_idle": {"recolour", "hop", "slide"},
+    "emissive": {"recolour", "hop", "wrong_pose", "slide"},
+    "walk": {"recolour", "hop", "wrong_pose", "slide"},
+    "swing": {"recolour", "hop", "wrong_pose", "slide"},
+    "airborne": {"recolour"},
+}
 
 
-def real_frames():
+def _corpus_layout() -> S.StripLayout:
     layout = S.DEFAULT_LAYOUT
-    probe = S.StripLayout(
-        frame_w=layout.frame_w, frame_h=layout.frame_h,
-        frame_count=layout.frame_count, gutter=layout.gutter,
-        pitch_px=layout.pitch_px, margin_cells=0,
+    return S.StripLayout(
+        frame_w=layout.frame_w,
+        frame_h=layout.frame_h,
+        frame_count=layout.frame_count,
+        gutter=layout.gutter,
+        pitch_px=layout.pitch_px,
+        margin_cells=0,
     )
-    cells, _ = S.recover_strip_cells(INBOX, probe)
-    frames, _ = S.slice_frames_pitch(cells, frame_count=layout.frame_count)
+
+
+def _resolve_baseline(motion_class: str) -> pathlib.Path:
+    name = CLASS_BASELINES[motion_class]
+    path = INBOX / name
+    if path.exists():
+        return path
+    if motion_class == "idle":
+        legacy = INBOX / "miner-idle-strip.png"
+        if legacy.exists():
+            return legacy
+    raise FileNotFoundError(f"missing baseline for {motion_class}: {path}")
+
+
+def real_frames(motion_class: str = "idle"):
+    """Recover frames for a motion class's corpus baseline strip."""
+    path = _resolve_baseline(motion_class)
+    cells, _ = S.recover_strip_cells(path, _corpus_layout())
+    frames, _ = S.slice_frames_pitch(cells, frame_count=S.DEFAULT_LAYOUT.frame_count)
     return frames
 
 
@@ -61,32 +118,65 @@ def slide(frames, idx=2, dx=3):
     return out
 
 
-def report(name, frames, want_pass):
-    r = S.coherence_split(frames, motion_class="idle")
-    sil = max((row["frac"] for row in r["silhouette_adjacent"]), default=0.0)
-    tripped = [
-        g for g in ("dimension_parity", "baseline_row_stable", "silhouette_budget",
-                    "loop_closure_pass", "palette_drift_pass")
-        if r.get(g) is False
-    ]
-    ok = r["pass"] == want_pass
-    print(f"{'ok ' if ok else 'MISMATCH'}  {name:<22} "
-          f"{'PASS' if r['pass'] else 'FAIL'} (want {'PASS' if want_pass else 'FAIL'})  "
-          f"sil_max={sil:.3f} drift_max={r['worst_palette_drift']:.3f}"
-          + (f"  tripped={tripped}" if tripped else ""))
+_MUTATORS = {
+    "recolour": recolour,
+    "hop": hop,
+    "wrong_pose": wrong_pose,
+    "slide": slide,
+}
+
+
+def _tripped(result: dict) -> list[str]:
+    return [g for g in GATES if result.get(g) is False]
+
+
+def report(
+    motion_class: str,
+    name: str,
+    frames,
+    want_pass: bool,
+    *,
+    verbose: bool = True,
+) -> bool:
+    result = S.coherence_split(frames, motion_class=motion_class)
+    sil = max((row["frac"] for row in result["silhouette_adjacent"]), default=0.0)
+    pairwise = result.get("silhouette_pairwise") or {}
+    tripped = _tripped(result)
+    ok = result["pass"] == want_pass
+    if verbose:
+        print(
+            f"{'ok ' if ok else 'MISMATCH'}  {motion_class:<10} {name:<22} "
+            f"{'PASS' if result['pass'] else 'FAIL'} "
+            f"(want {'PASS' if want_pass else 'FAIL'})  "
+            f"sil_max={sil:.3f} min_pair={pairwise.get('min_pair', 0):.3f} "
+            f"drift_max={result['worst_palette_drift']:.3f}"
+            + (f"  tripped={tripped}" if tripped else "")
+        )
+    return ok
+
+
+def run_class(motion_class: str, *, verbose: bool = True) -> bool:
+    frames = real_frames(motion_class)
+    required = MUST_FAIL[motion_class]
+    ok = report(motion_class, "baseline (untouched)", frames, True, verbose=verbose)
+    for label, key in MUTATIONS:
+        want_pass = key not in required
+        ok = report(
+            motion_class,
+            label,
+            _MUTATORS[key](frames),
+            want_pass,
+            verbose=verbose,
+        ) and ok
     return ok
 
 
 def main() -> int:
-    frames = real_frames()
-    checks = [
-        ("baseline (untouched)", frames, True),
-        ("recolour frame 2", recolour(frames), False),
-        ("hop frame 2 (+3 rows)", hop(frames), False),
-        ("mirror frame 2", wrong_pose(frames), False),
-        ("slide frame 2 (+3 cols)", slide(frames), False),
-    ]
-    return 0 if all(report(n, f, w) for n, f, w in checks) else 1
+    ok = True
+    for motion_class in CLASS_BASELINES:
+        print(f"\n=== {motion_class} ({CLASS_BASELINES[motion_class]}) ===")
+        ok = run_class(motion_class) and ok
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":

@@ -1,0 +1,15 @@
+TRUE chunky pixel art sprite strip ONLY. Four float animation frames of a small WISP in one horizontal row.
+
+**Canvas:** very wide panoramic strip — aspect ratio roughly 3:1 (much wider than tall). The four frames must fill most of the width.
+
+Each frame on an exact **16×24 logical pixel grid rendered large** — every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering.
+
+Wisp: a glowing cyan orb with a soft trailing tail, **airborne — centered in the frame, NOT touching the bottom row**. The orb core stays at the same position. Only the tail curls: tail left, tail down, tail right, tail up.
+
+Between each frame: **two full magenta logical cells** of empty gutter (no character pixels in gutter columns).
+
+Flat solid **magenta `#ff00ff`** background everywhere else. Selective 1px dark outline. **6–10 flat colors max** — cyan and pale blue only.
+
+Frame order left→right: float_0, float_1, float_2, float_3 — **same wisp, same core position, loopable**.
+
+Do not add margins, labels, numbers, or extra rows. One row of four frames only.
