@@ -1,0 +1,19 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "walk/min_pair_cohort_pass",
+  "attempt_id": "walk--min_pair_cohort_pass--001",
+  "generator": "cursor-image-gen",
+  "prompt_text": "TRUE chunky pixel art sprite strip ONLY. Four WALK CYCLE frames of a small fantasy MINER facing RIGHT in one horizontal row.\n\n**Canvas:** very wide panoramic strip \u2014 aspect ratio roughly 3:1. Each frame **16\u00d724 logical pixels rendered as large crisp square blocks**. No anti-aliasing.\n\nMiner: green tunic, blue helmet, brown pickaxe. **Same character, same palette every frame.**\n\n**IMPORTANT \u2014 cohort similarity without identity swap.** Four slightly different walk micro-poses of the SAME miner: frame 0 neutral, frame 1 small leg shift, frame 2 torso bob, frame 3 slight lean. Each neighbor differs only a little, but **no two frames are identical** \u2014 even the closest pair should show visible occupancy differences (~18% of cells). Do NOT use four different creatures. **Frame 3 should NOT close to frame 0** \u2014 end pose differs from start.\n\nTwo magenta gutter cells between frames. Flat magenta `#ff00ff` background. One row only.\n\n<!-- Gate control: walk / min_pair_cohort_pass. Same subject; min pairwise silhouette above cohort budget. -->\n",
+  "prompt_sha256": "eafbdc57e0e0905eac7c25bf290fed166c98083952fde876cfd2a8828489a162",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-26T17:22:59+00:00",
+  "acquiring_agent": "cursor-agent",
+  "repository_commit": "ae4ce7ab64386a2cc1cd48ee6f4b77aa49b1eace",
+  "raw_path": "gate-controls/raw/walk--min_pair_cohort_pass--001.png",
+  "raw_sha256": "a85453ce43e574831b9c305b3d6002e5f6fbefb4b3f608f675847f9f7c1007e7",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "walk/loop_closure_pass",
+  "attempt_id": "walk--loop_closure_pass--002",
+  "generator": "cursor-image-gen",
+  "prompt_text": "Corpus-derived gate control from provider strip 05-miner-walk: set frame 3 equal to frame 2 (f3\u2248f2, f3\u2249f0) to fail loop_closure_pass (0.280 vs 0.17) while other walk gates pass.\n\n<!-- Gate control: walk / loop_closure_pass. Provider baseline 05 + loop-break mutation. -->\n",
+  "prompt_sha256": "ea32686faadfe2680b2c4a146f4114d6f7d4a8c32d3d2abaf7af1c89e7a91965",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-26T17:24:46+00:00",
+  "acquiring_agent": "cursor-agent",
+  "repository_commit": "ae4ce7ab64386a2cc1cd48ee6f4b77aa49b1eace",
+  "raw_path": "gate-controls/raw/walk--loop_closure_pass--002.png",
+  "raw_sha256": "3e8e37a636ff9ffc16b18a6ef9e7c2b5dd10a94866064d4b40e045576adc05eb",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ]
+}
