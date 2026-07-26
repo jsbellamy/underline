@@ -10,7 +10,7 @@ import pathlib
 import sys
 from collections import Counter
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 from PIL import Image
 
@@ -32,6 +32,10 @@ REGISTRATION_SPAN = 1
 # Wide scan for displacement evidence — NOT registration jitter absorption.
 DISPLACEMENT_PROBE_SPAN = 4
 DISPLACEMENT_MIN_MAGNITUDE = 2
+# Residual |in+out| tolerance (Chebyshev) — exact pairing is too brittle at wide scan.
+DISPLACEMENT_PAIR_TOLERANCE = 1
+
+Facing = Literal["fixed", "free"]
 
 
 @dataclass(frozen=True)
@@ -42,6 +46,7 @@ class ClassBudget:
     max_min_pair: float | None
     grounded: bool
     loops: bool
+    facing: Facing
 
 
 # Per-motion-class budgets — derived in docs/strip-acquisition-contract.md.
@@ -53,6 +58,7 @@ MOTION_CLASSES: dict[str, ClassBudget] = {
         max_min_pair=0.07,
         grounded=True,
         loops=True,
+        facing="free",
     ),
     "blob_idle": ClassBudget(
         max_silhouette=0.36,
@@ -61,6 +67,7 @@ MOTION_CLASSES: dict[str, ClassBudget] = {
         max_min_pair=0.13,
         grounded=True,
         loops=True,
+        facing="free",
     ),
     "walk": ClassBudget(
         max_silhouette=0.42,
@@ -69,6 +76,7 @@ MOTION_CLASSES: dict[str, ClassBudget] = {
         max_min_pair=0.17,
         grounded=True,
         loops=True,
+        facing="fixed",
     ),
     "swing": ClassBudget(
         max_silhouette=0.59,
@@ -77,6 +85,7 @@ MOTION_CLASSES: dict[str, ClassBudget] = {
         max_min_pair=None,
         grounded=True,
         loops=False,
+        facing="fixed",
     ),
     "airborne": ClassBudget(
         max_silhouette=None,
@@ -85,6 +94,7 @@ MOTION_CLASSES: dict[str, ClassBudget] = {
         max_min_pair=0.29,
         grounded=False,
         loops=True,
+        facing="free",
     ),
     "emissive": ClassBudget(
         max_silhouette=0.21,
@@ -93,6 +103,7 @@ MOTION_CLASSES: dict[str, ClassBudget] = {
         max_min_pair=0.12,
         grounded=True,
         loops=True,
+        facing="free",
     ),
 }
 
@@ -372,6 +383,25 @@ def shift_magnitude(dx: int, dy: int) -> int:
     return max(abs(dx), abs(dy))
 
 
+def shifts_antisymmetric(
+    in_dx: int,
+    in_dy: int,
+    out_dx: int,
+    out_dy: int,
+    *,
+    tolerance: int = DISPLACEMENT_PAIR_TOLERANCE,
+) -> bool:
+    """True when in+out residuals are within tolerance cells (approximate negation)."""
+    return shift_magnitude(in_dx + out_dx, in_dy + out_dy) <= tolerance
+
+
+def displacement_frame_indices(frame_count: int, *, loops: bool) -> range:
+    """Frame indices to scan — all frames when looping, interior only otherwise."""
+    if frame_count < 3:
+        return range(0)
+    return range(frame_count) if loops else range(1, frame_count - 1)
+
+
 def quantize_motion_frames(
     frames: list[list[list[Cell]]],
     motion_class: str,
@@ -432,24 +462,30 @@ def adjacent_transition_shifts(
 def antisymmetric_displacement_flags(
     frames: list[list[list[Cell]]],
     *,
+    loops: bool = False,
     min_magnitude: int = DISPLACEMENT_MIN_MAGNITUDE,
+    pair_tolerance: int = DISPLACEMENT_PAIR_TOLERANCE,
     span: int = DISPLACEMENT_PROBE_SPAN,
     anchor: int | None = None,
 ) -> list[dict[str, Any]]:
-    """Interior frames where in/out shifts are equal-and-opposite with |shift| ≥ min."""
+    """Frames where in/out shifts are approximately opposite with |in| ≥ min_magnitude."""
     flags: list[dict[str, Any]] = []
     n = len(frames)
-    for k in range(1, n - 1):
+    for k in displacement_frame_indices(n, loops=loops):
+        prev_k = (k - 1) % n if loops else k - 1
+        next_k = (k + 1) % n if loops else k + 1
         in_dx, in_dy = best_alignment_shift(
-            frames[k - 1], frames[k], span=span, anchor=anchor
+            frames[prev_k], frames[k], span=span, anchor=anchor
         )
         out_dx, out_dy = best_alignment_shift(
-            frames[k], frames[k + 1], span=span, anchor=anchor
+            frames[k], frames[next_k], span=span, anchor=anchor
         )
         mag = shift_magnitude(in_dx, in_dy)
         if mag < min_magnitude:
             continue
-        if (in_dx, in_dy) == (-out_dx, -out_dy):
+        if shifts_antisymmetric(
+            in_dx, in_dy, out_dx, out_dy, tolerance=pair_tolerance
+        ):
             flags.append(
                 {
                     "frame": k,

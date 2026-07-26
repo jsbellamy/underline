@@ -6,16 +6,28 @@ animation contract does not govern here.
 
 ## Motion classes
 
-| Class | Corpus sample | `grounded` | `loops` |
-|-------|---------------|------------|---------|
-| `idle` | 01-miner-idle | yes | yes |
-| `blob_idle` | 02-slime-idle | yes | yes |
-| `emissive` | 03-torch-flicker | yes | yes |
-| `airborne` | 04-bat-flap | no | yes |
-| `walk` | 05-miner-walk | yes | yes |
-| `swing` | 06-miner-swing | yes | no |
+| Class | Corpus sample | `grounded` | `loops` | `facing` |
+|-------|---------------|------------|---------|----------|
+| `idle` | 01-miner-idle | yes | yes | free |
+| `blob_idle` | 02-slime-idle | yes | yes | free |
+| `emissive` | 03-torch-flicker | yes | yes | free |
+| `airborne` | 04-bat-flap | no | yes | free |
+| `walk` | 05-miner-walk | yes | yes | fixed |
+| `swing` | 06-miner-swing | yes | no | fixed |
 
 Negative controls 07, 08, and 09 declare `idle`.
+
+### Facing (decision 2026-07-26)
+
+`facing` is a class property on `ClassBudget`, not a gate today.
+
+| `facing` | Classes | Meaning |
+|----------|---------|---------|
+| **fixed** | `walk`, `swing` | Subject faces travel/action direction; a mirrored frame is a defect. Silhouette already catches mirror on both today — recorded so a future class that disables silhouette inherits the rule. |
+| **free** | `idle`, `blob_idle`, `emissive`, `airborne` | No declared facing; a mirrored frame is **not** a defect. Mirror is out of scope, not a `KNOWN_GAP`. |
+
+**Reversible commitment:** if Underline later requires bats to face flight direction,
+`airborne` moves to `fixed` and mirror becomes a hole needing a chirality gate.
 
 ## Budget derivation (C5)
 
@@ -190,25 +202,23 @@ prints **`GAP`**, never **`ok`**, with the documented reason.
 
 | Class | Mutation | Status | Reason |
 |-------|----------|--------|--------|
-| `airborne` | hop, slide | **GAP** | Antisymmetric displacement rule survives falsification but is not yet a gate |
-| `blob_idle` | mirror (`wrong_pose`) | **GAP** | Symmetric blob; mirror is a silhouette no-op |
+| `airborne` | hop, slide | **GAP** | Displacement probe: patchy frame×magnitude coverage — **not promoted** |
 
-**Airborne mirror is out of scope.** Corpus prompts do not declare a facing contract. A
-bat facing left in frame 2 may be valid; a miner walking left in frame 2 of a rightward
-walk is not — but the gate cannot decide that without a declared rule. Mirror is not in
-`KNOWN_GAPS` for airborne; it is not a hole if it is not a rule. **Contract decision
-needed:** if strips carry a declared facing, mirror becomes gateable; until then, do not
-build a chirality check.
+Mirror (`wrong_pose`) is **out of scope** on `facing: free` classes (`airborne`,
+`blob_idle`, `idle`, `emissive`). On `facing: fixed` classes (`walk`, `swing`),
+silhouette already rejects mirror.
 
-## Antisymmetric displacement (pre-registered, not yet gated)
+## Antisymmetric displacement (pre-registered, not promoted)
 
-A translated frame shows up as an equal-and-opposite pair of best-alignment shifts —
-displaced going in, displaced back coming out. Legitimate motion does not return:
-swing's large `(+3,+1)` step is the character stepping into the swing and never coming
-back, so antisymmetry separates "frame was moved" from "subject moved."
+A translated frame shows up as an equal-and-opposite pair of best-alignment shifts.
+Legitimate motion does not return (swing's `(+3,+1)` never comes back), so antisymmetry
+separates "frame was moved" from "subject moved."
 
-**Rule (pre-registered):** an interior frame is tampered when its in-shift and out-shift
-are equal and opposite with Chebyshev magnitude ≥ 2 (`max(|dx|, |dy|)`).
+**Rule (pre-registered):** frame `k` is tampered when in-shift and out-shift are
+approximately opposite — residual `|in+out| ≤ 1` cell (Chebyshev) — with `|in| ≥ 2`.
+`loops=True` classes scan **all frames** including wrap-around; intended for
+**airborne only** when promoted. Grounded classes already catch hop/slide via
+`baseline_row_stable` and `silhouette_budget`; do not add displacement there.
 
 **Two spans — do not conflate:**
 
@@ -217,16 +227,39 @@ are equal and opposite with Chebyshev magnitude ≥ 2 (`max(|dx|, |dy|)`).
 | `REGISTRATION_SPAN` | ±1 | Silhouette budget — minimise shift to absorb jitter |
 | `DISPLACEMENT_PROBE_SPAN` | ±4 | Displacement evidence — read shift as signal |
 
-Same occupancy machinery, opposite intent. `best_alignment_shift` uses the wide span;
-`silhouette_diff` uses `REGISTRATION_SPAN` only.
+**Fixes applied (still not promoted):**
 
-**Falsification (2026-07-26):** `npm run prototype:strip:displacement` scored **19**
-manifest-good strips — **0 false positives**. Adversarial spot-check: airborne hop and
-slide **DETECT**; airborne mirror identical to clean (invisible); swing clean has large
-one-way shifts without a return pair.
+1. **Wrap-around** — `loops=True` scans frames `0..n−1` via `(k±1) % n`, not interior only.
+2. **Pair tolerance** — `DISPLACEMENT_PAIR_TOLERANCE = 1` replaces exact negation (wide-scan
+   minima land off-pose at large displacements).
 
-Next step: promote to `displacement_pass` in `coherence_split` if product wants hop/slide
-gated on airborne (closes two of three former gaps).
+**Falsification bar:** airborne good strips only, `loops=True`, **0 false positives**
+(3/3 clean as of 2026-07-26). Grounded classes excluded from falsification.
+
+**Coverage is patchy (~⅓ of frame×magnitude space on 04-bat-flap):**
+
+Grid A — tamper index, magnitude 3:
+
+| Strip | f0 | f1 | f2 | f3 |
+|-------|----|----|----|-----|
+| 04-bat-flap | MISS/MISS | MISS/MISS | D/D | MISS/MISS |
+| 16-moth-flap | D/D | D/D | D/D | D/D |
+| 17-wisp-float | D/D | D/D | D/D | D/D |
+
+Grid B — frame 2, varying magnitude:
+
+| Strip | hop2 | hop3 | hop4 | slide2 | slide3 | slide4 |
+|-------|------|------|------|--------|--------|--------|
+| 04-bat-flap | MISS | D | D | D | D | D |
+| 16-moth-flap | MISS | D | D | MISS | D | D |
+| 17-wisp-float | D | D | D | D | D | D |
+
+**Do not promote yet.** Replacing accurate `GAP` with a gate that only works on frame 2
+of some strips is the failure mode we removed from `MUST_FAIL`. Promote when coverage is
+uniform across frame indices, or write the envelope precisely
+("detects displacement ≥3 cells on frame 2") — not "gates hop and slide."
+
+Run `npm run prototype:strip:displacement` to reproduce grids and falsification.
 
 ## Min-pair cohort gate
 

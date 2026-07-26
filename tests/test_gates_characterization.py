@@ -114,12 +114,21 @@ def test_unknown_motion_class_raises() -> None:
 
 
 def test_motion_class_budgets_match_contract() -> None:
+    facing = {
+        "idle": "free",
+        "blob_idle": "free",
+        "emissive": "free",
+        "walk": "fixed",
+        "swing": "fixed",
+        "airborne": "free",
+    }
     for motion_class, (sil, loop, drift, min_pair) in DERIVED_BUDGETS.items():
         budget = S.MOTION_CLASSES[motion_class]
         assert budget.max_silhouette == sil
         assert budget.max_loop == loop
         assert budget.max_drift == drift
         assert budget.max_min_pair == min_pair
+        assert budget.facing == facing[motion_class]
 
 
 def test_none_silhouette_budget_excluded_from_pass() -> None:
