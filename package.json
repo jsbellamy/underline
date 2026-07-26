@@ -10,6 +10,7 @@
     "prototype:strip:adversarial": "PYTHONPATH=. python3 prototype/strip-coherence/adversarial.py",
     "prototype:strip:corpus": "PYTHONPATH=. python3 prototype/strip-coherence/corpus.py",
     "prototype:strip:derive-budgets": "PYTHONPATH=. python3 prototype/strip-coherence/derive_budgets.py",
+    "prototype:strip:derive-alpha-budgets": "PYTHONPATH=. python3 prototype/strip-coherence/derive_alpha_budgets.py",
     "prototype:strip:displacement": "PYTHONPATH=. python3 prototype/strip-coherence/displacement_probe.py",
     "prototype:strip:sharpness": "PYTHONPATH=. python3 prototype/strip-coherence/alignment_sharpness.py"
   }
