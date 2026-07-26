@@ -1,0 +1,18 @@
+TRUE chunky pixel art sprite strip ONLY. Four frames in one horizontal row, each showing a DIFFERENT fantasy fighter at a distinct point in a weapon swing.
+
+**Canvas:** very wide panoramic strip — aspect ratio roughly 3:1 (much wider than tall). The four frames must fill most of the width.
+
+Each frame on an exact **16×24 logical pixel grid rendered large** — every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering.
+
+**IMPORTANT — each frame is a DIFFERENT CHARACTER, not the same one animated.** Frame 0: a stout dwarf miner with pickaxe raised high. Frame 1: a tall thin elf with a bow drawn back. Frame 2: a round wizard mid staff-swing. Frame 3: a small crouching goblin with a dagger thrust forward. All four have **feet planted on the bottom row**. Wildly different silhouettes and proportions; each pose reads as part of a one-shot swing arc.
+
+Between each frame: **two full magenta logical cells** of empty gutter (no character pixels in gutter columns).
+
+Flat solid **magenta `#ff00ff`** background everywhere else. Selective 1px dark outline. Keep a **shared earthy palette** across all four so palette_drift stays quiet.
+
+Do not add margins, labels, numbers, or extra rows. One row of four frames only.
+
+<!-- corpus NEGATIVE control, swing motion_class. Four different grounded fighters at
+     swing-like poses under a shared palette — silhouette_budget must catch it. Tests
+     the thinnest separation claim in the contract (budget 0.59 vs idle 08 at 0.602).
+     A per-class negative can falsify or replace that proxy. Expect FAIL. -->

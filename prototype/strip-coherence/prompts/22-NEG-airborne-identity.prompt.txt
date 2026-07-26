@@ -1,0 +1,19 @@
+TRUE chunky pixel art sprite strip ONLY. Four frames in one horizontal row, each showing a DIFFERENT flying fantasy creature.
+
+**Canvas:** very wide panoramic strip — aspect ratio roughly 3:1 (much wider than tall). The four frames must fill most of the width.
+
+Each frame on an exact **16×24 logical pixel grid rendered large** — every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering.
+
+**IMPORTANT — each frame is a DIFFERENT FLYING CREATURE, not the same one animated.** Frame 0: a small bat. Frame 1: a moth with wide patterned wings. Frame 2: a floating wisp or spirit orb with a faint tail. Frame 3: a tiny dragon with spread wings. All four are **airborne — floating in the vertical middle of the frame, NOT touching the bottom row**. Wildly different silhouettes and proportions.
+
+Between each frame: **two full magenta logical cells** of empty gutter (no character pixels in gutter columns).
+
+Flat solid **magenta `#ff00ff`** background everywhere else. Selective 1px dark outline. Keep a **tight shared palette** across all four (similar purples, blues, and warm highlights) so palette_drift stays quiet.
+
+Do not add margins, labels, numbers, or extra rows. One row of four frames only.
+
+<!-- corpus NEGATIVE control, airborne motion_class. Four different flying subjects under
+     a shared palette — the failure mode 08 reproduces for idle, but subject-matched for
+     airborne. Must trip min_pair_cohort_pass on airborne (budget 0.29). Whether four
+     different bats score above 0.29 is the claim this strip tests; 08's 0.344 is miner
+     idle and is only an indirect proxy. Expect FAIL. -->

@@ -168,6 +168,22 @@
       "contract_expect": "PASS",
       "contract_expect_gates": [],
       "why": "third swing sample"
+    },
+    {
+      "id": "22-NEG-airborne-identity",
+      "class": "negative",
+      "motion_class": "airborne",
+      "contract_expect": "FAIL",
+      "contract_expect_gates": ["min_pair_cohort_pass"],
+      "why": "four different flying creatures, shared palette — tests airborne min_pair budget (currently validated only against idle 08)"
+    },
+    {
+      "id": "23-NEG-swing-identity",
+      "class": "negative",
+      "motion_class": "swing",
+      "contract_expect": "FAIL",
+      "contract_expect_gates": ["silhouette_budget"],
+      "why": "four different grounded fighters at swing poses, shared palette — tests swing silhouette margin (0.59 vs 08's 0.602)"
     }
   ]
 }
