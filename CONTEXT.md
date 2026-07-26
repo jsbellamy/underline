@@ -51,8 +51,8 @@ _Avoid_: global acceptance criteria, animation-specific exceptions
 **Gate**:
 One deterministic measurement with an automatic-pass, agent-review, or hard-fail
 outcome: `silhouette_budget`, `palette_drift_pass`, `min_pair_cohort_pass`,
-`displacement_pass`, `baseline_row_stable`. Each exists to catch one failure
-mode and reports which one tripped.
+`loop_closure_pass`, `displacement_pass`, `baseline_row_stable`. Each exists to
+catch one failure mode and reports which one tripped.
 _Avoid_: check, validation
 
 **Budget**:
@@ -115,6 +115,24 @@ The measured interval above a Budget and below its Gate control. A Strip in this
 interval requires an agent to judge the relevant visual defect instead of being
 automatically accepted or rejected.
 _Avoid_: grey area, soft fail, warning
+
+**Gate review**:
+One auditable agent judgment of one Gate in the Review band. It answers that
+Gate's fixed visual question with `APPROVE`, `REJECT`, or `UNCERTAIN`; the Strip
+is approved only when every Gate review approves.
+_Avoid_: holistic review, manual override
+
+**Review packet**:
+The immutable, hash-bound evidence shown to a Gate reviewer: the Strip's
+Gate-specific composite, its Budget-binding Manifest-good reference, and, for a
+Separated Gate, its promoted Gate control.
+_Avoid_: review screenshot, reviewer context
+
+**Second review**:
+A fresh Gate review of the same Review packet, performed without access to the
+first review's verdict or rationale. It may use the same model and version but
+has a distinct review identity.
+_Avoid_: appeal, confirmation prompt
 
 **Declared anchor**:
 The baseline row declared once for a Strip from Frame 0, rather than re-derived
