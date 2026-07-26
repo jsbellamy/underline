@@ -1,0 +1,19 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "airborne/min_pair_cohort_pass",
+  "attempt_id": "airborne--min_pair_cohort_pass--004",
+  "generator": "cursor-image-gen",
+  "prompt_text": "TRUE chunky pixel art sprite strip ONLY. Four frames in one horizontal row, each showing a DIFFERENT flying fantasy creature silhouette.\n\n**Canvas:** very wide panoramic strip \u2014 aspect ratio roughly 3:1. **Large empty magenta margins on all four sides** so nothing touches the image edge.\n\nEach frame on an exact **16\u00d724 logical pixel grid rendered large** \u2014 crisp square blocks, no anti-aliasing.\n\n**IMPORTANT \u2014 four DIFFERENT creatures, not one animated:** Frame 0 bat, Frame 1 moth, Frame 2 wisp orb, Frame 3 dragon. All small, centered, airborne in vertical middle with padding inside each cell.\n\n**CRITICAL palette lock \u2014 ONLY TWO fill colors exist in the entire strip besides magenta background:**\n- Body fill: `#3d2a5c` (same on every creature)\n- Highlight pixels: `#6b4fa0` (same on every creature)\n- Outline: `#1a1028` (same on every creature)\nNo other purples, blues, grays, whites, or yellows anywhere.\n\nBetween frames: **two full magenta `#ff00ff` gutter cells**.\n\nFlat magenta background everywhere else. One row only, no labels, no cropping.\n\n<!-- Gate control: airborne / min_pair_cohort_pass. Collateral fix: hold palette to 3 locked hex values. -->\n",
+  "prompt_sha256": "4ef90865409e6ccd1162664ff49557cba0703b32a876bae0667584cacb4fe84a",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-26T17:23:27+00:00",
+  "acquiring_agent": "cursor-agent",
+  "repository_commit": "ae4ce7ab64386a2cc1cd48ee6f4b77aa49b1eace",
+  "raw_path": "gate-controls/raw/airborne--min_pair_cohort_pass--004.png",
+  "raw_sha256": "fd464b8cf471e375311a47fae800a6e13a7e4a098512d394d337dd0fe9320060",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "schema": "gate-control-measurement/0",
+  "raw": "/Users/jakebellamy/VSProjects/games/game_idea/underline-issue-24-airborne/gate-controls/raw/airborne--min_pair_cohort_pass--002.png",
+  "raw_sha256": "077b0fa94be0848b0390ef9d13a42fdb1dcfce3f9a9c8031befda509bf3d4fb3",
+  "scorer_gate_config_sha256": "833bf9b68c5de230",
+  "motion_class": "airborne",
+  "target_gate": "min_pair_cohort_pass",
+  "applicable_gates": [
+    "dimension_parity",
+    "displacement_pass",
+    "loop_closure_pass",
+    "min_pair_cohort_pass",
+    "palette_drift_pass"
+  ],
+  "structural": {
+    "recovered": true,
+    "pitch_x_score": 0.05,
+    "pitch_y_score": 0.069
+  },
+  "gates": {
+    "dimension_parity": {
+      "applicable_because": "structural",
+      "outcome": "pass",
+      "metric": null,
+      "budget": null,
+      "reason": null
+    },
+    "displacement_pass": {
+      "applicable_because": "grounded: false",
+      "outcome": "undecidable",
+      "metric": null,
+      "budget": null,
+      "reason": "degenerate alignment minimum (margin 0.0000 at 1\u21922); displacement undecidable"
+    },
+    "loop_closure_pass": {
+      "applicable_because": "max_loop=0.68",
+      "outcome": "pass",
+      "metric": 0.6552,
+      "budget": 0.68,
+      "reason": null
+    },
+    "min_pair_cohort_pass": {
+      "applicable_because": "max_min_pair=0.29",
+      "outcome": "fail",
+      "metric": 0.3878,
+      "budget": 0.29,
+      "reason": null
+    },
+    "palette_drift_pass": {
+      "applicable_because": "always",
+      "outcome": "fail",
+      "metric": 0.5791,
+      "budget": 0.23,
+      "reason": null
+    }
+  },
+  "isolation": "NOT_ISOLATED",
+  "blockers": [
+    "collateral failure: palette_drift_pass"
+  ],
+  "caveats": [
+    "displacement_pass is undecidable \u2014 this control does not evidence that dimension"
+  ],
+  "primary_failure": {
+    "code": "COLLATERAL_GATE_FAILED",
+    "gate": "palette_drift_pass",
+    "rationale": "palette_drift_pass measured 0.5791 over budget 0.23"
+  },
+  "retry_action": {
+    "reason_code": "COLLATERAL_GATE_FAILED",
+    "gate": "palette_drift_pass",
+    "intent": "hold the collateral dimension fixed",
+    "one_prompt_delta": true,
+    "direction": "decrease",
+    "metric_now": 0.5791,
+    "must_fall_below": 0.23
+  }
+}

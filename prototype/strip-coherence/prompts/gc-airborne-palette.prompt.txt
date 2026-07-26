@@ -1,0 +1,19 @@
+TRUE chunky pixel art sprite strip ONLY. Four idle animation frames of a small SLIME BLOB in one horizontal row.
+
+**Canvas:** very wide panoramic strip — aspect ratio roughly 3:1 (much wider than tall). The four frames must fill most of the width.
+
+Each frame on an exact **16×24 logical pixel grid rendered large** — every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering.
+
+Slime sits **flat on the bottom row of each frame**. Subtle breathing idle only — the **pose barely changes**.
+
+**IMPORTANT — each frame uses a DIFFERENT COLOR SCHEME.** Frame 0: green slime, dark green eyes. Frame 1: blue slime, yellow eyes. Frame 2: purple slime, white eyes. Frame 3: orange slime, black eyes. Same dome shape, completely different colors each frame.
+
+Between each frame: **two full magenta logical cells** of empty gutter (no character pixels in gutter columns).
+
+Flat solid **magenta `#ff00ff`** background everywhere else. Selective 1px dark outline.
+
+Frame order left→right: idle_0, idle_1, idle_2, idle_3.
+
+Do not add margins, labels, numbers, or extra rows. One row of four frames only.
+
+<!-- Gate control: airborne / palette_drift_pass. Cross-class reuse of corpus 07 negative. -->
