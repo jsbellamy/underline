@@ -35,6 +35,7 @@ PROVIDER_MERGE_DIST_RGB = 64
 MAX_SILHOUETTE_DIFF = 0.28
 MAX_LOOP_SILHOUETTE_DIFF = 0.28
 MAX_PALETTE_DRIFT = 0.15
+REGISTRATION_SPAN = 1
 
 
 @dataclass(frozen=True)
@@ -186,11 +187,12 @@ def cell_diff_motion(
     return changed, union_opaque
 
 
-def silhouette_diff(
+def _silhouette_diff_at_shift(
     a: list[list[Cell]],
     b: list[list[Cell]],
+    dx: int,
 ) -> tuple[int, int]:
-    """Occupancy flips above the planted baseline row — real motion, colour-blind."""
+    """Occupancy flips above a's baseline with b shifted by dx columns."""
     changed = 0
     union_opaque = 0
     baseline = baseline_row(a)
@@ -199,14 +201,44 @@ def silhouette_diff(
     for y in range(min(len(a), len(b))):
         if y >= baseline:
             continue
-        for x in range(min(len(a[y]), len(b[y]))):
-            a_cell, b_cell = a[y][x], b[y][x]
+        for x in range(len(a[y])):
+            a_cell = a[y][x]
+            xb = x + dx
+            if 0 <= xb < len(b[y]):
+                b_cell = b[y][xb]
+            else:
+                b_cell = None
             if a_cell is None and b_cell is None:
                 continue
             union_opaque += 1
             if (a_cell is None) != (b_cell is None):
                 changed += 1
     return changed, union_opaque
+
+
+def silhouette_diff(
+    a: list[list[Cell]],
+    b: list[list[Cell]],
+    *,
+    span: int = REGISTRATION_SPAN,
+) -> tuple[int, int]:
+    """Occupancy flips above the planted baseline row — real motion, colour-blind.
+
+    When span > 0, return the (changed, union_opaque) pair for the x-shift in
+    [-span, +span] that minimises changed / union_opaque. Shifted-out positions
+    read as transparent.
+    """
+    best_changed = 0
+    best_union = 0
+    best_frac = float("inf")
+    for dx in range(-span, span + 1):
+        changed, union = _silhouette_diff_at_shift(a, b, dx)
+        frac = changed / union if union else 0.0
+        if frac < best_frac:
+            best_frac = frac
+            best_changed = changed
+            best_union = union
+    return best_changed, best_union
 
 
 def palette_histogram(frame: list[list[Cell]]) -> dict[tuple[int, int, int], float]:
@@ -515,38 +547,28 @@ def opaque_segments(cells: list[list[Cell]]) -> list[tuple[int, int]]:
     return segments
 
 
-def normalize_frame_widths(
-    frames: list[list[list[Cell]]],
-) -> tuple[list[list[list[Cell]]], int]:
-    """Crop each frame to the minimum recovered width so cell-diff is defined."""
-    if not frames:
-        return frames, 0
-    min_w = min(len(f[0]) for f in frames)
-    out = [ [row[:min_w] for row in frame] for frame in frames ]
-    return out, min_w
-
-
-def slice_frames_auto(
+def slice_frames_pitch(
     cells: list[list[Cell]],
     *,
     frame_count: int,
 ) -> tuple[list[list[list[Cell]]] | None, dict[str, Any]]:
-    segments = opaque_segments(cells)
+    """Slice the recovered grid at uniform pitch so frame position survives."""
+    grid_h = len(cells)
+    grid_w = len(cells[0]) if cells else 0
     meta: dict[str, Any] = {
-        "mode": "auto-gutter",
-        "grid": [len(cells[0]) if cells else 0, len(cells)],
-        "gutter_runs": empty_column_runs(cells),
-        "segments": segments,
-        "segment_widths": [b - a + 1 for a, b in segments],
+        "mode": "pitch",
+        "grid": [grid_w, grid_h],
     }
-    if len(segments) != frame_count:
-        meta["shape_match"] = False
-        meta["reason"] = f"expected {frame_count} segments, found {len(segments)}"
+    if frame_count <= 0 or grid_w % frame_count != 0:
+        meta["reason"] = f"grid width {grid_w} not divisible by {frame_count}"
         return None, meta
-    frames = [[row[a : b + 1] for row in cells] for a, b in segments]
-    frames, min_w = normalize_frame_widths(frames)
-    meta["shape_match"] = True
-    meta["normalized_width"] = min_w
+    pitch = grid_w // frame_count
+    frame_starts = [i * pitch for i in range(frame_count)]
+    meta["pitch"] = pitch
+    meta["frame_starts"] = frame_starts
+    frames = [
+        [row[start : start + pitch] for row in cells] for start in frame_starts
+    ]
     return frames, meta
 
 
@@ -668,7 +690,7 @@ def ingest_strip_provider(
     max_loop_diff: float = MAX_LOOP_SILHOUETTE_DIFF,
     max_palette_drift: float = MAX_PALETTE_DRIFT,
 ) -> IngestResult:
-    """Recover full raster, auto-slice on magenta gutter columns (provider slop tolerant)."""
+    """Recover full raster and slice at uniform pitch (provider slop tolerant)."""
     probe = StripLayout(
         frame_w=layout.frame_w,
         frame_h=layout.frame_h,
@@ -678,7 +700,7 @@ def ingest_strip_provider(
         margin_cells=0,
     )
     cells, recovered = recover_strip_cells(raw_path, probe)
-    frames, slice_meta = slice_frames_auto(cells, frame_count=layout.frame_count)
+    frames, slice_meta = slice_frames_pitch(cells, frame_count=layout.frame_count)
     if frames is None:
         coherence = {
             "pass": False,
