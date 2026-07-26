@@ -1,0 +1,35 @@
+{
+  "schema": "gate-control-measurement/0",
+  "raw": "/Users/jakebellamy/VSProjects/games/game_idea/underline-issue-24-airborne/gate-controls/raw/airborne--min_pair_cohort_pass--001.png",
+  "raw_sha256": "0419741a8aed34ce253063a6c669f36de219e0cf1dcc5b337971801783a81419",
+  "scorer_gate_config_sha256": "833bf9b68c5de230",
+  "motion_class": "airborne",
+  "target_gate": "min_pair_cohort_pass",
+  "applicable_gates": [
+    "dimension_parity",
+    "displacement_pass",
+    "loop_closure_pass",
+    "min_pair_cohort_pass",
+    "palette_drift_pass"
+  ],
+  "structural": {
+    "recovered": false,
+    "reason": "airborne--min_pair_cohort_pass--001.png: subject clipped by generator at bottom/left of the 1536x1024 raw canvas"
+  },
+  "gates": {},
+  "isolation": "INDETERMINATE",
+  "blockers": [
+    "airborne--min_pair_cohort_pass--001.png: subject clipped by generator at bottom/left of the 1536x1024 raw canvas"
+  ],
+  "primary_failure": {
+    "code": "STRUCTURAL_RECOVERY_FAILED",
+    "gate": null,
+    "rationale": "airborne--min_pair_cohort_pass--001.png: subject clipped by generator at bottom/left of the 1536x1024 raw canvas"
+  },
+  "retry_action": {
+    "reason_code": "STRUCTURAL_RECOVERY_FAILED",
+    "gate": null,
+    "intent": "restate the grid/gutter constraint in the prompt",
+    "one_prompt_delta": true
+  }
+}
