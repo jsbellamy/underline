@@ -203,27 +203,47 @@ def record_attempt(
 
 def promote_palette_07() -> dict:
     """Register existing inbox 07 as the promoted idle palette-drift control."""
-    src = _HERE / "inbox" / "07-NEG-palette-drift.png"
-    if not src.exists():
-        raise FileNotFoundError(src)
-    row = record_attempt(
-        src,
+    return promote_isolated(
         "idle",
         "palette_drift_pass",
+        _HERE / "inbox" / "07-NEG-palette-drift.png",
         prompt_path=_HERE / "prompts" / "07-NEG-palette-drift.prompt.txt",
         prompt_delta="corpus negative — promoted from inbox",
         agent="corpus-seed",
     )
+
+
+def promote_isolated(
+    motion_class: str,
+    target_gate: str,
+    png: pathlib.Path,
+    *,
+    prompt_path: pathlib.Path | None = None,
+    prompt_delta: str | None = None,
+    agent: str = "cursor-agent",
+    note: str = "visual review deferred to #27; full verification deferred to #30",
+) -> dict:
+    """Record one ISOLATED candidate and register a PENDING_VERIFICATION Promotion."""
+    row = record_attempt(
+        png,
+        motion_class,
+        target_gate,
+        prompt_path=prompt_path,
+        prompt_delta=prompt_delta,
+        agent=agent,
+    )
     if row["isolation"] != "ISOLATED":
-        raise RuntimeError(f"07 expected ISOLATED, got {row['isolation']}")
+        raise RuntimeError(
+            f"{motion_class}/{target_gate} expected ISOLATED, got {row['isolation']}"
+        )
 
     manifest = _read_manifest()
-    spec_id = _spec_id("idle", "palette_drift_pass")
+    spec_id = _spec_id(motion_class, target_gate)
     if not any(s["id"] == spec_id for s in manifest["specifications"]):
         manifest["specifications"].append({
             "id": spec_id,
-            "motion_class": "idle",
-            "target_gate": "palette_drift_pass",
+            "motion_class": motion_class,
+            "target_gate": target_gate,
         })
     promotion = {
         "id": f"promo--{spec_id.replace('/', '--')}",
@@ -232,7 +252,7 @@ def promote_palette_07() -> dict:
         "measurement_path": row["measurement_path"],
         "status": "PENDING_VERIFICATION",
         "recorded_at": _now(),
-        "note": "visual review deferred to #27; full verification deferred to #30",
+        "note": note,
     }
     manifest["promotions"].append(promotion)
     for spec in manifest["specifications"]:
@@ -248,7 +268,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--motion-class", default="idle")
     p.add_argument("--target-gate", required=False)
     p.add_argument("--prompt", type=pathlib.Path)
+    p.add_argument("--prompt-delta", default=None)
     p.add_argument("--promote-07", action="store_true")
+    p.add_argument("--promote", action="store_true",
+                   help="record attempt and write PENDING_VERIFICATION Promotion")
     args = p.parse_args(argv)
 
     if args.promote_07:
@@ -259,11 +282,23 @@ def main(argv: list[str] | None = None) -> int:
     if not args.png or not args.target_gate:
         p.error("png and --target-gate required unless --promote-07")
 
+    if args.promote:
+        promo = promote_isolated(
+            args.motion_class,
+            args.target_gate,
+            args.png,
+            prompt_path=args.prompt,
+            prompt_delta=args.prompt_delta,
+        )
+        print(json.dumps(promo, indent=2))
+        return 0
+
     row = record_attempt(
         args.png,
         args.motion_class,
         args.target_gate,
         prompt_path=args.prompt,
+        prompt_delta=args.prompt_delta,
     )
     print(json.dumps(row, indent=2))
     return 0 if row["isolation"] == "ISOLATED" else 1

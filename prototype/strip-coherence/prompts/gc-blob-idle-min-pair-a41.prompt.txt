@@ -1,0 +1,3 @@
+TRUE chunky pixel art sprite strip. Four green SLIME BLOB frames horizontal row. Wide 3:1. 16x24 crisp blocks. Same palette. Four micro-poses same slime: frame 0 neutral dome, frame 1 tiny squash 5 percent smaller, frame 2 tiny stretch 5 percent taller, frame 3 tiny lean 3 percent. Minimum pairwise difference 13.5 percent. Maximum adjacent change under 35 percent. Magenta gutters. No labels.
+
+<!-- Gate control: blob_idle / min_pair_cohort_pass. Winner a41 — min_pair 0.1371, all collateral pass. -->

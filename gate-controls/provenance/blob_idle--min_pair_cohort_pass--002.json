@@ -1,0 +1,19 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "blob_idle/min_pair_cohort_pass",
+  "attempt_id": "blob_idle--min_pair_cohort_pass--002",
+  "generator": "cursor-image-gen",
+  "prompt_text": "TRUE chunky pixel art sprite strip ONLY. Four idle animation frames of a small SLIME BLOB in one horizontal row.\n\n**Canvas:** very wide panoramic strip \u2014 aspect ratio roughly 3:1 (much wider than tall). The four frames must fill most of the width.\n\nEach frame on an exact **16\u00d724 logical pixel grid rendered large** \u2014 every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering.\n\nSlime: translucent green dome with two dark eye pixels and one lighter highlight block. It sits **flat on the bottom row of each frame**. **Same green slime character, same earthy palette in every frame** \u2014 no recolouring.\n\n**IMPORTANT \u2014 cohort similarity without identity swap.** Four slightly different idle micro-poses of the SAME slime: frame 0 neutral dome, frame 1 squashed wider, frame 2 stretched taller, frame 3 slight lean with offset eyes. Each neighbor differs only a little, but **no two frames are identical** \u2014 even the closest pair should show visible occupancy differences (~15% of cells). Do NOT use four different creatures.\n\nBetween each frame: **two full magenta logical cells** of empty gutter (no character pixels in gutter columns).\n\nFlat solid **magenta `#ff00ff`** background everywhere else. Selective 1px dark outline. Upper-left light. **6\u201310 flat colors max**.\n\nFrame order left\u2192right: idle_0, idle_1, idle_2, idle_3.\n\nDo not add margins, labels, numbers, or extra rows. One row of four frames only.\n\n<!-- Gate control: blob_idle / min_pair_cohort_pass. Same subject; min pairwise silhouette above cohort budget. -->\n",
+  "prompt_sha256": "eb0c5057b8e0b552f8cce07090e9356522b2d87088ed594c25ad5f843c9ba1b9",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-26T17:00:57+00:00",
+  "acquiring_agent": "cursor-agent",
+  "repository_commit": "cdff67eec69915501e2248c7c0b0f2772bcbe965",
+  "raw_path": "gate-controls/raw/blob_idle--min_pair_cohort_pass--002.png",
+  "raw_sha256": "cdb70c5c47ec38667a0c23d96911fe991ffc4c65cf78f0e279ac814114301c31",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ]
+}

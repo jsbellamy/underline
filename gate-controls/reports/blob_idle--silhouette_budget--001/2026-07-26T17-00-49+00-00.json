@@ -1,0 +1,36 @@
+{
+  "schema": "gate-control-measurement/0",
+  "raw": "/Users/jakebellamy/VSProjects/games/game_idea/underline/gate-controls/raw/blob_idle--silhouette_budget--001.png",
+  "raw_sha256": "5e18752ed0e9e22e4428e3ece033f1f1751183a4dc968fbc3c4bb001d962b1df",
+  "scorer_gate_config_sha256": "833bf9b68c5de230",
+  "motion_class": "blob_idle",
+  "target_gate": "silhouette_budget",
+  "applicable_gates": [
+    "dimension_parity",
+    "baseline_row_stable",
+    "silhouette_budget",
+    "loop_closure_pass",
+    "min_pair_cohort_pass",
+    "palette_drift_pass"
+  ],
+  "structural": {
+    "recovered": false,
+    "reason": "pitch-fail y=0.029 (floor=0.04); try --pitch or regenerate with clearer blocks"
+  },
+  "gates": {},
+  "isolation": "INDETERMINATE",
+  "blockers": [
+    "pitch-fail y=0.029 (floor=0.04); try --pitch or regenerate with clearer blocks"
+  ],
+  "primary_failure": {
+    "code": "STRUCTURAL_RECOVERY_FAILED",
+    "gate": null,
+    "rationale": "pitch-fail y=0.029 (floor=0.04); try --pitch or regenerate with clearer blocks"
+  },
+  "retry_action": {
+    "reason_code": "STRUCTURAL_RECOVERY_FAILED",
+    "gate": null,
+    "intent": "restate the grid/gutter constraint in the prompt",
+    "one_prompt_delta": true
+  }
+}

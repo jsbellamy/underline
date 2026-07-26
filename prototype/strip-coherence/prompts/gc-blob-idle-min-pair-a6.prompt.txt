@@ -1,0 +1,17 @@
+TRUE chunky pixel art sprite strip ONLY. Four idle animation frames of a small SLIME BLOB in one horizontal row.
+
+**Canvas:** very wide panoramic strip — aspect ratio roughly 3:1. Each frame **16×24 logical pixels rendered as large crisp square blocks**. No anti-aliasing.
+
+Slime: translucent green dome, two dark eyes, sits on bottom row. **Same green palette every frame.**
+
+**IMPORTANT — cohort spread without silhouette spikes.** Four distinct micro-poses of the SAME slime:
+- Frame 0: neutral dome
+- Frame 1: eyes shifted 1 pixel right
+- Frame 2: eyes shifted 1 pixel left  
+- Frame 3: dome 1 row shorter (subtle squash)
+
+Each frame differs visibly from every other, but **no single adjacent transition is dramatically larger than the others**. Keep overall dome footprint similar across frames.
+
+Two magenta gutter cells between frames. Flat magenta `#ff00ff` background. One row only.
+
+<!-- Gate control: blob_idle / min_pair_cohort_pass. Uniform spread; min_pair > 0.13, silhouette < 0.36. -->

@@ -1,0 +1,19 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "blob_idle/loop_closure_pass",
+  "attempt_id": "blob_idle--loop_closure_pass--004",
+  "generator": "cursor-image-gen",
+  "prompt_text": "TRUE chunky pixel art sprite strip ONLY. Four idle animation frames of a small SLIME BLOB in one horizontal row.\n\n**Canvas:** very wide panoramic strip \u2014 aspect ratio roughly 3:1. Each frame **16\u00d724 logical pixels rendered as large crisp square blocks**. No anti-aliasing.\n\nSlime: translucent green dome, two dark eyes, sits on bottom row. **Same green palette every frame.**\n\n**CRITICAL structure:**\n- Frame 0: neutral squat dome.\n- Frame 1: almost identical to frame 0 (only 1-2 pixels different).\n- Frame 2: small squash change from frame 1 \u2014 still a small step from frame 1.\n- Frame 3: **almost identical to frame 2** (only 1-2 pixels different from frame 2).\n\nFrame 3 must NOT match frame 0 (loop broken), but frame 3 must match frame 2 closely.\n\nTwo magenta gutter cells between frames. Flat magenta `#ff00ff` background. One row only.\n\n<!-- Gate control: blob_idle / loop_closure_pass. f3\u2248f2, sequential neighbors small, f3\u2249f0. -->\n",
+  "prompt_sha256": "467a37470b13b401fb3513f8a63de151fcb3466095e1ad86eb4445c5a16aefbb",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-26T17:00:54+00:00",
+  "acquiring_agent": "cursor-agent",
+  "repository_commit": "cdff67eec69915501e2248c7c0b0f2772bcbe965",
+  "raw_path": "gate-controls/raw/blob_idle--loop_closure_pass--004.png",
+  "raw_sha256": "f211aa49c7f82ace3b86f3ea28bdb9b98d734610c504fef269f7498b15126461",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ]
+}

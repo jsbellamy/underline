@@ -1,0 +1,84 @@
+{
+  "schema": "gate-control-measurement/0",
+  "raw": "/Users/jakebellamy/VSProjects/games/game_idea/underline/gate-controls/raw/blob_idle--loop_closure_pass--003.png",
+  "raw_sha256": "d0a9ce966e4886b3dcee2fc9e829b0508b3613708599bc1bdf9700ccdbedc991",
+  "scorer_gate_config_sha256": "833bf9b68c5de230",
+  "motion_class": "blob_idle",
+  "target_gate": "loop_closure_pass",
+  "applicable_gates": [
+    "dimension_parity",
+    "baseline_row_stable",
+    "silhouette_budget",
+    "loop_closure_pass",
+    "min_pair_cohort_pass",
+    "palette_drift_pass"
+  ],
+  "structural": {
+    "recovered": true,
+    "pitch_x_score": 0.086,
+    "pitch_y_score": 0.4468
+  },
+  "gates": {
+    "dimension_parity": {
+      "applicable_because": "structural",
+      "outcome": "pass",
+      "metric": null,
+      "budget": null,
+      "reason": null
+    },
+    "baseline_row_stable": {
+      "applicable_because": "grounded: true",
+      "outcome": "pass",
+      "metric": null,
+      "budget": null,
+      "reason": null
+    },
+    "silhouette_budget": {
+      "applicable_because": "max_silhouette=0.36",
+      "outcome": "pass",
+      "metric": 0.0745,
+      "budget": 0.36,
+      "reason": null
+    },
+    "loop_closure_pass": {
+      "applicable_because": "max_loop=0.35",
+      "outcome": "pass",
+      "metric": 0.0426,
+      "budget": 0.35,
+      "reason": null
+    },
+    "min_pair_cohort_pass": {
+      "applicable_because": "max_min_pair=0.13",
+      "outcome": "pass",
+      "metric": 0.0323,
+      "budget": 0.13,
+      "reason": null
+    },
+    "palette_drift_pass": {
+      "applicable_because": "always",
+      "outcome": "pass",
+      "metric": 0.0968,
+      "budget": 0.22,
+      "reason": null
+    }
+  },
+  "isolation": "NOT_ISOLATED",
+  "blockers": [
+    "target gate loop_closure_pass passes"
+  ],
+  "caveats": [],
+  "primary_failure": {
+    "code": "TARGET_DEFECT_TOO_WEAK",
+    "gate": "loop_closure_pass",
+    "rationale": "loop_closure_pass measured 0.0426 within budget 0.35"
+  },
+  "retry_action": {
+    "reason_code": "TARGET_DEFECT_TOO_WEAK",
+    "gate": "loop_closure_pass",
+    "intent": "amplify the targeted defect",
+    "one_prompt_delta": true,
+    "direction": "increase",
+    "metric_now": 0.0426,
+    "must_exceed": 0.35
+  }
+}
