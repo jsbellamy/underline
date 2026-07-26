@@ -1,0 +1,11 @@
+TRUE chunky pixel art sprite strip ONLY. Four WALK CYCLE frames of a small fantasy MINER facing RIGHT in one horizontal row.
+
+**Canvas:** very wide panoramic strip — aspect ratio roughly 3:1. Each frame **16×24 logical pixels rendered as large crisp square blocks**. No anti-aliasing.
+
+Miner: green tunic, blue helmet, brown pickaxe. **Same character, same palette every frame.**
+
+**IMPORTANT — cohort similarity without identity swap.** Four slightly different walk micro-poses of the SAME miner: frame 0 neutral, frame 1 small leg shift, frame 2 torso bob, frame 3 slight lean. Each neighbor differs only a little, but **no two frames are identical** — even the closest pair should show visible occupancy differences (~18% of cells). Do NOT use four different creatures. **Frame 3 should NOT close to frame 0** — end pose differs from start.
+
+Two magenta gutter cells between frames. Flat magenta `#ff00ff` background. One row only.
+
+<!-- Gate control: walk / min_pair_cohort_pass. Same subject; min pairwise silhouette above cohort budget. -->

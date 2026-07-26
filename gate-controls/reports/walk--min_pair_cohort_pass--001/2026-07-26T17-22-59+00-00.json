@@ -1,0 +1,36 @@
+{
+  "schema": "gate-control-measurement/0",
+  "raw": "/Users/jakebellamy/VSProjects/games/game_idea/underline-issue-25/gate-controls/raw/walk--min_pair_cohort_pass--001.png",
+  "raw_sha256": "a85453ce43e574831b9c305b3d6002e5f6fbefb4b3f608f675847f9f7c1007e7",
+  "scorer_gate_config_sha256": "833bf9b68c5de230",
+  "motion_class": "walk",
+  "target_gate": "min_pair_cohort_pass",
+  "applicable_gates": [
+    "dimension_parity",
+    "baseline_row_stable",
+    "silhouette_budget",
+    "loop_closure_pass",
+    "min_pair_cohort_pass",
+    "palette_drift_pass"
+  ],
+  "structural": {
+    "recovered": false,
+    "reason": "walk--min_pair_cohort_pass--001.png: border is not a flat (255, 0, 255) chroma key (0/10223 pixels within tolerance 40)"
+  },
+  "gates": {},
+  "isolation": "INDETERMINATE",
+  "blockers": [
+    "walk--min_pair_cohort_pass--001.png: border is not a flat (255, 0, 255) chroma key (0/10223 pixels within tolerance 40)"
+  ],
+  "primary_failure": {
+    "code": "STRUCTURAL_RECOVERY_FAILED",
+    "gate": null,
+    "rationale": "walk--min_pair_cohort_pass--001.png: border is not a flat (255, 0, 255) chroma key (0/10223 pixels within tolerance 40)"
+  },
+  "retry_action": {
+    "reason_code": "STRUCTURAL_RECOVERY_FAILED",
+    "gate": null,
+    "intent": "restate the grid/gutter constraint in the prompt",
+    "one_prompt_delta": true
+  }
+}
