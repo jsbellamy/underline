@@ -1,0 +1,101 @@
+{
+  "schema": "gate-control-measurement/1",
+  "raw": "/Users/jakebellamy/VSProjects/games/game_idea/underline/gate-controls/raw/idle--min_pair_cohort_pass--011.png",
+  "raw_sha256": "5326c29e433ecb9f9fa49352b6657cd65859dd903f0dfa3081ed05808588667b",
+  "scorer_gate_config_sha256": "833bf9b68c5de230",
+  "motion_class": "idle",
+  "target_gate": "min_pair_cohort_pass",
+  "applicable_gates": [
+    "dimension_parity",
+    "baseline_row_stable",
+    "silhouette_budget",
+    "loop_closure_pass",
+    "min_pair_cohort_pass",
+    "palette_drift_pass"
+  ],
+  "structural": {
+    "recovered": true,
+    "pitch_x_score": 0.0473,
+    "pitch_y_score": 0.0633
+  },
+  "gates": {
+    "dimension_parity": {
+      "applicable_because": "structural",
+      "outcome": "pass",
+      "metric": null,
+      "budget": null,
+      "reason": null
+    },
+    "baseline_row_stable": {
+      "applicable_because": "grounded: true",
+      "outcome": "pass",
+      "metric": null,
+      "budget": null,
+      "reason": null
+    },
+    "silhouette_budget": {
+      "applicable_because": "max_silhouette=0.17",
+      "outcome": "pass",
+      "metric": 0.1439,
+      "budget": 0.17,
+      "reason": null,
+      "metric_raw": 0.1439
+    },
+    "loop_closure_pass": {
+      "applicable_because": "max_loop=0.3",
+      "outcome": "pass",
+      "metric": 0.0992,
+      "budget": 0.3,
+      "reason": null,
+      "metric_raw": 0.0992
+    },
+    "min_pair_cohort_pass": {
+      "applicable_because": "max_min_pair=0.07",
+      "outcome": "pass",
+      "metric": 0.0698,
+      "budget": 0.07,
+      "reason": null,
+      "metric_raw": 0.0698
+    },
+    "palette_drift_pass": {
+      "applicable_because": "always",
+      "outcome": "pass",
+      "metric": 0.12,
+      "budget": 0.14,
+      "reason": null,
+      "metric_raw": 0.12
+    }
+  },
+  "isolation": "NOT_ISOLATED",
+  "blockers": [
+    "target gate min_pair_cohort_pass passes"
+  ],
+  "caveats": [],
+  "primary_failure": {
+    "code": "TARGET_DEFECT_TOO_WEAK",
+    "gate": "min_pair_cohort_pass",
+    "rationale": "min_pair_cohort_pass measured 0.0698 within budget 0.07"
+  },
+  "retry_action": {
+    "reason_code": "TARGET_DEFECT_TOO_WEAK",
+    "gate": "min_pair_cohort_pass",
+    "intent": "amplify the targeted defect",
+    "one_prompt_delta": true,
+    "direction": "increase",
+    "metric_now": 0.0698,
+    "must_exceed": 0.07
+  },
+  "numeric_policy": {
+    "schema": "gate-numeric-policy/0",
+    "precision_decimal_places": 4,
+    "rounding": "ceiling",
+    "comparison": "metric <= budget",
+    "comparison_epsilon": 0,
+    "decided_in": "https://github.com/jsbellamy/underline/issues/38"
+  },
+  "rescore_of": {
+    "schema": "gate-control-measurement/0",
+    "scorer_gate_config_sha256": "833bf9b68c5de230"
+  },
+  "rescored_at": "2026-07-26T19:08:13+00:00"
+}
