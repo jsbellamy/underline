@@ -3,6 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
+    "test": "pytest -q",
     "prototype:strip": "python3 prototype/strip-coherence/tui.py",
     "prototype:strip:smoke": "python3 prototype/strip-coherence/smoke.py",
     "prototype:strip:inbox": "python3 prototype/strip-coherence/run_inbox.py",
