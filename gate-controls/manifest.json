@@ -36,6 +36,18 @@
       "motion_class": "blob_idle",
       "target_gate": "min_pair_cohort_pass",
       "active_promotion": "promo--blob_idle--min_pair_cohort_pass"
+    },
+    {
+      "id": "swing/silhouette_budget",
+      "motion_class": "swing",
+      "target_gate": "silhouette_budget",
+      "active_promotion": "promo--swing--silhouette_budget"
+    },
+    {
+      "id": "swing/palette_drift_pass",
+      "motion_class": "swing",
+      "target_gate": "palette_drift_pass",
+      "active_promotion": "promo--swing--palette_drift_pass"
     }
   ],
   "promotions": [
@@ -91,6 +103,24 @@
       "measurement_path": "gate-controls/reports/blob_idle--min_pair_cohort_pass--005/2026-07-26T17-03-15+00-00.json",
       "status": "PENDING_VERIFICATION",
       "recorded_at": "2026-07-26T17:03:15+00:00",
+      "note": "visual review deferred to #27; full verification deferred to #30"
+    },
+    {
+      "id": "promo--swing--silhouette_budget",
+      "specification_id": "swing/silhouette_budget",
+      "attempt_id": "swing--silhouette_budget--002",
+      "measurement_path": "gate-controls/reports/swing--silhouette_budget--002/2026-07-26T17-29-07+00-00.json",
+      "status": "PENDING_VERIFICATION",
+      "recorded_at": "2026-07-26T17:29:08+00:00",
+      "note": "visual review deferred to #27; full verification deferred to #30"
+    },
+    {
+      "id": "promo--swing--palette_drift_pass",
+      "specification_id": "swing/palette_drift_pass",
+      "attempt_id": "swing--palette_drift_pass--001",
+      "measurement_path": "gate-controls/reports/swing--palette_drift_pass--001/2026-07-26T17-29-11+00-00.json",
+      "status": "PENDING_VERIFICATION",
+      "recorded_at": "2026-07-26T17:29:12+00:00",
       "note": "visual review deferred to #27; full verification deferred to #30"
     }
   ]
