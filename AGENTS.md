@@ -97,3 +97,20 @@ model, or effort setting to delegate work. A reusable issue-implementation
 subagent is defined in `.agents/issue-implementer.md`. The orchestrator
 independently owns the acceptance gate — green tests and a scope-matching file
 list are necessary but never sufficient.
+
+## Cursor Cloud specific instructions
+
+Pure Python asset pipeline (deps: Pillow, NumPy, pytest from `requirements.txt`);
+there is no TypeScript build or GUI/browser harness yet, so every check is a
+terminal command whose output is the evidence (see the Evidence section).
+
+- The startup update script installs `requirements.txt` into the **system**
+  interpreter (Debian marks it externally managed, so `--break-system-packages`
+  is required). The `package.json` scripts invoke `python3` directly with no
+  venv, so run them as-is (`npm test`, `npm run strip:ingest -- <png>
+  --motion-class <class>`, etc.) — do not create or activate a venv.
+- `npm test` runs the full pytest suite and takes ~35–40s; it is not hung.
+- Expected non-failure output that is easy to misread as breakage: the corpus
+  scorer prints a "Frozen ledger" of pre-generation predictions, and the
+  adversarial suite prints documented `GAP` rows and "displacement inapplicable"
+  notes. These are green as long as `regressions 0` holds and exit code is 0.
