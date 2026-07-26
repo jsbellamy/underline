@@ -5,6 +5,8 @@ from __future__ import annotations
 import pathlib
 import sys
 
-STRIP_COHERENCE = pathlib.Path(__file__).resolve().parents[1] / "prototype" / "strip-coherence"
-if str(STRIP_COHERENCE) not in sys.path:
-    sys.path.insert(0, str(STRIP_COHERENCE))
+ROOT = pathlib.Path(__file__).resolve().parents[1]
+STRIP_COHERENCE = ROOT / "prototype" / "strip-coherence"
+for path in (ROOT, STRIP_COHERENCE):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))

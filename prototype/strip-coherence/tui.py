@@ -10,7 +10,11 @@ import termios
 import tty
 from typing import Any
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+HERE = pathlib.Path(__file__).resolve().parent
+ROOT = HERE.parents[1]
+for path in (ROOT, HERE):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
 
 from strip import (
     DEFAULT_LAYOUT,

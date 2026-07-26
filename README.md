@@ -21,7 +21,7 @@ npm run prototype:strip
 
 Drop provider raws in `prototype/strip-coherence/inbox/` and press `[4]` in the TUI.
 
-Dependencies: Python 3, Pillow, NumPy (same as Nightglass `pipeline/`). Recovery primitives
-are imported from `../nightglass/pipeline`.
+Dependencies: Python 3, Pillow, NumPy. Grid-recovery primitives are vendored in
+`pipeline/recovery.py` (from Nightglass `acquire.py`; re-vendor upstream changes).
 
 **PROTOTYPE — delete or absorb when answered.** See `prototype/strip-coherence/NOTES.md`.

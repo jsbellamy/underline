@@ -1,26 +1,27 @@
 """Strip animation ingest — pure logic for the underline prototype.
 
 Recovers a wide logical grid from one provider render, slices into frames, and emits a
-deterministic coherence report. Imports Nightglass acquire primitives only; no I/O here.
+deterministic coherence report. Grid recovery uses vendored pipeline primitives; no I/O here.
 """
 
 from __future__ import annotations
 
 import pathlib
-import sys
 from collections import Counter
 from dataclasses import dataclass
 from typing import Any, Literal
 
 from PIL import Image
 
-# Nightglass pipeline lives beside this repo under game_idea/
-_NIGHTGLASS_PIPELINE = pathlib.Path(__file__).resolve().parents[3] / "nightglass" / "pipeline"
-if str(_NIGHTGLASS_PIPELINE) not in sys.path:
-    sys.path.insert(0, str(_NIGHTGLASS_PIPELINE))
-
-import acquire  # noqa: E402
-from icons.constants import MIN_GRID_SCORE  # noqa: E402
+from pipeline.recovery import (
+    MAGENTA,
+    MIN_GRID_SCORE,
+    detect_pitch,
+    key,
+    raw_clipping,
+    raw_gates,
+    sample_cells,
+)
 
 Cell = tuple[int, int, int] | None
 MIN_LONG_AXIS = 20
@@ -984,16 +985,16 @@ def recover_strip_cells(
     raw_path: pathlib.Path,
     layout: StripLayout,
 ) -> tuple[list[list[Cell]], dict[str, Any]]:
-    gate_errs = acquire.raw_gates(raw_path)
+    gate_errs = raw_gates(raw_path)
     gate_errs = [e for e in gate_errs if "missing provenance" not in e]
     if gate_errs:
         raise ValueError("; ".join(gate_errs))
 
-    clip = acquire.raw_clipping(raw_path)
+    clip = raw_clipping(raw_path)
     if clip:
         raise ValueError("; ".join(clip))
 
-    src, fg, bbox = acquire._key(raw_path)
+    src, fg, bbox = key(raw_path)
     x0, y0, x1, y1 = bbox
     # Tight fg bbox drops magenta gutters between frames; sample the full raster.
     x0, y0, x1, y1 = 0, 0, src.width - 1, src.height - 1
@@ -1005,8 +1006,8 @@ def recover_strip_cells(
     # Phase-only search around the declared render pitch (prompt pins block size; bbox height
     # reflects silhouette rows, not full frame_h, so bbox_h/frame_h is not a pitch estimator).
     band_lo, band_hi = pitch_val * 0.98, pitch_val * 1.02
-    pitch_y_fit = acquire.detect_pitch(src, fg, "y", band_lo, band_hi)
-    pitch_x_fit = acquire.detect_pitch(src, fg, "x", band_lo, band_hi)
+    pitch_y_fit = detect_pitch(src, fg, "y", band_lo, band_hi)
+    pitch_x_fit = detect_pitch(src, fg, "x", band_lo, band_hi)
     pitch_y = {
         "pitch": pitch_val,
         "phase": pitch_y_fit["phase"],
@@ -1023,7 +1024,7 @@ def recover_strip_cells(
             f"try --pitch or regenerate with clearer blocks"
         )
 
-    cells = acquire.sample_cells(src, fg, bbox, pitch_x, pitch_y)
+    cells = sample_cells(src, fg, bbox, pitch_x, pitch_y)
     grid_h = len(cells)
     grid_w = len(cells[0]) if cells else 0
     meta: dict[str, Any] = {
@@ -1326,7 +1327,7 @@ def render_logical_strip(
     pitch = layout.pitch_px
     img_w = strip_w * pitch + pad * 2
     img_h = strip_h * pitch + pad * 2
-    im = Image.new("RGBA", (img_w, img_h), (*acquire.MAGENTA, 255))
+    im = Image.new("RGBA", (img_w, img_h), (*MAGENTA, 255))
     px = im.load()
 
     for fi in range(layout.frame_count):

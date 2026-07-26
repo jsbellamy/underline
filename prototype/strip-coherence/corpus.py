@@ -18,7 +18,11 @@ import json
 import pathlib
 import sys
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+HERE = pathlib.Path(__file__).resolve().parent
+ROOT = HERE.parents[1]
+for path in (ROOT, HERE):
+    if str(path) not in sys.path:
+        sys.path.insert(0, str(path))
 
 import strip as S  # noqa: E402
 
