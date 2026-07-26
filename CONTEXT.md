@@ -61,6 +61,11 @@ a Gate. It is derived inside the measured gap between Manifest-good Strips and
 the Gate control; a Gate without a sufficient gap is Unseparated.
 _Avoid_: tolerance, limit
 
+**Gap allocation factor (α)**:
+The fraction of the measured gap between the worst Manifest-good Strip and its
+Gate control assigned to automatic-pass headroom; the remainder is the Review band.
+_Avoid_: safety factor, confidence
+
 **Corpus**:
 The scored sample set: PNGs in `inbox/` with declared Motion class and expected
 verdict in `prompts/manifest.json`.
