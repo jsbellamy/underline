@@ -1,0 +1,19 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "blob_idle/silhouette_budget",
+  "attempt_id": "blob_idle--silhouette_budget--003",
+  "generator": "cursor-image-gen",
+  "prompt_text": "TRUE chunky pixel art sprite strip ONLY. Four idle animation frames of a small SLIME BLOB in one horizontal row.\n\n**Canvas:** very wide panoramic strip \u2014 aspect ratio roughly 3:1 (much wider than tall). The four frames must fill most of the width.\n\nEach frame on an exact **16\u00d724 logical pixel grid rendered large** \u2014 every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering.\n\nSlime: translucent green dome with two dark eye pixels and one lighter highlight block. It sits **flat on the bottom row of each frame**. **Same green slime, same palette in every frame** \u2014 identical colors across all four frames.\n\n**IMPORTANT \u2014 silhouette spike on ONE transition only.** Frame 0: normal squat dome idle. Frame 1: nearly identical to frame 0 (tiny breathing only). Frame 2: **dramatic stretch** \u2014 dome becomes much taller and narrower, eyes move up, large occupancy change from frame 1. Frame 3: return to the same squat dome shape as frame 0 (loop closure).\n\nBetween each frame: **two full magenta logical cells** of empty gutter (no character pixels in gutter columns).\n\nFlat solid **magenta `#ff00ff`** background everywhere else. Selective 1px dark outline. Upper-left light. **6\u201310 flat colors max**.\n\nFrame order left\u2192right: idle_0, idle_1, idle_2, idle_3.\n\nDo not add margins, labels, numbers, or extra rows. One row of four frames only.\n\n<!-- Gate control: blob_idle / silhouette_budget. Same slime palette; one adjacent pair\n     has a large occupancy change; frame 3 matches frame 0 for loop closure. -->\n",
+  "prompt_sha256": "ada64c267c109937c03b9ca2fadb5fc5881c5fcc1a9078a23881ca199c1cf79c",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-26T17:00:50+00:00",
+  "acquiring_agent": "cursor-agent",
+  "repository_commit": "cdff67eec69915501e2248c7c0b0f2772bcbe965",
+  "raw_path": "gate-controls/raw/blob_idle--silhouette_budget--003.png",
+  "raw_sha256": "8a1e69b1eec138e2fbab965a0acc6222ea78330e068109b4d287f5677e765585",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ]
+}

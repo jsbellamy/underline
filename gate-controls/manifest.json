@@ -12,6 +12,30 @@
       "motion_class": "idle",
       "target_gate": "silhouette_budget",
       "active_promotion": "promo--idle--silhouette_budget"
+    },
+    {
+      "id": "blob_idle/silhouette_budget",
+      "motion_class": "blob_idle",
+      "target_gate": "silhouette_budget",
+      "active_promotion": "promo--blob_idle--silhouette_budget"
+    },
+    {
+      "id": "blob_idle/loop_closure_pass",
+      "motion_class": "blob_idle",
+      "target_gate": "loop_closure_pass",
+      "active_promotion": "promo--blob_idle--loop_closure_pass"
+    },
+    {
+      "id": "blob_idle/palette_drift_pass",
+      "motion_class": "blob_idle",
+      "target_gate": "palette_drift_pass",
+      "active_promotion": "promo--blob_idle--palette_drift_pass"
+    },
+    {
+      "id": "blob_idle/min_pair_cohort_pass",
+      "motion_class": "blob_idle",
+      "target_gate": "min_pair_cohort_pass",
+      "active_promotion": "promo--blob_idle--min_pair_cohort_pass"
     }
   ],
   "promotions": [
@@ -32,6 +56,42 @@
       "status": "PENDING_VERIFICATION",
       "recorded_at": "2026-07-26T16:30:00+00:00",
       "note": "gc-idle-silhouette-a1; visual review deferred to #27; full verification deferred to #30"
+    },
+    {
+      "id": "promo--blob_idle--silhouette_budget",
+      "specification_id": "blob_idle/silhouette_budget",
+      "attempt_id": "blob_idle--silhouette_budget--004",
+      "measurement_path": "gate-controls/reports/blob_idle--silhouette_budget--004/2026-07-26T17-00-51+00-00.json",
+      "status": "PENDING_VERIFICATION",
+      "recorded_at": "2026-07-26T17:00:51+00:00",
+      "note": "visual review deferred to #27; full verification deferred to #30"
+    },
+    {
+      "id": "promo--blob_idle--loop_closure_pass",
+      "specification_id": "blob_idle/loop_closure_pass",
+      "attempt_id": "blob_idle--loop_closure_pass--004",
+      "measurement_path": "gate-controls/reports/blob_idle--loop_closure_pass--004/2026-07-26T17-00-55+00-00.json",
+      "status": "PENDING_VERIFICATION",
+      "recorded_at": "2026-07-26T17:00:55+00:00",
+      "note": "visual review deferred to #27; full verification deferred to #30"
+    },
+    {
+      "id": "promo--blob_idle--palette_drift_pass",
+      "specification_id": "blob_idle/palette_drift_pass",
+      "attempt_id": "blob_idle--palette_drift_pass--001",
+      "measurement_path": "gate-controls/reports/blob_idle--palette_drift_pass--001/2026-07-26T17-00-56+00-00.json",
+      "status": "PENDING_VERIFICATION",
+      "recorded_at": "2026-07-26T17:00:56+00:00",
+      "note": "visual review deferred to #27; full verification deferred to #30"
+    },
+    {
+      "id": "promo--blob_idle--min_pair_cohort_pass",
+      "specification_id": "blob_idle/min_pair_cohort_pass",
+      "attempt_id": "blob_idle--min_pair_cohort_pass--005",
+      "measurement_path": "gate-controls/reports/blob_idle--min_pair_cohort_pass--005/2026-07-26T17-03-15+00-00.json",
+      "status": "PENDING_VERIFICATION",
+      "recorded_at": "2026-07-26T17:03:15+00:00",
+      "note": "visual review deferred to #27; full verification deferred to #30"
     }
   ]
 }

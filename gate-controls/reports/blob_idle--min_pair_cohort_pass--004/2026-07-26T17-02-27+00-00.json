@@ -1,0 +1,85 @@
+{
+  "schema": "gate-control-measurement/0",
+  "raw": "/Users/jakebellamy/VSProjects/games/game_idea/underline/gate-controls/raw/blob_idle--min_pair_cohort_pass--004.png",
+  "raw_sha256": "74dfc92473c0a3b808d2f69a2c930373cdabc2ff5d0075baf56598ba9068c61a",
+  "scorer_gate_config_sha256": "833bf9b68c5de230",
+  "motion_class": "blob_idle",
+  "target_gate": "min_pair_cohort_pass",
+  "applicable_gates": [
+    "dimension_parity",
+    "baseline_row_stable",
+    "silhouette_budget",
+    "loop_closure_pass",
+    "min_pair_cohort_pass",
+    "palette_drift_pass"
+  ],
+  "structural": {
+    "recovered": true,
+    "pitch_x_score": 0.0534,
+    "pitch_y_score": 0.0429
+  },
+  "gates": {
+    "dimension_parity": {
+      "applicable_because": "structural",
+      "outcome": "pass",
+      "metric": null,
+      "budget": null,
+      "reason": null
+    },
+    "baseline_row_stable": {
+      "applicable_because": "grounded: true",
+      "outcome": "pass",
+      "metric": null,
+      "budget": null,
+      "reason": null
+    },
+    "silhouette_budget": {
+      "applicable_because": "max_silhouette=0.36",
+      "outcome": "fail",
+      "metric": 0.4514,
+      "budget": 0.36,
+      "reason": null
+    },
+    "loop_closure_pass": {
+      "applicable_because": "max_loop=0.35",
+      "outcome": "pass",
+      "metric": 0.0744,
+      "budget": 0.35,
+      "reason": null
+    },
+    "min_pair_cohort_pass": {
+      "applicable_because": "max_min_pair=0.13",
+      "outcome": "pass",
+      "metric": 0.0744,
+      "budget": 0.13,
+      "reason": null
+    },
+    "palette_drift_pass": {
+      "applicable_because": "always",
+      "outcome": "pass",
+      "metric": 0.072,
+      "budget": 0.22,
+      "reason": null
+    }
+  },
+  "isolation": "NOT_ISOLATED",
+  "blockers": [
+    "target gate min_pair_cohort_pass passes",
+    "collateral failure: silhouette_budget"
+  ],
+  "caveats": [],
+  "primary_failure": {
+    "code": "TARGET_DEFECT_TOO_WEAK",
+    "gate": "min_pair_cohort_pass",
+    "rationale": "min_pair_cohort_pass measured 0.0744 within budget 0.13"
+  },
+  "retry_action": {
+    "reason_code": "TARGET_DEFECT_TOO_WEAK",
+    "gate": "min_pair_cohort_pass",
+    "intent": "amplify the targeted defect",
+    "one_prompt_delta": true,
+    "direction": "increase",
+    "metric_now": 0.0744,
+    "must_exceed": 0.13
+  }
+}

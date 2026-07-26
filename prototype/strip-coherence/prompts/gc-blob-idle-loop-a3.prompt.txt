@@ -1,0 +1,17 @@
+TRUE chunky pixel art sprite strip ONLY. Four idle animation frames of a small SLIME BLOB in one horizontal row.
+
+**Reference:** match the grid structure, magenta gutters, and green slime palette of a standard 16×24 four-frame strip — but apply the edit below.
+
+Each frame on an exact **16×24 logical pixel grid rendered large** — every logical pixel is one clean flat square block. No anti-aliasing.
+
+Slime: translucent green dome, two dark eyes, sits on bottom row. **Same green palette in all four frames.**
+
+**IMPORTANT — loop broken by shifting frame 3 only.** Frames 0, 1, and 2: **pixel-identical** squat dome (exact same pose repeated three times). Frame 3: same dome shape and colors but the **entire body shifted 2 logical pixels to the RIGHT** inside its frame. Adjacent pairs 0→1 and 1→2 have zero change; only frame 3 differs from frame 0.
+
+Between each frame: **two full magenta logical cells** of empty gutter.
+
+Flat solid **magenta `#ff00ff`** background. Selective 1px dark outline.
+
+One row of four frames only. No labels.
+
+<!-- Gate control: blob_idle / loop_closure_pass. Derived from slide-f3-dx2 pattern on 02-slime-idle. -->

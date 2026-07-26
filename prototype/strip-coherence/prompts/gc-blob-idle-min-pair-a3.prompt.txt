@@ -1,0 +1,21 @@
+TRUE chunky pixel art sprite strip ONLY. Four idle animation frames of a small SLIME BLOB in one horizontal row.
+
+Each frame on an exact **16×24 logical pixel grid rendered large** — every logical pixel is one clean flat square block. No anti-aliasing.
+
+Slime: translucent green dome, two dark eyes, sits on bottom row. **Same green palette in all four frames.**
+
+**IMPORTANT — uniform cohort spread, no single spike.** Four micro-variations of the SAME slime with **moderate** pairwise differences (~15% cells) but **no one transition dramatically larger than the others**:
+- Frame 0: neutral dome
+- Frame 1: dome shifted 1 pixel left
+- Frame 2: dome shifted 1 pixel right  
+- Frame 3: dome 1 row shorter (squash)
+
+All frames keep similar overall footprint; avoid any one frame being dramatically taller or wider than neighbors.
+
+Between each frame: **two full magenta logical cells** of empty gutter.
+
+Flat solid **magenta `#ff00ff`** background. Selective 1px dark outline.
+
+One row of four frames only. No labels.
+
+<!-- Gate control: blob_idle / min_pair_cohort_pass. Uniform spread; target min_pair > 0.13, silhouette < 0.36. -->
