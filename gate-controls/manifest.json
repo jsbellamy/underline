@@ -36,6 +36,24 @@
       "motion_class": "blob_idle",
       "target_gate": "min_pair_cohort_pass",
       "active_promotion": "promo--blob_idle--min_pair_cohort_pass"
+    },
+    {
+      "id": "walk/palette_drift_pass",
+      "motion_class": "walk",
+      "target_gate": "palette_drift_pass",
+      "active_promotion": "promo--walk--palette_drift_pass"
+    },
+    {
+      "id": "walk/silhouette_budget",
+      "motion_class": "walk",
+      "target_gate": "silhouette_budget",
+      "active_promotion": "promo--walk--silhouette_budget"
+    },
+    {
+      "id": "walk/loop_closure_pass",
+      "motion_class": "walk",
+      "target_gate": "loop_closure_pass",
+      "active_promotion": "promo--walk--loop_closure_pass"
     }
   ],
   "promotions": [
@@ -91,6 +109,33 @@
       "measurement_path": "gate-controls/reports/blob_idle--min_pair_cohort_pass--005/2026-07-26T17-03-15+00-00.json",
       "status": "PENDING_VERIFICATION",
       "recorded_at": "2026-07-26T17:03:15+00:00",
+      "note": "visual review deferred to #27; full verification deferred to #30"
+    },
+    {
+      "id": "promo--walk--palette_drift_pass",
+      "specification_id": "walk/palette_drift_pass",
+      "attempt_id": "walk--palette_drift_pass--001",
+      "measurement_path": "gate-controls/reports/walk--palette_drift_pass--001/2026-07-26T17-24-45+00-00.json",
+      "status": "PENDING_VERIFICATION",
+      "recorded_at": "2026-07-26T17:24:45+00:00",
+      "note": "visual review deferred to #27; full verification deferred to #30"
+    },
+    {
+      "id": "promo--walk--silhouette_budget",
+      "specification_id": "walk/silhouette_budget",
+      "attempt_id": "walk--silhouette_budget--002",
+      "measurement_path": "gate-controls/reports/walk--silhouette_budget--002/2026-07-26T17-24-46+00-00.json",
+      "status": "PENDING_VERIFICATION",
+      "recorded_at": "2026-07-26T17:24:46+00:00",
+      "note": "visual review deferred to #27; full verification deferred to #30"
+    },
+    {
+      "id": "promo--walk--loop_closure_pass",
+      "specification_id": "walk/loop_closure_pass",
+      "attempt_id": "walk--loop_closure_pass--002",
+      "measurement_path": "gate-controls/reports/walk--loop_closure_pass--002/2026-07-26T17-24-47+00-00.json",
+      "status": "PENDING_VERIFICATION",
+      "recorded_at": "2026-07-26T17:24:47+00:00",
       "note": "visual review deferred to #27; full verification deferred to #30"
     }
   ]
