@@ -25,14 +25,14 @@ CORPUS_LAYOUT = S.StripLayout(
 )
 
 PINNED = {
-    "01-miner-idle": {"pass": True, "worst_sil": 0.095, "loop": 0.151, "drift": 0.073},
-    "02-slime-idle": {"pass": False, "worst_sil": 0.300, "loop": 0.300, "drift": 0.146},
+    "01-miner-idle": {"pass": True, "worst_sil": 0.095, "loop": 0.147, "drift": 0.073},
+    "02-slime-idle": {"pass": False, "worst_sil": 0.337, "loop": 0.330, "drift": 0.141},
     "03-torch-flicker": {"pass": True, "worst_sil": 0.160, "loop": 0.130, "drift": 0.145},
-    "04-bat-flap": {"pass": False, "worst_sil": 0.651, "loop": 0.603, "drift": 0.151},
-    "05-miner-walk": {"pass": False, "worst_sil": 0.391, "loop": 0.132, "drift": 0.114},
-    "06-miner-swing": {"pass": False, "worst_sil": 0.382, "loop": 0.515, "drift": 0.188},
-    "07-NEG-palette-drift": {"pass": False, "worst_sil": 0.133, "loop": 0.142, "drift": 0.290},
-    "08-NEG-identity-drift": {"pass": False, "worst_sil": 0.571, "loop": 0.503, "drift": 0.228},
+    "04-bat-flap": {"pass": False, "worst_sil": 0.662, "loop": 0.671, "drift": 0.145},
+    "05-miner-walk": {"pass": False, "worst_sil": 0.398, "loop": 0.143, "drift": 0.117},
+    "06-miner-swing": {"pass": False, "worst_sil": 0.565, "loop": 0.550, "drift": 0.179},
+    "07-NEG-palette-drift": {"pass": False, "worst_sil": 0.057, "loop": 0.044, "drift": 0.279},
+    "08-NEG-identity-drift": {"pass": False, "worst_sil": 0.602, "loop": 0.482, "drift": 0.218},
 }
 
 

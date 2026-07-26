@@ -25,7 +25,7 @@ def real_frames():
         pitch_px=layout.pitch_px, margin_cells=0,
     )
     cells, _ = S.recover_strip_cells(INBOX, probe)
-    frames, _ = S.slice_frames_auto(cells, frame_count=layout.frame_count)
+    frames, _ = S.slice_frames_pitch(cells, frame_count=layout.frame_count)
     return frames
 
 

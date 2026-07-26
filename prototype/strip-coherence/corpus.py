@@ -70,22 +70,11 @@ def evaluate(path: pathlib.Path) -> dict:
     sil = max((r["frac"] for r in coh.get("silhouette_adjacent", [])), default=0.0)
     loop = (coh.get("loop_closure") or {}).get("frac", 0.0)
 
-    # Slicing keys on the subject's own empty columns, not the declared gutter, so
-    # segments are content bboxes. Uneven widths mean normalize_frame_widths cropped
-    # from the left against frames whose content starts at different offsets — that
-    # misalignment reads as a silhouette failure. Flag it so it is not misread.
-    widths = result.slice_meta.get("segment_widths", [])
-    confound = len(set(widths)) > 1
-
     note = f"sil={sil:.3f} loop={loop:.3f} drift={coh.get('worst_palette_drift', 0):.3f}"
-    if confound:
-        note += f" {YELLOW}widths={widths}!{RESET}"
     return {
         "pass": result.pass_,
         "tripped": tripped,
         "note": note,
-        "confound": confound,
-        "widths": widths,
     }
 
 
@@ -96,7 +85,7 @@ def main() -> int:
     print(f"{'sample':<22} {'class':<11} {'want':<5} {'got':<5}  {'agrees':<7} detail")
     print("-" * 100)
 
-    pending, surprises, confounded, scored = [], [], [], 0
+    pending, surprises, scored = [], [], 0
     for s in samples:
         path = find_png(s["id"])
         if path is None:
@@ -107,8 +96,6 @@ def main() -> int:
 
         r = evaluate(path)
         scored += 1
-        if r.get("confound"):
-            confounded.append(s["id"])
         got = "PASS" if r["pass"] else "FAIL"
         verdict_agrees = got == s["expect"]
         # An expectation may name alternatives, e.g. "recover|slice".
@@ -138,13 +125,6 @@ def main() -> int:
                   f"got {'PASS' if r['pass'] else 'FAIL'} {r['tripped'] or '(clean)'}")
             print(f"    {DIM}premise: {s['why']}{RESET}")
         print(f"\n  {DIM}Update the gate design or the premise — not the manifest.{RESET}")
-
-    if confounded:
-        print(f"\n{YELLOW}Uneven segment widths (alignment confound):{RESET} "
-              f"{', '.join(confounded)}")
-        print(f"  {DIM}Frames were cropped to the narrowest segment from the left. A "
-              f"silhouette failure on these\n  rows may be misalignment, not motion — "
-              f"check with probe.py's x-shift scan before believing it.{RESET}")
 
     if pending:
         print(f"\n{DIM}Pending: generate with prompts/<id>.prompt.txt, "
