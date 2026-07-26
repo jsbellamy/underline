@@ -18,8 +18,6 @@ import corpus
 from pipeline import strip as S
 
 HERE = pathlib.Path(__file__).resolve().parent
-
-HERE = pathlib.Path(__file__).resolve().parent
 MANIFEST = HERE / "prompts" / "manifest.json"
 INBOX = HERE / "inbox"
 

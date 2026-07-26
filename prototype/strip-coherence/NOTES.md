@@ -313,11 +313,10 @@ declared strip anchor (#3), per-motion-class budgets (#4), and the drift budget,
 re-derived at n=3 per class. The alignment question is settled — `align.py` and
 `sweep.py` are deleted.
 
-1. **Port into Underline.** Underline is the consumer; grid recovery now lives in
-   `pipeline/recovery.py` while the gate library remains in this prototype. Porting the
-   gate library under `pipeline/` gives Underline a strip-acquisition path plus the
-   motion-class contract — and is the only thing that grows the corpus as a byproduct
-   of real work rather than as a special exercise.
+1. **Port into Underline.** Underline is the consumer; grid recovery lives in
+   `pipeline/recovery.py` and the gate library in `pipeline/strip.py`. The prototype
+   runners remain here for corpus scoring and budget derivation — they import the
+   production modules under `pipeline/`.
    (If Nightglass ever wants strips, that is a separate ask under its own frozen
    contract — do not conflate them again.)
 2. **Replace the budget derivation rule.** `worst-good + margin` cannot converge:

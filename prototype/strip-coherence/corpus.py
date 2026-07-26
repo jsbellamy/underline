@@ -20,8 +20,6 @@ import pathlib
 from pipeline import strip as S
 
 HERE = pathlib.Path(__file__).resolve().parent
-
-HERE = pathlib.Path(__file__).resolve().parent
 INBOX = HERE / "inbox"
 MANIFEST = HERE / "prompts" / "manifest.json"
 PREDICTION_LEDGER = HERE / "prompts" / "prediction-ledger.json"
