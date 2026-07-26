@@ -1,0 +1,64 @@
+{
+  "schema": "gate-control-measurement/0",
+  "raw": "/Users/jakebellamy/VSProjects/games/game_idea/underline-issue-24-airborne/gate-controls/raw/airborne--loop_closure_pass--001.png",
+  "raw_sha256": "92439bbb56e9f64905898135993978814fc447f2c49c9ddd4a12e0cb23545d37",
+  "scorer_gate_config_sha256": "833bf9b68c5de230",
+  "motion_class": "airborne",
+  "target_gate": "loop_closure_pass",
+  "applicable_gates": [
+    "dimension_parity",
+    "displacement_pass",
+    "loop_closure_pass",
+    "min_pair_cohort_pass",
+    "palette_drift_pass"
+  ],
+  "structural": {
+    "recovered": true,
+    "pitch_x_score": 0.0371,
+    "pitch_y_score": 0.0483
+  },
+  "gates": {
+    "dimension_parity": {
+      "applicable_because": "structural",
+      "outcome": "pass",
+      "metric": null,
+      "budget": null,
+      "reason": null
+    },
+    "displacement_pass": {
+      "applicable_because": "grounded: false",
+      "outcome": "undecidable",
+      "metric": null,
+      "budget": null,
+      "reason": "degenerate alignment minimum (margin 0.0018 at 0\u21921); displacement undecidable"
+    },
+    "loop_closure_pass": {
+      "applicable_because": "max_loop=0.68",
+      "outcome": "fail",
+      "metric": 0.7529,
+      "budget": 0.68,
+      "reason": null
+    },
+    "min_pair_cohort_pass": {
+      "applicable_because": "max_min_pair=0.29",
+      "outcome": "pass",
+      "metric": 0.1429,
+      "budget": 0.29,
+      "reason": null
+    },
+    "palette_drift_pass": {
+      "applicable_because": "always",
+      "outcome": "pass",
+      "metric": 0.1039,
+      "budget": 0.23,
+      "reason": null
+    }
+  },
+  "isolation": "ISOLATED",
+  "blockers": [],
+  "caveats": [
+    "displacement_pass is undecidable \u2014 this control does not evidence that dimension"
+  ],
+  "primary_failure": null,
+  "retry_action": null
+}

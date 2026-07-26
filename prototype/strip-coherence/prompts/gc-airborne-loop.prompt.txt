@@ -1,0 +1,19 @@
+TRUE chunky pixel art sprite strip ONLY. Four wing-flap animation frames of a small BAT in one horizontal row, facing RIGHT.
+
+**Canvas:** very wide panoramic strip — aspect ratio roughly 3:1 (much wider than tall). The four frames must fill most of the width.
+
+Each frame on an exact **16×24 logical pixel grid rendered large** — every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering.
+
+Bat: small dark purple body with two eye pixels, **airborne — floating in the vertical middle of the frame, NOT touching the bottom row**. **Same bat, same purple palette in every frame.**
+
+**IMPORTANT — loop is broken.** Frames 0, 1, and 2: small wing-flap cycle — wings up, level, down — body stays fixed. Frame 3: **wings folded tight against body, bat curled smaller** — clearly NOT the same silhouette as frame 0. Adjacent transitions 0→1, 1→2, 2→3 stay moderate; only frame 3 vs frame 0 differs strongly.
+
+Between each frame: **two full magenta logical cells** of empty gutter (no character pixels in gutter columns).
+
+Flat solid **magenta `#ff00ff`** background everywhere else. Selective 1px dark outline. **6–8 flat colors max**, identical palette every frame.
+
+Frame order left→right: flap_0, flap_1, flap_2, flap_3.
+
+Do not add margins, labels, numbers, or extra rows. One row of four frames only.
+
+<!-- Gate control: airborne / loop_closure_pass. f3≠f0 silhouette; adjacency moderate; palette held. -->

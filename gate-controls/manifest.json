@@ -38,6 +38,24 @@
       "active_promotion": "promo--blob_idle--min_pair_cohort_pass"
     },
     {
+      "id": "airborne/palette_drift_pass",
+      "motion_class": "airborne",
+      "target_gate": "palette_drift_pass",
+      "active_promotion": "promo--airborne--palette_drift_pass"
+    },
+    {
+      "id": "airborne/loop_closure_pass",
+      "motion_class": "airborne",
+      "target_gate": "loop_closure_pass",
+      "active_promotion": "promo--airborne--loop_closure_pass"
+    },
+    {
+      "id": "airborne/min_pair_cohort_pass",
+      "motion_class": "airborne",
+      "target_gate": "min_pair_cohort_pass",
+      "active_promotion": "promo--airborne--min_pair_cohort_pass"
+    },
+    {
       "id": "walk/palette_drift_pass",
       "motion_class": "walk",
       "target_gate": "palette_drift_pass",
@@ -109,6 +127,33 @@
       "measurement_path": "gate-controls/reports/blob_idle--min_pair_cohort_pass--005/2026-07-26T17-03-15+00-00.json",
       "status": "PENDING_VERIFICATION",
       "recorded_at": "2026-07-26T17:03:15+00:00",
+      "note": "visual review deferred to #27; full verification deferred to #30"
+    },
+    {
+      "id": "promo--airborne--palette_drift_pass",
+      "specification_id": "airborne/palette_drift_pass",
+      "attempt_id": "airborne--palette_drift_pass--001",
+      "measurement_path": "gate-controls/reports/airborne--palette_drift_pass--001/2026-07-26T17-20-32+00-00.json",
+      "status": "PENDING_VERIFICATION",
+      "recorded_at": "2026-07-26T17:20:32+00:00",
+      "note": "visual review deferred to #27; full verification deferred to #30"
+    },
+    {
+      "id": "promo--airborne--loop_closure_pass",
+      "specification_id": "airborne/loop_closure_pass",
+      "attempt_id": "airborne--loop_closure_pass--002",
+      "measurement_path": "gate-controls/reports/airborne--loop_closure_pass--002/2026-07-26T17-21-43+00-00.json",
+      "status": "PENDING_VERIFICATION",
+      "recorded_at": "2026-07-26T17:21:44+00:00",
+      "note": "visual review deferred to #27; full verification deferred to #30"
+    },
+    {
+      "id": "promo--airborne--min_pair_cohort_pass",
+      "specification_id": "airborne/min_pair_cohort_pass",
+      "attempt_id": "airborne--min_pair_cohort_pass--004",
+      "measurement_path": "gate-controls/reports/airborne--min_pair_cohort_pass--004/2026-07-26T17-23-28+00-00.json",
+      "status": "PENDING_VERIFICATION",
+      "recorded_at": "2026-07-26T17:23:28+00:00",
       "note": "visual review deferred to #27; full verification deferred to #30"
     },
     {

@@ -1,0 +1,19 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "airborne/loop_closure_pass",
+  "attempt_id": "airborne--loop_closure_pass--001",
+  "generator": "cursor-image-gen",
+  "prompt_text": "TRUE chunky pixel art sprite strip ONLY. Four wing-flap animation frames of a small BAT in one horizontal row, facing RIGHT.\n\n**Canvas:** very wide panoramic strip \u2014 aspect ratio roughly 3:1 (much wider than tall). The four frames must fill most of the width.\n\nEach frame on an exact **16\u00d724 logical pixel grid rendered large** \u2014 every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering.\n\nBat: small dark purple body with two eye pixels, **airborne \u2014 floating in the vertical middle of the frame, NOT touching the bottom row**. **Same bat, same purple palette in every frame.**\n\n**IMPORTANT \u2014 loop is broken.** Frames 0, 1, and 2: small wing-flap cycle \u2014 wings up, level, down \u2014 body stays fixed. Frame 3: **wings folded tight against body, bat curled smaller** \u2014 clearly NOT the same silhouette as frame 0. Adjacent transitions 0\u21921, 1\u21922, 2\u21923 stay moderate; only frame 3 vs frame 0 differs strongly.\n\nBetween each frame: **two full magenta logical cells** of empty gutter (no character pixels in gutter columns).\n\nFlat solid **magenta `#ff00ff`** background everywhere else. Selective 1px dark outline. **6\u20138 flat colors max**, identical palette every frame.\n\nFrame order left\u2192right: flap_0, flap_1, flap_2, flap_3.\n\nDo not add margins, labels, numbers, or extra rows. One row of four frames only.\n\n<!-- Gate control: airborne / loop_closure_pass. f3\u2260f0 silhouette; adjacency moderate; palette held. -->\n",
+  "prompt_sha256": "3758b4b601bfe314f3317981eed39453f2317a8020611b36dbf645472a9e986f",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-26T17:21:38+00:00",
+  "acquiring_agent": "cursor-agent",
+  "repository_commit": "ae4ce7ab64386a2cc1cd48ee6f4b77aa49b1eace",
+  "raw_path": "gate-controls/raw/airborne--loop_closure_pass--001.png",
+  "raw_sha256": "92439bbb56e9f64905898135993978814fc447f2c49c9ddd4a12e0cb23545d37",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ]
+}

@@ -1,0 +1,17 @@
+TRUE chunky pixel art sprite strip ONLY. Four frames in one horizontal row, each showing a DIFFERENT flying fantasy creature.
+
+**Canvas:** very wide panoramic strip — aspect ratio roughly 3:1 (much wider than tall). The four frames must fill most of the width.
+
+Each frame on an exact **16×24 logical pixel grid rendered large** — every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering.
+
+**IMPORTANT — each frame is a DIFFERENT FLYING CREATURE, not the same one animated.** Frame 0: small bat. Frame 1: moth with wide wings. Frame 2: floating wisp orb. Frame 3: tiny dragon. All **airborne — floating in the vertical middle, NOT touching the bottom row**.
+
+**CRITICAL — use ONLY these four colors on every creature, no others:** dark purple `#2d1b4e`, mid purple `#6b4fa0`, light lavender `#c9a0ff`, near-black outline `#1a1028`. Same four hex colors on bat, moth, wisp, and dragon. No green, blue, orange, yellow, or white fills.
+
+Between each frame: **two full magenta logical cells** of empty gutter (no character pixels in gutter columns).
+
+Flat solid **magenta `#ff00ff`** background everywhere else. Selective 1px dark outline.
+
+Do not add margins, labels, numbers, or extra rows. One row of four frames only.
+
+<!-- Gate control: airborne / min_pair_cohort_pass. Four silhouettes, palette locked to 4 colors. -->
