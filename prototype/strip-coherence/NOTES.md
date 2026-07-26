@@ -18,8 +18,8 @@ every good strip passes. The gates are:
 
 Budgets are **per motion class**, derived gate-agnostically from manifest-good strips —
 see [`docs/strip-acquisition-contract.md`](../../docs/strip-acquisition-contract.md),
-which is the authority. Port the mechanism *and* the derivation rule; re-derive the
-constants against production strips.
+which is the authority. The mechanism and derivation rule are ported; re-derive the
+constants when production strips change.
 
 **The consumer is Underline, the mining game.** Recovery primitives are vendored from
 Nightglass in `pipeline/recovery.py` only; its frozen animation contract does not
@@ -307,15 +307,15 @@ classes the mining game ships* is Jake's call, not something to infer from the c
 The corpus currently guesses idle / locomotion / one-shot / airborne / emissive. Steps
 1–3 do not depend on the answer.
 
-**Not in this pass:** the drift budget (Open 3) and the port (Open 4). Both need the
-class list settled first.
+**Not in this pass (session 5):** the drift budget and the port — both since closed
+(see ## Open).
 
 ## Open
 
 Closed since session 5: pitch slicing with bounded registration (issue #2), the
-declared strip anchor (#3), per-motion-class budgets (#4), and the drift budget, now
-re-derived at n=3 per class. The alignment question is settled — `align.py` and
-`sweep.py` are deleted.
+declared strip anchor (#3), per-motion-class budgets (#4), the drift budget (now
+re-derived at n=3 per class), and port into `pipeline/` (#9–#11, Open 1). The
+alignment question is settled — `align.py` and `sweep.py` are deleted.
 
 1. ~~**Port into Underline.**~~ **Closed** (#9 `pipeline/recovery.py`, #10
    `pipeline/strip.py`, #11 `pipeline/ingest_strip.py` CLI). Grid recovery and

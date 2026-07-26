@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Throwaway TUI for the strip-coherence prototype. PROTOTYPE — delete when answered."""
+"""Interactive TUI for the strip coherence evidence suite."""
 
 from __future__ import annotations
 

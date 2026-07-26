@@ -34,6 +34,12 @@ From repo root:
 ```bash
 npm run prototype:strip          # interactive TUI
 npm run prototype:strip:smoke    # synthetic pass/fail self-check
+npm run prototype:strip:ingest   # CLI: gate strip PNG (--motion-class required)
+npm run strip:ingest             # alias for prototype:strip:ingest
 npm run prototype:strip:corpus   # score inbox/ against manifest
 npm run prototype:strip:derive-budgets
+npm run prototype:strip:adversarial
+npm run prototype:strip:displacement
+npm run prototype:strip:sharpness
+npm test
 ```
