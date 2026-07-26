@@ -97,3 +97,23 @@ model, or effort setting to delegate work. A reusable issue-implementation
 subagent is defined in `.agents/issue-implementer.md`. The orchestrator
 independently owns the acceptance gate — green tests and a scope-matching file
 list are necessary but never sufficient.
+
+## Cursor Cloud specific instructions
+
+The runtime is **Python 3 only**; `requirements.txt` (Pillow, numpy, pytest) is
+the whole dependency set and is installed by the startup update script. `node`/
+`npm` are present but act only as a script launcher — `package.json` declares no
+Node deps, so there is no `npm install` step. Commands are the `npm run …`
+wrappers and `npm test` documented in the Evidence and README sections above; all
+already set `PYTHONPATH=.` and must run from the repo root. There is no server or
+web UI to start.
+
+Non-obvious gotchas:
+
+- `npm run strip:ingest` (and the gate generally) **exits non-zero on a FAIL
+  verdict** — that is the gate rejecting a strip, not a broken environment.
+- The evidence probes intentionally print `GAP`, `displacement inapplicable`, and
+  `Frozen ledger` lines for documented known gaps; these are expected and the
+  commands still exit 0.
+- `npm run prototype:strip` is an interactive terminal TUI and needs a real TTY;
+  it is not runnable in a non-interactive shell.
