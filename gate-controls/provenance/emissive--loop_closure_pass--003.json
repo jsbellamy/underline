@@ -1,0 +1,19 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "emissive/loop_closure_pass",
+  "attempt_id": "emissive--loop_closure_pass--003",
+  "generator": "cursor-image-gen",
+  "prompt_text": "TRUE chunky pixel art sprite strip ONLY. Four flicker animation frames of a small **ground CAMPFIRE** in one horizontal row.\n\n**Canvas:** very wide panoramic strip \u2014 aspect ratio roughly 3:1. Each frame **16\u00d724 logical pixels rendered as large crisp square blocks at least 24px per block**. No anti-aliasing.\n\nCampfire: brown logs along the **bottom row, identical in every frame**. Orange/yellow flames fill the **upper two-thirds of each frame**. **Same flame palette every frame.**\n\n**CRITICAL structure:**\n- Frame 0: neutral flame height.\n- Frame 1: almost identical to frame 0 (only 1-2 pixels different).\n- Frame 2: small flame flicker from frame 1 \u2014 still a small step from frame 1.\n- Frame 3: **almost identical to frame 2** (only 1-2 pixels different from frame 2).\n\nFrame 3 must NOT match frame 0 \u2014 frame 3 flames clearly **shorter** than frame 0 (loop broken), but frame 3 must match frame 2 closely.\n\nTwo magenta gutter cells between frames. Flat magenta `#ff00ff` background. One row only.\n\n<!-- Gate control: emissive / loop_closure_pass. Campfire; f3\u2248f2, f3\u2249f0. -->\n",
+  "prompt_sha256": "ce3467ecfe163b6d71f623fdededc3200969c28024908ad98f8675ab577eb1d0",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-26T17:59:17+00:00",
+  "acquiring_agent": "cursor-agent",
+  "repository_commit": "ae4ce7ab64386a2cc1cd48ee6f4b77aa49b1eace",
+  "raw_path": "gate-controls/raw/emissive--loop_closure_pass--003.png",
+  "raw_sha256": "5f7eb34049fa955276fd6aa2631b9b4b8aa6445e1738d22184294dad2edab608",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ]
+}

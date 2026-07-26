@@ -36,6 +36,24 @@
       "motion_class": "blob_idle",
       "target_gate": "min_pair_cohort_pass",
       "active_promotion": "promo--blob_idle--min_pair_cohort_pass"
+    },
+    {
+      "id": "emissive/palette_drift_pass",
+      "motion_class": "emissive",
+      "target_gate": "palette_drift_pass",
+      "active_promotion": "promo--emissive--palette_drift_pass"
+    },
+    {
+      "id": "emissive/silhouette_budget",
+      "motion_class": "emissive",
+      "target_gate": "silhouette_budget",
+      "active_promotion": "promo--emissive--silhouette_budget"
+    },
+    {
+      "id": "emissive/loop_closure_pass",
+      "motion_class": "emissive",
+      "target_gate": "loop_closure_pass",
+      "active_promotion": "promo--emissive--loop_closure_pass"
     }
   ],
   "promotions": [
@@ -91,6 +109,33 @@
       "measurement_path": "gate-controls/reports/blob_idle--min_pair_cohort_pass--005/2026-07-26T17-03-15+00-00.json",
       "status": "PENDING_VERIFICATION",
       "recorded_at": "2026-07-26T17:03:15+00:00",
+      "note": "visual review deferred to #27; full verification deferred to #30"
+    },
+    {
+      "id": "promo--emissive--palette_drift_pass",
+      "specification_id": "emissive/palette_drift_pass",
+      "attempt_id": "emissive--palette_drift_pass--001",
+      "measurement_path": "gate-controls/reports/emissive--palette_drift_pass--001/2026-07-26T17-59-07+00-00.json",
+      "status": "PENDING_VERIFICATION",
+      "recorded_at": "2026-07-26T17:59:07+00:00",
+      "note": "visual review deferred to #27; full verification deferred to #30"
+    },
+    {
+      "id": "promo--emissive--silhouette_budget",
+      "specification_id": "emissive/silhouette_budget",
+      "attempt_id": "emissive--silhouette_budget--001",
+      "measurement_path": "gate-controls/reports/emissive--silhouette_budget--001/2026-07-26T17-59-08+00-00.json",
+      "status": "PENDING_VERIFICATION",
+      "recorded_at": "2026-07-26T17:59:08+00:00",
+      "note": "visual review deferred to #27; full verification deferred to #30"
+    },
+    {
+      "id": "promo--emissive--loop_closure_pass",
+      "specification_id": "emissive/loop_closure_pass",
+      "attempt_id": "emissive--loop_closure_pass--001",
+      "measurement_path": "gate-controls/reports/emissive--loop_closure_pass--001/2026-07-26T17-59-09+00-00.json",
+      "status": "PENDING_VERIFICATION",
+      "recorded_at": "2026-07-26T17:59:09+00:00",
       "note": "visual review deferred to #27; full verification deferred to #30"
     }
   ]

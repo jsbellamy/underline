@@ -1,0 +1,17 @@
+TRUE chunky pixel art sprite strip ONLY. Four flicker animation frames of a wall-mounted TORCH in one horizontal row.
+
+**Canvas:** very wide panoramic strip — aspect ratio roughly 3:1. Each frame **16×24 logical pixels rendered as large crisp square blocks**. No anti-aliasing.
+
+Torch: brown wooden sconce in the **lower third, identical in every frame**. Flame uses at most three warm colors and **the same palette every frame**.
+
+**CRITICAL structure:**
+- Frame 0: neutral flame height.
+- Frame 1: almost identical to frame 0 (only 1-2 pixels different).
+- Frame 2: small flame flicker change from frame 1 — still a small step from frame 1.
+- Frame 3: **almost identical to frame 2** (only 1-2 pixels different from frame 2).
+
+Frame 3 must NOT match frame 0 (loop broken), but frame 3 must match frame 2 closely.
+
+Two magenta gutter cells between frames. Flat magenta `#ff00ff` background. One row only.
+
+<!-- Gate control: emissive / loop_closure_pass. f3≈f2, sequential neighbors small, f3≉f0. -->

@@ -1,0 +1,19 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "emissive/loop_closure_pass",
+  "attempt_id": "emissive--loop_closure_pass--002",
+  "generator": "cursor-image-gen",
+  "prompt_text": "TRUE chunky pixel art sprite strip ONLY. Four flicker animation frames of a wall-mounted TORCH in one horizontal row.\n\n**Canvas:** very wide panoramic strip \u2014 aspect ratio roughly 3:1. Each frame **16\u00d724 logical pixels rendered as large crisp square blocks**. No anti-aliasing.\n\nTorch: brown wooden sconce in the **lower third, identical in every frame**. Flame uses at most three warm colors and **the same palette every frame**.\n\n**CRITICAL structure:**\n- Frame 0: neutral flame height.\n- Frame 1: almost identical to frame 0 (only 1-2 pixels different).\n- Frame 2: small flame flicker change from frame 1 \u2014 still a small step from frame 1.\n- Frame 3: **almost identical to frame 2** (only 1-2 pixels different from frame 2).\n\nFrame 3 must NOT match frame 0 (loop broken), but frame 3 must match frame 2 closely.\n\nTwo magenta gutter cells between frames. Flat magenta `#ff00ff` background. One row only.\n\n<!-- Gate control: emissive / loop_closure_pass. f3\u2248f2, sequential neighbors small, f3\u2249f0. -->\n",
+  "prompt_sha256": "537719af4d3bfd3007af0586ed99be9158d0eabbc256f61c7e892a9b868f92eb",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-26T17:59:15+00:00",
+  "acquiring_agent": "cursor-agent",
+  "repository_commit": "ae4ce7ab64386a2cc1cd48ee6f4b77aa49b1eace",
+  "raw_path": "gate-controls/raw/emissive--loop_closure_pass--002.png",
+  "raw_sha256": "40f7988cce3ce8c22edaee6dbba028c232a7bb2c1b3e1d89d6d0a2155636c73e",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ]
+}
