@@ -37,6 +37,43 @@
           "rationale": "best near-miss couples min-pair and silhouette failures at shared flame-motion geometry"
         }
       }
+    },
+    "idle": {
+      "motion_class": "idle",
+      "recorded_at": "2026-07-26T19:15:00+00:00",
+      "decided_in": "https://github.com/jsbellamy/underline/issues/21",
+      "detail": "docs/acceptance-profiles/idle.md",
+      "gates": {
+        "baseline_row_stable": {
+          "status": "SEPARATED",
+          "budget": null,
+          "note": "structural; no provider Gate control required"
+        },
+        "silhouette_budget": {
+          "status": "SEPARATED",
+          "budget": 0.17,
+          "active_promotion": "promo--idle--silhouette_budget",
+          "control_attempt": "idle--silhouette_budget--001"
+        },
+        "palette_drift_pass": {
+          "status": "SEPARATED",
+          "budget": 0.14,
+          "active_promotion": "promo--idle--palette_drift_pass",
+          "control_attempt": "idle--palette_drift_pass--001"
+        },
+        "loop_closure_pass": {
+          "status": "UNSEPARATED",
+          "budget": 0.3,
+          "evidence_attempt": "idle--loop_closure_pass--010",
+          "rationale": "loop/silhouette geometric coupling at shared 0.17 adjacent budget"
+        },
+        "min_pair_cohort_pass": {
+          "status": "UNSEPARATED",
+          "budget": 0.07,
+          "evidence_attempt": "idle--min_pair_cohort_pass--016",
+          "rationale": "best near-miss 0.0698 still passes under four-place ceiling quantization"
+        }
+      }
     }
   }
 }
