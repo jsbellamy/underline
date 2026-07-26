@@ -1,27 +1,26 @@
 # Underline
 
-Throwaway testbed for **provider strip animation**: recover a wide logical grid from one
-magenta-keyed render, slice into frames, and gate temporal coherence deterministically.
+Mining game with a **strip-acquisition pipeline** (`pipeline/`): recover a wide
+logical grid from one magenta-keyed provider render, slice into frames, and gate
+temporal coherence deterministically.
 
-Nightglass / SideScape already solve single-subject grid recovery; this repo asks whether
-**multi-frame strips** can be promoted from the same ingest path.
+The **standing corpus** in `prototype/strip-coherence/` (23 provider strips) is
+permanent regression evidence. Gate budgets and separation claims are defined in
+[`docs/strip-acquisition-contract.md`](docs/strip-acquisition-contract.md).
+
+The original prototype question and its answer are recorded in
+[`prototype/strip-coherence/NOTES.md`](prototype/strip-coherence/NOTES.md).
 
 Agents: start at [AGENTS.md](AGENTS.md), then [CONTEXT.md](CONTEXT.md) and
-[docs/strip-acquisition-contract.md](docs/strip-acquisition-contract.md).
+the contract above.
 
-## Prototype
-
-**Question:** After one provider render of an N-frame strip, can recovered logical cells be
-sliced and coherence-gated (baseline row, palette set, adjacent diff, loop closure) such
-that pass/fail is a report you read — not a visual judgement call?
+## Pipeline & evidence suite
 
 ```bash
-npm run prototype:strip
+npm run prototype:strip:corpus    # score inbox/ against manifest
+npm run strip:ingest -- <png> --motion-class <class>  # CLI ingest + gate
+npm run prototype:strip           # interactive TUI
 ```
-
-Drop provider raws in `prototype/strip-coherence/inbox/` and press `[4]` in the TUI.
 
 Dependencies: Python 3, Pillow, NumPy. Grid-recovery primitives are vendored in
 `pipeline/recovery.py` (from Nightglass `acquire.py`; re-vendor upstream changes).
-
-**PROTOTYPE — delete or absorb when answered.** See `prototype/strip-coherence/NOTES.md`.

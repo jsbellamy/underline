@@ -1,32 +1,39 @@
-# Strip coherence prototype (LOGIC)
+# Strip coherence evidence suite
 
-## Question
+Standing regression corpus for the strip-acquisition contract in
+[`docs/strip-acquisition-contract.md`](../../docs/strip-acquisition-contract.md).
 
-Can a **single provider strip render** (N animation frames side-by-side on one logical grid)
-be ingested through the existing Nightglass/SideScape grid-recovery primitives, sliced into
-per-frame cell matrices, and **accepted or rejected by deterministic coherence gates** —
-without cross-generation jitter?
+## What the corpus is
 
-## What this prototype does
+23 provider-strip PNGs in `inbox/` scored against `prompts/manifest.json`.
+Every budget in the contract is derived from manifest-good strips here; gates
+are proved by adversarial mutations and negative controls 07–09.
 
-1. **Recover** one wide logical grid from a magenta-keyed PNG (`recover_strip_cells`).
-2. **Slice** into N frames using a declared layout (`frame_w`, `frame_h`, `frame_count`, `gutter`).
-3. **Report** coherence metrics (`coherence_report`): shape parity, baseline row, palette set,
-   adjacent cell-diff fractions, loop closure.
+Production gate code lives in `pipeline/strip.py`. CLI ingest is
+`pipeline/ingest_strip.py` (`npm run strip:ingest` / `prototype:strip:ingest`).
 
-Synthetic fixtures prove the gates fire on known-good and known-bad strips before any
-provider generation is involved.
+## Adding a sample
 
-## Run
+1. Write a prompt in `prompts/<id>.txt` (follow existing samples).
+2. Generate the strip and drop `<id>.png` into `inbox/`.
+3. Add a manifest entry with `id`, `motion_class`, and `contract_expect`
+   (plus `contract_expect_gates` for expected failures). See
+   `prompts/manifest.json` for the exact fields.
+4. Score: `npm run prototype:strip:corpus`
+
+## Re-deriving budgets
+
+After the corpus changes, run `npm run prototype:strip:derive-budgets` and
+update the contract's measured tables per
+`docs/strip-acquisition-contract.md`.
+
+## Runners
 
 From repo root:
 
 ```bash
 npm run prototype:strip          # interactive TUI
 npm run prototype:strip:smoke    # synthetic pass/fail self-check
+npm run prototype:strip:corpus   # score inbox/ against manifest
+npm run prototype:strip:derive-budgets
 ```
-
-## Verdict
-
-Record the answer in `NOTES.md` when done, then delete this folder or use `pipeline/strip.py`
-as the production gate module.
