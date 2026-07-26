@@ -28,5 +28,5 @@ npm run prototype:strip:smoke    # synthetic pass/fail self-check
 
 ## Verdict
 
-Record the answer in `NOTES.md` when done, then delete this folder or fold `strip.py` into
-a real pipeline module.
+Record the answer in `NOTES.md` when done, then delete this folder or use `pipeline/strip.py`
+as the production gate module.

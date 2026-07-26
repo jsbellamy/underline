@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pathlib
 
-import strip as S
+from pipeline import strip as S
 
 INBOX = pathlib.Path(__file__).resolve().parents[1] / "prototype" / "strip-coherence" / "inbox"
 

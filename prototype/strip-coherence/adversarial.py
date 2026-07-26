@@ -9,15 +9,10 @@ mutations that pass but are not gated — they print as GAP, never as ok.
 from __future__ import annotations
 
 import pathlib
-import sys
+
+from pipeline import strip as S
 
 HERE = pathlib.Path(__file__).resolve().parent
-ROOT = HERE.parents[1]
-for path in (ROOT, HERE):
-    if str(path) not in sys.path:
-        sys.path.insert(0, str(path))
-
-import strip as S  # noqa: E402
 
 HERE = pathlib.Path(__file__).resolve().parent
 INBOX = HERE / "inbox"

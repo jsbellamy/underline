@@ -3,14 +3,14 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "test": "python3 -m pytest -q",
-    "prototype:strip": "python3 prototype/strip-coherence/tui.py",
-    "prototype:strip:smoke": "python3 prototype/strip-coherence/smoke.py",
-    "prototype:strip:inbox": "python3 prototype/strip-coherence/run_inbox.py",
-    "prototype:strip:adversarial": "python3 prototype/strip-coherence/adversarial.py",
-    "prototype:strip:corpus": "python3 prototype/strip-coherence/corpus.py",
-    "prototype:strip:derive-budgets": "python3 prototype/strip-coherence/derive_budgets.py",
-    "prototype:strip:displacement": "python3 prototype/strip-coherence/displacement_probe.py",
-    "prototype:strip:sharpness": "python3 prototype/strip-coherence/alignment_sharpness.py"
+    "test": "PYTHONPATH=. python3 -m pytest -q",
+    "prototype:strip": "PYTHONPATH=. python3 prototype/strip-coherence/tui.py",
+    "prototype:strip:smoke": "PYTHONPATH=. python3 prototype/strip-coherence/smoke.py",
+    "prototype:strip:inbox": "PYTHONPATH=. python3 prototype/strip-coherence/run_inbox.py",
+    "prototype:strip:adversarial": "PYTHONPATH=. python3 prototype/strip-coherence/adversarial.py",
+    "prototype:strip:corpus": "PYTHONPATH=. python3 prototype/strip-coherence/corpus.py",
+    "prototype:strip:derive-budgets": "PYTHONPATH=. python3 prototype/strip-coherence/derive_budgets.py",
+    "prototype:strip:displacement": "PYTHONPATH=. python3 prototype/strip-coherence/displacement_probe.py",
+    "prototype:strip:sharpness": "PYTHONPATH=. python3 prototype/strip-coherence/alignment_sharpness.py"
   }
 }

@@ -17,17 +17,12 @@ from __future__ import annotations
 
 import json
 import pathlib
-import sys
+
+import adversarial
+import corpus
+from pipeline import strip as S
 
 HERE = pathlib.Path(__file__).resolve().parent
-ROOT = HERE.parents[1]
-for path in (ROOT, HERE):
-    if str(path) not in sys.path:
-        sys.path.insert(0, str(path))
-
-import adversarial  # noqa: E402
-import corpus  # noqa: E402
-import strip as S  # noqa: E402
 
 HERE = pathlib.Path(__file__).resolve().parent
 INBOX = HERE / "inbox"
