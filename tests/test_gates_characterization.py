@@ -36,6 +36,8 @@ PINNED = {
     "06-miner-swing": {"pass": True, "worst_sil": 0.565, "loop": 0.550, "drift": 0.179},
     "07-NEG-palette-drift": {"pass": False, "worst_sil": 0.057, "loop": 0.043, "drift": 0.279},
     "08-NEG-identity-drift": {"pass": False, "worst_sil": 0.602, "loop": 0.482, "drift": 0.218},
+    "22-NEG-airborne-identity": {"pass": False, "worst_sil": 0.652, "loop": 0.663, "drift": 0.636},
+    "23-NEG-swing-identity": {"pass": False, "worst_sil": 0.624, "loop": 0.624, "drift": 0.244},
     "10-guard-idle": {"pass": True, "worst_sil": 0.024, "loop": 0.015, "drift": 0.077},
     "11-dwarf-idle": {"pass": True, "worst_sil": 0.108, "loop": 0.000, "drift": 0.115},
     "12-jelly-idle": {"pass": True, "worst_sil": 0.264, "loop": 0.202, "drift": 0.124},
@@ -173,17 +175,29 @@ def test_manifest_has_no_per_sample_grounded() -> None:
 
 def test_negative_controls_trip_expected_gates() -> None:
     cases = {
-        "07-NEG-palette-drift": (["palette_drift_pass"], ["silhouette_budget"]),
-        "08-NEG-identity-drift": (["silhouette_budget"], []),
-        "09-NEG-no-gutter": (["recover"], GATES),
+        "07-NEG-palette-drift": ("idle", ["palette_drift_pass"], ["silhouette_budget"]),
+        "08-NEG-identity-drift": ("idle", ["silhouette_budget"], []),
+        "09-NEG-no-gutter": ("idle", ["recover"], GATES),
+        "22-NEG-airborne-identity": (
+            "airborne",
+            ["min_pair_cohort_pass"],
+            ["silhouette_budget"],
+        ),
+        "23-NEG-swing-identity": (
+            "swing",
+            ["silhouette_budget"],
+            ["min_pair_cohort_pass", "loop_closure_pass"],
+        ),
     }
-    for sample_id, (must_trip, must_not_trip) in cases.items():
+    for sample_id, (motion_class, must_trip, must_not_trip) in cases.items():
         path = INBOX / f"{sample_id}.png"
         if sample_id == "09-NEG-no-gutter":
             with pytest.raises(ValueError, match="clipped"):
-                S.ingest_strip_provider(path, _corpus_layout(), motion_class="idle")
+                S.ingest_strip_provider(path, _corpus_layout(), motion_class=motion_class)
             continue
-        result = S.ingest_strip_provider(path, _corpus_layout(), motion_class="idle")
+        result = S.ingest_strip_provider(
+            path, _corpus_layout(), motion_class=motion_class
+        )
         tripped = [g for g in GATES if result.coherence.get(g) is False]
         for gate in must_trip:
             assert gate in tripped, f"{sample_id} missing {gate}"

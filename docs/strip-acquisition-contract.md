@@ -81,30 +81,27 @@ that falsify the thinnest claims directly (see **Next corpus priority** below).
 Every derived budget must be **strictly less than** the measured value of every
 negative control on the same gate.
 
-**Limitation:** the corpus has only three negative controls, all **miner-subject idle**
-strips (07 palette, 08 identity, 09 recovery). Classes without an adjacent silhouette
-gate (`airborne`) or with a thin margin to 08 (`swing`) are validated **indirectly** —
-a miner identity-drift number on a different motion class. Per-class negatives are
-required before those claims are evidenced.
+**Limitation:** 07/08/09 are **miner-subject idle** strips. Per-class negatives `22` and
+`23` now evidence the airborne min-pair and swing silhouette claims directly (see
+**Per-class negative controls**).
 
-| Gate | 07-NEG-palette-drift | 08-NEG-identity-drift |
-|------|----------------------|------------------------|
-| silhouette (adjacent max-pair) | 0.057 | **0.602** |
-| min-pair cohort | 0.010 | **0.344** |
-| loop | 0.043 | 0.482 |
-| palette drift | **0.279** | 0.218 |
+| Gate | 07-NEG-palette | 08-NEG-identity (idle) | 22-NEG-airborne-identity | 23-NEG-swing-identity |
+|------|----------------|------------------------|----------------------------|-------------------------|
+| silhouette (adjacent max-pair) | 0.057 | **0.602** | 0.652 | **0.624** |
+| min-pair cohort | 0.010 | 0.344 | **0.383** | 0.321 |
+| loop | 0.043 | 0.482 | 0.663 | 0.624 |
+| palette drift | **0.279** | 0.218 | 0.636 | 0.244 |
 
 ### Separation headroom (fragile claims)
 
-| Class | Binding gate | Budget | Control | Margin | Break condition |
-|-------|--------------|--------|---------|--------|-----------------|
-| `swing` | silhouette | **0.59** | 08 @ 0.602 | **0.012** | Fourth good swing with adjacent sil **> 0.582** makes budget ≥ 0.61 → UNSEPARATED |
-| `airborne` | palette drift | **0.23** | 07 @ 0.279 | 0.049 | Another high-drift good flap widens toward 07 |
-| `airborne` | min-pair cohort | **0.29** | 08 @ 0.344 | 0.054 | **Unmeasured** for four different flying creatures — 08 is miner idle |
+| Class | Binding gate | Budget | Control | Margin | Notes |
+|-------|--------------|--------|---------|--------|-------|
+| `swing` | silhouette | **0.59** | 23 @ **0.624** | **0.034** | Was 0.012 vs idle 08; subject-matched negative confirms separation |
+| `airborne` | min-pair cohort | **0.29** | 22 @ **0.383** | **0.093** | Was 0.054 vs idle 08; four flying creatures score well above budget |
+| `airborne` | palette drift | **0.23** | 07 @ 0.279 | 0.049 | 22 also tripped drift (0.636) — palette not tight; cohort gate is the clean catch |
 
-`swing` n=3 adjacent silhouette: 0.565 / 0.492 / 0.359 (06 still worst-good; unchanged
-through both re-derivations). Next class likely to fall over after `airborne` silhouette
-(which is already UNSEPARATED).
+`swing` n=3 adjacent silhouette: 0.565 / 0.492 / 0.359 (06 still worst-good). A fourth
+good swing with adjacent sil **> 0.582** still breaks separation against idle 08.
 
 ## Class budgets
 
@@ -225,26 +222,29 @@ for airborne and symmetric blob_idle holes.
 | 17-wisp-float | airborne | 0.269 | pass |
 | 08-NEG-identity-drift | airborne | 0.344 | **fail** |
 | 08-NEG-identity-drift | idle | 0.344 | fail (redundant with silhouette) |
+| 22-NEG-airborne-identity | airborne | **0.383** | **fail** |
 
-08 is a **miner idle** identity-drift control. Whether four different **flying**
-creatures under a shared palette score above `max_min_pair` 0.29 is unmeasured —
-`22-NEG-airborne-identity` is scaffolded to test that claim.
+22 is the subject-matched control: four different flying creatures under a shared palette
+trip `min_pair_cohort_pass` (0.383 > 0.29). Also tripped `palette_drift_pass` (0.636) —
+palette was not as tight as 08; the cohort gate is the intended catch.
+
+## Per-class negative controls (generated)
+
+| ID | `motion_class` | Tripped gates | Key metrics | vs budget |
+|----|----------------|---------------|-------------|-----------|
+| `22-NEG-airborne-identity` | `airborne` | `min_pair_cohort_pass`, `palette_drift_pass` | min_pair **0.383**, sil 0.652 | > 0.29 ✓ |
+| `23-NEG-swing-identity` | `swing` | `silhouette_budget`, `palette_drift_pass` | sil **0.624**, min_pair 0.321 | > 0.59 ✓ |
+
+Both strips **falsify the separation claim** if their measured gate were at or below the
+budget; neither does. `23` raises the swing silhouette ceiling from 0.602 (idle proxy)
+to 0.624 while keeping 0.034 margin. `22` confirms airborne cohort identity is gated
+with 0.093 margin — wider than the 0.054 idle proxy suggested.
 
 ## Next corpus priority
 
-Generate **per-class negative controls** before more good strips. Same generation cost;
-unlike good strips they can **falsify** a separation claim or raise the control ceiling
-instead of only widening budgets.
-
-| ID | `motion_class` | Intended failure | What it tests |
-|----|----------------|------------------|---------------|
-| `22-NEG-airborne-identity` | `airborne` | `min_pair_cohort_pass` | Four different flying creatures, tight shared palette — airborne cohort gate vs subject-matched incoherence |
-| `23-NEG-swing-identity` | `swing` | `silhouette_budget` | Four different grounded fighters at swing poses, shared palette — thinnest silhouette margin (0.59 vs 08's 0.602) |
-
-Prompts are in `prototype/strip-coherence/prompts/`. Drop PNGs into `inbox/` and score
-with `npm run prototype:strip:corpus`. A per-class negative that scores **below** the
-class budget falsifies the separation claim outright; one that scores above becomes the
-authoritative control for that gate.
+Per-class negatives for the two thinnest claims are **done** (`22`, `23`). Further
+negatives are lower priority than fixing the derivation estimator (monotonic worst-good
+vs fixed controls). Do not add more good strips to strengthen separation.
 
 ## Implementation
 
