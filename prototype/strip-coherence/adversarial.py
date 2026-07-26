@@ -62,7 +62,7 @@ def slide(frames, idx=2, dx=3):
 
 
 def report(name, frames, want_pass):
-    r = S.coherence_split(frames)
+    r = S.coherence_split(frames, motion_class="idle")
     sil = max((row["frac"] for row in r["silhouette_adjacent"]), default=0.0)
     tripped = [
         g for g in ("dimension_parity", "baseline_row_stable", "silhouette_budget",

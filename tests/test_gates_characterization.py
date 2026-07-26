@@ -23,18 +23,18 @@ MANIFEST = (
 )
 TOLERANCE = 0.002
 
-GROUNDED = {
-    s["id"]: s.get("grounded", True) for s in json.loads(MANIFEST.read_text())["samples"]
+MOTION_CLASS = {
+    s["id"]: s["motion_class"] for s in json.loads(MANIFEST.read_text())["samples"]
 }
 
 PINNED = {
     "01-miner-idle": {"pass": True, "worst_sil": 0.095, "loop": 0.147, "drift": 0.073},
-    "02-slime-idle": {"pass": False, "worst_sil": 0.337, "loop": 0.330, "drift": 0.141},
+    "02-slime-idle": {"pass": True, "worst_sil": 0.337, "loop": 0.330, "drift": 0.141},
     "03-torch-flicker": {"pass": True, "worst_sil": 0.160, "loop": 0.130, "drift": 0.145},
-    "04-bat-flap": {"pass": False, "worst_sil": 0.644, "loop": 0.653, "drift": 0.145},
-    "05-miner-walk": {"pass": False, "worst_sil": 0.398, "loop": 0.143, "drift": 0.117},
-    "06-miner-swing": {"pass": False, "worst_sil": 0.565, "loop": 0.550, "drift": 0.179},
-    "07-NEG-palette-drift": {"pass": False, "worst_sil": 0.057, "loop": 0.044, "drift": 0.279},
+    "04-bat-flap": {"pass": True, "worst_sil": 0.644, "loop": 0.653, "drift": 0.145},
+    "05-miner-walk": {"pass": True, "worst_sil": 0.398, "loop": 0.143, "drift": 0.117},
+    "06-miner-swing": {"pass": True, "worst_sil": 0.565, "loop": 0.550, "drift": 0.179},
+    "07-NEG-palette-drift": {"pass": False, "worst_sil": 0.057, "loop": 0.043, "drift": 0.279},
     "08-NEG-identity-drift": {"pass": False, "worst_sil": 0.602, "loop": 0.482, "drift": 0.218},
 }
 
@@ -47,7 +47,7 @@ GATES = (
 )
 
 
-def _corpus_layout(*, grounded: bool = True) -> S.StripLayout:
+def _corpus_layout() -> S.StripLayout:
     return S.StripLayout(
         frame_w=S.DEFAULT_LAYOUT.frame_w,
         frame_h=S.DEFAULT_LAYOUT.frame_h,
@@ -55,7 +55,6 @@ def _corpus_layout(*, grounded: bool = True) -> S.StripLayout:
         gutter=S.DEFAULT_LAYOUT.gutter,
         pitch_px=24,
         margin_cells=0,
-        grounded=grounded,
     )
 
 
@@ -76,7 +75,9 @@ def test_ingest_strip_provider_characterization(sample_id: str) -> None:
     path = INBOX / f"{sample_id}.png"
     assert path.exists(), f"missing inbox fixture: {path}"
 
-    result = S.ingest_strip_provider(path, _corpus_layout(grounded=GROUNDED[sample_id]))
+    result = S.ingest_strip_provider(
+        path, _corpus_layout(), motion_class=MOTION_CLASS[sample_id]
+    )
     want = PINNED[sample_id]
     got_pass, got_sil, got_loop, got_drift = _metrics(result)
 
@@ -86,17 +87,62 @@ def test_ingest_strip_provider_characterization(sample_id: str) -> None:
     assert _close(got_drift, want["drift"]), f"{sample_id} drift {got_drift} != {want['drift']}"
 
 
-def test_bat_flap_trips_silhouette_not_baseline() -> None:
+def test_unknown_motion_class_raises() -> None:
+    frames = [[[(1, 1, 1)]]]
+    with pytest.raises(ValueError, match="unknown motion_class"):
+        S.coherence_split(frames, motion_class="not-a-class")
+
+
+def test_none_silhouette_budget_excluded_from_pass() -> None:
+    budget = S.MOTION_CLASSES["airborne"]
+    assert budget.max_silhouette is None
     path = INBOX / "04-bat-flap.png"
-    assert path.exists(), f"missing inbox fixture: {path}"
-
-    result = S.ingest_strip_provider(path, _corpus_layout(grounded=False))
+    result = S.ingest_strip_provider(path, _corpus_layout(), motion_class="airborne")
     coh = result.coherence
-    tripped = [g for g in GATES if coh.get(g) is False]
+    assert coh.get("silhouette_budget") is None
+    assert result.pass_ is True
 
-    assert "baseline_row_stable" not in tripped
+
+def test_swing_does_not_trip_loop_closure_pass() -> None:
+    path = INBOX / "06-miner-swing.png"
+    result = S.ingest_strip_provider(path, _corpus_layout(), motion_class="swing")
+    coh = result.coherence
+    assert coh.get("loop_closure_pass") is None
+    assert "loop_closure_pass" not in [g for g in GATES if coh.get(g) is False]
+
+
+def test_bat_flap_grounded_false_via_class() -> None:
+    path = INBOX / "04-bat-flap.png"
+    result = S.ingest_strip_provider(path, _corpus_layout(), motion_class="airborne")
+    coh = result.coherence
+    assert coh.get("grounded") is False
     assert coh.get("baseline_row_stable") is None
-    assert "silhouette_budget" in tripped
+
+
+def test_manifest_has_no_per_sample_grounded() -> None:
+    manifest = json.loads(MANIFEST.read_text())
+    for sample in manifest["samples"]:
+        assert "grounded" not in sample, sample["id"]
+
+
+def test_negative_controls_trip_expected_gates() -> None:
+    cases = {
+        "07-NEG-palette-drift": (["palette_drift_pass"], ["silhouette_budget"]),
+        "08-NEG-identity-drift": (["silhouette_budget"], []),
+        "09-NEG-no-gutter": (["recover"], GATES),
+    }
+    for sample_id, (must_trip, must_not_trip) in cases.items():
+        path = INBOX / f"{sample_id}.png"
+        if sample_id == "09-NEG-no-gutter":
+            with pytest.raises(ValueError, match="clipped"):
+                S.ingest_strip_provider(path, _corpus_layout(), motion_class="idle")
+            continue
+        result = S.ingest_strip_provider(path, _corpus_layout(), motion_class="idle")
+        tripped = [g for g in GATES if result.coherence.get(g) is False]
+        for gate in must_trip:
+            assert gate in tripped, f"{sample_id} missing {gate}"
+        for gate in must_not_trip:
+            assert gate not in tripped, f"{sample_id} wrongly tripped {gate}"
 
 
 def test_no_gutter_raises_on_recover() -> None:

@@ -48,7 +48,14 @@ def find_png(sample_id: str) -> pathlib.Path | None:
     return matches[0] if matches else None
 
 
-def evaluate(path: pathlib.Path, *, grounded: bool = True) -> dict:
+def _budget_label(motion_class: str) -> str:
+    budget = S.MOTION_CLASSES[motion_class]
+    sil = "—" if budget.max_silhouette is None else f"{budget.max_silhouette:.2f}"
+    loop = "—" if budget.max_loop is None else f"{budget.max_loop:.2f}"
+    return f"sil≤{sil} loop≤{loop} drift≤{budget.max_drift:.2f}"
+
+
+def evaluate(path: pathlib.Path, *, motion_class: str) -> dict:
     layout = S.StripLayout(
         frame_w=S.DEFAULT_LAYOUT.frame_w,
         frame_h=S.DEFAULT_LAYOUT.frame_h,
@@ -56,10 +63,9 @@ def evaluate(path: pathlib.Path, *, grounded: bool = True) -> dict:
         gutter=S.DEFAULT_LAYOUT.gutter,
         pitch_px=24,
         margin_cells=0,
-        grounded=grounded,
     )
     try:
-        result = S.ingest_strip_provider(path, layout)
+        result = S.ingest_strip_provider(path, layout, motion_class=motion_class)
     except (ValueError, OSError) as error:
         return {"pass": False, "tripped": ["recover"], "note": str(error)[:70]}
 
@@ -88,14 +94,16 @@ def main() -> int:
 
     pending, surprises, scored = [], [], 0
     for s in samples:
+        motion_class = s["motion_class"]
+        budget_note = _budget_label(motion_class)
         path = find_png(s["id"])
         if path is None:
             pending.append(s["id"])
-            print(f"{s['id']:<22} {s['class']:<11} {s['expect']:<5} {DIM}{'--':<5}  "
-                  f"{'pending':<7} no PNG in inbox/{RESET}")
+            print(f"{s['id']:<22} {motion_class:<11} {s['expect']:<5} {DIM}{'--':<5}  "
+                  f"{'pending':<7} no PNG in inbox/  {DIM}{budget_note}{RESET}")
             continue
 
-        r = evaluate(path, grounded=s.get("grounded", True))
+        r = evaluate(path, motion_class=motion_class)
         scored += 1
         got = "PASS" if r["pass"] else "FAIL"
         verdict_agrees = got == s["expect"]
@@ -111,8 +119,8 @@ def main() -> int:
         detail = r["note"]
         if r["tripped"]:
             detail += f"  tripped={r['tripped']}"
-        print(f"{s['id']:<22} {s['class']:<11} {s['expect']:<5} {got:<5}  "
-              f"{color}{'yes' if agrees else 'NO':<7}{RESET} {detail}")
+        print(f"{s['id']:<22} {motion_class:<11} {s['expect']:<5} {got:<5}  "
+              f"{color}{'yes' if agrees else 'NO':<7}{RESET} {detail}  {DIM}{budget_note}{RESET}")
 
     print("-" * 100)
     print(f"scored {scored}/{len(samples)}   pending {len(pending)}   "

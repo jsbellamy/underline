@@ -93,14 +93,14 @@ def _grounded_baseline_fixture() -> list[list[list[Cell]]]:
 
 def test_grounded_anchor_trips_baseline_row_stable() -> None:
     frames = _grounded_baseline_fixture()
-    result = S.coherence_split(frames, grounded=True)
+    result = S.coherence_split(frames, motion_class="idle")
     assert result["baseline_row_stable"] is False
     assert result["pass"] is False
 
 
 def test_ungrounded_excludes_baseline_row_stable() -> None:
     frames = _grounded_baseline_fixture()
-    result = S.coherence_split(frames, grounded=False)
+    result = S.coherence_split(frames, motion_class="airborne")
     assert result["baseline_row_stable"] is None
     assert "baseline_row_stable" not in [
         g for g in ("dimension_parity", "baseline_row_stable", "silhouette_budget",
