@@ -29,10 +29,21 @@ def test_required_mutation_fails_per_class(motion_class: str, mutation: str) -> 
     assert result["pass"] is False
 
 
-def test_airborne_silhouette_mutations_have_no_budget() -> None:
-    """Airborne has no adjacent silhouette gate — hop/mirror/slide are not gated."""
-    frames = adversarial.real_frames("airborne")
-    for mutate in (adversarial.hop, adversarial.wrong_pose, adversarial.slide):
-        result = S.coherence_split(mutate(frames), motion_class="airborne")
-        assert result.get("silhouette_budget") is None
-        assert result.get("min_pair_cohort_pass") is True
+@pytest.mark.parametrize(
+    "motion_class,mutation",
+    [
+        (motion_class, mutation)
+        for motion_class, gaps in adversarial.KNOWN_GAPS.items()
+        for mutation in gaps
+    ],
+)
+def test_known_gap_passes_ungated(motion_class: str, mutation: str) -> None:
+    """Documented holes — mutation passes; do not treat as covered."""
+    frames = adversarial.real_frames(motion_class)
+    mutated = adversarial._MUTATORS[mutation](frames)
+    result = S.coherence_split(mutated, motion_class=motion_class)
+    assert result["pass"] is True
+
+
+def test_airborne_known_gaps_include_single_frame_tamper() -> None:
+    assert adversarial.KNOWN_GAPS["airborne"].keys() == {"hop", "wrong_pose", "slide"}

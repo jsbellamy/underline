@@ -2,10 +2,8 @@
 """PROTOTYPE — does the split gate still REJECT? Mutate each class's good strip.
 
 Each motion class runs the same mutation battery against its own corpus baseline.
-Silhouette mutations must fail wherever that class has a silhouette budget; recolour
-must fail wherever palette drift is gated. Airborne has no adjacent silhouette gate —
-`min_pair_cohort_pass` is the cohort-identity check beside it; hop/mirror/slide are
-not gated on airborne today.
+MUST_FAIL lists mutations the current contract rejects. KNOWN_GAPS lists mutations
+that should be caught but are not gated today — they print as GAP, never as ok.
 """
 
 from __future__ import annotations
@@ -45,7 +43,7 @@ MUTATIONS = (
     ("slide frame 2 (+3 cols)", "slide"),
 )
 
-# Mutations that must fail under each class's current contract.
+# Mutations the current contract must reject.
 MUST_FAIL: dict[str, set[str]] = {
     "idle": {"recolour", "hop", "wrong_pose", "slide"},
     "blob_idle": {"recolour", "hop", "slide"},
@@ -53,6 +51,18 @@ MUST_FAIL: dict[str, set[str]] = {
     "walk": {"recolour", "hop", "wrong_pose", "slide"},
     "swing": {"recolour", "hop", "wrong_pose", "slide"},
     "airborne": {"recolour"},
+}
+
+# Documented holes — mutation passes but nothing gates it. Never print "ok".
+KNOWN_GAPS: dict[str, dict[str, str]] = {
+    "airborne": {
+        "hop": "no per-frame cohort gate; min_pair blind to single-frame tamper",
+        "wrong_pose": "no per-frame cohort gate; min_pair blind to single-frame tamper",
+        "slide": "no per-frame cohort gate; min_pair blind to single-frame tamper",
+    },
+    "blob_idle": {
+        "wrong_pose": "symmetric blob; mirror is a silhouette no-op",
+    },
 }
 
 
@@ -136,48 +146,69 @@ def report(
     motion_class: str,
     name: str,
     frames,
-    want_pass: bool,
     *,
     verbose: bool = True,
-) -> bool:
+) -> str:
+    """Return 'ok', 'MISMATCH', or 'GAP'."""
     result = S.coherence_split(frames, motion_class=motion_class)
     sil = max((row["frac"] for row in result["silhouette_adjacent"]), default=0.0)
     pairwise = result.get("silhouette_pairwise") or {}
     tripped = _tripped(result)
-    ok = result["pass"] == want_pass
+    passed = result["pass"]
+    mutation_key = next((k for label, k in MUTATIONS if label == name), None)
+    if name == "baseline (untouched)":
+        status = "ok" if passed else "MISMATCH"
+        want = "PASS"
+    elif mutation_key in MUST_FAIL.get(motion_class, set()):
+        status = "ok" if not passed else "MISMATCH"
+        want = "FAIL"
+    elif mutation_key in KNOWN_GAPS.get(motion_class, {}):
+        status = "GAP"
+        want = "FAIL (ungated)"
+    else:
+        status = "ok" if passed else "MISMATCH"
+        want = "PASS"
     if verbose:
         print(
-            f"{'ok ' if ok else 'MISMATCH'}  {motion_class:<10} {name:<22} "
-            f"{'PASS' if result['pass'] else 'FAIL'} "
-            f"(want {'PASS' if want_pass else 'FAIL'})  "
+            f"{status:<8}  {motion_class:<10} {name:<22} "
+            f"{'PASS' if passed else 'FAIL'} (want {want})  "
             f"sil_max={sil:.3f} min_pair={pairwise.get('min_pair', 0):.3f} "
             f"drift_max={result['worst_palette_drift']:.3f}"
             + (f"  tripped={tripped}" if tripped else "")
         )
-    return ok
+        if status == "GAP" and mutation_key:
+            print(f"          {KNOWN_GAPS[motion_class][mutation_key]}")
+    return status
 
 
-def run_class(motion_class: str, *, verbose: bool = True) -> bool:
+def run_class(motion_class: str, *, verbose: bool = True) -> tuple[bool, int]:
     frames = real_frames(motion_class)
-    required = MUST_FAIL[motion_class]
-    ok = report(motion_class, "baseline (untouched)", frames, True, verbose=verbose)
+    gaps = 0
+    ok = report(motion_class, "baseline (untouched)", frames, verbose=verbose) == "ok"
     for label, key in MUTATIONS:
-        want_pass = key not in required
-        ok = report(
+        status = report(
             motion_class,
             label,
             _MUTATORS[key](frames),
-            want_pass,
             verbose=verbose,
-        ) and ok
-    return ok
+        )
+        if status == "MISMATCH":
+            ok = False
+        elif status == "GAP":
+            gaps += 1
+    return ok, gaps
 
 
 def main() -> int:
     ok = True
+    total_gaps = 0
     for motion_class in CLASS_BASELINES:
         print(f"\n=== {motion_class} ({CLASS_BASELINES[motion_class]}) ===")
-        ok = run_class(motion_class) and ok
+        class_ok, gaps = run_class(motion_class)
+        ok = class_ok and ok
+        total_gaps += gaps
+    if total_gaps:
+        print(f"\n{total_gaps} KNOWN_GAPS (documented, not green) — see contract airborne section")
     return 0 if ok else 1
 
 

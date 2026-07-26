@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 """PROTOTYPE — derive per-class budgets from scored corpus samples.
 
-Reads manifest.json, ingests every good strip (contract_expect PASS) with a PNG in
-inbox/, and prints worst-good measurements plus ceil+0.02 derived budgets. Negative
-controls are scored for separation checks. Pending samples are listed but skipped.
+Reads manifest.json, ingests every declared-good strip (contract_expect PASS) with a
+PNG in inbox/, and prints worst-good measurements plus ceil+0.02 derived budgets.
+Good-strip membership is a manifest judgment about the art — not whether the strip
+passes under the budgets being calibrated. Negative controls are scored for
+separation checks. Pending samples are listed but skipped.
 """
 
 from __future__ import annotations
@@ -76,7 +78,6 @@ def main() -> int:
     manifest = json.loads(MANIFEST.read_text())
     samples = manifest["samples"]
     by_class: dict[str, list[tuple[str, dict[str, float]]]] = {}
-    near_miss: list[tuple[str, str, dict[str, float]]] = []
     negatives: dict[str, dict[str, float]] = {}
     pending: list[str] = []
 
@@ -93,10 +94,7 @@ def main() -> int:
             continue
         if sample.get("contract_expect") != "PASS":
             continue
-        if metrics["pass"]:
-            by_class.setdefault(sample["motion_class"], []).append((sample["id"], metrics))
-        else:
-            near_miss.append((sample["id"], sample["motion_class"], metrics))
+        by_class.setdefault(sample["motion_class"], []).append((sample["id"], metrics))
 
     for motion_class, names in EXTRA_GOOD.items():
         for name in names:
@@ -104,12 +102,12 @@ def main() -> int:
             if not path.exists():
                 continue
             metrics = _ingest_metrics(path, motion_class)
-            if metrics is None or not metrics["pass"]:
+            if metrics is None:
                 continue
             label = name.removesuffix(".png")
             by_class.setdefault(motion_class, []).append((label, metrics))
 
-    print("Per-class worst-good measurements")
+    print("Per-class worst-good measurements (manifest-good, gate-agnostic)")
     print("-" * 72)
     for motion_class in sorted(by_class):
         rows = by_class[motion_class]
@@ -124,9 +122,10 @@ def main() -> int:
         budget = S.MOTION_CLASSES[motion_class]
         print(f"\n{motion_class}  (n={len(rows)})")
         for sample_id, m in rows:
+            flag = "" if m["pass"] else "  <- fails current budget"
             print(
                 f"  {sample_id:<24} sil={m['sil']:.3f} loop={m['loop']:.3f} "
-                f"drift={m['drift']:.3f} min_pair={m['min_pair']:.3f}"
+                f"drift={m['drift']:.3f} min_pair={m['min_pair']:.3f}{flag}"
             )
         sil_derived = None if budget.max_silhouette is None else _derive(worst["sil"])
         loop_derived = None if budget.max_loop is None else _derive(worst["loop"])
@@ -143,15 +142,6 @@ def main() -> int:
             f"  worst-good min_pair={worst['worst_good_min_pair']:.3f} -> {min_pair_derived}   "
             f"cohort floor={worst['cohort_min_pair_floor']:.3f}  max_pair={worst['max_pair']:.3f}"
         )
-
-    if near_miss:
-        print("\nNear-miss good strips (ingested but contract FAIL — excluded from worst-good)")
-        print("-" * 72)
-        for sample_id, motion_class, m in near_miss:
-            print(
-                f"  {sample_id:<24} [{motion_class}] sil={m['sil']:.3f} loop={m['loop']:.3f} "
-                f"drift={m['drift']:.3f} min_pair={m['min_pair']:.3f}"
-            )
 
     if negatives:
         print("\nNegative controls (separation reference)")

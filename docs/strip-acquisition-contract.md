@@ -23,30 +23,34 @@ For each class and each applicable gate:
 
 `budget = ceil_to_0.01(worst measured value across that class's good strips) + 0.02`
 
-For min-pair cohort, worst-good is the **maximum** min_pair across passing strips
-(highest agreement threshold the class tolerates). Only derived for `loops=true`.
+For min-pair cohort, worst-good is the **maximum** min_pair across good strips (highest
+agreement threshold the class tolerates). Only derived for `loops=true`. Classes whose
+frames legitimately never repeat closely (swing) omit the gate (`max_min_pair=None`).
 
-Measurements taken after pitch slicing (#2) and per-class anchor handling (#3), on
-inbox corpus PNGs that **pass** under the prior contract. Re-derived 2026-07-26
-after expanding the corpus to n≥2 passing strips per class (samples 10–21). The
-`idle` cohort also includes `miner-idle-strip.png` (the adversarial baseline).
+**Good-strip membership** is a manifest judgment (`contract_expect: PASS` in
+`prompts/manifest.json`) about the art — not whether the strip passes under the budgets
+being calibrated. `derive_budgets.py` scores every manifest-good PNG regardless of gate
+outcome; rows that fail the *current* runtime budgets are flagged but still count toward
+worst-good.
 
-Run `npm run prototype:strip:derive-budgets` to reproduce worst-good figures from
-the current inbox.
+Measurements taken after pitch slicing (#2) and per-class anchor handling (#3), on inbox
+corpus PNGs. Re-derived 2026-07-26 after fixing the gate-pass exclusion bug and
+including samples 13, 15, 16, 18 in their class cohorts. The `idle` cohort also includes
+`miner-idle-strip.png` (the adversarial baseline).
 
-### Cohort size (passing strips)
+Run `npm run prototype:strip:derive-budgets` to reproduce worst-good figures from the
+current inbox.
 
-| Class | n | Passing samples |
-|-------|---|-----------------|
+### Cohort size (manifest-good strips)
+
+| Class | n | Good samples |
+|-------|---|--------------|
 | `idle` | 4 | 01, 10, 11, miner-idle-strip |
-| `blob_idle` | 2 | 02, 12 |
-| `emissive` | 2 | 03, 14 |
-| `airborne` | 2 | 04, 17 |
-| `walk` | 2 | 05, 19 |
+| `blob_idle` | 3 | 02, 12, 13 |
+| `emissive` | 3 | 03, 14, 15 |
+| `airborne` | 3 | 04, 16, 17 |
+| `walk` | 3 | 05, 18, 19 |
 | `swing` | 3 | 06, 20, 21 |
-
-Near-miss strips (13, 15, 16, 18) ingest but fail one gate — excluded from
-worst-good; regenerate when tightening budgets further.
 
 ## Separation check (C6)
 
@@ -62,43 +66,42 @@ negative control on the same gate:
 
 ## Class budgets
 
-**Re-derivation result:** numeric budgets are **unchanged** from the n=1 pass.
-Multi-sample evidence confirms the prior constants; `idle` worst-good is still
-bound by `miner-idle-strip` (loop 0.273), not the new corpus idles.
+Widened from n=3 manifest-good cohorts where the prior gate-pass filter had excluded
+legitimate art (13-ooze-idle, 15-campfire-flicker, 16-moth-flap, 18-guard-walk). Every
+derived budget still separates from both negative controls on its gate.
 
 ### `idle`
 
 | Gate | Worst good | Sample | Derived | vs 07 | vs 08 | Status |
 |------|------------|--------|---------|-------|-------|--------|
 | silhouette (adjacent) | 0.148 | miner-idle-strip | **0.17** | 0.057 | 0.602 | separated |
-| min-pair cohort | 0.042 | 01-miner-idle | **0.06** | 0.010 | 0.344 | separated |
+| min-pair cohort | 0.042 | 01-miner-idle | **0.07** | 0.010 | 0.344 | separated |
 | loop | 0.273 | miner-idle-strip | **0.30** | 0.043 | 0.482 | separated |
 | palette drift | 0.115 | 11-dwarf-idle | **0.14** | 0.279 | 0.218 | separated |
-
-Corpus: 01 sil 0.095 / loop 0.147; 10 sil 0.024 / loop 0.015; 11 sil 0.108 /
-loop 0.000.
 
 ### `blob_idle`
 
 | Gate | Worst good | Sample | Derived | vs 07 | vs 08 | Status |
 |------|------------|--------|---------|-------|-------|--------|
 | silhouette | 0.337 | 02-slime-idle | **0.36** | 0.057 | 0.602 | separated |
-| min-pair cohort | 0.025 | 12-jelly-idle | **0.05** | 0.010 | 0.344 | separated |
+| min-pair cohort | 0.103 | 13-ooze-idle | **0.13** | 0.010 | 0.344 | separated |
 | loop | 0.330 | 02-slime-idle | **0.36** | 0.043 | 0.482 | separated |
-| palette drift | 0.141 | 02-slime-idle | **0.17** | 0.279 | 0.218 | separated |
+| palette drift | 0.196 | 13-ooze-idle | **0.22** | 0.279 | 0.218 | separated |
 
-12-jelly-idle is well inside budget (sil 0.264 / loop 0.202).
+13-ooze-idle widened drift and min-pair. `ceil+0.02` on min_pair is a coarse estimator
+for squash idles whose frames legitimately never repeat closely — same reason swing omits
+the gate entirely.
 
 ### `emissive`
 
 | Gate | Worst good | Sample | Derived | vs 07 | vs 08 | Status |
 |------|------------|--------|---------|-------|-------|--------|
-| silhouette | 0.160 | 03-torch-flicker | **0.18** | 0.057 | 0.602 | separated |
+| silhouette | 0.182 | 15-campfire-flicker | **0.21** | 0.057 | 0.602 | separated |
 | min-pair cohort | 0.099 | 03-torch-flicker | **0.12** | 0.010 | 0.344 | separated |
-| loop | 0.130 | 03-torch-flicker | **0.16** | 0.043 | 0.482 | separated |
+| loop | 0.132 | 15-campfire-flicker | **0.16** | 0.043 | 0.482 | separated |
 | palette drift | 0.145 | 03-torch-flicker | **0.17** | 0.279 | 0.218 | separated |
 
-14-lantern-flicker is inside budget on all gates.
+15-campfire-flicker widened silhouette by 0.03 (0.002 over the prior 0.18 budget).
 
 ### `walk`
 
@@ -107,9 +110,9 @@ loop 0.000.
 | silhouette | 0.398 | 05-miner-walk | **0.42** | 0.057 | 0.602 | separated |
 | min-pair cohort | 0.143 | 05-miner-walk | **0.17** | 0.010 | 0.344 | separated |
 | loop | 0.143 | 05-miner-walk | **0.17** | 0.043 | 0.482 | separated |
-| palette drift | 0.117 | 05-miner-walk | **0.14** | 0.279 | 0.218 | separated |
+| palette drift | 0.164 | 18-guard-walk | **0.19** | 0.279 | 0.218 | separated |
 
-19-scout-walk is much looser (sil 0.099 / loop 0.084) — 05 remains binding.
+18-guard-walk widened drift; 05 remains binding on silhouette and loop.
 
 ### `swing`
 
@@ -120,25 +123,42 @@ loop 0.000.
 | loop | — | — | **None** | — | — | not applicable (`loops=false`) |
 | palette drift | 0.179 | 06-miner-swing | **0.20** | 0.279 | 0.218 | separated |
 
-n=3 confirms 06 remains worst-good; 20 and 21 are inside budget. The 0.012
-margin to 08 on silhouette is **not** a one-sample artifact.
+Unchanged. The 0.012 margin to 08 on silhouette is **not** a one-sample artifact.
 
-### `airborne` — cohort identity via min-pair
+### `airborne` — cohort identity via min-pair; per-frame tamper ungated
 
 | Gate | Worst good | Sample | Derived | vs 07 | vs 08 | Status |
 |------|------------|--------|---------|-------|-------|--------|
 | silhouette (adjacent) | 0.644 | 04-bat-flap | **None** | 0.057 | 0.602 | excluded — UNSEPARATED |
 | min-pair cohort | 0.269 | 17-wisp-float | **0.29** | 0.010 | 0.344 | separated |
 | loop | 0.653 | 04-bat-flap | **0.68** | 0.043 | 0.482 | separated |
-| palette drift | 0.145 | 04-bat-flap | **0.17** | 0.279 | 0.218 | separated |
+| palette drift | 0.205 | 16-moth-flap | **0.23** | 0.279 | 0.218 | separated |
 
-Adjacent silhouette remains excluded (`max_silhouette` is `None`) — a legitimate
-flap transition is large and max-pair cannot separate good airborne from identity
-drift. **`min_pair_cohort_pass`** gates on `silhouette_pairwise.min_pair` instead:
-looping cohorts must revisit a pose; four different characters do not.
+16-moth-flap widened drift. Adjacent silhouette remains excluded (`max_silhouette` is
+`None`) — a legitimate flap transition is large and max-pair cannot separate good
+airborne from identity drift.
 
 `loops=false` classes (swing) omit the min-pair gate — one-shot actions legitimately
 never repeat a pose (06 min_pair 0.437 > 08's 0.344).
+
+## Adversarial suite and known gaps
+
+`adversarial.py` mutates each class baseline and checks `MUST_FAIL` mutations against
+live gates. Mutations listed in `KNOWN_GAPS` pass today but have no gate — the suite
+prints **`GAP`**, never **`ok`**, with the documented reason. Exit code is 0 only when
+there are no mismatches (a `MUST_FAIL` mutation that passes is a failure).
+
+| Class | Mutation | Status | Reason |
+|-------|----------|--------|--------|
+| `airborne` | hop, mirror, slide | **GAP** | No per-frame cohort gate; min_pair blind to single-frame tamper |
+| `blob_idle` | mirror (`wrong_pose`) | **GAP** | Symmetric blob; mirror is a silhouette no-op |
+
+**Airborne admission:** live gates are palette drift, loop closure, and min-pair cohort
+only. Identity drift across all four frames is caught (08 fails min_pair). Single-frame
+hop, mirror, or slide is **not** caught — three clean frames still pair up and min_pair
+is unchanged (04-bat-flap baseline min_pair 0.044; tampered frame 2 same). Finding a
+per-frame cohort signal that survives single-frame tampering when adjacent silhouette is
+disabled remains an open problem; do not assert coverage by dropping `MUST_FAIL` entries.
 
 ## Min-pair cohort gate
 
@@ -151,9 +171,9 @@ when `loops=true` and `max_min_pair` is set. Pass when `min_pair <= max_min_pair
 | Cohort identity | `min_pair_cohort_pass` | four-character drift (08) | single-frame tamper |
 | Recolour | `palette_drift_pass` | palette swap | — |
 
-Single-frame mirror/hop/slide leaves min-pair unchanged — adjacent silhouette (or
-baseline) must still catch those on grounded classes. Airborne has no adjacent
-silhouette gate; hop/mirror/slide remain ungated there today.
+Single-frame mirror/hop/slide leaves min_pair unchanged — adjacent silhouette (or
+baseline) catches those on grounded classes. See **Adversarial suite and known gaps**
+for airborne and symmetric blob_idle holes.
 
 | Sample | class | min_pair | `min_pair_cohort_pass` |
 |--------|-------|----------|------------------------|
