@@ -1,0 +1,51 @@
+{
+  "_comment": "Frozen predictions made BEFORE generating, under universal idle-derived budgets. Do not edit — a wrong prediction is a recorded finding. Per-class budgets (#4) refuted 05 and 06; that outcome lives here, not in the contract regression check.",
+  "frozen_at": "2026-07-25",
+  "samples": [
+    {
+      "id": "01-miner-idle",
+      "expect": "PASS",
+      "expect_gates": []
+    },
+    {
+      "id": "02-slime-idle",
+      "expect": "PASS",
+      "expect_gates": []
+    },
+    {
+      "id": "03-torch-flicker",
+      "expect": "PASS",
+      "expect_gates": []
+    },
+    {
+      "id": "04-bat-flap",
+      "expect": "PASS",
+      "expect_gates": []
+    },
+    {
+      "id": "05-miner-walk",
+      "expect": "FAIL",
+      "expect_gates": ["silhouette_budget"]
+    },
+    {
+      "id": "06-miner-swing",
+      "expect": "FAIL",
+      "expect_gates": ["loop_closure_pass"]
+    },
+    {
+      "id": "07-NEG-palette-drift",
+      "expect": "FAIL",
+      "expect_gates": ["palette_drift_pass"]
+    },
+    {
+      "id": "08-NEG-identity-drift",
+      "expect": "FAIL",
+      "expect_gates": ["silhouette_budget"]
+    },
+    {
+      "id": "09-NEG-no-gutter",
+      "expect": "FAIL",
+      "expect_gates": ["recover|slice"]
+    }
+  ]
+}

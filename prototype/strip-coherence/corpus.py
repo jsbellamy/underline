@@ -5,9 +5,11 @@ Drop `<sample-id>.png` into inbox/ for any sample in the manifest, then run this
 Samples with no PNG yet are listed as pending, so the corpus can be filled in over
 several sessions.
 
-The point is not to get all-green. Rows where the verdict differs from the manifest's
-prediction are the findings — especially 05/06, where a FAIL means the budgets are
-per-motion-class rather than universal.
+Exit code is a contract regression check: rows where the verdict differs from
+`contract_expect` are failures. Pre-generation predictions live in
+`prompts/prediction-ledger.json` and are reported for reference only — a ledger
+mismatch that the contract already explains (e.g. 05/06 under per-class budgets)
+is not a failure.
 """
 
 from __future__ import annotations
@@ -23,6 +25,7 @@ import strip as S  # noqa: E402
 HERE = pathlib.Path(__file__).resolve().parent
 INBOX = HERE / "inbox"
 MANIFEST = HERE / "prompts" / "manifest.json"
+PREDICTION_LEDGER = HERE / "prompts" / "prediction-ledger.json"
 
 GATES = (
     "dimension_parity",
@@ -53,6 +56,10 @@ def _budget_label(motion_class: str) -> str:
     sil = "—" if budget.max_silhouette is None else f"{budget.max_silhouette:.2f}"
     loop = "—" if budget.max_loop is None else f"{budget.max_loop:.2f}"
     return f"sil≤{sil} loop≤{loop} drift≤{budget.max_drift:.2f}"
+
+
+def _gates_agree(expect_gates: list[str], tripped: list[str]) -> bool:
+    return all(set(want.split("|")) & set(tripped) for want in expect_gates)
 
 
 def evaluate(path: pathlib.Path, *, motion_class: str) -> dict:
@@ -87,60 +94,77 @@ def evaluate(path: pathlib.Path, *, motion_class: str) -> dict:
 
 def main() -> int:
     manifest = json.loads(MANIFEST.read_text())
+    ledger = {
+        row["id"]: row for row in json.loads(PREDICTION_LEDGER.read_text())["samples"]
+    }
     samples = manifest["samples"]
 
     print(f"{'sample':<22} {'class':<11} {'want':<5} {'got':<5}  {'agrees':<7} detail")
     print("-" * 100)
 
-    pending, surprises, scored = [], [], 0
+    pending, regressions, ledger_mismatches, scored = [], [], [], 0
     for s in samples:
         motion_class = s["motion_class"]
         budget_note = _budget_label(motion_class)
         path = find_png(s["id"])
         if path is None:
             pending.append(s["id"])
-            print(f"{s['id']:<22} {motion_class:<11} {s['expect']:<5} {DIM}{'--':<5}  "
+            print(f"{s['id']:<22} {motion_class:<11} {s['contract_expect']:<5} {DIM}{'--':<5}  "
                   f"{'pending':<7} no PNG in inbox/  {DIM}{budget_note}{RESET}")
             continue
 
         r = evaluate(path, motion_class=motion_class)
         scored += 1
         got = "PASS" if r["pass"] else "FAIL"
-        verdict_agrees = got == s["expect"]
-        # An expectation may name alternatives, e.g. "recover|slice".
-        gates_agree = all(
-            set(want.split("|")) & set(r["tripped"])
-            for want in s["expect_gates"]
+        contract_agrees = got == s["contract_expect"] and _gates_agree(
+            s["contract_expect_gates"], r["tripped"]
         )
-        agrees = verdict_agrees and gates_agree
-        if not agrees:
-            surprises.append((s, r, verdict_agrees, gates_agree))
-        color = GREEN if agrees else YELLOW
+        if not contract_agrees:
+            regressions.append((s, r))
+
+        frozen = ledger.get(s["id"])
+        if frozen is not None:
+            ledger_agrees = got == frozen["expect"] and _gates_agree(
+                frozen["expect_gates"], r["tripped"]
+            )
+            if not ledger_agrees:
+                ledger_mismatches.append((s, r, frozen))
+
+        color = GREEN if contract_agrees else RED
         detail = r["note"]
         if r["tripped"]:
             detail += f"  tripped={r['tripped']}"
-        print(f"{s['id']:<22} {motion_class:<11} {s['expect']:<5} {got:<5}  "
-              f"{color}{'yes' if agrees else 'NO':<7}{RESET} {detail}  {DIM}{budget_note}{RESET}")
+        print(f"{s['id']:<22} {motion_class:<11} {s['contract_expect']:<5} {got:<5}  "
+              f"{color}{'yes' if contract_agrees else 'NO':<7}{RESET} {detail}  {DIM}{budget_note}{RESET}")
 
     print("-" * 100)
     print(f"scored {scored}/{len(samples)}   pending {len(pending)}   "
-          f"surprises {len(surprises)}")
+          f"regressions {len(regressions)}")
 
-    if surprises:
-        print(f"\n{YELLOW}Findings — prediction did not hold:{RESET}")
-        for s, r, v_ok, g_ok in surprises:
-            print(f"  {s['id']}: expected {s['expect']} "
-                  f"{s['expect_gates'] or '(all gates clean)'}, "
+    if regressions:
+        print(f"\n{RED}Contract regressions — verdict differs from manifest:{RESET}")
+        for s, r in regressions:
+            print(f"  {s['id']}: expected {s['contract_expect']} "
+                  f"{s['contract_expect_gates'] or '(all gates clean)'}, "
                   f"got {'PASS' if r['pass'] else 'FAIL'} {r['tripped'] or '(clean)'}")
             print(f"    {DIM}premise: {s['why']}{RESET}")
-        print(f"\n  {DIM}Update the gate design or the premise — not the manifest.{RESET}")
+
+    if ledger_mismatches:
+        print(f"\n{YELLOW}Frozen ledger — pre-generation predictions (informational):{RESET}")
+        for s, r, frozen in ledger_mismatches:
+            print(f"  {s['id']}: predicted {frozen['expect']} "
+                  f"{frozen['expect_gates'] or '(all gates clean)'}, "
+                  f"got {'PASS' if r['pass'] else 'FAIL'} {r['tripped'] or '(clean)'}")
+            print(f"    {DIM}premise: {s['why']}{RESET}")
+        print(f"\n  {DIM}Ledger is frozen in prediction-ledger.json — update contract_expect "
+              f"in manifest.json when the gate design changes.{RESET}")
 
     if pending:
         print(f"\n{DIM}Pending: generate with prompts/<id>.prompt.txt, "
               f"save as inbox/<id>.png{RESET}")
 
-    # Pending samples are not failures; only contradicted predictions are.
-    return 1 if surprises else 0
+    # Pending samples are not failures; only contract regressions are.
+    return 1 if regressions else 0
 
 
 if __name__ == "__main__":

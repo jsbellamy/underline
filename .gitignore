@@ -1,2 +1,6 @@
 prototype/strip-coherence/inbox/
 prototype/strip-coherence/fixtures/*.png
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/

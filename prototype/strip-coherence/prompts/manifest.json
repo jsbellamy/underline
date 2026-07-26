@@ -1,76 +1,76 @@
 {
-  "_comment": "Expected verdict per corpus sample. Drop <id>.png into inbox/ and run `npm run prototype:strip:corpus`. 'expect' is the prediction made BEFORE generating — do not edit it to match results; a wrong prediction is the finding.",
+  "_comment": "Corpus sample registry and contract regression expectations. Drop <id>.png into inbox/ and run `npm run prototype:strip:corpus`. contract_expect is the verdict under current per-class budgets — update only when the contract changes. Pre-generation predictions are frozen in prediction-ledger.json.",
   "samples": [
     {
       "id": "01-miner-idle",
       "class": "idle",
       "motion_class": "idle",
-      "expect": "PASS",
-      "expect_gates": [],
+      "contract_expect": "PASS",
+      "contract_expect_gates": [],
       "why": "baseline sample the 0.28/0.15 budgets were derived from"
     },
     {
       "id": "02-slime-idle",
       "class": "idle",
       "motion_class": "blob_idle",
-      "expect": "PASS",
-      "expect_gates": [],
+      "contract_expect": "PASS",
+      "contract_expect_gates": [],
       "why": "curved limbless silhouette — gate must not be keyed to the miner's shape"
     },
     {
       "id": "03-torch-flicker",
       "class": "emissive",
       "motion_class": "emissive",
-      "expect": "PASS",
-      "expect_gates": [],
+      "contract_expect": "PASS",
+      "contract_expect_gates": [],
       "why": "legitimate color churn; honest stress test of the 0.15 drift budget"
     },
     {
       "id": "04-bat-flap",
       "class": "airborne",
       "motion_class": "airborne",
-      "expect": "PASS",
-      "expect_gates": [],
+      "contract_expect": "PASS",
+      "contract_expect_gates": [],
       "why": "no planted baseline — tests an assumption the idle strip could not"
     },
     {
       "id": "05-miner-walk",
       "class": "locomotion",
       "motion_class": "walk",
-      "expect": "FAIL",
-      "expect_gates": ["silhouette_budget"],
+      "contract_expect": "PASS",
+      "contract_expect_gates": [],
       "why": "a correct walk legitimately exceeds an idle-derived budget; failure here means budgets are per-motion-class"
     },
     {
       "id": "06-miner-swing",
       "class": "one-shot",
       "motion_class": "swing",
-      "expect": "FAIL",
-      "expect_gates": ["loop_closure_pass"],
+      "contract_expect": "PASS",
+      "contract_expect_gates": [],
       "why": "non-looping action; adjacent motion should stay sane while loop closure blows out"
     },
     {
       "id": "07-NEG-palette-drift",
       "class": "negative",
       "motion_class": "idle",
-      "expect": "FAIL",
-      "expect_gates": ["palette_drift_pass"],
+      "contract_expect": "FAIL",
+      "contract_expect_gates": ["palette_drift_pass"],
       "why": "pose held, colors swapped — must trip drift and only drift"
     },
     {
       "id": "08-NEG-identity-drift",
       "class": "negative",
       "motion_class": "idle",
-      "expect": "FAIL",
-      "expect_gates": ["silhouette_budget"],
+      "contract_expect": "FAIL",
+      "contract_expect_gates": ["silhouette_budget"],
       "why": "four different characters under a shared palette — silhouette must be what catches it"
     },
     {
       "id": "09-NEG-no-gutter",
       "class": "negative",
       "motion_class": "idle",
-      "expect": "FAIL",
-      "expect_gates": ["recover|slice"],
+      "contract_expect": "FAIL",
+      "contract_expect_gates": ["recover|slice"],
       "why": "no transparent columns — must fail before the coherence gates, not silently yield one frame. A ground line spanning the canvas trips raw_clipping first (verified synthetically), so either layer is an acceptable catch"
     }
   ]
