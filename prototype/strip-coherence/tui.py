@@ -69,7 +69,10 @@ def _format_gate_section(coh: dict[str, Any], indent: str = "  ") -> list[str]:
         if key not in coh:
             continue
         ok = coh[key]
-        mark = f"{GREEN}yes{RESET}" if ok else f"{RED}no{RESET}"
+        if ok is None:
+            mark = f"{DIM}n/a{RESET}"
+        else:
+            mark = f"{GREEN}yes{RESET}" if ok else f"{RED}no{RESET}"
         lines.append(f"{indent}{key}: {mark}")
     if coh.get("baseline_rows"):
         lines.append(f"{indent}{DIM}baseline_rows:{RESET} {coh['baseline_rows']}")
