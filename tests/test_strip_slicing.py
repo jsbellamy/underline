@@ -104,6 +104,6 @@ def test_ungrounded_excludes_baseline_row_stable() -> None:
     assert result["baseline_row_stable"] is None
     assert "baseline_row_stable" not in [
         g for g in ("dimension_parity", "baseline_row_stable", "silhouette_budget",
-                    "loop_closure_pass", "palette_drift_pass")
+                    "min_pair_cohort_pass", "loop_closure_pass", "palette_drift_pass")
         if result.get(g) is False
     ]

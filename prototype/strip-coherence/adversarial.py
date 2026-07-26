@@ -3,8 +3,9 @@
 
 Each motion class runs the same mutation battery against its own corpus baseline.
 Silhouette mutations must fail wherever that class has a silhouette budget; recolour
-must fail wherever palette drift is gated. Airborne has no silhouette gate — only
-drift mutations are expected to fail there.
+must fail wherever palette drift is gated. Airborne has no adjacent silhouette gate —
+`min_pair_cohort_pass` is the cohort-identity check beside it; hop/mirror/slide are
+not gated on airborne today.
 """
 
 from __future__ import annotations
@@ -32,6 +33,7 @@ GATES = (
     "dimension_parity",
     "baseline_row_stable",
     "silhouette_budget",
+    "min_pair_cohort_pass",
     "loop_closure_pass",
     "palette_drift_pass",
 )

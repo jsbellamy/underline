@@ -36,12 +36,30 @@ PINNED = {
     "06-miner-swing": {"pass": True, "worst_sil": 0.565, "loop": 0.550, "drift": 0.179},
     "07-NEG-palette-drift": {"pass": False, "worst_sil": 0.057, "loop": 0.043, "drift": 0.279},
     "08-NEG-identity-drift": {"pass": False, "worst_sil": 0.602, "loop": 0.482, "drift": 0.218},
+    "10-guard-idle": {"pass": True, "worst_sil": 0.024, "loop": 0.015, "drift": 0.077},
+    "11-dwarf-idle": {"pass": True, "worst_sil": 0.108, "loop": 0.000, "drift": 0.115},
+    "12-jelly-idle": {"pass": True, "worst_sil": 0.264, "loop": 0.202, "drift": 0.124},
+    "14-lantern-flicker": {"pass": True, "worst_sil": 0.115, "loop": 0.099, "drift": 0.073},
+    "17-wisp-float": {"pass": True, "worst_sil": 0.402, "loop": 0.461, "drift": 0.068},
+    "19-scout-walk": {"pass": True, "worst_sil": 0.099, "loop": 0.084, "drift": 0.033},
+    "20-axe-swing": {"pass": True, "worst_sil": 0.492, "loop": 0.522, "drift": 0.174},
+    "21-hammer-swing": {"pass": True, "worst_sil": 0.359, "loop": 0.388, "drift": 0.124},
+}
+
+DERIVED_BUDGETS = {
+    "idle": (0.17, 0.30, 0.14, 0.06),
+    "blob_idle": (0.36, 0.36, 0.17, 0.05),
+    "emissive": (0.18, 0.16, 0.17, 0.12),
+    "walk": (0.42, 0.17, 0.14, 0.17),
+    "swing": (0.59, None, 0.20, None),
+    "airborne": (None, 0.68, 0.17, 0.29),
 }
 
 GATES = (
     "dimension_parity",
     "baseline_row_stable",
     "silhouette_budget",
+    "min_pair_cohort_pass",
     "loop_closure_pass",
     "palette_drift_pass",
 )
@@ -93,14 +111,42 @@ def test_unknown_motion_class_raises() -> None:
         S.coherence_split(frames, motion_class="not-a-class")
 
 
+def test_motion_class_budgets_match_contract() -> None:
+    for motion_class, (sil, loop, drift, min_pair) in DERIVED_BUDGETS.items():
+        budget = S.MOTION_CLASSES[motion_class]
+        assert budget.max_silhouette == sil
+        assert budget.max_loop == loop
+        assert budget.max_drift == drift
+        assert budget.max_min_pair == min_pair
+
+
 def test_none_silhouette_budget_excluded_from_pass() -> None:
     budget = S.MOTION_CLASSES["airborne"]
     assert budget.max_silhouette is None
+    assert budget.max_min_pair == 0.29
     path = INBOX / "04-bat-flap.png"
     result = S.ingest_strip_provider(path, _corpus_layout(), motion_class="airborne")
     coh = result.coherence
     assert coh.get("silhouette_budget") is None
+    assert coh.get("min_pair_cohort_pass") is True
     assert result.pass_ is True
+
+
+def test_airborne_identity_drift_fails_min_pair_cohort() -> None:
+    path = INBOX / "08-NEG-identity-drift.png"
+    result = S.ingest_strip_provider(path, _corpus_layout(), motion_class="airborne")
+    coh = result.coherence
+    assert coh.get("silhouette_budget") is None
+    assert coh.get("min_pair_cohort_pass") is False
+    assert result.pass_ is False
+
+
+def test_swing_excludes_min_pair_cohort_gate() -> None:
+    budget = S.MOTION_CLASSES["swing"]
+    assert budget.max_min_pair is None
+    path = INBOX / "06-miner-swing.png"
+    result = S.ingest_strip_provider(path, _corpus_layout(), motion_class="swing")
+    assert result.coherence.get("min_pair_cohort_pass") is None
 
 
 def test_swing_does_not_trip_loop_closure_pass() -> None:

@@ -63,6 +63,7 @@ def _format_gate_section(coh: dict[str, Any], indent: str = "  ") -> list[str]:
         "dimension_parity",
         "baseline_row_stable",
         "silhouette_budget",
+        "min_pair_cohort_pass",
         "loop_closure_pass",
         "palette_drift_pass",
     ):

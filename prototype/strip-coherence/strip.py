@@ -36,6 +36,7 @@ class ClassBudget:
     max_silhouette: float | None
     max_loop: float | None
     max_drift: float
+    max_min_pair: float | None
     grounded: bool
     loops: bool
 
@@ -46,6 +47,7 @@ MOTION_CLASSES: dict[str, ClassBudget] = {
         max_silhouette=0.17,
         max_loop=0.30,
         max_drift=0.14,
+        max_min_pair=0.06,
         grounded=True,
         loops=True,
     ),
@@ -53,6 +55,7 @@ MOTION_CLASSES: dict[str, ClassBudget] = {
         max_silhouette=0.36,
         max_loop=0.36,
         max_drift=0.17,
+        max_min_pair=0.05,
         grounded=True,
         loops=True,
     ),
@@ -60,6 +63,7 @@ MOTION_CLASSES: dict[str, ClassBudget] = {
         max_silhouette=0.42,
         max_loop=0.17,
         max_drift=0.14,
+        max_min_pair=0.17,
         grounded=True,
         loops=True,
     ),
@@ -67,6 +71,7 @@ MOTION_CLASSES: dict[str, ClassBudget] = {
         max_silhouette=0.59,
         max_loop=None,
         max_drift=0.20,
+        max_min_pair=None,
         grounded=True,
         loops=False,
     ),
@@ -74,6 +79,7 @@ MOTION_CLASSES: dict[str, ClassBudget] = {
         max_silhouette=None,
         max_loop=0.68,
         max_drift=0.17,
+        max_min_pair=0.29,
         grounded=False,
         loops=True,
     ),
@@ -81,6 +87,7 @@ MOTION_CLASSES: dict[str, ClassBudget] = {
         max_silhouette=0.18,
         max_loop=0.16,
         max_drift=0.17,
+        max_min_pair=0.12,
         grounded=True,
         loops=True,
     ),
@@ -387,6 +394,7 @@ def coherence_split(
     max_silhouette_diff = budget.max_silhouette
     max_loop_diff = budget.max_loop
     max_palette_drift = budget.max_drift
+    max_min_pair = budget.max_min_pair
 
     rgbs = collect_opaque_rgbs(frames)
     palette, stats = build_shared_palette(
@@ -449,6 +457,10 @@ def coherence_split(
     if max_silhouette_diff is not None:
         silhouette_budget = all(row["frac"] <= max_silhouette_diff for row in adjacent)
 
+    min_pair_cohort_pass: bool | None = None
+    if budget.loops and max_min_pair is not None:
+        min_pair_cohort_pass = pairwise["min_pair"] <= max_min_pair
+
     gates = {
         "quantize": {**stats, "mode": "quantize-shared", "merge_dist": merge_dist},
         "motion_class": motion_class,
@@ -462,6 +474,7 @@ def coherence_split(
         "silhouette_adjacent_max": adjacent_max,
         "silhouette_pairwise": pairwise,
         "silhouette_budget": silhouette_budget,
+        "min_pair_cohort_pass": min_pair_cohort_pass,
         "loop_closure": loop,
         "loop_closure_pass": loop_closure_pass,
         "palette_drift": drift,
@@ -471,6 +484,7 @@ def coherence_split(
             "silhouette": max_silhouette_diff,
             "loop": max_loop_diff,
             "palette_drift": max_palette_drift,
+            "min_pair": max_min_pair,
         },
     }
     pass_parts: list[bool] = [gates["dimension_parity"]]
@@ -478,6 +492,8 @@ def coherence_split(
         pass_parts.append(gates["baseline_row_stable"])
     if gates["silhouette_budget"] is not None:
         pass_parts.append(gates["silhouette_budget"])
+    if gates["min_pair_cohort_pass"] is not None:
+        pass_parts.append(gates["min_pair_cohort_pass"])
     if gates["loop_closure_pass"] is not None:
         pass_parts.append(gates["loop_closure_pass"])
     pass_parts.append(gates["palette_drift_pass"])

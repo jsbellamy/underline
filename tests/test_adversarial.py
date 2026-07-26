@@ -30,8 +30,9 @@ def test_required_mutation_fails_per_class(motion_class: str, mutation: str) -> 
 
 
 def test_airborne_silhouette_mutations_have_no_budget() -> None:
-    """Airborne has max_silhouette=None — hop/mirror/slide are not gated today."""
+    """Airborne has no adjacent silhouette gate — hop/mirror/slide are not gated."""
     frames = adversarial.real_frames("airborne")
     for mutate in (adversarial.hop, adversarial.wrong_pose, adversarial.slide):
         result = S.coherence_split(mutate(frames), motion_class="airborne")
         assert result.get("silhouette_budget") is None
+        assert result.get("min_pair_cohort_pass") is True

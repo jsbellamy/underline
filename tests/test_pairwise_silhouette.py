@@ -20,20 +20,16 @@ def _corpus_layout() -> S.StripLayout:
     )
 
 
-def test_min_pair_separates_bat_from_identity_drift_under_airborne() -> None:
+def test_min_pair_separates_airborne_cohort_from_identity_drift() -> None:
     layout = _corpus_layout()
-    bat = S.ingest_strip_provider(
-        INBOX / "04-bat-flap.png", layout, motion_class="airborne"
-    )
+    bat = S.ingest_strip_provider(INBOX / "04-bat-flap.png", layout, motion_class="airborne")
+    wisp = S.ingest_strip_provider(INBOX / "17-wisp-float.png", layout, motion_class="airborne")
     drift = S.ingest_strip_provider(
         INBOX / "08-NEG-identity-drift.png", layout, motion_class="airborne"
     )
-    bat_pairwise = bat.coherence["silhouette_pairwise"]
-    drift_pairwise = drift.coherence["silhouette_pairwise"]
-
-    assert bat_pairwise["min_pair"] < 0.10
-    assert drift_pairwise["min_pair"] > 0.30
-    assert drift_pairwise["min_pair"] > bat_pairwise["min_pair"] * 3
+    assert bat.coherence["min_pair_cohort_pass"] is True
+    assert wisp.coherence["min_pair_cohort_pass"] is True
+    assert drift.coherence["min_pair_cohort_pass"] is False
 
 
 def test_max_pair_degenerates_on_bat_vs_identity_drift_under_airborne() -> None:
@@ -62,6 +58,8 @@ def test_min_pair_blind_to_single_frame_tamper() -> None:
     dirty = S.coherence_split(tampered, motion_class="idle")
 
     assert clean["silhouette_pairwise"]["min_pair"] == dirty["silhouette_pairwise"]["min_pair"]
+    assert clean["min_pair_cohort_pass"] == dirty["min_pair_cohort_pass"]
+    assert dirty["silhouette_budget"] is False
 
 
 def adversarial_mirror(frame):

@@ -31,6 +31,7 @@ GATES = (
     "dimension_parity",
     "baseline_row_stable",
     "silhouette_budget",
+    "min_pair_cohort_pass",
     "loop_closure_pass",
     "palette_drift_pass",
 )
@@ -55,7 +56,8 @@ def _budget_label(motion_class: str) -> str:
     budget = S.MOTION_CLASSES[motion_class]
     sil = "—" if budget.max_silhouette is None else f"{budget.max_silhouette:.2f}"
     loop = "—" if budget.max_loop is None else f"{budget.max_loop:.2f}"
-    return f"sil≤{sil} loop≤{loop} drift≤{budget.max_drift:.2f}"
+    min_pair = "—" if budget.max_min_pair is None else f"{budget.max_min_pair:.2f}"
+    return f"sil≤{sil} min_pair≤{min_pair} loop≤{loop} drift≤{budget.max_drift:.2f}"
 
 
 def _gates_agree(expect_gates: list[str], tripped: list[str]) -> bool:

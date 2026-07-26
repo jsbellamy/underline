@@ -20,6 +20,12 @@ import strip as S  # noqa: E402
 
 HERE = pathlib.Path(__file__).resolve().parent
 MANIFEST = HERE / "prompts" / "manifest.json"
+INBOX = HERE / "inbox"
+
+# Good strips outside manifest.json but in the idle derivation cohort (contract C5).
+EXTRA_GOOD: dict[str, list[str]] = {
+    "idle": ["miner-idle-strip.png"],
+}
 
 NEGATIVE_IDS = {
     s["id"]
@@ -57,6 +63,7 @@ def _ingest_metrics(path: pathlib.Path, motion_class: str) -> dict[str, float] |
     drift = coh.get("worst_palette_drift", 0.0)
     pairwise = coh.get("silhouette_pairwise") or {}
     return {
+        "pass": result.pass_,
         "sil": sil,
         "loop": loop,
         "drift": drift,
@@ -69,6 +76,7 @@ def main() -> int:
     manifest = json.loads(MANIFEST.read_text())
     samples = manifest["samples"]
     by_class: dict[str, list[tuple[str, dict[str, float]]]] = {}
+    near_miss: list[tuple[str, str, dict[str, float]]] = []
     negatives: dict[str, dict[str, float]] = {}
     pending: list[str] = []
 
@@ -85,7 +93,21 @@ def main() -> int:
             continue
         if sample.get("contract_expect") != "PASS":
             continue
-        by_class.setdefault(sample["motion_class"], []).append((sample["id"], metrics))
+        if metrics["pass"]:
+            by_class.setdefault(sample["motion_class"], []).append((sample["id"], metrics))
+        else:
+            near_miss.append((sample["id"], sample["motion_class"], metrics))
+
+    for motion_class, names in EXTRA_GOOD.items():
+        for name in names:
+            path = INBOX / name
+            if not path.exists():
+                continue
+            metrics = _ingest_metrics(path, motion_class)
+            if metrics is None or not metrics["pass"]:
+                continue
+            label = name.removesuffix(".png")
+            by_class.setdefault(motion_class, []).append((label, metrics))
 
     print("Per-class worst-good measurements")
     print("-" * 72)
@@ -95,7 +117,8 @@ def main() -> int:
             "sil": max(m["sil"] for _, m in rows),
             "loop": max(m["loop"] for _, m in rows),
             "drift": max(m["drift"] for _, m in rows),
-            "min_pair": min(m["min_pair"] for _, m in rows),
+            "worst_good_min_pair": max(m["min_pair"] for _, m in rows),
+            "cohort_min_pair_floor": min(m["min_pair"] for _, m in rows),
             "max_pair": max(m["max_pair"] for _, m in rows),
         }
         budget = S.MOTION_CLASSES[motion_class]
@@ -108,14 +131,27 @@ def main() -> int:
         sil_derived = None if budget.max_silhouette is None else _derive(worst["sil"])
         loop_derived = None if budget.max_loop is None else _derive(worst["loop"])
         drift_derived = _derive(worst["drift"])
+        min_pair_derived = (
+            None if budget.max_min_pair is None else _derive(worst["worst_good_min_pair"])
+        )
         print(
             f"  worst sil={worst['sil']:.3f} -> {sil_derived}   "
             f"loop={worst['loop']:.3f} -> {loop_derived}   "
             f"drift={worst['drift']:.3f} -> {drift_derived}"
         )
         print(
-            f"  cohort min_pair={worst['min_pair']:.3f}  max_pair={worst['max_pair']:.3f}"
+            f"  worst-good min_pair={worst['worst_good_min_pair']:.3f} -> {min_pair_derived}   "
+            f"cohort floor={worst['cohort_min_pair_floor']:.3f}  max_pair={worst['max_pair']:.3f}"
         )
+
+    if near_miss:
+        print("\nNear-miss good strips (ingested but contract FAIL — excluded from worst-good)")
+        print("-" * 72)
+        for sample_id, motion_class, m in near_miss:
+            print(
+                f"  {sample_id:<24} [{motion_class}] sil={m['sil']:.3f} loop={m['loop']:.3f} "
+                f"drift={m['drift']:.3f} min_pair={m['min_pair']:.3f}"
+            )
 
     if negatives:
         print("\nNegative controls (separation reference)")
