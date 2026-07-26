@@ -5,10 +5,9 @@ which tool or model is driving. Tool-specific files (for example `CLAUDE.md`)
 layer on top of this document; put changes to shared guidance here or in the
 docs it routes to, not in a tool-specific file.
 
-The game is TypeScript; Python is confined to the asset pipeline. The pipeline
-currently borrows grid-recovery primitives from a sibling checkout — a
-**temporary** arrangement that ends when the pipeline is promoted under
-`pipeline/`. No other repo's contract governs Underline.
+The game is TypeScript; Python is confined to the asset pipeline. Grid-recovery
+primitives are vendored in `pipeline/recovery.py` (from Nightglass `acquire.py`);
+re-vendor upstream changes rather than editing the copy in place.
 
 ## Agent skills
 

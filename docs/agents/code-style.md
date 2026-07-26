@@ -24,9 +24,8 @@ below applies to whichever of the two it names.
   cover.
 
 The pipeline currently lives at `prototype/strip-coherence/` and moves under
-`pipeline/` when it is promoted; the rules below already apply to it. It imports
-recovery primitives from a sibling checkout — a **temporary** arrangement that
-ends at promotion, so do not build on it or reference that path from new code.
+`pipeline/` when it is promoted; the rules below already apply to it. Grid-recovery
+primitives are vendored in `pipeline/recovery.py`.
 
 ## Seams
 
