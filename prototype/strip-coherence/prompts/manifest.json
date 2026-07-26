@@ -4,7 +4,7 @@
     {
       "id": "01-miner-idle",
       "class": "idle",
-      "grounded": true,
+      "motion_class": "idle",
       "expect": "PASS",
       "expect_gates": [],
       "why": "baseline sample the 0.28/0.15 budgets were derived from"
@@ -12,7 +12,7 @@
     {
       "id": "02-slime-idle",
       "class": "idle",
-      "grounded": true,
+      "motion_class": "blob_idle",
       "expect": "PASS",
       "expect_gates": [],
       "why": "curved limbless silhouette — gate must not be keyed to the miner's shape"
@@ -20,7 +20,7 @@
     {
       "id": "03-torch-flicker",
       "class": "emissive",
-      "grounded": true,
+      "motion_class": "emissive",
       "expect": "PASS",
       "expect_gates": [],
       "why": "legitimate color churn; honest stress test of the 0.15 drift budget"
@@ -28,7 +28,7 @@
     {
       "id": "04-bat-flap",
       "class": "airborne",
-      "grounded": false,
+      "motion_class": "airborne",
       "expect": "PASS",
       "expect_gates": [],
       "why": "no planted baseline — tests an assumption the idle strip could not"
@@ -36,7 +36,7 @@
     {
       "id": "05-miner-walk",
       "class": "locomotion",
-      "grounded": true,
+      "motion_class": "walk",
       "expect": "FAIL",
       "expect_gates": ["silhouette_budget"],
       "why": "a correct walk legitimately exceeds an idle-derived budget; failure here means budgets are per-motion-class"
@@ -44,7 +44,7 @@
     {
       "id": "06-miner-swing",
       "class": "one-shot",
-      "grounded": true,
+      "motion_class": "swing",
       "expect": "FAIL",
       "expect_gates": ["loop_closure_pass"],
       "why": "non-looping action; adjacent motion should stay sane while loop closure blows out"
@@ -52,7 +52,7 @@
     {
       "id": "07-NEG-palette-drift",
       "class": "negative",
-      "grounded": true,
+      "motion_class": "idle",
       "expect": "FAIL",
       "expect_gates": ["palette_drift_pass"],
       "why": "pose held, colors swapped — must trip drift and only drift"
@@ -60,7 +60,7 @@
     {
       "id": "08-NEG-identity-drift",
       "class": "negative",
-      "grounded": true,
+      "motion_class": "idle",
       "expect": "FAIL",
       "expect_gates": ["silhouette_budget"],
       "why": "four different characters under a shared palette — silhouette must be what catches it"
@@ -68,7 +68,7 @@
     {
       "id": "09-NEG-no-gutter",
       "class": "negative",
-      "grounded": true,
+      "motion_class": "idle",
       "expect": "FAIL",
       "expect_gates": ["recover|slice"],
       "why": "no transparent columns — must fail before the coherence gates, not silently yield one frame. A ground line spanning the canvas trips raw_clipping first (verified synthetically), so either layer is an acceptable catch"

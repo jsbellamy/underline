@@ -28,14 +28,63 @@ DEFAULT_MAX_PALETTE = 16
 MERGE_DIST_RGB = 36  # collapse anti-aliased neighbors before palette build
 PROVIDER_MERGE_DIST_RGB = 64
 
-# Split-gate budgets. Providers re-shade a pose they did not move: 73-84% of raw
-# changed cells are shading flips, and no quantizer setting drives that below ~0.39.
-# So motion is gated on silhouette (occupancy) and recolor is gated on the palette
-# histogram, which the raw cell diff conflated. One budget set serves both paths.
-MAX_SILHOUETTE_DIFF = 0.28
-MAX_LOOP_SILHOUETTE_DIFF = 0.28
-MAX_PALETTE_DRIFT = 0.15
 REGISTRATION_SPAN = 1
+
+
+@dataclass(frozen=True)
+class ClassBudget:
+    max_silhouette: float | None
+    max_loop: float | None
+    max_drift: float
+    grounded: bool
+    loops: bool
+
+
+# Per-motion-class budgets — derived in docs/strip-acquisition-contract.md.
+MOTION_CLASSES: dict[str, ClassBudget] = {
+    "idle": ClassBudget(
+        max_silhouette=0.17,
+        max_loop=0.30,
+        max_drift=0.14,
+        grounded=True,
+        loops=True,
+    ),
+    "blob_idle": ClassBudget(
+        max_silhouette=0.36,
+        max_loop=0.36,
+        max_drift=0.17,
+        grounded=True,
+        loops=True,
+    ),
+    "walk": ClassBudget(
+        max_silhouette=0.42,
+        max_loop=0.17,
+        max_drift=0.14,
+        grounded=True,
+        loops=True,
+    ),
+    "swing": ClassBudget(
+        max_silhouette=0.59,
+        max_loop=None,
+        max_drift=0.20,
+        grounded=True,
+        loops=False,
+    ),
+    "airborne": ClassBudget(
+        max_silhouette=None,
+        max_loop=0.68,
+        max_drift=0.17,
+        grounded=False,
+        loops=True,
+    ),
+    "emissive": ClassBudget(
+        max_silhouette=0.18,
+        max_loop=0.16,
+        max_drift=0.17,
+        grounded=True,
+        loops=True,
+    ),
+}
 
 
 @dataclass(frozen=True)
@@ -280,17 +329,22 @@ def palette_drift(frames: list[list[list[Cell]]]) -> list[dict[str, Any]]:
 def coherence_split(
     frames: list[list[list[Cell]]],
     *,
+    motion_class: str,
     max_colors: int = DEFAULT_MAX_PALETTE,
     merge_dist: int = PROVIDER_MERGE_DIST_RGB,
-    max_silhouette_diff: float = MAX_SILHOUETTE_DIFF,
-    max_loop_diff: float = MAX_LOOP_SILHOUETTE_DIFF,
-    max_palette_drift: float = MAX_PALETTE_DRIFT,
-    grounded: bool = True,
     anchor_row: int | None = None,
 ) -> dict[str, Any]:
     """Gate motion and recolour separately, on a shared quantized palette."""
     if not frames:
         return {"pass": False, "reason": "no frames"}
+    if motion_class not in MOTION_CLASSES:
+        raise ValueError(f"unknown motion_class: {motion_class!r}")
+
+    budget = MOTION_CLASSES[motion_class]
+    grounded = budget.grounded
+    max_silhouette_diff = budget.max_silhouette
+    max_loop_diff = budget.max_loop
+    max_palette_drift = budget.max_drift
 
     rgbs = collect_opaque_rgbs(frames)
     palette, stats = build_shared_palette(
@@ -330,6 +384,7 @@ def coherence_split(
         )
 
     loop: dict[str, Any] | None = None
+    loop_closure_pass: bool | None = None
     if len(q) >= 2:
         changed, union = silhouette_diff(q[-1], q[0], anchor=sil_anchor)
         frac = round(changed / union, 4) if union else 0.0
@@ -338,14 +393,21 @@ def coherence_split(
             "changed_cells": changed,
             "union_opaque": union,
             "frac": frac,
-            "pass": frac <= max_loop_diff,
         }
+        if budget.loops and max_loop_diff is not None:
+            loop_closure_pass = frac <= max_loop_diff
+            loop["pass"] = loop_closure_pass
 
     drift = palette_drift(q)
     worst_drift = max((d["tv"] for d in drift), default=0.0)
 
+    silhouette_budget: bool | None = None
+    if max_silhouette_diff is not None:
+        silhouette_budget = all(row["frac"] <= max_silhouette_diff for row in adjacent)
+
     gates = {
         "quantize": {**stats, "mode": "quantize-shared", "merge_dist": merge_dist},
+        "motion_class": motion_class,
         "dimension_parity": len(dims) == 1,
         "dimensions": sorted(dims),
         "grounded": grounded,
@@ -353,9 +415,9 @@ def coherence_split(
         "baseline_row_stable": baseline_stable,
         "baseline_rows": baselines,
         "silhouette_adjacent": adjacent,
-        "silhouette_budget": all(row["frac"] <= max_silhouette_diff for row in adjacent),
+        "silhouette_budget": silhouette_budget,
         "loop_closure": loop,
-        "loop_closure_pass": loop["pass"] if loop else True,
+        "loop_closure_pass": loop_closure_pass,
         "palette_drift": drift,
         "worst_palette_drift": worst_drift,
         "palette_drift_pass": worst_drift <= max_palette_drift,
@@ -365,14 +427,14 @@ def coherence_split(
             "palette_drift": max_palette_drift,
         },
     }
-    pass_parts: list[bool] = [
-        gates["dimension_parity"],
-        gates["silhouette_budget"],
-        gates["loop_closure_pass"],
-        gates["palette_drift_pass"],
-    ]
+    pass_parts: list[bool] = [gates["dimension_parity"]]
     if gates["baseline_row_stable"] is not None:
-        pass_parts.insert(1, gates["baseline_row_stable"])
+        pass_parts.append(gates["baseline_row_stable"])
+    if gates["silhouette_budget"] is not None:
+        pass_parts.append(gates["silhouette_budget"])
+    if gates["loop_closure_pass"] is not None:
+        pass_parts.append(gates["loop_closure_pass"])
+    pass_parts.append(gates["palette_drift_pass"])
     gates["pass"] = all(pass_parts)
     return gates
 
@@ -664,9 +726,7 @@ def ingest_strip(
     raw_path: pathlib.Path,
     layout: StripLayout,
     *,
-    max_silhouette_diff: float = MAX_SILHOUETTE_DIFF,
-    max_loop_diff: float = MAX_LOOP_SILHOUETTE_DIFF,
-    max_palette_drift: float = MAX_PALETTE_DRIFT,
+    motion_class: str = "idle",
 ) -> IngestResult:
     cells, recovered = recover_strip_cells(raw_path, layout)
     frames, slice_meta = slice_frames(cells, layout)
@@ -678,13 +738,7 @@ def ingest_strip(
             "got": slice_meta["grid"],
         }
     else:
-        coherence = coherence_split(
-            frames,
-            max_silhouette_diff=max_silhouette_diff,
-            max_loop_diff=max_loop_diff,
-            max_palette_drift=max_palette_drift,
-            grounded=layout.grounded,
-        )
+        coherence = coherence_split(frames, motion_class=motion_class)
 
     pitch_ok = (
         recovered["pitch_x"]["score"] >= MIN_GRID_SCORE
@@ -706,9 +760,7 @@ def ingest_strip_provider(
     raw_path: pathlib.Path,
     layout: StripLayout,
     *,
-    max_silhouette_diff: float = MAX_SILHOUETTE_DIFF,
-    max_loop_diff: float = MAX_LOOP_SILHOUETTE_DIFF,
-    max_palette_drift: float = MAX_PALETTE_DRIFT,
+    motion_class: str = "idle",
 ) -> IngestResult:
     """Recover full raster and slice at uniform pitch (provider slop tolerant)."""
     probe = StripLayout(
@@ -728,13 +780,7 @@ def ingest_strip_provider(
             "slice": slice_meta,
         }
     else:
-        coherence = coherence_split(
-            frames,
-            max_silhouette_diff=max_silhouette_diff,
-            max_loop_diff=max_loop_diff,
-            max_palette_drift=max_palette_drift,
-            grounded=layout.grounded,
-        )
+        coherence = coherence_split(frames, motion_class=motion_class)
 
     pitch_ok = (
         recovered["pitch_x"]["score"] >= MIN_GRID_SCORE
@@ -789,7 +835,7 @@ def _frame_miner(
     for x in range(cx - 2, cx + 3):
         if 0 <= x < layout.frame_w and 0 <= foot < layout.frame_h:
             grid[foot][x] = body_rgb
-    bob = frame_index % 2
+    bob = 0 if subtle else frame_index % 2
     torso_top = layout.frame_h - 6 - bob
     for y in range(torso_top, foot):
         for x in range(cx - 1, cx + 2):

@@ -13,12 +13,10 @@ loosened provider budgets (0.55 / 0.45) is retired — it was measuring the wron
 primitives only; its frozen animation contract does not constrain what this gate must
 accept. Underline has no design docs yet, so the motion-class list is an open input.
 
-What is not settled: **budgets are per-motion-class** — 04/05/06 fail as good strips
-under one idle-derived number; slicing to content bboxes loses frame position and
-produces at least one false silhouette failure (02); `baseline_row` re-derives the
-anchor per frame, which misreads a flying subject (04); and the 0.15 drift budget has
-0.005 of headroom on its worst passing sample. Port the split, not the constants.
-See **Next pass**.
+What is not settled: **budgets are per-motion-class** — see
+[`docs/strip-acquisition-contract.md`](../../docs/strip-acquisition-contract.md)
+for the six classes, derived budgets, and separation margins. Port the split, not
+the constants.
 
 ## Session 2: why the provider strip needed loose budgets
 
@@ -285,9 +283,8 @@ class list settled first.
    *declared* frame pitch (position preserved) and both the left-crop confound and
    the search-vs-adversary tradeoff disappear. Anchoring and shift-search are dead
    ends — see session 4.
-2. **Budgets are per-motion-class.** 04/05/06 fail as good strips. Underline must
-   declare a motion class per request and select a budget. Blocked on the class list
-   and on item 1.
+2. **Budgets are per-motion-class.** Settled in issue #4 — see
+   [`docs/strip-acquisition-contract.md`](../../docs/strip-acquisition-contract.md).
 3. **Airborne anchor.** `baseline_row` re-derives the anchor per frame as the lowest
    opaque row; for a flying subject that is the wingtip and it moves. Declare the
    anchor per strip instead.
