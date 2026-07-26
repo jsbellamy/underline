@@ -1,0 +1,54 @@
+{
+  "schema": "gate-control-measurement/0",
+  "raw": "/Users/jakebellamy/VSProjects/games/game_idea/underline-issue-26/gate-controls/raw/swing--silhouette_budget--002.png",
+  "raw_sha256": "6c6d2450c1c91e26e4b3bba2b07657ce04a514cea4e3ee2017532b45a7cdb96a",
+  "scorer_gate_config_sha256": "833bf9b68c5de230",
+  "motion_class": "swing",
+  "target_gate": "silhouette_budget",
+  "applicable_gates": [
+    "dimension_parity",
+    "baseline_row_stable",
+    "silhouette_budget",
+    "palette_drift_pass"
+  ],
+  "structural": {
+    "recovered": true,
+    "pitch_x_score": 0.5738,
+    "pitch_y_score": 0.6364
+  },
+  "gates": {
+    "dimension_parity": {
+      "applicable_because": "structural",
+      "outcome": "pass",
+      "metric": null,
+      "budget": null,
+      "reason": null
+    },
+    "baseline_row_stable": {
+      "applicable_because": "grounded: true",
+      "outcome": "pass",
+      "metric": null,
+      "budget": null,
+      "reason": null
+    },
+    "silhouette_budget": {
+      "applicable_because": "max_silhouette=0.59",
+      "outcome": "fail",
+      "metric": 0.6067,
+      "budget": 0.59,
+      "reason": null
+    },
+    "palette_drift_pass": {
+      "applicable_because": "always",
+      "outcome": "pass",
+      "metric": 0.1691,
+      "budget": 0.2,
+      "reason": null
+    }
+  },
+  "isolation": "ISOLATED",
+  "blockers": [],
+  "caveats": [],
+  "primary_failure": null,
+  "retry_action": null
+}

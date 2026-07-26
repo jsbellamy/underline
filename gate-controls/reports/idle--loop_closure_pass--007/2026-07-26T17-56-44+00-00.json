@@ -1,0 +1,36 @@
+{
+  "schema": "gate-control-measurement/0",
+  "raw": "/Users/jakebellamy/VSProjects/games/game_idea/underline-issue-21/gate-controls/raw/idle--loop_closure_pass--007.png",
+  "raw_sha256": "1005a465f2825a693cba21cd87481f870265353e5f203fa5fb058853ee4108c5",
+  "scorer_gate_config_sha256": "833bf9b68c5de230",
+  "motion_class": "idle",
+  "target_gate": "loop_closure_pass",
+  "applicable_gates": [
+    "dimension_parity",
+    "baseline_row_stable",
+    "silhouette_budget",
+    "loop_closure_pass",
+    "min_pair_cohort_pass",
+    "palette_drift_pass"
+  ],
+  "structural": {
+    "recovered": false,
+    "reason": "idle--loop_closure_pass--007.png: subject clipped by generator at top/bottom/left/right of the 1536x1024 raw canvas"
+  },
+  "gates": {},
+  "isolation": "INDETERMINATE",
+  "blockers": [
+    "idle--loop_closure_pass--007.png: subject clipped by generator at top/bottom/left/right of the 1536x1024 raw canvas"
+  ],
+  "primary_failure": {
+    "code": "STRUCTURAL_RECOVERY_FAILED",
+    "gate": null,
+    "rationale": "idle--loop_closure_pass--007.png: subject clipped by generator at top/bottom/left/right of the 1536x1024 raw canvas"
+  },
+  "retry_action": {
+    "reason_code": "STRUCTURAL_RECOVERY_FAILED",
+    "gate": null,
+    "intent": "restate the grid/gutter constraint in the prompt",
+    "one_prompt_delta": true
+  }
+}

@@ -1,0 +1,11 @@
+TRUE chunky pixel art sprite strip ONLY. Four WALK CYCLE frames of a small fantasy MINER in one horizontal row.
+
+**Canvas:** very wide panoramic strip — aspect ratio roughly 3:1. Each frame **16×24 logical pixels rendered as large crisp square blocks**. No anti-aliasing.
+
+Miner: green tunic, blue helmet, brown pickaxe. **Frames 0, 1, 3 face RIGHT** in a normal walk cycle. **Frame 2 ONLY is horizontally mirrored — facing LEFT** (wrong travel direction). Same palette every frame.
+
+Legs change each frame except frame 2 is the mirror glitch. Miner stays centered — no whole-body slide across the strip.
+
+Two magenta gutter cells between frames. Flat magenta `#ff00ff` background. One row only.
+
+<!-- Gate control: walk / silhouette_budget. One mirrored frame spikes silhouette; other gates stay clean. -->

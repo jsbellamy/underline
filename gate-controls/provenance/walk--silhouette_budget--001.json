@@ -1,0 +1,19 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "walk/silhouette_budget",
+  "attempt_id": "walk--silhouette_budget--001",
+  "generator": "cursor-image-gen",
+  "prompt_text": "TRUE chunky pixel art sprite strip ONLY. Four WALK CYCLE frames of a small fantasy MINER in one horizontal row.\n\n**Canvas:** very wide panoramic strip \u2014 aspect ratio roughly 3:1. Each frame **16\u00d724 logical pixels rendered as large crisp square blocks**. No anti-aliasing.\n\nMiner: green tunic, blue helmet, brown pickaxe. **Frames 0, 1, 3 face RIGHT** in a normal walk cycle. **Frame 2 ONLY is horizontally mirrored \u2014 facing LEFT** (wrong travel direction). Same palette every frame.\n\nLegs change each frame except frame 2 is the mirror glitch. Miner stays centered \u2014 no whole-body slide across the strip.\n\nTwo magenta gutter cells between frames. Flat magenta `#ff00ff` background. One row only.\n\n<!-- Gate control: walk / silhouette_budget. One mirrored frame spikes silhouette; other gates stay clean. -->\n",
+  "prompt_sha256": "9940ff6cef878a93f2eb6c15622caf3557dd760716e325a0c3950edd70d96644",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-26T17:22:58+00:00",
+  "acquiring_agent": "cursor-agent",
+  "repository_commit": "ae4ce7ab64386a2cc1cd48ee6f4b77aa49b1eace",
+  "raw_path": "gate-controls/raw/walk--silhouette_budget--001.png",
+  "raw_sha256": "94a7337e21915fe57f6b9bd96ca2e756919c8629df2f5b1da08cd26e34d7d475",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ]
+}

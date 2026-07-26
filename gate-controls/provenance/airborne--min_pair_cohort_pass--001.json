@@ -1,0 +1,19 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "airborne/min_pair_cohort_pass",
+  "attempt_id": "airborne--min_pair_cohort_pass--001",
+  "generator": "cursor-image-gen",
+  "prompt_text": "TRUE chunky pixel art sprite strip ONLY. Four frames in one horizontal row, each showing a DIFFERENT flying fantasy creature.\n\n**Canvas:** very wide panoramic strip \u2014 aspect ratio roughly 3:1 (much wider than tall). The four frames must fill most of the width.\n\nEach frame on an exact **16\u00d724 logical pixel grid rendered large** \u2014 every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering.\n\n**IMPORTANT \u2014 each frame is a DIFFERENT FLYING CREATURE, not the same one animated.** Frame 0: small bat. Frame 1: moth with wide wings. Frame 2: floating wisp orb. Frame 3: tiny dragon. All **airborne \u2014 floating in the vertical middle, NOT touching the bottom row**.\n\n**CRITICAL \u2014 use ONLY these four colors on every creature, no others:** dark purple `#2d1b4e`, mid purple `#6b4fa0`, light lavender `#c9a0ff`, near-black outline `#1a1028`. Same four hex colors on bat, moth, wisp, and dragon. No green, blue, orange, yellow, or white fills.\n\nBetween each frame: **two full magenta logical cells** of empty gutter (no character pixels in gutter columns).\n\nFlat solid **magenta `#ff00ff`** background everywhere else. Selective 1px dark outline.\n\nDo not add margins, labels, numbers, or extra rows. One row of four frames only.\n\n<!-- Gate control: airborne / min_pair_cohort_pass. Four silhouettes, palette locked to 4 colors. -->\n",
+  "prompt_sha256": "fbb5c7215dd3b5c797daaa04b4c30e5bd976a160749720204544d4512071892f",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-26T17:21:40+00:00",
+  "acquiring_agent": "cursor-agent",
+  "repository_commit": "ae4ce7ab64386a2cc1cd48ee6f4b77aa49b1eace",
+  "raw_path": "gate-controls/raw/airborne--min_pair_cohort_pass--001.png",
+  "raw_sha256": "0419741a8aed34ce253063a6c669f36de219e0cf1dcc5b337971801783a81419",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "idle/loop_closure_pass",
+  "attempt_id": "idle--loop_closure_pass--005",
+  "generator": "cursor-image-gen",
+  "prompt_text": "TRUE chunky pixel art sprite strip ONLY. Four idle frames of a small fantasy MINER in one horizontal row, facing RIGHT.\n\n**Canvas:** very wide panoramic strip \u2014 aspect ratio roughly 3:1. Each frame **16\u00d724 logical pixels rendered as large crisp square blocks**. No anti-aliasing, blur, gradient, or dithering.\n\nMiner: feet planted on the bottom row. **Same miner, same green tunic and blue helmet in every frame.**\n\n**CRITICAL structure (loop broken via f3\u2248f2):**\n- Frame 0: neutral idle standing pose.\n- Frame 1: almost identical to frame 0 (only 1-2 pixels different).\n- Frame 2: **small** arm/torso shift from frame 1 \u2014 neighbor step stays tiny, but frame 2 is noticeably different from frame 0 (~30% silhouette change vs frame 0).\n- Frame 3: **almost identical to frame 2** (only 1-2 pixels different from frame 2).\n\nFrame 3 must NOT match frame 0. Adjacent transitions 0\u21921, 1\u21922, 2\u21923 must each change fewer than 17% of occupied cells.\n\nTwo magenta gutter cells between frames. Flat magenta `#ff00ff` background. One row only.\n\n<!-- Gate control: idle / loop_closure_pass. f3\u2248f2; f2\u2260f0 enough for loop>0.30; adjacent steps <17%. -->\n",
+  "prompt_sha256": "081e08f90d92cb3a3fdc4bacae04a739f0dd1ac08ec6ec133f52a31131291b7a",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-26T17:51:35+00:00",
+  "acquiring_agent": "cursor-agent",
+  "repository_commit": "dbc1246ec1610ccf0cc8cf3be6e99babf92fe389",
+  "raw_path": "gate-controls/raw/idle--loop_closure_pass--005.png",
+  "raw_sha256": "a221b5845c358c32b20847aaad4a0bcaf4aaabd5fb933b9ca5465af70124ddfe",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ]
+}

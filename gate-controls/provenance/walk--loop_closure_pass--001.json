@@ -1,0 +1,19 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "walk/loop_closure_pass",
+  "attempt_id": "walk--loop_closure_pass--001",
+  "generator": "cursor-image-gen",
+  "prompt_text": "TRUE chunky pixel art sprite strip ONLY. Four WALK CYCLE frames of a small fantasy MINER facing RIGHT in one horizontal row.\n\n**Canvas:** very wide panoramic strip \u2014 aspect ratio roughly 3:1. Each frame **16\u00d724 logical pixels rendered as large crisp square blocks**. No anti-aliasing.\n\nMiner: green tunic, blue helmet, brown pickaxe. **Same palette every frame.** Standard walk poses.\n\n**CRITICAL loop structure:**\n- Frame 0: contact pose (right leg forward).\n- Frame 1: almost identical to frame 0 (only 1\u20132 pixels different).\n- Frame 2: small step from frame 1 \u2014 modest leg change.\n- Frame 3: **almost identical to frame 2** (only 1\u20132 pixels different from frame 2).\n\nFrame 3 must NOT match frame 0 (broken loop), but frame 3 must match frame 2 closely.\n\nTwo magenta gutter cells between frames. Flat magenta `#ff00ff` background. One row only.\n\n<!-- Gate control: walk / loop_closure_pass. f3\u2248f2, sequential neighbors small, f3\u2249f0. -->\n",
+  "prompt_sha256": "276b7fbbdbbf96067b59fedd2cd847eb77151651c83b067df8507d84f7384806",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-26T17:22:58+00:00",
+  "acquiring_agent": "cursor-agent",
+  "repository_commit": "ae4ce7ab64386a2cc1cd48ee6f4b77aa49b1eace",
+  "raw_path": "gate-controls/raw/walk--loop_closure_pass--001.png",
+  "raw_sha256": "9a07663a36398317c1a72da104cbfb40f31eeacd90f2e2c3a8f0bab0e8b6652e",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ]
+}

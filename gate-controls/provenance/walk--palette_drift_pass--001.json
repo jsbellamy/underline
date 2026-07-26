@@ -1,0 +1,19 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "walk/palette_drift_pass",
+  "attempt_id": "walk--palette_drift_pass--001",
+  "generator": "cursor-image-gen",
+  "prompt_text": "TRUE chunky pixel art sprite strip ONLY. Four idle frames of a small fantasy MINER in one horizontal row, facing RIGHT.\n\n**Canvas:** very wide panoramic strip \u2014 aspect ratio roughly 3:1 (much wider than tall). The four frames must fill most of the width.\n\nEach frame on an exact **16\u00d724 logical pixel grid rendered large** \u2014 every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering.\n\nMiner: feet planted on the bottom row, subtle breathing idle only \u2014 the **pose barely changes**.\n\n**IMPORTANT \u2014 each frame uses a DIFFERENT COLOR SCHEME.** Frame 0: green tunic, blue helmet. Frame 1: red tunic, yellow helmet. Frame 2: purple tunic, white helmet. Frame 3: orange tunic, black helmet. Same shape, completely different colors each frame.\n\nBetween each frame: **two full magenta logical cells** of empty gutter (no character pixels in gutter columns).\n\nFlat solid **magenta `#ff00ff`** background everywhere else. Selective 1px dark outline.\n\nFrame order left\u2192right: idle_0, idle_1, idle_2, idle_3.\n\nDo not add margins, labels, numbers, or extra rows. One row of four frames only.\n\n<!-- corpus NEGATIVE control. Pose held, colors swapped every frame. Must trip\n     palette_drift_pass and ONLY that gate. If silhouette also trips, the gates are\n     not actually independent. Expect FAIL. -->\n",
+  "prompt_sha256": "1fef296fdafec0725017fc4c5ba300421a1810ea98b9ad404cd551ed33e0dfe7",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-26T17:24:44+00:00",
+  "acquiring_agent": "cursor-agent",
+  "repository_commit": "ae4ce7ab64386a2cc1cd48ee6f4b77aa49b1eace",
+  "raw_path": "gate-controls/raw/walk--palette_drift_pass--001.png",
+  "raw_sha256": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ]
+}
