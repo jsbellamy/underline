@@ -1,0 +1,19 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "swing/silhouette_budget",
+  "attempt_id": "swing--silhouette_budget--001",
+  "generator": "cursor-image-gen",
+  "prompt_text": "TRUE chunky pixel art sprite strip ONLY. Four frames in one horizontal row, each showing a DIFFERENT fantasy fighter at a distinct point in a weapon swing.\n\n**Canvas:** very wide panoramic strip \u2014 aspect ratio roughly 3:1 (much wider than tall). The four frames must fill most of the width.\n\nEach frame on an exact **16\u00d724 logical pixel grid rendered large** \u2014 every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering.\n\n**IMPORTANT \u2014 each frame is a DIFFERENT CHARACTER, not the same one animated.** Frame 0: a stout dwarf miner with pickaxe raised high. Frame 1: a tall thin elf with a bow drawn back. Frame 2: a round wizard mid staff-swing. Frame 3: a small crouching goblin with a dagger thrust forward. All four have **feet planted on the bottom row**. Wildly different silhouettes and proportions; each pose reads as part of a one-shot swing arc.\n\nBetween each frame: **two full magenta logical cells** of empty gutter (no character pixels in gutter columns).\n\nFlat solid **magenta `#ff00ff`** background everywhere else. Selective 1px dark outline. Keep a **shared earthy palette** across all four so palette_drift stays quiet.\n\nDo not add margins, labels, numbers, or extra rows. One row of four frames only.\n\n<!-- corpus NEGATIVE control, swing motion_class. Four different grounded fighters at\n     swing-like poses under a shared palette \u2014 silhouette_budget must catch it. Tests\n     the thinnest separation claim in the contract (budget 0.59 vs idle 08 at 0.602).\n     A per-class negative can falsify or replace that proxy. Expect FAIL. -->\n",
+  "prompt_sha256": "450422062597e543f67b4028092cc1f892063bda95a0c06fc7e0187ae0f33751",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-26T17:29:01+00:00",
+  "acquiring_agent": "cursor-agent",
+  "repository_commit": "ae4ce7ab64386a2cc1cd48ee6f4b77aa49b1eace",
+  "raw_path": "gate-controls/raw/swing--silhouette_budget--001.png",
+  "raw_sha256": "242f63a6fc891c21916a9907833023d0ca103734094eb20453cc89fc396f5607",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ]
+}

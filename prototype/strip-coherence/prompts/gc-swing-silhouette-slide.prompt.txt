@@ -1,0 +1,3 @@
+Corpus-derived gate control from provider strip 06-miner-swing: slide frame 2 (+3 cols) to fail silhouette_budget (0.607 vs 0.59) while other swing gates pass.
+
+<!-- Gate control: swing / silhouette_budget. Provider baseline 06 + targeted slide mutation. -->

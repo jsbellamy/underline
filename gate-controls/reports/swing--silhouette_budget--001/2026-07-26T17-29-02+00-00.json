@@ -1,0 +1,68 @@
+{
+  "schema": "gate-control-measurement/0",
+  "raw": "/Users/jakebellamy/VSProjects/games/game_idea/underline-issue-26/gate-controls/raw/swing--silhouette_budget--001.png",
+  "raw_sha256": "242f63a6fc891c21916a9907833023d0ca103734094eb20453cc89fc396f5607",
+  "scorer_gate_config_sha256": "833bf9b68c5de230",
+  "motion_class": "swing",
+  "target_gate": "silhouette_budget",
+  "applicable_gates": [
+    "dimension_parity",
+    "baseline_row_stable",
+    "silhouette_budget",
+    "palette_drift_pass"
+  ],
+  "structural": {
+    "recovered": true,
+    "pitch_x_score": 0.0691,
+    "pitch_y_score": 0.073
+  },
+  "gates": {
+    "dimension_parity": {
+      "applicable_because": "structural",
+      "outcome": "pass",
+      "metric": null,
+      "budget": null,
+      "reason": null
+    },
+    "baseline_row_stable": {
+      "applicable_because": "grounded: true",
+      "outcome": "pass",
+      "metric": null,
+      "budget": null,
+      "reason": null
+    },
+    "silhouette_budget": {
+      "applicable_because": "max_silhouette=0.59",
+      "outcome": "fail",
+      "metric": 0.6244,
+      "budget": 0.59,
+      "reason": null
+    },
+    "palette_drift_pass": {
+      "applicable_because": "always",
+      "outcome": "fail",
+      "metric": 0.2438,
+      "budget": 0.2,
+      "reason": null
+    }
+  },
+  "isolation": "NOT_ISOLATED",
+  "blockers": [
+    "collateral failure: palette_drift_pass"
+  ],
+  "caveats": [],
+  "primary_failure": {
+    "code": "COLLATERAL_GATE_FAILED",
+    "gate": "palette_drift_pass",
+    "rationale": "palette_drift_pass measured 0.2438 over budget 0.2"
+  },
+  "retry_action": {
+    "reason_code": "COLLATERAL_GATE_FAILED",
+    "gate": "palette_drift_pass",
+    "intent": "hold the collateral dimension fixed",
+    "one_prompt_delta": true,
+    "direction": "decrease",
+    "metric_now": 0.2438,
+    "must_fall_below": 0.2
+  }
+}
