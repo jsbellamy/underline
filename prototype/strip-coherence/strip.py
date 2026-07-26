@@ -46,6 +46,7 @@ class StripLayout:
     gutter: int = 2
     pitch_px: int = 24
     margin_cells: int = 2
+    grounded: bool = True
 
     def strip_width(self) -> int:
         return self.frame_count * self.frame_w + (self.frame_count - 1) * self.gutter
@@ -191,15 +192,18 @@ def _silhouette_diff_at_shift(
     a: list[list[Cell]],
     b: list[list[Cell]],
     dx: int,
+    *,
+    anchor: int | None = None,
 ) -> tuple[int, int]:
-    """Occupancy flips above a's baseline with b shifted by dx columns."""
+    """Occupancy flips above the anchor row with b shifted by dx columns."""
     changed = 0
     union_opaque = 0
-    baseline = baseline_row(a)
-    if baseline is None:
-        baseline = len(a)
+    if anchor is None:
+        anchor = baseline_row(a)
+    if anchor is None:
+        anchor = len(a)
     for y in range(min(len(a), len(b))):
-        if y >= baseline:
+        if y >= anchor:
             continue
         for x in range(len(a[y])):
             a_cell = a[y][x]
@@ -221,18 +225,20 @@ def silhouette_diff(
     b: list[list[Cell]],
     *,
     span: int = REGISTRATION_SPAN,
+    anchor: int | None = None,
 ) -> tuple[int, int]:
-    """Occupancy flips above the planted baseline row — real motion, colour-blind.
+    """Occupancy flips above the anchor row — real motion, colour-blind.
 
-    When span > 0, return the (changed, union_opaque) pair for the x-shift in
-    [-span, +span] that minimises changed / union_opaque. Shifted-out positions
-    read as transparent.
+    When anchor is None, uses baseline_row(a) so existing callers keep today's
+    behaviour. When span > 0, return the (changed, union_opaque) pair for the
+    x-shift in [-span, +span] that minimises changed / union_opaque. Shifted-out
+    positions read as transparent.
     """
     best_changed = 0
     best_union = 0
     best_frac = float("inf")
     for dx in range(-span, span + 1):
-        changed, union = _silhouette_diff_at_shift(a, b, dx)
+        changed, union = _silhouette_diff_at_shift(a, b, dx, anchor=anchor)
         frac = changed / union if union else 0.0
         if frac < best_frac:
             best_frac = frac
@@ -279,6 +285,8 @@ def coherence_split(
     max_silhouette_diff: float = MAX_SILHOUETTE_DIFF,
     max_loop_diff: float = MAX_LOOP_SILHOUETTE_DIFF,
     max_palette_drift: float = MAX_PALETTE_DRIFT,
+    grounded: bool = True,
+    anchor_row: int | None = None,
 ) -> dict[str, Any]:
     """Gate motion and recolour separately, on a shared quantized palette."""
     if not frames:
@@ -300,9 +308,18 @@ def coherence_split(
     dims = {(len(f[0]), len(f)) for f in q}
     baselines = [baseline_row(f) for f in q]
 
+    if grounded:
+        anchor = anchor_row if anchor_row is not None else baselines[0]
+        sil_anchor: int | None = anchor
+        baseline_stable = all(b == anchor for b in baselines)
+    else:
+        anchor = None
+        sil_anchor = len(q[0]) if q else 0
+        baseline_stable = None
+
     adjacent: list[dict[str, Any]] = []
     for i in range(len(q) - 1):
-        changed, union = silhouette_diff(q[i], q[i + 1])
+        changed, union = silhouette_diff(q[i], q[i + 1], anchor=sil_anchor)
         adjacent.append(
             {
                 "pair": [i, i + 1],
@@ -314,7 +331,7 @@ def coherence_split(
 
     loop: dict[str, Any] | None = None
     if len(q) >= 2:
-        changed, union = silhouette_diff(q[-1], q[0])
+        changed, union = silhouette_diff(q[-1], q[0], anchor=sil_anchor)
         frac = round(changed / union, 4) if union else 0.0
         loop = {
             "pair": [len(q) - 1, 0],
@@ -331,7 +348,9 @@ def coherence_split(
         "quantize": {**stats, "mode": "quantize-shared", "merge_dist": merge_dist},
         "dimension_parity": len(dims) == 1,
         "dimensions": sorted(dims),
-        "baseline_row_stable": len(set(baselines)) == 1,
+        "grounded": grounded,
+        "anchor_row": anchor,
+        "baseline_row_stable": baseline_stable,
         "baseline_rows": baselines,
         "silhouette_adjacent": adjacent,
         "silhouette_budget": all(row["frac"] <= max_silhouette_diff for row in adjacent),
@@ -346,15 +365,15 @@ def coherence_split(
             "palette_drift": max_palette_drift,
         },
     }
-    gates["pass"] = all(
-        [
-            gates["dimension_parity"],
-            gates["baseline_row_stable"],
-            gates["silhouette_budget"],
-            gates["loop_closure_pass"],
-            gates["palette_drift_pass"],
-        ]
-    )
+    pass_parts: list[bool] = [
+        gates["dimension_parity"],
+        gates["silhouette_budget"],
+        gates["loop_closure_pass"],
+        gates["palette_drift_pass"],
+    ]
+    if gates["baseline_row_stable"] is not None:
+        pass_parts.insert(1, gates["baseline_row_stable"])
+    gates["pass"] = all(pass_parts)
     return gates
 
 
@@ -664,6 +683,7 @@ def ingest_strip(
             max_silhouette_diff=max_silhouette_diff,
             max_loop_diff=max_loop_diff,
             max_palette_drift=max_palette_drift,
+            grounded=layout.grounded,
         )
 
     pitch_ok = (
@@ -713,6 +733,7 @@ def ingest_strip_provider(
             max_silhouette_diff=max_silhouette_diff,
             max_loop_diff=max_loop_diff,
             max_palette_drift=max_palette_drift,
+            grounded=layout.grounded,
         )
 
     pitch_ok = (

@@ -75,3 +75,35 @@ def test_silhouette_diff_span_one_absorbs_one_column_shift() -> None:
     changed1, union1 = S.silhouette_diff(a, b, span=1)
     assert union1 > 0
     assert changed1 == 0
+
+
+def _grounded_baseline_fixture() -> list[list[list[Cell]]]:
+    """Three frames: frame 1's lowest opaque row sits one row higher than frame 0."""
+    rgb = (80, 80, 80)
+    frames: list[list[list[Cell]]] = []
+    for fi in range(3):
+        grid = _grid(4, 6)
+        foot = 4 if fi != 1 else 5
+        for x in range(4):
+            _mark(grid, x, foot, rgb)
+        _mark(grid, 1, 2, rgb)
+        frames.append(grid)
+    return frames
+
+
+def test_grounded_anchor_trips_baseline_row_stable() -> None:
+    frames = _grounded_baseline_fixture()
+    result = S.coherence_split(frames, grounded=True)
+    assert result["baseline_row_stable"] is False
+    assert result["pass"] is False
+
+
+def test_ungrounded_excludes_baseline_row_stable() -> None:
+    frames = _grounded_baseline_fixture()
+    result = S.coherence_split(frames, grounded=False)
+    assert result["baseline_row_stable"] is None
+    assert "baseline_row_stable" not in [
+        g for g in ("dimension_parity", "baseline_row_stable", "silhouette_budget",
+                    "loop_closure_pass", "palette_drift_pass")
+        if result.get(g) is False
+    ]

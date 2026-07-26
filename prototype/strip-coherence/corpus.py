@@ -48,7 +48,7 @@ def find_png(sample_id: str) -> pathlib.Path | None:
     return matches[0] if matches else None
 
 
-def evaluate(path: pathlib.Path) -> dict:
+def evaluate(path: pathlib.Path, *, grounded: bool = True) -> dict:
     layout = S.StripLayout(
         frame_w=S.DEFAULT_LAYOUT.frame_w,
         frame_h=S.DEFAULT_LAYOUT.frame_h,
@@ -56,6 +56,7 @@ def evaluate(path: pathlib.Path) -> dict:
         gutter=S.DEFAULT_LAYOUT.gutter,
         pitch_px=24,
         margin_cells=0,
+        grounded=grounded,
     )
     try:
         result = S.ingest_strip_provider(path, layout)
@@ -66,7 +67,7 @@ def evaluate(path: pathlib.Path) -> dict:
     if "reason" in coh:
         return {"pass": False, "tripped": ["slice"], "note": coh["reason"][:70]}
 
-    tripped = [g for g in GATES if not coh.get(g, True)]
+    tripped = [g for g in GATES if coh.get(g) is False]
     sil = max((r["frac"] for r in coh.get("silhouette_adjacent", [])), default=0.0)
     loop = (coh.get("loop_closure") or {}).get("frac", 0.0)
 
@@ -94,7 +95,7 @@ def main() -> int:
                   f"{'pending':<7} no PNG in inbox/{RESET}")
             continue
 
-        r = evaluate(path)
+        r = evaluate(path, grounded=s.get("grounded", True))
         scored += 1
         got = "PASS" if r["pass"] else "FAIL"
         verdict_agrees = got == s["expect"]

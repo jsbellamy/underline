@@ -7,33 +7,56 @@ changing slice's PR body rather than silently re-baselined.
 
 from __future__ import annotations
 
+import json
 import pathlib
 
 import pytest
 import strip as S
 
 INBOX = pathlib.Path(__file__).resolve().parents[1] / "prototype" / "strip-coherence" / "inbox"
+MANIFEST = (
+    pathlib.Path(__file__).resolve().parents[1]
+    / "prototype"
+    / "strip-coherence"
+    / "prompts"
+    / "manifest.json"
+)
 TOLERANCE = 0.002
 
-CORPUS_LAYOUT = S.StripLayout(
-    frame_w=S.DEFAULT_LAYOUT.frame_w,
-    frame_h=S.DEFAULT_LAYOUT.frame_h,
-    frame_count=S.DEFAULT_LAYOUT.frame_count,
-    gutter=S.DEFAULT_LAYOUT.gutter,
-    pitch_px=24,
-    margin_cells=0,
-)
+GROUNDED = {
+    s["id"]: s.get("grounded", True) for s in json.loads(MANIFEST.read_text())["samples"]
+}
 
 PINNED = {
     "01-miner-idle": {"pass": True, "worst_sil": 0.095, "loop": 0.147, "drift": 0.073},
     "02-slime-idle": {"pass": False, "worst_sil": 0.337, "loop": 0.330, "drift": 0.141},
     "03-torch-flicker": {"pass": True, "worst_sil": 0.160, "loop": 0.130, "drift": 0.145},
-    "04-bat-flap": {"pass": False, "worst_sil": 0.662, "loop": 0.671, "drift": 0.145},
+    "04-bat-flap": {"pass": False, "worst_sil": 0.644, "loop": 0.653, "drift": 0.145},
     "05-miner-walk": {"pass": False, "worst_sil": 0.398, "loop": 0.143, "drift": 0.117},
     "06-miner-swing": {"pass": False, "worst_sil": 0.565, "loop": 0.550, "drift": 0.179},
     "07-NEG-palette-drift": {"pass": False, "worst_sil": 0.057, "loop": 0.044, "drift": 0.279},
     "08-NEG-identity-drift": {"pass": False, "worst_sil": 0.602, "loop": 0.482, "drift": 0.218},
 }
+
+GATES = (
+    "dimension_parity",
+    "baseline_row_stable",
+    "silhouette_budget",
+    "loop_closure_pass",
+    "palette_drift_pass",
+)
+
+
+def _corpus_layout(*, grounded: bool = True) -> S.StripLayout:
+    return S.StripLayout(
+        frame_w=S.DEFAULT_LAYOUT.frame_w,
+        frame_h=S.DEFAULT_LAYOUT.frame_h,
+        frame_count=S.DEFAULT_LAYOUT.frame_count,
+        gutter=S.DEFAULT_LAYOUT.gutter,
+        pitch_px=24,
+        margin_cells=0,
+        grounded=grounded,
+    )
 
 
 def _metrics(result: S.IngestResult) -> tuple[bool, float, float, float]:
@@ -53,7 +76,7 @@ def test_ingest_strip_provider_characterization(sample_id: str) -> None:
     path = INBOX / f"{sample_id}.png"
     assert path.exists(), f"missing inbox fixture: {path}"
 
-    result = S.ingest_strip_provider(path, CORPUS_LAYOUT)
+    result = S.ingest_strip_provider(path, _corpus_layout(grounded=GROUNDED[sample_id]))
     want = PINNED[sample_id]
     got_pass, got_sil, got_loop, got_drift = _metrics(result)
 
@@ -63,9 +86,22 @@ def test_ingest_strip_provider_characterization(sample_id: str) -> None:
     assert _close(got_drift, want["drift"]), f"{sample_id} drift {got_drift} != {want['drift']}"
 
 
+def test_bat_flap_trips_silhouette_not_baseline() -> None:
+    path = INBOX / "04-bat-flap.png"
+    assert path.exists(), f"missing inbox fixture: {path}"
+
+    result = S.ingest_strip_provider(path, _corpus_layout(grounded=False))
+    coh = result.coherence
+    tripped = [g for g in GATES if coh.get(g) is False]
+
+    assert "baseline_row_stable" not in tripped
+    assert coh.get("baseline_row_stable") is None
+    assert "silhouette_budget" in tripped
+
+
 def test_no_gutter_raises_on_recover() -> None:
     path = INBOX / "09-NEG-no-gutter.png"
     assert path.exists(), f"missing inbox fixture: {path}"
 
     with pytest.raises(ValueError, match="clipped"):
-        S.recover_strip_cells(path, CORPUS_LAYOUT)
+        S.recover_strip_cells(path, _corpus_layout())

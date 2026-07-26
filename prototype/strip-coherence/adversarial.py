@@ -67,7 +67,7 @@ def report(name, frames, want_pass):
     tripped = [
         g for g in ("dimension_parity", "baseline_row_stable", "silhouette_budget",
                     "loop_closure_pass", "palette_drift_pass")
-        if not r[g]
+        if r.get(g) is False
     ]
     ok = r["pass"] == want_pass
     print(f"{'ok ' if ok else 'MISMATCH'}  {name:<22} "
