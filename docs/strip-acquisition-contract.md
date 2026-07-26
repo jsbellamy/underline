@@ -194,31 +194,56 @@ airborne from identity drift.
 `loops=false` classes (swing) omit the min-pair gate — one-shot actions legitimately
 never repeat a pose (06 min_pair 0.437 > 08's 0.344).
 
-## Adversarial suite and known gaps
+## Adversarial suite and strip gaps
 
 `adversarial.py` mutates each class baseline and checks `MUST_FAIL` mutations against
-live gates. Mutations listed in `KNOWN_GAPS` pass today but have no gate yet — the suite
-prints **`GAP`**, never **`ok`**, with the documented reason.
+live gates. **`STRIP_GAPS`** documents per-strip holes (not per-class); the suite prints
+**`GAP`**, never **`ok`**. **`displacement_inapplicable`** strips print an **`N/A`** line —
+never silent `None`.
 
-| Class | Mutation | Status | Reason |
+| Strip | Mutation | Status | Reason |
 |-------|----------|--------|--------|
-| `airborne` | hop, slide | **GAP** | Displacement probe: patchy frame×magnitude coverage — **not promoted** |
+| `04-bat-flap` | hop, slide | **GAP** | `displacement_pass: None` — degenerate alignment minimum (margin 0.0000 at 3→0) |
 
-Mirror (`wrong_pose`) is **out of scope** on `facing: free` classes (`airborne`,
-`blob_idle`, `idle`, `emissive`). On `facing: fixed` classes (`walk`, `swing`),
-silhouette already rejects mirror.
+On **`16-moth-flap`** and **`17-wisp-float`**, hop and slide trip **`displacement_pass`**
+(live gate). Mirror (`wrong_pose`) is **out of scope** on `facing: free` classes. On
+`facing: fixed` classes (`walk`, `swing`), silhouette already rejects mirror.
 
-## Antisymmetric displacement (pre-registered, not promoted)
+## Antisymmetric displacement gate (`displacement_pass`)
 
 A translated frame shows up as an equal-and-opposite pair of best-alignment shifts.
 Legitimate motion does not return (swing's `(+3,+1)` never comes back), so antisymmetry
 separates "frame was moved" from "subject moved."
 
-**Rule (pre-registered):** frame `k` is tampered when in-shift and out-shift are
-approximately opposite — residual `|in+out| ≤ 1` cell (Chebyshev) — with `|in| ≥ 2`.
-`loops=True` classes scan **all frames** including wrap-around; intended for
-**airborne only** when promoted. Grounded classes already catch hop/slide via
-`baseline_row_stable` and `silhouette_budget`; do not add displacement there.
+**Rule:** frame `k` is tampered when in-shift and out-shift are approximately opposite
+(residual `|in+out| ≤ 1` Chebyshev) with `|in| ≥ 2`. `loops=True` scans all frames
+including wrap-around. **Airborne only** — grounded classes already catch hop/slide via
+`baseline_row_stable` and `silhouette_budget`.
+
+### Applicability precondition (`displacement_pass: None`)
+
+Before gating, compute **alignment sharpness** per transition: margin between best and
+next-best **distinct** shift at `DISPLACEMENT_PROBE_SPAN`. If the strip's **minimum
+margin** falls below `min_alignment_sharpness`, report `displacement_pass: None` and
+exclude from pass — same pattern as `max_silhouette: None` on airborne.
+
+| Strip | min margin | worst pair | `displacement_pass` on clean |
+|-------|------------|------------|------------------------------|
+| 04-bat-flap | **0.0000** (tie) | 3→0 | **None** — undecidable |
+| 16-moth-flap | 0.0164 | 1→2 | pass |
+| 17-wisp-float | 0.0171 | 3→0 | pass |
+
+**Threshold derivation (n=3 airborne good, 2026-07-26):**
+
+`min_alignment_sharpness = floor(min applicable margin) − 0.001 = 0.0164 − 0.001 = **0.015**`
+
+Sits in the empty interval between 04's 0.0000 and 16's 0.0164. Inherits the same
+monotonic-widening risk as other budgets — more airborne strips can only push the floor
+toward degeneracy.
+
+**04's holdout is well-posedness, not tuning:** the 3→0 transition has two shifts tied
+at 0.597 — the reported shift is whichever candidate the scan visited first. Antisymmetry
+cannot hold reliably when there is no stable shift to be antisymmetric about.
 
 **Two spans — do not conflate:**
 
@@ -227,39 +252,25 @@ approximately opposite — residual `|in+out| ≤ 1` cell (Chebyshev) — with `
 | `REGISTRATION_SPAN` | ±1 | Silhouette budget — minimise shift to absorb jitter |
 | `DISPLACEMENT_PROBE_SPAN` | ±4 | Displacement evidence — read shift as signal |
 
-**Fixes applied (still not promoted):**
+Run `npm run prototype:strip:displacement` for tamper grids;
+`npm run prototype:strip:sharpness` for corpus-wide sharpness.
 
-1. **Wrap-around** — `loops=True` scans frames `0..n−1` via `(k±1) % n`, not interior only.
-2. **Pair tolerance** — `DISPLACEMENT_PAIR_TOLERANCE = 1` replaces exact negation (wide-scan
-   minima land off-pose at large displacements).
+## Alignment sharpness (general diagnostic)
 
-**Falsification bar:** airborne good strips only, `loops=True`, **0 false positives**
-(3/3 clean as of 2026-07-26). Grounded classes excluded from falsification.
+Sharpness is not displacement-specific. A degenerate alignment minimum means
+`silhouette_diff`'s ±1 registration is also picking an arbitrary shift — silhouette
+numbers on that strip are less determinate than they look.
 
-**Coverage is patchy (~⅓ of frame×magnitude space on 04-bat-flap):**
+| Strip | disp min margin | reg min margin | note |
+|-------|-----------------|----------------|------|
+| 04-bat-flap | 0.0000 | 0.0177 | both degenerate at 3→0 |
+| 06-miner-swing | 0.0015 | **0.0425** | check swing silhouette margin first |
+| 16-moth-flap | 0.0164 | 0.0211 | displacement applicable |
+| 17-wisp-float | 0.0171 | 0.0171 | displacement applicable |
 
-Grid A — tamper index, magnitude 3:
-
-| Strip | f0 | f1 | f2 | f3 |
-|-------|----|----|----|-----|
-| 04-bat-flap | MISS/MISS | MISS/MISS | D/D | MISS/MISS |
-| 16-moth-flap | D/D | D/D | D/D | D/D |
-| 17-wisp-float | D/D | D/D | D/D | D/D |
-
-Grid B — frame 2, varying magnitude:
-
-| Strip | hop2 | hop3 | hop4 | slide2 | slide3 | slide4 |
-|-------|------|------|------|--------|--------|--------|
-| 04-bat-flap | MISS | D | D | D | D | D |
-| 16-moth-flap | MISS | D | D | MISS | D | D |
-| 17-wisp-float | D | D | D | D | D | D |
-
-**Do not promote yet.** Replacing accurate `GAP` with a gate that only works on frame 2
-of some strips is the failure mode we removed from `MUST_FAIL`. Promote when coverage is
-uniform across frame indices, or write the envelope precisely
-("detects displacement ≥3 cells on frame 2") — not "gates hop and slide."
-
-Run `npm run prototype:strip:displacement` to reproduce grids and falsification.
+Does not change airborne `UNSEPARATED` on silhouette — `22` confirmed at 0.652
+independently. Does mean tight margins on any gate should be checked against
+`alignment_sharpness.py` before trusting them.
 
 ## Min-pair cohort gate
 
@@ -270,11 +281,13 @@ when `loops=true` and `max_min_pair` is set. Pass when `min_pair <= max_min_pair
 |------|------|---------|----------|
 | Step motion | `silhouette_budget` (adjacent max-pair) | hop, slide, oversized transitions | identity drift on airborne |
 | Cohort identity | `min_pair_cohort_pass` | four-character drift (08) | single-frame tamper |
+| Frame translation | `displacement_pass` | hop, slide on applicable airborne | strips below sharpness floor; mirror |
 | Recolour | `palette_drift_pass` | palette swap | — |
 
 Single-frame hop/slide on grounded classes is caught by adjacent silhouette (or
-baseline). Airborne hop/slide pending the displacement gate above. Mirror on airborne is
-out of scope until facing is declared. See **Adversarial suite and known gaps**.
+baseline). Airborne hop/slide on applicable strips is caught by **`displacement_pass`**;
+on `04-bat-flap` the gate is **`None`** (degenerate alignment). Mirror on `facing: free`
+classes is out of scope.
 
 | Sample | class | min_pair | `min_pair_cohort_pass` |
 |--------|-------|----------|------------------------|

@@ -33,6 +33,7 @@ GATES = (
     "silhouette_budget",
     "min_pair_cohort_pass",
     "loop_closure_pass",
+    "displacement_pass",
     "palette_drift_pass",
 )
 
@@ -92,10 +93,16 @@ def evaluate(path: pathlib.Path, *, motion_class: str) -> dict:
         f"min_pair={pairwise.get('min_pair', 0):.3f} "
         f"max_pair={pairwise.get('max_pair', 0):.3f}"
     )
+    if coh.get("displacement_inapplicable"):
+        note += "  disp=— (inapplicable)"
+    elif coh.get("displacement_pass") is not None:
+        note += f"  disp={'pass' if coh['displacement_pass'] else 'FAIL'}"
     return {
         "pass": result.pass_,
         "tripped": tripped,
         "note": note,
+        "displacement_inapplicable": coh.get("displacement_inapplicable", False),
+        "displacement_reason": coh.get("displacement_reason"),
     }
 
 
@@ -110,6 +117,7 @@ def main() -> int:
     print("-" * 100)
 
     pending, regressions, ledger_mismatches, scored = [], [], [], 0
+    displacement_inapplicable: list[str] = []
     for s in samples:
         motion_class = s["motion_class"]
         budget_note = _budget_label(motion_class)
@@ -122,6 +130,11 @@ def main() -> int:
 
         r = evaluate(path, motion_class=motion_class)
         scored += 1
+        if r.get("displacement_inapplicable"):
+            displacement_inapplicable.append(s["id"])
+            detail_extra = f"  {YELLOW}disp inapplicable: {r['displacement_reason']}{RESET}"
+        else:
+            detail_extra = ""
         got = "PASS" if r["pass"] else "FAIL"
         contract_agrees = got == s["contract_expect"] and _gates_agree(
             s["contract_expect_gates"], r["tripped"]
@@ -142,11 +155,17 @@ def main() -> int:
         if r["tripped"]:
             detail += f"  tripped={r['tripped']}"
         print(f"{s['id']:<22} {motion_class:<11} {s['contract_expect']:<5} {got:<5}  "
-              f"{color}{'yes' if contract_agrees else 'NO':<7}{RESET} {detail}  {DIM}{budget_note}{RESET}")
+              f"{color}{'yes' if contract_agrees else 'NO':<7}{RESET} {detail}{detail_extra}  "
+              f"{DIM}{budget_note}{RESET}")
 
     print("-" * 100)
     print(f"scored {scored}/{len(samples)}   pending {len(pending)}   "
           f"regressions {len(regressions)}")
+    if displacement_inapplicable:
+        print(
+            f"{YELLOW}{len(displacement_inapplicable)} strip(s) displacement inapplicable "
+            f"(degenerate alignment): {', '.join(displacement_inapplicable)}{RESET}"
+        )
 
     if regressions:
         print(f"\n{RED}Contract regressions — verdict differs from manifest:{RESET}")

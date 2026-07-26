@@ -2,8 +2,8 @@
 """PROTOTYPE — does the split gate still REJECT? Mutate each class's good strip.
 
 Each motion class runs the same mutation battery against its own corpus baseline.
-MUST_FAIL lists mutations the current contract rejects. KNOWN_GAPS lists mutations
-that should be caught but are not gated today — they print as GAP, never as ok.
+MUST_FAIL lists mutations the current contract rejects. STRIP_GAPS / KNOWN_GAPS list
+mutations that pass but are not gated — they print as GAP, never as ok.
 """
 
 from __future__ import annotations
@@ -33,6 +33,7 @@ GATES = (
     "silhouette_budget",
     "min_pair_cohort_pass",
     "loop_closure_pass",
+    "displacement_pass",
     "palette_drift_pass",
 )
 
@@ -43,7 +44,6 @@ MUTATIONS = (
     ("slide frame 2 (+3 cols)", "slide"),
 )
 
-# Mutations the current contract must reject.
 MUST_FAIL: dict[str, set[str]] = {
     "idle": {"recolour", "hop", "wrong_pose", "slide"},
     "blob_idle": {"recolour", "hop", "slide"},
@@ -53,13 +53,21 @@ MUST_FAIL: dict[str, set[str]] = {
     "airborne": {"recolour"},
 }
 
-# Documented holes — mutation passes but nothing gates it. Never print "ok".
-KNOWN_GAPS: dict[str, dict[str, str]] = {
-    "airborne": {
-        "hop": "displacement probe: patchy frame×magnitude coverage — not promoted",
-        "slide": "displacement probe: patchy frame×magnitude coverage — not promoted",
+# Per-strip holes — displacement undecidable or otherwise ungated on this PNG.
+STRIP_GAPS: dict[str, dict[str, str]] = {
+    "04-bat-flap": {
+        "hop": (
+            "degenerate alignment minimum (margin 0.0000 at 3→0); "
+            "displacement undecidable"
+        ),
+        "slide": (
+            "degenerate alignment minimum (margin 0.0000 at 3→0); "
+            "displacement undecidable"
+        ),
     },
 }
+
+KNOWN_GAPS: dict[str, dict[str, str]] = {}
 
 
 def _corpus_layout() -> S.StripLayout:
@@ -72,6 +80,21 @@ def _corpus_layout() -> S.StripLayout:
         pitch_px=layout.pitch_px,
         margin_cells=0,
     )
+
+
+def _baseline_strip_id(motion_class: str) -> str:
+    return CLASS_BASELINES[motion_class].removesuffix(".png")
+
+
+def _gap_reason(motion_class: str, mutation_key: str | None) -> str | None:
+    if mutation_key is None:
+        return None
+    strip_id = _baseline_strip_id(motion_class)
+    if mutation_key in STRIP_GAPS.get(strip_id, {}):
+        return STRIP_GAPS[strip_id][mutation_key]
+    if mutation_key in KNOWN_GAPS.get(motion_class, {}):
+        return KNOWN_GAPS[motion_class][mutation_key]
+    return None
 
 
 def _resolve_baseline(motion_class: str) -> pathlib.Path:
@@ -152,34 +175,67 @@ def report(
     tripped = _tripped(result)
     passed = result["pass"]
     mutation_key = next((k for label, k in MUTATIONS if label == name), None)
+    gap_reason = _gap_reason(motion_class, mutation_key)
+
     if name == "baseline (untouched)":
         status = "ok" if passed else "MISMATCH"
         want = "PASS"
     elif mutation_key in MUST_FAIL.get(motion_class, set()):
         status = "ok" if not passed else "MISMATCH"
         want = "FAIL"
-    elif mutation_key in KNOWN_GAPS.get(motion_class, {}):
+    elif gap_reason:
         status = "GAP"
         want = "FAIL (ungated)"
+    elif (
+        mutation_key in ("hop", "slide")
+        and motion_class == "airborne"
+        and result.get("displacement_pass") is False
+    ):
+        status = "ok"
+        want = "FAIL"
+    elif (
+        mutation_key in ("hop", "slide")
+        and motion_class == "airborne"
+        and result.get("displacement_pass") is None
+    ):
+        status = "GAP"
+        want = "FAIL (inapplicable)"
     else:
         status = "ok" if passed else "MISMATCH"
         want = "PASS"
+
     if verbose:
+        disp = result.get("displacement_pass")
+        disp_note = ""
+        if result.get("displacement_inapplicable"):
+            disp_note = "  disp=—"
+        elif disp is not None:
+            disp_note = f"  disp={'pass' if disp else 'FAIL'}"
         print(
             f"{status:<8}  {motion_class:<10} {name:<22} "
             f"{'PASS' if passed else 'FAIL'} (want {want})  "
             f"sil_max={sil:.3f} min_pair={pairwise.get('min_pair', 0):.3f} "
-            f"drift_max={result['worst_palette_drift']:.3f}"
+            f"drift_max={result['worst_palette_drift']:.3f}{disp_note}"
             + (f"  tripped={tripped}" if tripped else "")
         )
-        if status == "GAP" and mutation_key:
-            print(f"          {KNOWN_GAPS[motion_class][mutation_key]}")
+        if status == "GAP" and gap_reason:
+            print(f"          {gap_reason}")
+        elif status == "GAP" and result.get("displacement_reason"):
+            print(f"          {result['displacement_reason']}")
     return status
 
 
-def run_class(motion_class: str, *, verbose: bool = True) -> tuple[bool, int]:
+def run_class(motion_class: str, *, verbose: bool = True) -> tuple[bool, int, int]:
     frames = real_frames(motion_class)
     gaps = 0
+    inapplicable = 0
+    baseline_coh = S.coherence_split(frames, motion_class=motion_class)
+    if baseline_coh.get("displacement_inapplicable") and verbose:
+        print(
+            f"N/A       {motion_class:<10} displacement inapplicable — "
+            f"{baseline_coh['displacement_reason']}"
+        )
+        inapplicable = 1
     ok = report(motion_class, "baseline (untouched)", frames, verbose=verbose) == "ok"
     for label, key in MUTATIONS:
         status = report(
@@ -192,19 +248,26 @@ def run_class(motion_class: str, *, verbose: bool = True) -> tuple[bool, int]:
             ok = False
         elif status == "GAP":
             gaps += 1
-    return ok, gaps
+    return ok, gaps, inapplicable
 
 
 def main() -> int:
     ok = True
     total_gaps = 0
+    total_inapplicable = 0
     for motion_class in CLASS_BASELINES:
         print(f"\n=== {motion_class} ({CLASS_BASELINES[motion_class]}) ===")
-        class_ok, gaps = run_class(motion_class)
+        class_ok, gaps, inapplicable = run_class(motion_class)
         ok = class_ok and ok
         total_gaps += gaps
+        total_inapplicable += inapplicable
     if total_gaps:
-        print(f"\n{total_gaps} KNOWN_GAPS (documented, not green) — see contract airborne section")
+        print(f"\n{total_gaps} GAPS (documented, not green)")
+    if total_inapplicable:
+        print(
+            f"{total_inapplicable} strip(s) displacement inapplicable "
+            f"(degenerate alignment)"
+        )
     return 0 if ok else 1
 
 

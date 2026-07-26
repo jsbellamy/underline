@@ -34,6 +34,8 @@ DISPLACEMENT_PROBE_SPAN = 4
 DISPLACEMENT_MIN_MAGNITUDE = 2
 # Residual |in+out| tolerance (Chebyshev) — exact pairing is too brittle at wide scan.
 DISPLACEMENT_PAIR_TOLERANCE = 1
+# Derived 2026-07-26 — floor(min applicable airborne margin 0.0164) − 0.001.
+MIN_ALIGNMENT_SHARPNESS_AIRBORNE = 0.015
 
 Facing = Literal["fixed", "free"]
 
@@ -47,6 +49,7 @@ class ClassBudget:
     grounded: bool
     loops: bool
     facing: Facing
+    min_alignment_sharpness: float | None = None
 
 
 # Per-motion-class budgets — derived in docs/strip-acquisition-contract.md.
@@ -95,6 +98,7 @@ MOTION_CLASSES: dict[str, ClassBudget] = {
         grounded=False,
         loops=True,
         facing="free",
+        min_alignment_sharpness=MIN_ALIGNMENT_SHARPNESS_AIRBORNE,
     ),
     "emissive": ClassBudget(
         max_silhouette=0.21,
@@ -378,6 +382,193 @@ def best_alignment_shift(
     return best_dx, best_dy
 
 
+def alignment_shift_scores(
+    a: list[list[Cell]],
+    b: list[list[Cell]],
+    *,
+    span: int = DISPLACEMENT_PROBE_SPAN,
+    anchor: int | None = None,
+) -> list[tuple[int, int, float]]:
+    """All (dx, dy, frac) candidates sorted best-first."""
+    scores: list[tuple[int, int, float]] = []
+    for dy in range(-span, span + 1):
+        for dx in range(-span, span + 1):
+            changed, union = _occupancy_diff_at_shift_2d(
+                a, b, dx, dy, anchor=anchor
+            )
+            frac = changed / union if union else 0.0
+            scores.append((dx, dy, frac))
+    scores.sort(key=lambda row: row[2])
+    return scores
+
+
+def transition_sharpness_margin(
+    a: list[list[Cell]],
+    b: list[list[Cell]],
+    *,
+    span: int = DISPLACEMENT_PROBE_SPAN,
+    anchor: int | None = None,
+) -> dict[str, Any]:
+    """Best-vs-next-best distinct shift gap — 0.0 means a degenerate minimum."""
+    scores = alignment_shift_scores(a, b, span=span, anchor=anchor)
+    best_dx, best_dy, best_frac = scores[0]
+    second_frac: float | None = None
+    for dx, dy, frac in scores[1:]:
+        if (dx, dy) != (best_dx, best_dy):
+            second_frac = frac
+            break
+    margin = round(second_frac - best_frac, 4) if second_frac is not None else 0.0
+    return {
+        "best_shift": (best_dx, best_dy),
+        "best_frac": round(best_frac, 4),
+        "margin": margin,
+    }
+
+
+def registration_shift_scores(
+    a: list[list[Cell]],
+    b: list[list[Cell]],
+    *,
+    span: int = REGISTRATION_SPAN,
+    anchor: int | None = None,
+) -> list[tuple[int, float]]:
+    """1D registration scan — same machinery silhouette_diff uses."""
+    scores: list[tuple[int, float]] = []
+    for dx in range(-span, span + 1):
+        changed, union = _silhouette_diff_at_shift(a, b, dx, anchor=anchor)
+        frac = changed / union if union else 0.0
+        scores.append((dx, frac))
+    scores.sort(key=lambda row: row[1])
+    return scores
+
+
+def registration_sharpness_margin(
+    a: list[list[Cell]],
+    b: list[list[Cell]],
+    *,
+    span: int = REGISTRATION_SPAN,
+    anchor: int | None = None,
+) -> dict[str, Any]:
+    """Registration-span sharpness — diagnostic for silhouette_diff well-posedness."""
+    scores = registration_shift_scores(a, b, span=span, anchor=anchor)
+    best_dx, best_frac = scores[0]
+    second_frac: float | None = None
+    for dx, frac in scores[1:]:
+        if dx != best_dx:
+            second_frac = frac
+            break
+    margin = round(second_frac - best_frac, 4) if second_frac is not None else 0.0
+    return {
+        "best_shift": (best_dx, 0),
+        "best_frac": round(best_frac, 4),
+        "margin": margin,
+    }
+
+
+def alignment_sharpness_report(
+    frames: list[list[list[Cell]]],
+    *,
+    loops: bool,
+    anchor: int | None = None,
+    span: int = DISPLACEMENT_PROBE_SPAN,
+) -> dict[str, Any]:
+    """Per-transition displacement-span sharpness; min_margin drives applicability."""
+    n = len(frames)
+    if n < 2:
+        return {"transitions": [], "min_margin": 0.0, "worst_pair": None}
+    if loops:
+        pairs = [(i, (i + 1) % n) for i in range(n)]
+    else:
+        pairs = [(i, i + 1) for i in range(n - 1)]
+    transitions: list[dict[str, Any]] = []
+    margins: list[float] = []
+    for i, j in pairs:
+        row = transition_sharpness_margin(
+            frames[i], frames[j], span=span, anchor=anchor
+        )
+        row["pair"] = [i, j]
+        transitions.append(row)
+        margins.append(row["margin"])
+    worst_idx = min(range(len(margins)), key=lambda k: margins[k])
+    return {
+        "transitions": transitions,
+        "min_margin": round(min(margins), 4) if margins else 0.0,
+        "worst_pair": transitions[worst_idx]["pair"] if transitions else None,
+    }
+
+
+def registration_sharpness_report(
+    frames: list[list[list[Cell]]],
+    *,
+    loops: bool,
+    anchor: int | None = None,
+) -> dict[str, Any]:
+    """Registration-span sharpness across transitions — corpus diagnostic."""
+    n = len(frames)
+    if n < 2:
+        return {"transitions": [], "min_margin": 0.0, "worst_pair": None}
+    if loops:
+        pairs = [(i, (i + 1) % n) for i in range(n)]
+    else:
+        pairs = [(i, i + 1) for i in range(n - 1)]
+    transitions: list[dict[str, Any]] = []
+    margins: list[float] = []
+    for i, j in pairs:
+        row = registration_sharpness_margin(frames[i], frames[j], anchor=anchor)
+        row["pair"] = [i, j]
+        transitions.append(row)
+        margins.append(row["margin"])
+    worst_idx = min(range(len(margins)), key=lambda k: margins[k])
+    return {
+        "transitions": transitions,
+        "min_margin": round(min(margins), 4) if margins else 0.0,
+        "worst_pair": transitions[worst_idx]["pair"] if transitions else None,
+    }
+
+
+def displacement_gate_result(
+    frames: list[list[list[Cell]]],
+    budget: ClassBudget,
+    *,
+    anchor: int | None,
+) -> dict[str, Any]:
+    """displacement_pass: True/False when measurable, None when inapplicable."""
+    if budget.min_alignment_sharpness is None:
+        return {
+            "displacement_pass": None,
+            "displacement_inapplicable": False,
+            "displacement_reason": None,
+            "alignment_sharpness": None,
+            "displacement_flags": [],
+        }
+    sharpness = alignment_sharpness_report(frames, loops=budget.loops, anchor=anchor)
+    min_margin = sharpness["min_margin"]
+    threshold = budget.min_alignment_sharpness
+    if min_margin < threshold:
+        worst = sharpness["worst_pair"]
+        pair_label = f"{worst[0]}→{worst[1]}" if worst else "?"
+        return {
+            "displacement_pass": None,
+            "displacement_inapplicable": True,
+            "displacement_reason": (
+                f"degenerate alignment minimum (margin {min_margin:.4f} at "
+                f"{pair_label}); displacement undecidable"
+            ),
+            "alignment_sharpness": sharpness,
+            "displacement_flags": [],
+        }
+    flags = antisymmetric_displacement_flags(
+        frames, loops=budget.loops, anchor=anchor
+    )
+    return {
+        "displacement_pass": len(flags) == 0,
+        "displacement_inapplicable": False,
+        "displacement_reason": None,
+        "alignment_sharpness": sharpness,
+        "displacement_flags": flags,
+    }
+
+
 def shift_magnitude(dx: int, dy: int) -> int:
     """Chebyshev magnitude — max(|dx|, |dy|)."""
     return max(abs(dx), abs(dy))
@@ -655,6 +846,8 @@ def coherence_split(
     if budget.loops and max_min_pair is not None:
         min_pair_cohort_pass = pairwise["min_pair"] <= max_min_pair
 
+    disp = displacement_gate_result(q, budget, anchor=sil_anchor)
+
     gates = {
         "quantize": {**stats, "mode": "quantize-shared", "merge_dist": merge_dist},
         "motion_class": motion_class,
@@ -674,11 +867,17 @@ def coherence_split(
         "palette_drift": drift,
         "worst_palette_drift": worst_drift,
         "palette_drift_pass": worst_drift <= max_palette_drift,
+        "alignment_sharpness": disp["alignment_sharpness"],
+        "displacement_flags": disp["displacement_flags"],
+        "displacement_pass": disp["displacement_pass"],
+        "displacement_inapplicable": disp["displacement_inapplicable"],
+        "displacement_reason": disp["displacement_reason"],
         "budgets": {
             "silhouette": max_silhouette_diff,
             "loop": max_loop_diff,
             "palette_drift": max_palette_drift,
             "min_pair": max_min_pair,
+            "min_alignment_sharpness": budget.min_alignment_sharpness,
         },
     }
     pass_parts: list[bool] = [gates["dimension_parity"]]
@@ -690,6 +889,8 @@ def coherence_split(
         pass_parts.append(gates["min_pair_cohort_pass"])
     if gates["loop_closure_pass"] is not None:
         pass_parts.append(gates["loop_closure_pass"])
+    if gates["displacement_pass"] is not None:
+        pass_parts.append(gates["displacement_pass"])
     pass_parts.append(gates["palette_drift_pass"])
     gates["pass"] = all(pass_parts)
     return gates

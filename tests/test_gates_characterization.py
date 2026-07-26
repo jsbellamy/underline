@@ -63,6 +63,7 @@ GATES = (
     "silhouette_budget",
     "min_pair_cohort_pass",
     "loop_closure_pass",
+    "displacement_pass",
     "palette_drift_pass",
 )
 

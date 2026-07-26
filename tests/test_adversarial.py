@@ -45,5 +45,14 @@ def test_known_gap_passes_ungated(motion_class: str, mutation: str) -> None:
     assert result["pass"] is True
 
 
-def test_airborne_known_gaps_are_hop_and_slide_only() -> None:
-    assert adversarial.KNOWN_GAPS["airborne"].keys() == {"hop", "slide"}
+def test_strip_gaps_04_displacement_undecidable() -> None:
+    assert adversarial.STRIP_GAPS["04-bat-flap"].keys() == {"hop", "slide"}
+    assert "degenerate alignment" in adversarial.STRIP_GAPS["04-bat-flap"]["hop"]
+
+
+def test_airborne_hop_on_04_still_ungated_via_strip_gap() -> None:
+    frames = adversarial.real_frames("airborne")
+    mutated = adversarial.hop(frames)
+    result = S.coherence_split(mutated, motion_class="airborne")
+    assert result["displacement_pass"] is None
+    assert result["pass"] is True
