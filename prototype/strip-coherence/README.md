@@ -10,7 +10,7 @@ Every budget in the contract is derived from manifest-good strips here; gates
 are proved by adversarial mutations and negative controls 07–09.
 
 Production gate code lives in `pipeline/strip.py`. CLI ingest is
-`pipeline/ingest_strip.py` (`npm run strip:ingest` / `prototype:strip:ingest`).
+`pipeline/ingest_strip.py` (`npm run strip:ingest`).
 
 ## Adding a sample
 
@@ -34,8 +34,7 @@ From repo root:
 ```bash
 npm run prototype:strip          # interactive TUI
 npm run prototype:strip:smoke    # synthetic pass/fail self-check
-npm run prototype:strip:ingest   # CLI: gate strip PNG (--motion-class required)
-npm run strip:ingest             # alias for prototype:strip:ingest
+npm run strip:ingest             # gate strip PNG (--motion-class required)
 npm run prototype:strip:corpus   # score inbox/ against manifest
 npm run prototype:strip:derive-budgets
 npm run prototype:strip:adversarial

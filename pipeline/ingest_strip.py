@@ -14,7 +14,7 @@ from pipeline.strip import (
     StripLayout,
     coherence_split_json_gates,
     export_frames,
-    format_coherence_split_report,
+    format_ingest_report,
     ingest_strip_provider,
     load_provider_frames,
 )
@@ -29,31 +29,6 @@ def _corpus_layout() -> StripLayout:
         pitch_px=24,
         margin_cells=0,
     )
-
-
-def _format_report(result: IngestResult) -> str:
-    lines: list[str] = []
-    lines.append(f"Source  {result.source}")
-    lines.append(
-        f"Layout  {result.layout.frame_count}×{result.layout.frame_w}×{result.layout.frame_h}  "
-        f"gutter={result.layout.gutter}  strip_w={result.layout.strip_width()}"
-    )
-    rec = result.recovered
-    lines.append(
-        f"Recovered  grid {rec['grid']}  expected {rec['expected_grid']}  "
-        f"pitch x={rec['pitch_x']['score']:.3f} y={rec['pitch_y']['score']:.3f}"
-    )
-    sl = result.slice_meta
-    lines.append(
-        f"Slice  raster_match={sl.get('raster_match')}  "
-        f"shape_match={sl.get('shape_match')}  "
-        f"grid={sl.get('grid')} expected_raster={sl.get('expected_raster')}"
-    )
-    lines.append("Coherence")
-    lines.extend(format_coherence_split_report(result.coherence))
-    lines.append("")
-    lines.append(f"Overall  {'PASS' if result.pass_ else 'FAIL'}")
-    return "\n".join(lines)
 
 
 def _json_payload(result: IngestResult, exported: list[pathlib.Path] | None = None) -> dict[str, Any]:
@@ -118,7 +93,7 @@ def main(argv: list[str] | None = None) -> int:
             )
         )
     else:
-        print(_format_report(result))
+        print(format_ingest_report(result))
 
     return 0 if result.pass_ else 1
 

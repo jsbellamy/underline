@@ -6,7 +6,6 @@
     "test": "PYTHONPATH=. python3 -m pytest -q",
     "prototype:strip": "PYTHONPATH=. python3 prototype/strip-coherence/tui.py",
     "prototype:strip:smoke": "PYTHONPATH=. python3 prototype/strip-coherence/smoke.py",
-    "prototype:strip:ingest": "PYTHONPATH=. python3 -m pipeline.ingest_strip",
     "strip:ingest": "PYTHONPATH=. python3 -m pipeline.ingest_strip",
     "prototype:strip:adversarial": "PYTHONPATH=. python3 prototype/strip-coherence/adversarial.py",
     "prototype:strip:corpus": "PYTHONPATH=. python3 prototype/strip-coherence/corpus.py",

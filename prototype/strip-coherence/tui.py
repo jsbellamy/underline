@@ -8,12 +8,12 @@ import pathlib
 import sys
 import termios
 import tty
-from typing import Any
 
 from pipeline.strip import (
     DEFAULT_LAYOUT,
     IngestResult,
     StripLayout,
+    format_ingest_report,
     ingest_strip,
     ingest_strip_provider,
     write_synthetic_fixture,
@@ -52,84 +52,49 @@ def _status_line(result: IngestResult | None, label: str) -> str:
     return f"{BOLD}Last:{RESET} {label}  {color}{verdict}{RESET}"
 
 
-def _format_gate_section(coh: dict[str, Any], indent: str = "  ") -> list[str]:
-    lines: list[str] = []
-    if "reason" in coh:
-        lines.append(f"{indent}{RED}reason:{RESET} {coh['reason']}")
-        return lines
-    for key in (
-        "dimension_parity",
-        "baseline_row_stable",
-        "silhouette_budget",
-        "min_pair_cohort_pass",
-        "loop_closure_pass",
-        "palette_drift_pass",
-    ):
-        if key not in coh:
-            continue
-        ok = coh[key]
-        if ok is None:
-            mark = f"{DIM}n/a{RESET}"
-        else:
-            mark = f"{GREEN}yes{RESET}" if ok else f"{RED}no{RESET}"
-        lines.append(f"{indent}{key}: {mark}")
-    if coh.get("baseline_rows"):
-        lines.append(f"{indent}{DIM}baseline_rows:{RESET} {coh['baseline_rows']}")
-    for row in coh.get("silhouette_adjacent", []):
-        lines.append(
-            f"{indent}{DIM}silhouette {row['pair']}:{RESET} "
-            f"changed={row['changed_cells']}/{row['union_opaque']} "
-            f"({row['frac']:.1%})"
-        )
-    for row in coh.get("palette_drift", []):
-        lines.append(f"{indent}{DIM}palette drift {row['pair']}:{RESET} {row['tv']:.1%}")
-    loop = coh.get("loop_closure")
-    if loop:
-        lines.append(
-            f"{indent}{DIM}loop {loop['pair']}:{RESET} "
-            f"changed={loop['changed_cells']}/{loop['union_opaque']} "
-            f"({loop['frac']:.1%}) pass={loop['pass']}"
-        )
-    return lines
-
-
 def _format_report(result: IngestResult) -> str:
-    lines: list[str] = []
-    lines.append(f"{BOLD}Source{RESET}  {result.source}")
-    lines.append(
-        f"{BOLD}Layout{RESET}  {result.layout.frame_count}×"
-        f"{result.layout.frame_w}×{result.layout.frame_h}  "
-        f"gutter={result.layout.gutter}  strip_w={result.layout.strip_width()}"
-    )
-    rec = result.recovered
-    lines.append(
-        f"{BOLD}Recovered{RESET}  grid {rec['grid']}  "
-        f"expected {rec['expected_grid']}  "
-        f"pitch x={rec['pitch_x']['score']:.3f} y={rec['pitch_y']['score']:.3f}"
-    )
-    sl = result.slice_meta
-    lines.append(
-        f"{BOLD}Slice{RESET}  raster_match={sl.get('raster_match')}  "
-        f"shape_match={sl.get('shape_match')}  "
-        f"grid={sl.get('grid')} expected_raster={sl.get('expected_raster')}"
-    )
-    coh = result.coherence
-    if "quantized_motion" in coh:
-        lines.append(f"{BOLD}Coherence (raw){RESET}")
-        lines.extend(_format_gate_section(coh.get("raw", {})))
-        q = coh.get("quantize", {})
-        lines.append(
-            f"  {DIM}quantize:{RESET} palette={q.get('palette_size')} "
-            f"unique_in={q.get('input_unique')} merge={q.get('merge_dist')}"
-        )
-        lines.append(f"{BOLD}Coherence (quantized motion){RESET}")
-        lines.extend(_format_gate_section(coh["quantized_motion"]))
-    else:
-        lines.append(f"{BOLD}Coherence{RESET}")
-        lines.extend(_format_gate_section(coh))
-    lines.append("")
-    lines.append(f"{BOLD}Overall{RESET}  {'PASS' if result.pass_ else 'FAIL'}")
-    return "\n".join(lines)
+    base = format_ingest_report(result)
+    lines = base.split("\n")
+    # Re-wrap section headers with TUI bold tokens.
+    out: list[str] = []
+    for line in lines:
+        if line.startswith("Source  "):
+            out.append(f"{BOLD}Source{RESET}  {line[7:]}")
+        elif line.startswith("Layout  "):
+            out.append(f"{BOLD}Layout{RESET}  {line[8:]}")
+        elif line.startswith("Recovered  "):
+            out.append(f"{BOLD}Recovered{RESET}  {line[11:]}")
+        elif line.startswith("Slice  "):
+            out.append(f"{BOLD}Slice{RESET}  {line[7:]}")
+        elif line == "Coherence":
+            out.append(f"{BOLD}Coherence{RESET}")
+        elif line.startswith("Overall  "):
+            out.append(f"{BOLD}Overall{RESET}  {line[9:]}")
+        elif line.startswith("  "):
+            out.extend(_format_gate_section_line(line))
+        else:
+            out.append(line)
+    return "\n".join(out)
+
+
+def _format_gate_section_line(line: str) -> list[str]:
+    """Colorize a single coherence line from format_ingest_report."""
+    text = line.strip()
+    if text.endswith(": pass"):
+        key = text[:-6]
+        return [f"  {key}: {GREEN}yes{RESET}"]
+    if text.endswith(": FAIL"):
+        key = text[:-6]
+        return [f"  {key}: {RED}no{RESET}"]
+    if ": inapplicable" in text:
+        return [f"  {DIM}{text}{RESET}"]
+    if text.startswith("silhouette "):
+        return [f"  {DIM}{text}{RESET}"]
+    if text.startswith("palette drift "):
+        return [f"  {DIM}{text}{RESET}"]
+    if text.startswith("loop "):
+        return [f"  {DIM}{text}{RESET}"]
+    return [line]
 
 
 def _run_fixture(scenario: str) -> tuple[IngestResult, str]:

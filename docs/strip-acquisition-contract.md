@@ -347,7 +347,7 @@ vs fixed controls). Do not add more good strips to strengthen separation.
 
 ## Consumers
 
-`python -m pipeline.ingest_strip` (npm `prototype:strip:ingest` / `strip:ingest`) is the
+`python -m pipeline.ingest_strip` (npm `strip:ingest`) is the
 production reader for this contract: it recovers a provider strip, gates it under the
 declared motion class via `coherence_split`, and on pass exports one logical-resolution
 RGBA frame per slice. Failing strips write no frames; inapplicable gates are reported

@@ -343,8 +343,7 @@ alignment question is settled — `align.py` and `sweep.py` are deleted.
 ```bash
 npm run prototype:strip              # TUI: [1-3] synthetic, [4] inbox
 npm run prototype:strip:smoke        # synthetic pass/fail fixtures
-npm run prototype:strip:ingest       # CLI: gate strip PNG (--motion-class required)
-npm run strip:ingest                 # alias for prototype:strip:ingest
+npm run strip:ingest                 # gate strip PNG (--motion-class required)
 npm run prototype:strip:adversarial  # per-class mutations — gates must reject
 npm run prototype:strip:corpus       # score inbox/ against prompts/manifest.json
 npm run prototype:strip:derive-budgets  # per-class worst-good → budgets

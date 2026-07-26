@@ -40,6 +40,9 @@ def test_good_idle_strip_passes_coherence_gates() -> None:
     assert result.returncode == 0, result.stderr
     assert "palette_drift_pass: pass" in result.stdout
     assert "silhouette_budget" not in result.stdout or "max_silhouette: pass" in result.stdout
+    assert "expected " not in result.stdout
+    assert "raster_match" not in result.stdout
+    assert "Slice  mode=pitch" in result.stdout
 
 
 def test_passing_strip_exports_logical_frame_pngs(tmp_path: Path) -> None:
@@ -141,6 +144,11 @@ def test_airborne_json_reports_inapplicable_gates_with_reasons() -> None:
     assert silhouette["status"] == "inapplicable"
     assert silhouette["reason"]
 
+    baseline = data["baseline_row_stable"]
+    assert baseline["status"] == "inapplicable"
+    assert baseline["reason"]
+    assert "ungrounded" in baseline["reason"]
+
     assert data["coherence"]["displacement_pass"] is None
     assert data["coherence"]["budgets"]["silhouette"] is None
 
@@ -156,6 +164,8 @@ def test_airborne_human_report_states_inapplicable_gates() -> None:
     assert result.returncode == 0, result.stderr
     assert "max_silhouette: inapplicable" in result.stdout
     assert "displacement_pass: inapplicable" in result.stdout
+    assert "baseline_row_stable: inapplicable" in result.stdout
+    assert "ungrounded" in result.stdout
     assert "3→0" in result.stdout
 
 

@@ -807,6 +807,11 @@ def coherence_split(
         sil_anchor = len(q[0]) if q else 0
         baseline_stable = None
 
+    baseline_row_inapplicable = not grounded
+    baseline_row_reason = (
+        "motion class is ungrounded (grounded: false)" if not grounded else None
+    )
+
     adjacent: list[dict[str, Any]] = []
     for i in range(len(q) - 1):
         changed, union = silhouette_diff(q[i], q[i + 1], anchor=sil_anchor)
@@ -857,6 +862,8 @@ def coherence_split(
         "grounded": grounded,
         "anchor_row": anchor,
         "baseline_row_stable": baseline_stable,
+        "baseline_row_inapplicable": baseline_row_inapplicable,
+        "baseline_row_reason": baseline_row_reason,
         "baseline_rows": baselines,
         "silhouette_adjacent": adjacent,
         "silhouette_adjacent_max": adjacent_max,
@@ -1298,9 +1305,19 @@ def format_coherence_split_report(coherence: dict[str, Any]) -> list[str]:
             ),
         )
     )
+    lines.append(
+        format_coherence_gate_status(
+            "baseline_row_stable",
+            coherence_gate_status(
+                coherence,
+                "baseline_row_stable",
+                inapplicable_key="baseline_row_inapplicable",
+                reason_key="baseline_row_reason",
+            ),
+        )
+    )
     for key in (
         "dimension_parity",
-        "baseline_row_stable",
         "min_pair_cohort_pass",
         "loop_closure_pass",
         "palette_drift_pass",
@@ -1343,7 +1360,74 @@ def coherence_split_json_gates(coherence: dict[str, Any]) -> dict[str, Any]:
             inapplicable_key="displacement_inapplicable",
             reason_key="displacement_reason",
         ),
+        "baseline_row_stable": coherence_gate_status(
+            coherence,
+            "baseline_row_stable",
+            inapplicable_key="baseline_row_inapplicable",
+            reason_key="baseline_row_reason",
+        ),
     }
+
+
+def format_provider_ingest_report(result: IngestResult) -> str:
+    """Human report for provider strips (pitch slice; no nominal raster match)."""
+    lines: list[str] = []
+    lines.append(f"Source  {result.source}")
+    lines.append(
+        f"Layout  {result.layout.frame_count}×{result.layout.frame_w}×"
+        f"{result.layout.frame_h}  gutter={result.layout.gutter}  "
+        f"strip_w={result.layout.strip_width()}"
+    )
+    rec = result.recovered
+    grid = rec["grid"]
+    lines.append(
+        f"Recovered  grid {grid[0]}×{grid[1]}  "
+        f"pitch x={rec['pitch_x']['score']:.3f} y={rec['pitch_y']['score']:.3f}"
+    )
+    sl = result.slice_meta
+    grid_w, grid_h = sl["grid"]
+    lines.append(
+        f"Slice  mode=pitch  grid {grid_w}×{grid_h}  "
+        f"pitch={sl.get('pitch')}  frames={result.layout.frame_count}"
+    )
+    lines.append("Coherence")
+    lines.extend(format_coherence_split_report(result.coherence))
+    lines.append("")
+    lines.append(f"Overall  {'PASS' if result.pass_ else 'FAIL'}")
+    return "\n".join(lines)
+
+
+def format_synthetic_ingest_report(result: IngestResult) -> str:
+    """Human report for synthetic fixtures (exact raster dimensions)."""
+    lines: list[str] = []
+    lines.append(f"Source  {result.source}")
+    lines.append(
+        f"Layout  {result.layout.frame_count}×{result.layout.frame_w}×"
+        f"{result.layout.frame_h}  gutter={result.layout.gutter}  "
+        f"strip_w={result.layout.strip_width()}"
+    )
+    rec = result.recovered
+    lines.append(
+        f"Recovered  grid {rec['grid']}  expected {rec['expected_grid']}  "
+        f"pitch x={rec['pitch_x']['score']:.3f} y={rec['pitch_y']['score']:.3f}"
+    )
+    sl = result.slice_meta
+    lines.append(
+        f"Slice  raster_match={sl.get('raster_match')}  "
+        f"shape_match={sl.get('shape_match')}  "
+        f"grid={sl.get('grid')} expected_raster={sl.get('expected_raster')}"
+    )
+    lines.append("Coherence")
+    lines.extend(format_coherence_split_report(result.coherence))
+    lines.append("")
+    lines.append(f"Overall  {'PASS' if result.pass_ else 'FAIL'}")
+    return "\n".join(lines)
+
+
+def format_ingest_report(result: IngestResult) -> str:
+    if result.slice_meta.get("mode") == "pitch":
+        return format_provider_ingest_report(result)
+    return format_synthetic_ingest_report(result)
 
 
 def ingest_strip_provider(
