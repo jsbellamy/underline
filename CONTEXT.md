@@ -38,9 +38,15 @@ _Avoid_: stride, step
 
 **Motion class**:
 The declared kind of animation a Strip is (`idle`, `blob_idle`, `emissive`,
-`airborne`, `walk`, `swing`). It carries its own Budgets plus the `grounded`,
-`loops`, and `facing` properties. "Coherent" is not one number — it is per class.
+`airborne`, `walk`, `swing`). It owns the animation's Acceptance profile plus
+the `grounded`, `loops`, and `facing` properties. "Coherent" is not one number —
+it is per class.
 _Avoid_: animation type, category
+
+**Acceptance profile**:
+The per-Motion-class declaration of which Gates are Separated, Unseparated, or
+Inapplicable, including a Budget for every applicable Gate.
+_Avoid_: global acceptance criteria, animation-specific exceptions
 
 **Gate**:
 One deterministic measurement with an automatic-pass, agent-review, or hard-fail
@@ -129,5 +135,11 @@ _Avoid_: TODO, limitation
 
 **Unseparated**:
 A Motion-class/Gate pair whose Manifest-good and Gate-control populations do not
-have the declared minimum gap required for an autonomous verdict.
+have the declared minimum gap required for an autonomous hard fail. The Gate
+still automatically passes below its Budget but requires Review above it.
 _Avoid_: overlapping, inconclusive
+
+**Inapplicable**:
+A Motion-class/Gate pair whose failure mode is not meaningful for that kind of
+animation, so the Acceptance profile omits the Gate entirely.
+_Avoid_: Unseparated, disabled
