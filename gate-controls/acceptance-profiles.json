@@ -1,0 +1,42 @@
+{
+  "schema": "acceptance-profile-index/0",
+  "profiles": {
+    "emissive": {
+      "motion_class": "emissive",
+      "recorded_at": "2026-07-26T19:10:00+00:00",
+      "decided_in": "https://github.com/jsbellamy/underline/issues/23",
+      "detail": "docs/acceptance-profiles/emissive.md",
+      "gates": {
+        "baseline_row_stable": {
+          "status": "SEPARATED",
+          "budget": null,
+          "note": "structural; no provider Gate control required"
+        },
+        "palette_drift_pass": {
+          "status": "SEPARATED",
+          "budget": 0.17,
+          "active_promotion": "promo--emissive--palette_drift_pass",
+          "control_attempt": "emissive--palette_drift_pass--001"
+        },
+        "silhouette_budget": {
+          "status": "SEPARATED",
+          "budget": 0.21,
+          "active_promotion": "promo--emissive--silhouette_budget",
+          "control_attempt": "emissive--silhouette_budget--001"
+        },
+        "loop_closure_pass": {
+          "status": "SEPARATED",
+          "budget": 0.16,
+          "active_promotion": "promo--emissive--loop_closure_pass",
+          "control_attempt": "emissive--loop_closure_pass--001"
+        },
+        "min_pair_cohort_pass": {
+          "status": "UNSEPARATED",
+          "budget": 0.12,
+          "evidence_attempt": "emissive--min_pair_cohort_pass--006",
+          "rationale": "best near-miss couples min-pair and silhouette failures at shared flame-motion geometry"
+        }
+      }
+    }
+  }
+}
