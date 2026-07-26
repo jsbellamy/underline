@@ -76,6 +76,34 @@ fail its declared target Gate while passing every other applicable Gate, so its
 measured value can calibrate only that Gate's Budget.
 _Avoid_: identity control, multi-gate control, proxy control
 
+**Isolation verdict**:
+The result of judging one Attempt against its Gate-control specification:
+`ISOLATED`, `NOT_ISOLATED`, or `INDETERMINATE`. Class-inapplicable Gates are
+omitted; an undecidable class-applicable Gate makes the verdict indeterminate.
+_Avoid_: acceptance verdict, pass/fail
+
+**Gate-control specification**:
+The stable declaration of the Motion-class/Gate isolation claim that a Gate
+control must satisfy. It owns the history of Attempts and identifies at most one
+Promotion.
+_Avoid_: control attempt, promoted control
+
+**Attempt**:
+One immutable provider generation made against a Gate-control specification,
+including its provenance, measurements, and outcome.
+_Avoid_: candidate, retry
+
+**Measurement run**:
+One immutable scoring of an Attempt, identifying the Gate configuration and
+producing raw metrics, per-Gate outcomes, and an Isolation verdict. Re-scoring
+creates another Measurement run instead of replacing prior evidence.
+_Avoid_: latest score, mutable report
+
+**Promotion**:
+The selection of one successful Attempt and Measurement run as the Gate control
+for its Gate-control specification; it does not create a copy of the Strip.
+_Avoid_: acceptance, canonical copy
+
 **Review band**:
 The measured interval above a Budget and below its Gate control. A Strip in this
 interval requires an agent to judge the relevant visual defect instead of being
