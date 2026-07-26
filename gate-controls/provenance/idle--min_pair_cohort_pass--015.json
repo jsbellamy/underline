@@ -1,0 +1,19 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "idle/min_pair_cohort_pass",
+  "attempt_id": "idle--min_pair_cohort_pass--015",
+  "generator": "cursor-image-gen",
+  "prompt_text": "TRUE chunky pixel art sprite strip ONLY. Four idle frames of a small fantasy MINER in one horizontal row, facing RIGHT.\n\n**Canvas:** very wide panoramic strip \u2014 aspect ratio roughly 3:1. Each frame **16\u00d724 logical pixels rendered as large crisp square blocks**. No anti-aliasing.\n\nMiner: feet on bottom row. **Same miner, same green tunic and blue helmet every frame.**\n\n**CRITICAL \u2014 cohort similarity band:**\n- Frame 0: neutral idle.\n- Frame 1: head tilted 2 pixels right (tiny neighbor step from frame 0).\n- Frame 2: head tilted 2 pixels left (tiny step from frame 1).\n- Frame 3: slight torso lean (tiny step from frame 2).\n\nAll four poses are the SAME miner. **Minimum pairwise silhouette difference must be at least 7.5%** (closest pair visibly different). **Maximum adjacent silhouette change must stay under 17%.** Loop closure (frame 3 vs frame 0) must stay under 30%.\n\nTwo magenta gutter cells between frames. Flat magenta `#ff00ff` background. One row only.\n\n<!-- Gate control: idle / min_pair_cohort_pass. Knife-edge: min_pair>0.07, adjacent<0.17, loop<0.30. -->\n",
+  "prompt_sha256": "258d0606ab69374e8c9d58f3272fa7bfd94a30d9568e17b5f932c5627ab6bd9d",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-26T18:05:36+00:00",
+  "acquiring_agent": "cursor-agent",
+  "repository_commit": "dbc1246ec1610ccf0cc8cf3be6e99babf92fe389",
+  "raw_path": "gate-controls/raw/idle--min_pair_cohort_pass--015.png",
+  "raw_sha256": "f39f8902d2d44743229e15a0bb79f17aaca4467f9ce3b360d38b4c80e1eb49a2",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ]
+}
