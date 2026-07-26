@@ -45,5 +45,5 @@ def test_known_gap_passes_ungated(motion_class: str, mutation: str) -> None:
     assert result["pass"] is True
 
 
-def test_airborne_known_gaps_include_single_frame_tamper() -> None:
-    assert adversarial.KNOWN_GAPS["airborne"].keys() == {"hop", "wrong_pose", "slide"}
+def test_airborne_known_gaps_are_hop_and_slide_only() -> None:
+    assert adversarial.KNOWN_GAPS["airborne"].keys() == {"hop", "slide"}

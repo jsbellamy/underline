@@ -185,21 +185,48 @@ never repeat a pose (06 min_pair 0.437 > 08's 0.344).
 ## Adversarial suite and known gaps
 
 `adversarial.py` mutates each class baseline and checks `MUST_FAIL` mutations against
-live gates. Mutations listed in `KNOWN_GAPS` pass today but have no gate — the suite
-prints **`GAP`**, never **`ok`**, with the documented reason. Exit code is 0 only when
-there are no mismatches (a `MUST_FAIL` mutation that passes is a failure).
+live gates. Mutations listed in `KNOWN_GAPS` pass today but have no gate yet — the suite
+prints **`GAP`**, never **`ok`**, with the documented reason.
 
 | Class | Mutation | Status | Reason |
 |-------|----------|--------|--------|
-| `airborne` | hop, mirror, slide | **GAP** | No per-frame cohort gate; min_pair blind to single-frame tamper |
+| `airborne` | hop, slide | **GAP** | Antisymmetric displacement rule survives falsification but is not yet a gate |
 | `blob_idle` | mirror (`wrong_pose`) | **GAP** | Symmetric blob; mirror is a silhouette no-op |
 
-**Airborne admission:** live gates are palette drift, loop closure, and min-pair cohort
-only. Identity drift across all four frames is caught (08 fails min_pair). Single-frame
-hop, mirror, or slide is **not** caught — three clean frames still pair up and min_pair
-is unchanged (04-bat-flap baseline min_pair 0.044; tampered frame 2 same). Finding a
-per-frame cohort signal that survives single-frame tampering when adjacent silhouette is
-disabled remains an open problem; do not assert coverage by dropping `MUST_FAIL` entries.
+**Airborne mirror is out of scope.** Corpus prompts do not declare a facing contract. A
+bat facing left in frame 2 may be valid; a miner walking left in frame 2 of a rightward
+walk is not — but the gate cannot decide that without a declared rule. Mirror is not in
+`KNOWN_GAPS` for airborne; it is not a hole if it is not a rule. **Contract decision
+needed:** if strips carry a declared facing, mirror becomes gateable; until then, do not
+build a chirality check.
+
+## Antisymmetric displacement (pre-registered, not yet gated)
+
+A translated frame shows up as an equal-and-opposite pair of best-alignment shifts —
+displaced going in, displaced back coming out. Legitimate motion does not return:
+swing's large `(+3,+1)` step is the character stepping into the swing and never coming
+back, so antisymmetry separates "frame was moved" from "subject moved."
+
+**Rule (pre-registered):** an interior frame is tampered when its in-shift and out-shift
+are equal and opposite with Chebyshev magnitude ≥ 2 (`max(|dx|, |dy|)`).
+
+**Two spans — do not conflate:**
+
+| Constant | Value | Purpose |
+|----------|-------|---------|
+| `REGISTRATION_SPAN` | ±1 | Silhouette budget — minimise shift to absorb jitter |
+| `DISPLACEMENT_PROBE_SPAN` | ±4 | Displacement evidence — read shift as signal |
+
+Same occupancy machinery, opposite intent. `best_alignment_shift` uses the wide span;
+`silhouette_diff` uses `REGISTRATION_SPAN` only.
+
+**Falsification (2026-07-26):** `npm run prototype:strip:displacement` scored **19**
+manifest-good strips — **0 false positives**. Adversarial spot-check: airborne hop and
+slide **DETECT**; airborne mirror identical to clean (invisible); swing clean has large
+one-way shifts without a return pair.
+
+Next step: promote to `displacement_pass` in `coherence_split` if product wants hop/slide
+gated on airborne (closes two of three former gaps).
 
 ## Min-pair cohort gate
 
@@ -212,9 +239,9 @@ when `loops=true` and `max_min_pair` is set. Pass when `min_pair <= max_min_pair
 | Cohort identity | `min_pair_cohort_pass` | four-character drift (08) | single-frame tamper |
 | Recolour | `palette_drift_pass` | palette swap | — |
 
-Single-frame mirror/hop/slide leaves min_pair unchanged — adjacent silhouette (or
-baseline) catches those on grounded classes. See **Adversarial suite and known gaps**
-for airborne and symmetric blob_idle holes.
+Single-frame hop/slide on grounded classes is caught by adjacent silhouette (or
+baseline). Airborne hop/slide pending the displacement gate above. Mirror on airborne is
+out of scope until facing is declared. See **Adversarial suite and known gaps**.
 
 | Sample | class | min_pair | `min_pair_cohort_pass` |
 |--------|-------|----------|------------------------|

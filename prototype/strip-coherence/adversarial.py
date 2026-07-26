@@ -56,9 +56,8 @@ MUST_FAIL: dict[str, set[str]] = {
 # Documented holes — mutation passes but nothing gates it. Never print "ok".
 KNOWN_GAPS: dict[str, dict[str, str]] = {
     "airborne": {
-        "hop": "no per-frame cohort gate; min_pair blind to single-frame tamper",
-        "wrong_pose": "no per-frame cohort gate; min_pair blind to single-frame tamper",
-        "slide": "no per-frame cohort gate; min_pair blind to single-frame tamper",
+        "hop": "displacement rule not yet a gate — see displacement_probe.py",
+        "slide": "displacement rule not yet a gate — see displacement_probe.py",
     },
     "blob_idle": {
         "wrong_pose": "symmetric blob; mirror is a silhouette no-op",

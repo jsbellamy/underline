@@ -29,6 +29,9 @@ MERGE_DIST_RGB = 36  # collapse anti-aliased neighbors before palette build
 PROVIDER_MERGE_DIST_RGB = 64
 
 REGISTRATION_SPAN = 1
+# Wide scan for displacement evidence — NOT registration jitter absorption.
+DISPLACEMENT_PROBE_SPAN = 4
+DISPLACEMENT_MIN_MAGNITUDE = 2
 
 
 @dataclass(frozen=True)
@@ -301,6 +304,161 @@ def silhouette_diff(
             best_changed = changed
             best_union = union
     return best_changed, best_union
+
+
+def _occupancy_diff_at_shift_2d(
+    a: list[list[Cell]],
+    b: list[list[Cell]],
+    dx: int,
+    dy: int,
+    *,
+    anchor: int | None = None,
+) -> tuple[int, int]:
+    """Occupancy flips above anchor with b shifted by (dx, dy) relative to a."""
+    changed = 0
+    union_opaque = 0
+    if anchor is None:
+        anchor = baseline_row(a)
+    if anchor is None:
+        anchor = len(a)
+    for y in range(min(len(a), len(b))):
+        if y >= anchor:
+            continue
+        for x in range(len(a[y])):
+            a_cell = a[y][x]
+            yb, xb = y + dy, x + dx
+            if 0 <= yb < len(b) and 0 <= xb < len(b[yb]):
+                b_cell = b[yb][xb]
+            else:
+                b_cell = None
+            if a_cell is None and b_cell is None:
+                continue
+            union_opaque += 1
+            if (a_cell is None) != (b_cell is None):
+                changed += 1
+    return changed, union_opaque
+
+
+def best_alignment_shift(
+    a: list[list[Cell]],
+    b: list[list[Cell]],
+    *,
+    span: int = DISPLACEMENT_PROBE_SPAN,
+    anchor: int | None = None,
+) -> tuple[int, int]:
+    """(dx, dy) shifting b relative to a that minimises occupancy diff above anchor.
+
+    Uses a wide scan for displacement evidence. Do not substitute REGISTRATION_SPAN —
+    registration minimises shift to absorb jitter; this reads shift as evidence.
+    """
+    best_dx = 0
+    best_dy = 0
+    best_frac = float("inf")
+    for dy in range(-span, span + 1):
+        for dx in range(-span, span + 1):
+            changed, union = _occupancy_diff_at_shift_2d(
+                a, b, dx, dy, anchor=anchor
+            )
+            frac = changed / union if union else 0.0
+            if frac < best_frac:
+                best_frac = frac
+                best_dx = dx
+                best_dy = dy
+    return best_dx, best_dy
+
+
+def shift_magnitude(dx: int, dy: int) -> int:
+    """Chebyshev magnitude — max(|dx|, |dy|)."""
+    return max(abs(dx), abs(dy))
+
+
+def quantize_motion_frames(
+    frames: list[list[list[Cell]]],
+    motion_class: str,
+    *,
+    max_colors: int = DEFAULT_MAX_PALETTE,
+    merge_dist: int = PROVIDER_MERGE_DIST_RGB,
+    anchor_row: int | None = None,
+) -> tuple[list[list[list[Cell]]], int | None]:
+    """Shared palette quantize + silhouette anchor, matching coherence_split."""
+    if motion_class not in MOTION_CLASSES:
+        raise ValueError(f"unknown motion_class: {motion_class!r}")
+    budget = MOTION_CLASSES[motion_class]
+    rgbs = collect_opaque_rgbs(frames)
+    palette, _stats = build_shared_palette(
+        rgbs, max_colors=max_colors, merge_dist=merge_dist
+    )
+    if palette:
+        q = [
+            [[None if rgb is None else _nearest_rgb(rgb, palette) for rgb in row]
+             for row in frame]
+            for frame in frames
+        ]
+    else:
+        q = frames
+    if budget.grounded:
+        baselines = [baseline_row(f) for f in q]
+        anchor = anchor_row if anchor_row is not None else baselines[0]
+        sil_anchor: int | None = anchor
+    else:
+        sil_anchor = len(q[0]) if q else 0
+    return q, sil_anchor
+
+
+def adjacent_transition_shifts(
+    frames: list[list[list[Cell]]],
+    *,
+    span: int = DISPLACEMENT_PROBE_SPAN,
+    anchor: int | None = None,
+) -> list[dict[str, Any]]:
+    """Best-alignment shift for each forward adjacent pair i→i+1 (b shifted vs a)."""
+    rows: list[dict[str, Any]] = []
+    for i in range(len(frames) - 1):
+        dx, dy = best_alignment_shift(
+            frames[i], frames[i + 1], span=span, anchor=anchor
+        )
+        rows.append(
+            {
+                "from": i,
+                "to": i + 1,
+                "dx": dx,
+                "dy": dy,
+                "magnitude": shift_magnitude(dx, dy),
+            }
+        )
+    return rows
+
+
+def antisymmetric_displacement_flags(
+    frames: list[list[list[Cell]]],
+    *,
+    min_magnitude: int = DISPLACEMENT_MIN_MAGNITUDE,
+    span: int = DISPLACEMENT_PROBE_SPAN,
+    anchor: int | None = None,
+) -> list[dict[str, Any]]:
+    """Interior frames where in/out shifts are equal-and-opposite with |shift| ≥ min."""
+    flags: list[dict[str, Any]] = []
+    n = len(frames)
+    for k in range(1, n - 1):
+        in_dx, in_dy = best_alignment_shift(
+            frames[k - 1], frames[k], span=span, anchor=anchor
+        )
+        out_dx, out_dy = best_alignment_shift(
+            frames[k], frames[k + 1], span=span, anchor=anchor
+        )
+        mag = shift_magnitude(in_dx, in_dy)
+        if mag < min_magnitude:
+            continue
+        if (in_dx, in_dy) == (-out_dx, -out_dy):
+            flags.append(
+                {
+                    "frame": k,
+                    "in_shift": (in_dx, in_dy),
+                    "out_shift": (out_dx, out_dy),
+                    "magnitude": mag,
+                }
+            )
+    return flags
 
 
 def silhouette_pair_frac(
