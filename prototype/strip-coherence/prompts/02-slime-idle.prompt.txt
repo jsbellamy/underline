@@ -1,0 +1,18 @@
+TRUE chunky pixel art sprite strip ONLY. Four idle animation frames of a small SLIME BLOB in one horizontal row.
+
+**Canvas:** very wide panoramic strip — aspect ratio roughly 3:1 (much wider than tall). The four frames must fill most of the width.
+
+Each frame on an exact **16×24 logical pixel grid rendered large** — every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering.
+
+Slime: translucent green dome with two dark eye pixels and one lighter highlight block. It sits **flat on the bottom row of each frame**. Idle = a gentle squash-and-stretch — the dome gets one row shorter and one column wider, then returns. The **contact row against the ground never changes width or position**.
+
+Between each frame: **two full magenta logical cells** of empty gutter (no character pixels in gutter columns).
+
+Flat solid **magenta `#ff00ff`** background everywhere else. Selective 1px dark outline. Upper-left light. **6–10 flat colors max**.
+
+Frame order left→right: idle_0, idle_1, idle_2, idle_3 — **same creature, same volume, loopable** (frame 3 returns to frame 0's shape).
+
+Do not add margins, labels, numbers, or extra rows. One row of four frames only.
+
+<!-- corpus note: no limbs, curved silhouette. Tests that the silhouette gate is not
+     secretly keyed to the miner's rectangular body. Expect PASS. -->

@@ -1,0 +1,21 @@
+TRUE chunky pixel art sprite strip ONLY. Four WALK CYCLE frames of a small fantasy MINER in one horizontal row, facing RIGHT.
+
+**Canvas:** very wide panoramic strip — aspect ratio roughly 3:1 (much wider than tall). The four frames must fill most of the width.
+
+Each frame on an exact **16×24 logical pixel grid rendered large** — every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering.
+
+Miner: green tunic, blue helmet, brown pickaxe held in one hand. **Standard four-step walk cycle: contact, down, pass, up.** Legs clearly change position each frame — front leg forward then back. The torso bobs down one row on the "down" frame. The miner **stays centered horizontally — do not translate the character across the strip**; only the limbs cycle.
+
+Between each frame: **two full magenta logical cells** of empty gutter (no character pixels in gutter columns).
+
+Flat solid **magenta `#ff00ff`** background everywhere else. Selective 1px dark warm outline. Upper-left light. **8–12 flat colors max** — same palette in every frame.
+
+Frame order left→right: walk_0, walk_1, walk_2, walk_3 — **same character, same proportions, loopable** (frame 3 leads back into frame 0).
+
+Do not add margins, labels, numbers, or extra rows. One row of four frames only.
+
+<!-- corpus note: THE key test. The 0.28 silhouette budget was derived from an idle.
+     A correct walk cycle moves the legs a lot and the feet necessarily move, so this
+     should legitimately exceed 0.28. If it does, the budget is per-motion-class, not
+     universal, and "coherent" cannot mean one number. Expect FAIL at idle budgets —
+     and that failure is INFORMATION, not a defect in the strip. -->

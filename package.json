@@ -1,0 +1,14 @@
+{
+  "name": "underline",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "prototype:strip": "python3 prototype/strip-coherence/tui.py",
+    "prototype:strip:smoke": "python3 prototype/strip-coherence/smoke.py",
+    "prototype:strip:inbox": "python3 prototype/strip-coherence/run_inbox.py",
+    "prototype:strip:adversarial": "python3 prototype/strip-coherence/adversarial.py",
+    "prototype:strip:sweep": "python3 prototype/strip-coherence/sweep.py",
+    "prototype:strip:corpus": "python3 prototype/strip-coherence/corpus.py",
+    "prototype:strip:align": "python3 prototype/strip-coherence/align.py"
+  }
+}

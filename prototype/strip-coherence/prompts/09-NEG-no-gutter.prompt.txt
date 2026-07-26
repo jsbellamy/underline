@@ -1,0 +1,19 @@
+TRUE chunky pixel art sprite strip ONLY. Four idle animation frames of a small fantasy MINER in one horizontal row, facing RIGHT.
+
+**Canvas:** very wide panoramic strip — aspect ratio roughly 3:1 (much wider than tall).
+
+Each frame on an exact **16×24 logical pixel grid rendered large** — every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering.
+
+Miner: green tunic, blue helmet, brown pickaxe, feet planted on the bottom row. Subtle breathing idle only.
+
+**IMPORTANT — the four frames are packed edge to edge with NO gap between them.** No gutter, no separator, no empty columns. The miners nearly touch, and a long dark ground line runs continuously across all four frames connecting them.
+
+Flat solid **magenta `#ff00ff`** background above the ground line only. Selective 1px dark outline. **8–12 flat colors max**.
+
+Do not add margins, labels, numbers, or extra rows. One row of four frames only.
+
+<!-- corpus NEGATIVE control, RECOVERY level not coherence level. slice_frames_auto
+     splits on fully-transparent columns; the continuous ground line means there are
+     none. Must fail at slicing with "expected 4 segments, found 1" and never reach
+     the coherence gates. Confirms failures are reported at the right layer instead of
+     silently producing one wrong frame. Expect FAIL (slice). -->

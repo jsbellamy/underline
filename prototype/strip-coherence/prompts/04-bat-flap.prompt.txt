@@ -1,0 +1,21 @@
+TRUE chunky pixel art sprite strip ONLY. Four wing-flap animation frames of a small BAT in one horizontal row, facing RIGHT.
+
+**Canvas:** very wide panoramic strip — aspect ratio roughly 3:1 (much wider than tall). The four frames must fill most of the width.
+
+Each frame on an exact **16×24 logical pixel grid rendered large** — every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering.
+
+Bat: small dark purple body with two eye pixels, **airborne — floating in the vertical middle of the frame, NOT touching the bottom row**. The body stays at the same height and horizontal position in all four frames. Only the wings move: wings up, wings level, wings down, wings level.
+
+Between each frame: **two full magenta logical cells** of empty gutter (no character pixels in gutter columns).
+
+Flat solid **magenta `#ff00ff`** background everywhere else. Selective 1px dark outline. **6–10 flat colors max**.
+
+Frame order left→right: flap_0, flap_1, flap_2, flap_3 — **same bat, same body position, loopable**.
+
+Do not add margins, labels, numbers, or extra rows. One row of four frames only.
+
+<!-- corpus note: NO planted baseline — the subject never touches the ground row.
+     silhouette_diff measures "above the baseline row", where baseline = lowest opaque
+     row. For an airborne sprite that row is the wingtip and it MOVES, so the compared
+     region changes shape frame to frame. This case tests an assumption the idle strip
+     could not. Expect PASS, but the baseline_row_stable gate may misfire. -->

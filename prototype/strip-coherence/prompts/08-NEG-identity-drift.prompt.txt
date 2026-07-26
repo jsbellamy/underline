@@ -1,0 +1,18 @@
+TRUE chunky pixel art sprite strip ONLY. Four frames in one horizontal row, each showing a DIFFERENT fantasy character.
+
+**Canvas:** very wide panoramic strip — aspect ratio roughly 3:1 (much wider than tall). The four frames must fill most of the width.
+
+Each frame on an exact **16×24 logical pixel grid rendered large** — every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering.
+
+**IMPORTANT — each frame is a DIFFERENT CHARACTER, not the same one animated.** Frame 0: a stout dwarf miner. Frame 1: a tall thin elf archer. Frame 2: a round wizard with a huge pointed hat. Frame 3: a small crouching goblin. All four stand with feet on the bottom row. Wildly different silhouettes and proportions.
+
+Between each frame: **two full magenta logical cells** of empty gutter (no character pixels in gutter columns).
+
+Flat solid **magenta `#ff00ff`** background everywhere else. Selective 1px dark outline. Keep a shared earthy palette across all four so the colors are similar.
+
+Do not add margins, labels, numbers, or extra rows. One row of four frames only.
+
+<!-- corpus NEGATIVE control. This is the cross-generation incoherence failure that
+     killed Nightglass #24, reproduced INSIDE one image. Shared palette is deliberate
+     so palette_drift stays quiet and silhouette_budget has to be the gate that
+     catches it. Must trip silhouette_budget. Expect FAIL. -->

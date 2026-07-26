@@ -1,0 +1,20 @@
+TRUE chunky pixel art sprite strip ONLY. Four PICKAXE SWING frames of a small fantasy MINER in one horizontal row, facing RIGHT.
+
+**Canvas:** very wide panoramic strip — aspect ratio roughly 3:1 (much wider than tall). The four frames must fill most of the width.
+
+Each frame on an exact **16×24 logical pixel grid rendered large** — every logical pixel is one clean flat square block. No anti-aliasing, blur, gradient, or dithering.
+
+Miner: green tunic, blue helmet, brown pickaxe. **Feet planted on the bottom row and never moving.** The swing arc: frame 0 pickaxe raised high above the helmet, frame 1 pickaxe at head height, frame 2 pickaxe mid-swing forward, frame 3 pickaxe struck down at ground level ahead of the miner. The torso leans forward slightly through the swing.
+
+Between each frame: **two full magenta logical cells** of empty gutter (no character pixels in gutter columns).
+
+Flat solid **magenta `#ff00ff`** background everywhere else. Selective 1px dark warm outline. Upper-left light. **8–12 flat colors max** — same palette in every frame.
+
+Frame order left→right: swing_0, swing_1, swing_2, swing_3 — **same character, same proportions**. This is a one-shot action, **not a loop** — frame 3 is very different from frame 0.
+
+Do not add margins, labels, numbers, or extra rows. One row of four frames only.
+
+<!-- corpus note: planted feet (baseline gate should hold) but a large arm arc, and
+     deliberately NON-LOOPING. Separates the two silhouette budgets: adjacent-frame
+     motion may stay sane while loop closure (3->0) legitimately blows out. A one-shot
+     action strip should not be required to loop. Expect adjacent PASS, loop FAIL. -->
