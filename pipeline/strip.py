@@ -66,7 +66,7 @@ MOTION_CLASSES: dict[str, ClassBudget] = {
     ),
     "blob_idle": ClassBudget(
         max_silhouette=0.36,
-        max_loop=0.36,
+        max_loop=0.35,
         max_drift=0.22,
         max_min_pair=0.13,
         grounded=True,

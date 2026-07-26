@@ -136,7 +136,7 @@ derived budget still separates from both negative controls on its gate.
 |------|------------|--------|---------|-------|-------|--------|
 | silhouette | 0.337 | 02-slime-idle | **0.36** | 0.057 | 0.602 | separated |
 | min-pair cohort | 0.103 | 13-ooze-idle | **0.13** | 0.010 | 0.344 | separated |
-| loop | 0.330 | 02-slime-idle | **0.36** | 0.043 | 0.482 | separated |
+| loop | 0.330 | 02-slime-idle | **0.35** | 0.043 | 0.482 | separated |
 | palette drift | 0.196 | 13-ooze-idle | **0.22** | 0.279 | 0.218 | separated |
 
 13-ooze-idle widened drift and min-pair. `ceil+0.02` on min_pair is a coarse estimator

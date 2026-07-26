@@ -41,6 +41,24 @@ def _derive(worst: float) -> float:
     return round(_ceil_001(worst) + 0.02, 2)
 
 
+def _derived_budget_tuple(
+    motion_class: str, worst: dict[str, float]
+) -> tuple[float | None, float | None, float, float | None]:
+    budget = S.MOTION_CLASSES[motion_class]
+    sil = None if budget.max_silhouette is None else _derive(worst["sil"])
+    loop = None if budget.max_loop is None else _derive(worst["loop"])
+    drift = _derive(worst["drift"])
+    min_pair = (
+        None if budget.max_min_pair is None else _derive(worst["worst_good_min_pair"])
+    )
+    return sil, loop, drift, min_pair
+
+
+def _runtime_budget_tuple(motion_class: str) -> tuple[float | None, float | None, float, float | None]:
+    budget = S.MOTION_CLASSES[motion_class]
+    return budget.max_silhouette, budget.max_loop, budget.max_drift, budget.max_min_pair
+
+
 def _ingest_metrics(path: pathlib.Path, motion_class: str) -> dict[str, float] | None:
     layout = S.StripLayout(
         frame_w=S.DEFAULT_LAYOUT.frame_w,
@@ -151,6 +169,29 @@ def main() -> int:
 
     if pending:
         print(f"\nPending ({len(pending)}): {', '.join(pending)}")
+
+    mismatches: list[str] = []
+    for motion_class in sorted(by_class):
+        rows = by_class[motion_class]
+        worst = {
+            "sil": max(m["sil"] for _, m in rows),
+            "loop": max(m["loop"] for _, m in rows),
+            "drift": max(m["drift"] for _, m in rows),
+            "worst_good_min_pair": max(m["min_pair"] for _, m in rows),
+        }
+        derived = _derived_budget_tuple(motion_class, worst)
+        runtime = _runtime_budget_tuple(motion_class)
+        if derived != runtime:
+            mismatches.append(
+                f"{motion_class}: derived={derived} runtime={runtime}"
+            )
+
+    if mismatches:
+        print("\nRUNTIME BUDGET MISMATCH")
+        print("-" * 72)
+        for row in mismatches:
+            print(f"  {row}")
+        return 1
 
     return 0
 
