@@ -109,6 +109,24 @@ def _resolve_baseline(motion_class: str) -> pathlib.Path:
     raise FileNotFoundError(f"missing baseline for {motion_class}: {path}")
 
 
+def motion_class_for_strip(strip_id: str) -> str:
+    """Resolve motion class for a corpus strip id (e.g. 04-bat-flap)."""
+    for motion_class, filename in CLASS_BASELINES.items():
+        if filename == f"{strip_id}.png":
+            return motion_class
+    raise KeyError(f"no class baseline for strip {strip_id!r}")
+
+
+def frames_for_strip(strip_id: str):
+    """Recover frames for a corpus strip by id."""
+    path = INBOX / f"{strip_id}.png"
+    if not path.exists():
+        raise FileNotFoundError(f"missing strip: {path}")
+    cells, _ = S.recover_strip_cells(path, _corpus_layout())
+    frames, _ = S.slice_frames_pitch(cells, frame_count=S.DEFAULT_LAYOUT.frame_count)
+    return frames
+
+
 def real_frames(motion_class: str = "idle"):
     """Recover frames for a motion class's corpus baseline strip."""
     path = _resolve_baseline(motion_class)
@@ -265,8 +283,8 @@ def main() -> int:
         print(f"\n{total_gaps} GAPS (documented, not green)")
     if total_inapplicable:
         print(
-            f"{total_inapplicable} strip(s) displacement inapplicable "
-            f"(degenerate alignment)"
+            f"{total_inapplicable} class baseline(s) displacement inapplicable "
+            f"(adversarial scope — one mutation baseline per class, not full corpus)"
         )
     return 0 if ok else 1
 

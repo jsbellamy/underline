@@ -164,7 +164,8 @@ def main() -> int:
     if displacement_inapplicable:
         print(
             f"{YELLOW}{len(displacement_inapplicable)} strip(s) displacement inapplicable "
-            f"(degenerate alignment): {', '.join(displacement_inapplicable)}{RESET}"
+            f"(corpus scope — every manifest PNG with a gate): "
+            f"{', '.join(displacement_inapplicable)}{RESET}"
         )
 
     if regressions:

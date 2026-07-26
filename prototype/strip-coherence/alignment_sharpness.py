@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """PROTOTYPE — alignment minimum sharpness across the corpus.
 
-Displacement-span (±4) and registration-span (±1) sharpness per transition.
-A margin of 0.0 means the best shift is degenerate — silhouette_diff and
-displacement both read an arbitrary winner.
+Margins are in silhouette-fraction units (runner-up minus best at the alignment
+minimum). Value-valued gates read the magnitude at the minimum — degeneracy bounds
+their error at the margin. Vector-valued gates (displacement) read the shift itself;
+degeneracy destroys the signal (displacement_pass: None).
 
-Run before trusting any tight separation margin.
+Run to list strips where displacement is undecidable, not to question silhouette numbers.
 """
 
 from __future__ import annotations
@@ -21,6 +22,7 @@ import strip as S  # noqa: E402
 
 HERE = pathlib.Path(__file__).resolve().parent
 MANIFEST = HERE / "prompts" / "manifest.json"
+THRESHOLD = S.MIN_ALIGNMENT_SHARPNESS_AIRBORNE
 
 
 def _layout() -> S.StripLayout:
@@ -80,11 +82,43 @@ def main() -> int:
             f"{row['registration_min_margin']:>8.4f} {rw_txt:>10}"
         )
 
-    flagged = [r for r in rows if r["registration_min_margin"] < 0.02]
-    if flagged:
-        print("\nLow registration sharpness (<0.02) — silhouette numbers less determinate:")
-        for row in flagged:
-            print(f"  {row['id']}: reg_min={row['registration_min_margin']:.4f}")
+    airborne = [r for r in rows if r["motion_class"] == "airborne"]
+    undecidable = [
+        r
+        for r in airborne
+        if r["displacement_min_margin"] < THRESHOLD
+    ]
+    if undecidable:
+        print(
+            f"\nDisplacement undecidable (disp_min < {THRESHOLD:.3f} — "
+            f"displacement_pass: None):"
+        )
+        for row in sorted(undecidable, key=lambda r: r["displacement_min_margin"]):
+            dw = row["displacement_worst_pair"]
+            dw_txt = f"{dw[0]}→{dw[1]}" if dw else "?"
+            print(
+                f"  {row['id']}: disp_min={row['displacement_min_margin']:.4f} "
+                f"at {dw_txt}"
+            )
+
+    applicable = [
+        r for r in airborne if r["displacement_min_margin"] >= THRESHOLD
+    ]
+    if applicable:
+        thinnest = min(applicable, key=lambda r: r["displacement_min_margin"])
+        headroom = thinnest["displacement_min_margin"] - THRESHOLD
+        print(
+            f"\nThinnest applicable airborne: {thinnest['id']} "
+            f"disp_min={thinnest['displacement_min_margin']:.4f} "
+            f"(headroom {headroom:.4f} above {THRESHOLD:.3f})"
+        )
+
+    print(
+        "\nRegistration runner-up gap (silhouette-fraction units) — bounds value error "
+        "when the winning shift is ambiguous; does not invalidate the reading:"
+    )
+    for row in sorted(rows, key=lambda r: r["registration_min_margin"])[:5]:
+        print(f"  {row['id']}: reg_min={row['registration_min_margin']:.4f}")
     return 0
 
 

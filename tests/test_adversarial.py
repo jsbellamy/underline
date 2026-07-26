@@ -12,6 +12,11 @@ MUTATION_CASES = [
     for motion_class, mutations in adversarial.MUST_FAIL.items()
     for mutation in sorted(mutations)
 ]
+STRIP_GAP_CASES = [
+    (strip_id, mutation)
+    for strip_id, gaps in adversarial.STRIP_GAPS.items()
+    for mutation in gaps
+]
 
 
 @pytest.mark.parametrize("motion_class", ALL_CLASSES)
@@ -29,17 +34,11 @@ def test_required_mutation_fails_per_class(motion_class: str, mutation: str) -> 
     assert result["pass"] is False
 
 
-@pytest.mark.parametrize(
-    "motion_class,mutation",
-    [
-        (motion_class, mutation)
-        for motion_class, gaps in adversarial.KNOWN_GAPS.items()
-        for mutation in gaps
-    ],
-)
-def test_known_gap_passes_ungated(motion_class: str, mutation: str) -> None:
-    """Documented holes — mutation passes; do not treat as covered."""
-    frames = adversarial.real_frames(motion_class)
+@pytest.mark.parametrize("strip_id,mutation", STRIP_GAP_CASES)
+def test_strip_gap_passes_ungated(strip_id: str, mutation: str) -> None:
+    """Documented per-strip holes — mutation still passes; closing a gate forces removal."""
+    motion_class = adversarial.motion_class_for_strip(strip_id)
+    frames = adversarial.frames_for_strip(strip_id)
     mutated = adversarial._MUTATORS[mutation](frames)
     result = S.coherence_split(mutated, motion_class=motion_class)
     assert result["pass"] is True
@@ -48,11 +47,3 @@ def test_known_gap_passes_ungated(motion_class: str, mutation: str) -> None:
 def test_strip_gaps_04_displacement_undecidable() -> None:
     assert adversarial.STRIP_GAPS["04-bat-flap"].keys() == {"hop", "slide"}
     assert "degenerate alignment" in adversarial.STRIP_GAPS["04-bat-flap"]["hop"]
-
-
-def test_airborne_hop_on_04_still_ungated_via_strip_gap() -> None:
-    frames = adversarial.real_frames("airborne")
-    mutated = adversarial.hop(frames)
-    result = S.coherence_split(mutated, motion_class="airborne")
-    assert result["displacement_pass"] is None
-    assert result["pass"] is True

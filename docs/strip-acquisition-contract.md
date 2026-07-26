@@ -230,8 +230,18 @@ exclude from pass — same pattern as `max_silhouette: None` on airborne.
 | Strip | min margin | worst pair | `displacement_pass` on clean |
 |-------|------------|------------|------------------------------|
 | 04-bat-flap | **0.0000** (tie) | 3→0 | **None** — undecidable |
-| 16-moth-flap | 0.0164 | 1→2 | pass |
-| 17-wisp-float | 0.0171 | 3→0 | pass |
+| 16-moth-flap | 0.0164 | 1→2 | pass (headroom **0.0014** — thinnest applicable) |
+| 17-wisp-float | 0.0171 | 3→0 | pass (headroom 0.0021) |
+| 22-NEG-airborne-identity | **0.0000** | 0→1 | **None** — undecidable (negative control) |
+
+**Inapplicable counts — two scopes (not a contradiction):**
+
+| Tool | Count | Scope |
+|------|-------|-------|
+| `corpus.py` | **2** | Every manifest PNG scored against its `motion_class` gate (`04-bat-flap`, `22-NEG-airborne-identity`) |
+| `adversarial.py` | **1** | Class mutation baselines only (`04-bat-flap` for airborne; negatives not in the battery) |
+
+Both must surface inapplicable strips explicitly — never silent `None`.
 
 **Threshold derivation (n=3 airborne good, 2026-07-26):**
 
@@ -255,22 +265,38 @@ cannot hold reliably when there is no stable shift to be antisymmetric about.
 Run `npm run prototype:strip:displacement` for tamper grids;
 `npm run prototype:strip:sharpness` for corpus-wide sharpness.
 
-## Alignment sharpness (general diagnostic)
+## Alignment sharpness (diagnostic)
 
-Sharpness is not displacement-specific. A degenerate alignment minimum means
-`silhouette_diff`'s ±1 registration is also picking an arbitrary shift — silhouette
-numbers on that strip are less determinate than they look.
+Margins are in **silhouette-fraction units** — the objective being minimised is the
+silhouette fraction at each candidate shift. A `reg_min` of 0.0040 means switching to
+the runner-up shift changes the silhouette value by 0.0040. The shift may be ambiguous;
+the number is not. Ambiguity is self-limiting: transitions most likely to flip are those
+where flipping changes the value least.
 
-| Strip | disp min margin | reg min margin | note |
-|-------|-----------------|----------------|------|
-| 04-bat-flap | 0.0000 | 0.0177 | both degenerate at 3→0 |
-| 06-miner-swing | 0.0015 | **0.0425** | check swing silhouette margin first |
-| 16-moth-flap | 0.0164 | 0.0211 | displacement applicable |
-| 17-wisp-float | 0.0171 | 0.0171 | displacement applicable |
+**Two gate kinds:**
 
-Does not change airborne `UNSEPARATED` on silhouette — `22` confirmed at 0.652
-independently. Does mean tight margins on any gate should be checked against
-`alignment_sharpness.py` before trusting them.
+| Kind | Examples | Degeneracy effect |
+|------|----------|-------------------|
+| **Value-valued** | silhouette, drift, min-pair | Error bounded at the margin — small, quantified |
+| **Vector-valued** | displacement | Signal destroyed — `displacement_pass: None` |
+
+Do not read low `reg_min` as "silhouette numbers are suspect." Separation claims hold when
+runner-up uncertainty is an order of magnitude below the margin — e.g. swing budget
+**0.59** vs `23-NEG-swing-identity` at **0.624** (margin **0.034**), with `23`'s
+`reg_min` **0.0040**.
+
+**Displacement undecidable** (`disp_min < 0.015` on airborne):
+
+| Strip | disp_min | note |
+|-------|----------|------|
+| 04-bat-flap | 0.0000 | good strip; STRIP_GAPS hop/slide |
+| 22-NEG-airborne-identity | 0.0000 | negative control; other gates still trip |
+
+**16-moth-flap** at disp_min **0.0164** is the thinnest strip above the precondition
+(headroom 0.0014) — first expected to flip inapplicable as more airborne samples arrive.
+**17-wisp-float** has headroom 0.0021.
+
+Run `npm run prototype:strip:sharpness` for the full table.
 
 ## Min-pair cohort gate
 
