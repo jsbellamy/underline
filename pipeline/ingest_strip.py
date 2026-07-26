@@ -10,210 +10,72 @@ from typing import Any
 
 from pipeline.strip import (
     DEFAULT_LAYOUT,
-    MIN_GRID_SCORE,
+    IngestResult,
     StripLayout,
-    coherence_split,
+    coherence_split_json_gates,
     export_frames,
-    recover_strip_cells,
-    slice_frames_pitch,
+    format_coherence_split_report,
+    ingest_strip_provider,
+    load_provider_frames,
 )
 
 
-def _provider_layout(layout: StripLayout) -> StripLayout:
+def _corpus_layout() -> StripLayout:
     return StripLayout(
-        frame_w=layout.frame_w,
-        frame_h=layout.frame_h,
-        frame_count=layout.frame_count,
-        gutter=layout.gutter,
+        frame_w=DEFAULT_LAYOUT.frame_w,
+        frame_h=DEFAULT_LAYOUT.frame_h,
+        frame_count=DEFAULT_LAYOUT.frame_count,
+        gutter=DEFAULT_LAYOUT.gutter,
         pitch_px=24,
         margin_cells=0,
     )
 
 
-def _gate_status(
-    coherence: dict[str, Any],
-    gate_key: str,
-    *,
-    inapplicable_key: str | None = None,
-    reason_key: str | None = None,
-    budget_key: str | None = None,
-) -> dict[str, Any]:
-    value = coherence.get(gate_key)
-    budgets = coherence.get("budgets", {})
-    if inapplicable_key and coherence.get(inapplicable_key):
-        return {
-            "status": "inapplicable",
-            "value": value,
-            "reason": coherence.get(reason_key),
-        }
-    if value is None and budget_key and budgets.get(budget_key) is None:
-        return {
-            "status": "inapplicable",
-            "value": None,
-            "reason": f"{budget_key} budget is None for this motion class",
-        }
-    if value is None:
-        return {"status": "inapplicable", "value": None, "reason": None}
-    return {"status": "pass" if value else "fail", "value": value}
-
-
-def _format_gate_line(label: str, status: dict[str, Any]) -> str:
-    state = status["status"]
-    if state == "inapplicable":
-        reason = status.get("reason")
-        detail = f"inapplicable — {reason}" if reason else "inapplicable"
-        return f"  {label}: {detail}"
-    verdict = "pass" if state == "pass" else "FAIL"
-    return f"  {label}: {verdict}"
-
-
-def _format_report(
-    source: str,
-    layout: StripLayout,
-    recovered: dict[str, Any],
-    slice_meta: dict[str, Any],
-    coherence: dict[str, Any],
-    pass_: bool,
-) -> str:
+def _format_report(result: IngestResult) -> str:
     lines: list[str] = []
-    lines.append(f"Source  {source}")
+    lines.append(f"Source  {result.source}")
     lines.append(
-        f"Layout  {layout.frame_count}×{layout.frame_w}×{layout.frame_h}  "
-        f"gutter={layout.gutter}  strip_w={layout.strip_width()}"
+        f"Layout  {result.layout.frame_count}×{result.layout.frame_w}×{result.layout.frame_h}  "
+        f"gutter={result.layout.gutter}  strip_w={result.layout.strip_width()}"
     )
+    rec = result.recovered
     lines.append(
-        f"Recovered  grid {recovered['grid']}  expected {recovered['expected_grid']}  "
-        f"pitch x={recovered['pitch_x']['score']:.3f} y={recovered['pitch_y']['score']:.3f}"
+        f"Recovered  grid {rec['grid']}  expected {rec['expected_grid']}  "
+        f"pitch x={rec['pitch_x']['score']:.3f} y={rec['pitch_y']['score']:.3f}"
     )
+    sl = result.slice_meta
     lines.append(
-        f"Slice  raster_match={slice_meta.get('raster_match')}  "
-        f"shape_match={slice_meta.get('shape_match')}  "
-        f"grid={slice_meta.get('grid')} expected_raster={slice_meta.get('expected_raster')}"
+        f"Slice  raster_match={sl.get('raster_match')}  "
+        f"shape_match={sl.get('shape_match')}  "
+        f"grid={sl.get('grid')} expected_raster={sl.get('expected_raster')}"
     )
     lines.append("Coherence")
-    if "reason" in coherence and "silhouette_adjacent" not in coherence:
-        lines.append(f"  reason: {coherence['reason']}")
-    else:
-        silhouette = _gate_status(
-            coherence,
-            "silhouette_budget",
-            budget_key="silhouette",
-        )
-        lines.append(_format_gate_line("max_silhouette", silhouette))
-        lines.append(
-            _format_gate_line(
-                "displacement_pass",
-                _gate_status(
-                    coherence,
-                    "displacement_pass",
-                    inapplicable_key="displacement_inapplicable",
-                    reason_key="displacement_reason",
-                ),
-            )
-        )
-        for key in (
-            "dimension_parity",
-            "baseline_row_stable",
-            "min_pair_cohort_pass",
-            "loop_closure_pass",
-            "palette_drift_pass",
-        ):
-            if key not in coherence:
-                continue
-            gate_value = coherence[key]
-            if gate_value is None:
-                lines.append(f"  {key}: inapplicable")
-            else:
-                lines.append(f"  {key}: {'pass' if gate_value else 'FAIL'}")
-        for row in coherence.get("silhouette_adjacent", []):
-            lines.append(
-                f"  silhouette {row['pair']}: "
-                f"changed={row['changed_cells']}/{row['union_opaque']} "
-                f"({row['frac']:.1%})"
-            )
-        for row in coherence.get("palette_drift", []):
-            lines.append(f"  palette drift {row['pair']}: {row['tv']:.1%}")
-        loop = coherence.get("loop_closure")
-        if loop:
-            loop_pass = loop.get("pass")
-            pass_label = loop_pass if loop_pass is not None else "n/a"
-            lines.append(
-                f"  loop {loop['pair']}: "
-                f"changed={loop['changed_cells']}/{loop['union_opaque']} "
-                f"({loop['frac']:.1%}) pass={pass_label}"
-            )
+    lines.extend(format_coherence_split_report(result.coherence))
     lines.append("")
-    lines.append(f"Overall  {'PASS' if pass_ else 'FAIL'}")
+    lines.append(f"Overall  {'PASS' if result.pass_ else 'FAIL'}")
     return "\n".join(lines)
 
 
-def _json_payload(
-    source: str,
-    layout: StripLayout,
-    recovered: dict[str, Any],
-    slice_meta: dict[str, Any],
-    coherence: dict[str, Any],
-    pass_: bool,
-    exported: list[pathlib.Path] | None = None,
-) -> dict[str, Any]:
-    silhouette = _gate_status(coherence, "silhouette_budget", budget_key="silhouette")
-    displacement = _gate_status(
-        coherence,
-        "displacement_pass",
-        inapplicable_key="displacement_inapplicable",
-        reason_key="displacement_reason",
-    )
+def _json_payload(result: IngestResult, exported: list[pathlib.Path] | None = None) -> dict[str, Any]:
+    gate_views = coherence_split_json_gates(result.coherence)
     payload: dict[str, Any] = {
-        "pass": pass_,
-        "source": source,
+        "pass": result.pass_,
+        "source": result.source,
         "layout": {
-            "frame_w": layout.frame_w,
-            "frame_h": layout.frame_h,
-            "frame_count": layout.frame_count,
-            "gutter": layout.gutter,
-            "strip_width": layout.strip_width(),
+            "frame_w": result.layout.frame_w,
+            "frame_h": result.layout.frame_h,
+            "frame_count": result.layout.frame_count,
+            "gutter": result.layout.gutter,
+            "strip_width": result.layout.strip_width(),
         },
-        "recovered": recovered,
-        "slice": slice_meta,
-        "coherence": coherence,
-        "max_silhouette": silhouette,
-        "displacement_pass": displacement,
+        "recovered": result.recovered,
+        "slice": result.slice_meta,
+        "coherence": result.coherence,
+        **gate_views,
     }
     if exported is not None:
-        payload["exported_frames"] = [str(p) for p in exported]
+        payload["exported_frames"] = [str(path) for path in exported]
     return payload
-
-
-def ingest(
-    raw_path: pathlib.Path,
-    layout: StripLayout,
-    *,
-    motion_class: str,
-) -> tuple[
-    list[list[list[tuple[int, int, int] | None]]] | None,
-    dict[str, Any],
-    dict[str, Any],
-    dict[str, Any],
-    bool,
-]:
-    probe = _provider_layout(layout)
-    cells, recovered = recover_strip_cells(raw_path, probe)
-    frames, slice_meta = slice_frames_pitch(cells, frame_count=layout.frame_count)
-    if frames is None:
-        coherence = {
-            "pass": False,
-            "reason": slice_meta.get("reason", "auto-slice failed"),
-            "slice": slice_meta,
-        }
-    else:
-        coherence = coherence_split(frames, motion_class=motion_class)
-
-    pitch_ok = (
-        recovered["pitch_x"]["score"] >= MIN_GRID_SCORE
-        or recovered["pitch_y"]["score"] >= MIN_GRID_SCORE
-    )
-    pass_ = pitch_ok and coherence.get("pass", False)
-    return frames, recovered, slice_meta, coherence, pass_
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -224,11 +86,10 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON on stdout")
     args = parser.parse_args(argv)
 
-    layout = _provider_layout(DEFAULT_LAYOUT)
-    source = str(args.png.resolve())
+    layout = _corpus_layout()
 
     try:
-        frames, recovered, slice_meta, coherence, pass_ = ingest(
+        result = ingest_strip_provider(
             args.png,
             layout,
             motion_class=args.motion_class,
@@ -238,32 +99,28 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     exported: list[pathlib.Path] | None = None
-    if pass_ and args.out is not None:
+    if result.pass_ and args.out is not None:
+        frames = load_provider_frames(args.png, layout)
         if frames is not None:
-            stem = args.png.stem
-            exported = export_frames(frames, args.out, stem)
+            exported = export_frames(
+                frames,
+                args.out,
+                args.png.stem,
+                frame_w=layout.frame_w,
+                frame_h=layout.frame_h,
+            )
 
     if args.json:
         print(
             json.dumps(
-                _json_payload(
-                    source,
-                    layout,
-                    recovered,
-                    slice_meta,
-                    coherence,
-                    pass_,
-                    exported,
-                ),
+                _json_payload(result, exported),
                 separators=(",", ":"),
             )
         )
     else:
-        print(
-            _format_report(source, layout, recovered, slice_meta, coherence, pass_)
-        )
+        print(_format_report(result))
 
-    return 0 if pass_ else 1
+    return 0 if result.pass_ else 1
 
 
 if __name__ == "__main__":

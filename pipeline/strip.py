@@ -1214,14 +1214,9 @@ def ingest_strip(
     )
 
 
-def ingest_strip_provider(
-    raw_path: pathlib.Path,
-    layout: StripLayout,
-    *,
-    motion_class: str = "idle",
-) -> IngestResult:
-    """Recover full raster and slice at uniform pitch (provider slop tolerant)."""
-    probe = StripLayout(
+def provider_probe_layout(layout: StripLayout) -> StripLayout:
+    """Layout for provider recovery with margin stripped (matches inbox corpus tools)."""
+    return StripLayout(
         frame_w=layout.frame_w,
         frame_h=layout.frame_h,
         frame_count=layout.frame_count,
@@ -1229,6 +1224,136 @@ def ingest_strip_provider(
         pitch_px=layout.pitch_px,
         margin_cells=0,
     )
+
+
+def load_provider_frames(
+    raw_path: pathlib.Path,
+    layout: StripLayout,
+) -> list[list[list[Cell]]] | None:
+    """Recover and pitch-slice a provider strip without running coherence gates."""
+    probe = provider_probe_layout(layout)
+    cells, _ = recover_strip_cells(raw_path, probe)
+    frames, _ = slice_frames_pitch(cells, frame_count=layout.frame_count)
+    return frames
+
+
+def coherence_gate_status(
+    coherence: dict[str, Any],
+    gate_key: str,
+    *,
+    inapplicable_key: str | None = None,
+    reason_key: str | None = None,
+    budget_key: str | None = None,
+) -> dict[str, Any]:
+    value = coherence.get(gate_key)
+    budgets = coherence.get("budgets", {})
+    if inapplicable_key and coherence.get(inapplicable_key):
+        return {
+            "status": "inapplicable",
+            "value": value,
+            "reason": coherence.get(reason_key),
+        }
+    if value is None and budget_key and budgets.get(budget_key) is None:
+        return {
+            "status": "inapplicable",
+            "value": None,
+            "reason": f"{budget_key} budget is None for this motion class",
+        }
+    if value is None:
+        return {"status": "inapplicable", "value": None, "reason": None}
+    return {"status": "pass" if value else "fail", "value": value}
+
+
+def format_coherence_gate_status(label: str, status: dict[str, Any]) -> str:
+    state = status["status"]
+    if state == "inapplicable":
+        reason = status.get("reason")
+        detail = f"inapplicable — {reason}" if reason else "inapplicable"
+        return f"  {label}: {detail}"
+    verdict = "pass" if state == "pass" else "FAIL"
+    return f"  {label}: {verdict}"
+
+
+def format_coherence_split_report(coherence: dict[str, Any]) -> list[str]:
+    """Human-readable gate lines for a coherence_split dict."""
+    lines: list[str] = []
+    if "reason" in coherence and "silhouette_adjacent" not in coherence:
+        lines.append(f"  reason: {coherence['reason']}")
+        return lines
+
+    lines.append(
+        format_coherence_gate_status(
+            "max_silhouette",
+            coherence_gate_status(coherence, "silhouette_budget", budget_key="silhouette"),
+        )
+    )
+    lines.append(
+        format_coherence_gate_status(
+            "displacement_pass",
+            coherence_gate_status(
+                coherence,
+                "displacement_pass",
+                inapplicable_key="displacement_inapplicable",
+                reason_key="displacement_reason",
+            ),
+        )
+    )
+    for key in (
+        "dimension_parity",
+        "baseline_row_stable",
+        "min_pair_cohort_pass",
+        "loop_closure_pass",
+        "palette_drift_pass",
+    ):
+        if key not in coherence:
+            continue
+        gate_value = coherence[key]
+        if gate_value is None:
+            lines.append(f"  {key}: inapplicable")
+        else:
+            lines.append(f"  {key}: {'pass' if gate_value else 'FAIL'}")
+    for row in coherence.get("silhouette_adjacent", []):
+        lines.append(
+            f"  silhouette {row['pair']}: "
+            f"changed={row['changed_cells']}/{row['union_opaque']} "
+            f"({row['frac']:.1%})"
+        )
+    for row in coherence.get("palette_drift", []):
+        lines.append(f"  palette drift {row['pair']}: {row['tv']:.1%}")
+    loop = coherence.get("loop_closure")
+    if loop:
+        loop_pass = loop.get("pass")
+        pass_label = loop_pass if loop_pass is not None else "n/a"
+        lines.append(
+            f"  loop {loop['pair']}: "
+            f"changed={loop['changed_cells']}/{loop['union_opaque']} "
+            f"({loop['frac']:.1%}) pass={pass_label}"
+        )
+    return lines
+
+
+def coherence_split_json_gates(coherence: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "max_silhouette": coherence_gate_status(
+            coherence, "silhouette_budget", budget_key="silhouette"
+        ),
+        "displacement_pass": coherence_gate_status(
+            coherence,
+            "displacement_pass",
+            inapplicable_key="displacement_inapplicable",
+            reason_key="displacement_reason",
+        ),
+    }
+
+
+def ingest_strip_provider(
+    raw_path: pathlib.Path,
+    layout: StripLayout,
+    *,
+    motion_class: str = "idle",
+) -> IngestResult:
+    """Recover full raster and slice at uniform pitch (provider slop tolerant)."""
+    probe = provider_probe_layout(layout)
     cells, recovered = recover_strip_cells(raw_path, probe)
     frames, slice_meta = slice_frames_pitch(cells, frame_count=layout.frame_count)
     if frames is None:
@@ -1358,18 +1483,22 @@ def export_frames(
     frames: list[list[list[Cell]]],
     out_dir: pathlib.Path,
     stem: str,
+    *,
+    frame_w: int = 16,
+    frame_h: int = 24,
 ) -> list[pathlib.Path]:
     """Write one RGBA PNG per logical frame; transparent cells use magenta alpha 0."""
     out_dir.mkdir(parents=True, exist_ok=True)
     paths: list[pathlib.Path] = []
     for index, frame in enumerate(frames):
-        height = len(frame)
-        width = len(frame[0]) if frame else 0
+        logical = [row[:frame_w] for row in frame[:frame_h]]
+        height = len(logical)
+        width = len(logical[0]) if logical else 0
         image = Image.new("RGBA", (width, height), (*MAGENTA, 0))
         pixels = image.load()
         for y in range(height):
             for x in range(width):
-                rgb = frame[y][x]
+                rgb = logical[y][x]
                 if rgb is not None:
                     pixels[x, y] = (*rgb, 255)
         path = out_dir / f"{stem}-f{index}.png"
