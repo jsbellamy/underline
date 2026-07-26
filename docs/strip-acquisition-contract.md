@@ -347,7 +347,7 @@ vs fixed controls). Do not add more good strips to strengthen separation.
 
 ## Implementation
 
-`MOTION_CLASSES` in `prototype/strip-coherence/strip.py` is the runtime source.
+`MOTION_CLASSES` in `pipeline/strip.py` is the runtime source.
 `coherence_split(frames, motion_class=...)` reads budgets from it. Unknown classes
 raise `ValueError`. `None` budgets exclude their gate from pass and report `None`.
 

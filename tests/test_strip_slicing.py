@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-import strip as S
+from pipeline import strip as S
 
 Cell = tuple[int, int, int] | None
 

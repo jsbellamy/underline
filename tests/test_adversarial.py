@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import adversarial
 import pytest
-import strip as S
+from pipeline import strip as S
 
 ALL_CLASSES = tuple(adversarial.CLASS_BASELINES)
 MUTATION_CASES = [

@@ -23,9 +23,9 @@ below applies to whichever of the two it names.
 - `tests/` — pytest for the pipeline. TypeScript tests live beside the code they
   cover.
 
-The pipeline currently lives at `prototype/strip-coherence/` and moves under
-`pipeline/` when it is promoted; the rules below already apply to it. Grid-recovery
-primitives are vendored in `pipeline/recovery.py`.
+The production gate library lives in `pipeline/strip.py`; grid-recovery primitives
+are vendored in `pipeline/recovery.py`. Prototype runners under
+`prototype/strip-coherence/` score the corpus and derive budgets against those modules.
 
 ## Seams
 

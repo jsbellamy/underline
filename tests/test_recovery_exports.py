@@ -40,7 +40,7 @@ def test_key_is_public_not_underscore() -> None:
 def test_key_recovers_magenta_strip(tmp_path: pathlib.Path) -> None:
     from PIL import Image
 
-    from strip import DEFAULT_LAYOUT, render_logical_strip
+    from pipeline.strip import DEFAULT_LAYOUT, render_logical_strip
 
     path = tmp_path / "strip.png"
     render_logical_strip(DEFAULT_LAYOUT, "pass").save(path)

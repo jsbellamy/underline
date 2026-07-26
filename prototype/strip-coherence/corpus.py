@@ -16,15 +16,8 @@ from __future__ import annotations
 
 import json
 import pathlib
-import sys
 
-HERE = pathlib.Path(__file__).resolve().parent
-ROOT = HERE.parents[1]
-for path in (ROOT, HERE):
-    if str(path) not in sys.path:
-        sys.path.insert(0, str(path))
-
-import strip as S  # noqa: E402
+from pipeline import strip as S
 
 HERE = pathlib.Path(__file__).resolve().parent
 INBOX = HERE / "inbox"

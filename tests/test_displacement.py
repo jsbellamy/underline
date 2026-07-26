@@ -7,7 +7,7 @@ import pathlib
 
 import adversarial
 import corpus
-import strip as S
+from pipeline import strip as S
 
 INBOX = (
     pathlib.Path(__file__).resolve().parents[1]
