@@ -6,6 +6,9 @@ magenta-keyed render, slice into frames, and gate temporal coherence determinist
 Nightglass / SideScape already solve single-subject grid recovery; this repo asks whether
 **multi-frame strips** can be promoted from the same ingest path.
 
+Agents: start at [AGENTS.md](AGENTS.md), then [CONTEXT.md](CONTEXT.md) and
+[docs/strip-acquisition-contract.md](docs/strip-acquisition-contract.md).
+
 ## Prototype
 
 **Question:** After one provider render of an N-frame strip, can recovered logical cells be
