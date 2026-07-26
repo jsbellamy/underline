@@ -43,17 +43,16 @@ The declared kind of animation a Strip is (`idle`, `blob_idle`, `emissive`,
 _Avoid_: animation type, category
 
 **Gate**:
-One deterministic measurement with a pass/fail verdict: `silhouette_budget`,
-`palette_drift_pass`, `min_pair_cohort_pass`, `displacement_pass`,
-`baseline_row_stable`. Each exists to catch one failure mode and reports which
-one tripped.
+One deterministic measurement with an automatic-pass, agent-review, or hard-fail
+outcome: `silhouette_budget`, `palette_drift_pass`, `min_pair_cohort_pass`,
+`displacement_pass`, `baseline_row_stable`. Each exists to catch one failure
+mode and reports which one tripped.
 _Avoid_: check, validation
 
 **Budget**:
-The per-Motion-class threshold a Gate compares against, derived as
-`ceil_to_0.01(worst measured value across that class's good Strips) + 0.02`. A
-Gate that cannot separate good art from its Negative control has Budget `None`
-and is excluded rather than widened.
+The per-Motion-class threshold separating automatic pass from agent review for
+a Gate. It is derived inside the measured gap between Manifest-good Strips and
+the Gate control; a Gate without a sufficient gap is Unseparated.
 _Avoid_: tolerance, limit
 
 **Corpus**:
@@ -71,6 +70,18 @@ A Strip built to be rejected, proving a Gate still fires. Controls are fixed;
 adding good Strips only widens Budgets toward them.
 _Avoid_: bad sample, failing strip
 
+**Gate control**:
+A Negative control for one Motion class and exactly one applicable Gate. It must
+fail its declared target Gate while passing every other applicable Gate, so its
+measured value can calibrate only that Gate's Budget.
+_Avoid_: identity control, multi-gate control, proxy control
+
+**Review band**:
+The measured interval above a Budget and below its Gate control. A Strip in this
+interval requires an agent to judge the relevant visual defect instead of being
+automatically accepted or rejected.
+_Avoid_: grey area, soft fail, warning
+
 **Declared anchor**:
 The baseline row declared once for a Strip from Frame 0, rather than re-derived
 per Frame as the lowest opaque row. Per-Frame derivation reads a stationary bat's
@@ -87,3 +98,8 @@ _Avoid_: alignment (ambiguous with the alignment-sharpness probe)
 A Gate that is inapplicable or unseparated for a Motion class or Strip, recorded
 in the contract instead of papered over with a wider Budget.
 _Avoid_: TODO, limitation
+
+**Unseparated**:
+A Motion-class/Gate pair whose Manifest-good and Gate-control populations do not
+have the declared minimum gap required for an autonomous verdict.
+_Avoid_: overlapping, inconclusive
