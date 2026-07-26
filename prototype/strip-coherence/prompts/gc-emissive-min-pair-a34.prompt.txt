@@ -1,0 +1,3 @@
+TRUE chunky pixel art sprite strip. Four frames small CAMPFIRE horizontal row. Wide 3:1. 16x24 crisp blocks. Same palette. Frame 0 neutral. Frame 1 nearly identical frame 0. Frame 2 nearly identical frame 1. Frame 3 nearly identical frame 2 but cumulative 12.5 percent different from frame 0. Adjacent changes under 17 percent. Magenta gutters.
+
+<!-- Gate control: emissive / min_pair_cohort_pass. Cumulative micro-drift; binding pair 0↔3. -->

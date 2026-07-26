@@ -1,0 +1,19 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "emissive/min_pair_cohort_pass",
+  "attempt_id": "emissive--min_pair_cohort_pass--002",
+  "generator": "cursor-image-gen",
+  "prompt_text": "TRUE chunky pixel art sprite strip. Four frames small CAMPFIRE horizontal row. Wide 3:1. 16x24 crisp blocks. Brown logs identical bottom. Same flame palette all frames. Four micro flame poses same campfire: frame 0 neutral, frame 1 tiny squash 5 percent shorter, frame 2 tiny stretch 5 percent taller, frame 3 tiny lean 3 percent. Minimum pairwise difference 12.5 percent. Maximum adjacent change under 20 percent. Magenta gutters. No labels. No clipping.\n\n<!-- Gate control: emissive / min_pair_cohort_pass. Winner candidate \u2014 campfire micro-poses. -->\n",
+  "prompt_sha256": "c7bbf58c091778e84fd39b0e7a31ac65383dc5cb8cbc3a6f3ed22978d5806dfc",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-26T17:59:19+00:00",
+  "acquiring_agent": "cursor-agent",
+  "repository_commit": "ae4ce7ab64386a2cc1cd48ee6f4b77aa49b1eace",
+  "raw_path": "gate-controls/raw/emissive--min_pair_cohort_pass--002.png",
+  "raw_sha256": "a9a7f5dc638c5c795bd469c1b9b84c93b5fde22041d5c5716c4384c9886aa888",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ]
+}

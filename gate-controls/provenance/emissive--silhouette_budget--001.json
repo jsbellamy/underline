@@ -1,0 +1,19 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "emissive/silhouette_budget",
+  "attempt_id": "emissive--silhouette_budget--001",
+  "generator": "cursor-image-gen",
+  "prompt_text": "TRUE chunky pixel art sprite strip ONLY. Four flicker animation frames of a small **ground CAMPFIRE** in one horizontal row.\n\n**Canvas:** very wide panoramic strip \u2014 aspect ratio roughly 3:1. Each frame **16\u00d724 logical pixels rendered as large crisp square blocks at least 24px per block**. No anti-aliasing.\n\nCampfire: brown logs along the **bottom row, identical in every frame**. Orange/yellow flames fill the **upper two-thirds of each frame**. **Same flame palette every frame.**\n\n**IMPORTANT \u2014 silhouette spike on ONE transition only.** Frame 0: normal flame height. Frame 1: nearly identical to frame 0. Frame 2: **large flame stretch** \u2014 flames much taller (big occupancy change from frame 1). Frame 3: return to same flame shape as frame 0.\n\nTwo magenta gutter cells between frames. Flat magenta `#ff00ff` background. One row only.\n\n<!-- Gate control: emissive / silhouette_budget. Ground campfire; one adjacent spike. -->\n",
+  "prompt_sha256": "2deda1dda20947807646fc3703d3e2e81382c23f44ee5618fb3f9bec9d06f889",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-26T17:59:07+00:00",
+  "acquiring_agent": "cursor-agent",
+  "repository_commit": "ae4ce7ab64386a2cc1cd48ee6f4b77aa49b1eace",
+  "raw_path": "gate-controls/raw/emissive--silhouette_budget--001.png",
+  "raw_sha256": "f854b74d3a1a3812161f468e0efec39e80183f22cf6aca2b69f16e66bc6ab693",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ]
+}

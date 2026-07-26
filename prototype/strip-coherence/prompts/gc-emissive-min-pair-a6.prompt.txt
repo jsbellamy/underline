@@ -1,0 +1,3 @@
+TRUE chunky pixel art sprite strip. Four frames small CAMPFIRE horizontal row. Wide 3:1. 16x24 crisp blocks. Brown logs identical bottom. Same flame palette. Four micro flame poses: frame 0 neutral, frame 1 squash 6 percent shorter, frame 2 stretch 6 percent taller, frame 3 lean 4 percent. Minimum pairwise difference 12.5 percent. Maximum adjacent change under 19 percent. Magenta gutters.
+
+<!-- Gate control: emissive / min_pair_cohort_pass. Knife-edge between a4 and a5. -->

@@ -1,0 +1,11 @@
+TRUE chunky pixel art sprite strip ONLY. Four flicker animation frames of a small **ground CAMPFIRE** in one horizontal row.
+
+**Canvas:** very wide panoramic strip — aspect ratio roughly 3:1. Each frame **16×24 logical pixels rendered as large crisp square blocks at least 24px per block**. No anti-aliasing.
+
+Campfire: brown logs along the **bottom row, identical in every frame**. Orange/yellow flames fill the **upper two-thirds of each frame**. **Same flame palette every frame.**
+
+**IMPORTANT — silhouette spike on ONE transition only.** Frame 0: normal flame height. Frame 1: nearly identical to frame 0. Frame 2: **large flame stretch** — flames much taller (big occupancy change from frame 1). Frame 3: return to same flame shape as frame 0.
+
+Two magenta gutter cells between frames. Flat magenta `#ff00ff` background. One row only.
+
+<!-- Gate control: emissive / silhouette_budget. Winner a3 — sil 0.4633 vs budget 0.21. -->
