@@ -321,8 +321,10 @@ def test_unknown_review_schema_is_rejected(tmp_path: Path) -> None:
         ge.validate_evidence_graph(fx["root"])
 
 
-def test_review_packet_manifest_is_not_loaded_as_audit(tmp_path: Path) -> None:
-    """Wave A co-locates packet.json with review--*.json; only audits are reviews."""
+def test_coexisting_packet_manifest_does_not_break_evidence_graph(
+    tmp_path: Path,
+) -> None:
+    """Wave A packet.json coexists with review--*.json under reviews/<attempt>/."""
     fx = _fixture(tmp_path)
     review_dir = fx["gc"] / "reviews" / fx["attempt_id"]
     _write(
@@ -334,8 +336,8 @@ def test_review_packet_manifest_is_not_loaded_as_audit(tmp_path: Path) -> None:
         },
     )
     graph = ge.validate_evidence_graph(fx["root"])
-    assert any(key.endswith("review--01.json") for key in graph.reviews)
-    assert not any(key.endswith("packet.json") for key in graph.reviews)
+    assert f"reviews/{fx['attempt_id']}/review--01.json" in graph.reviews
+    assert f"reviews/{fx['attempt_id']}/packet.json" not in graph.reviews
 
 
 def test_unknown_verification_schema_is_rejected(tmp_path: Path) -> None:

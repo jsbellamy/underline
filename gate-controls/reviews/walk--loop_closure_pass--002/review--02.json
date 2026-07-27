@@ -1,0 +1,32 @@
+{
+  "attempt_id": "walk--loop_closure_pass--002",
+  "budget": 0.2112,
+  "candidate_sha256": "3e8e37a636ff9ffc16b18a6ef9e7c2b5dd10a94866064d4b40e045576adc05eb",
+  "caveats": [],
+  "fixed_question": "Final\u2192first reads as deliberate continuous loop vs pose jump / identity break?",
+  "frames": [
+    3,
+    0
+  ],
+  "gate": "loop_closure_pass",
+  "hard_fail_boundary": 0.2795,
+  "metric": 0.2795,
+  "model_identity": "cursor-grok-4.5",
+  "model_version": "4.5",
+  "observed_feature": "final\u2192first occupancy jump: f3 is a duplicate of f2 (mid-stride), so f3\u2192f0 is a pose discontinuity rather than a continuous walk cycle; adjacent 2\u21923 occupancy diff is empty while other adjacent transitions retain gait motion",
+  "packet_sha256": "cf744b5a42a4810b7389a74098f06574c2802314de5b20c98982dc56d7981487",
+  "promotion_id": "promo--walk--loop_closure_pass",
+  "rationale": "Fixed question: Final\u2192first reads as deliberate continuous loop vs pose jump / identity break? Packet shows candidate miner walk with f3 duplicated from f2, producing a hard loop discontinuity at f3\u2192f0 while silhouette/min-pair/palette remain passing. Metric 0.2795 sits at C against Budget 0.2112; binding-good 05-miner-walk passes loop (0.1429). Independent second review: approve as the proposed hard-fail reference; Promotion remains PENDING_VERIFICATION.",
+  "reference_hashes": {
+    "budget_binding_good": "573c3d0092c20a893b986da54812a86b0fc3488bfcdeb1997a904a4a47f2fd7b",
+    "proposed_hard_fail_reference": "3e8e37a636ff9ffc16b18a6ef9e7c2b5dd10a94866064d4b40e045576adc05eb"
+  },
+  "review_id": "review--02",
+  "reviewer_identity": "cursor-agent/issue-56/review-02",
+  "schema": "gate-review-audit/0",
+  "second_review_triggers": [
+    "metric_at_or_beyond_midpoint"
+  ],
+  "timestamp": "2026-07-27T10:22:00+00:00",
+  "verdict": "APPROVE"
+}
