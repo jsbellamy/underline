@@ -14,7 +14,7 @@
   "metric": 0.3,
   "model_identity": "cursor-grok-4.5",
   "model_version": "4.5",
-  "observed_feature": "Occupancy-difference panels 0\u21921 and 1\u21922 show dense arm/head change from a single arms-raised pose spike; 2\u21923 nearly empty; palette and identity costume stable vs binding-good miner-idle-strip subtle breath.",
+  "observed_feature": "Blinded second look: f1 raises both arms overhead then settles; red occupancy blobs concentrate on arm/torso edges for 0\u21921 and 1\u21922 only. Yellow-helm / blue-overall identity and colours hold; binding-good miner row is near-static breath-only motion.",
   "packet_sha256": "970b6cf734c0a748da4ba137b175402151cccf81155dbf02f6314866c9f7c7b9",
   "promotion_id": "promo--idle--silhouette_budget",
   "rationale": "Candidate occupancy panel marks a pose-driven silhouette spike on adjacent pairs; binding-good miner-idle-strip shows only subtle idle motion; proposed control is the same raw as candidate. Reads as deliberate pose change with preserved identity. Metric at inclusive C midpoint trigger. APPROVE promotion verification.",
