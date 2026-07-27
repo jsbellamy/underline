@@ -1,4 +1,4 @@
-"""Full-repository Promotion verification for Wave A activation.
+"""Full-repository Promotion verification for manifest-backed Promotions.
 
 Validates review-approved Promotion candidates, runs the locked proof commands,
 and writes immutable verification records without mutating existing evidence.
@@ -11,6 +11,7 @@ import datetime as dt
 import json
 import re
 import subprocess
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -72,36 +73,16 @@ ACTIVATION_SLICES: tuple[frozenset[str], ...] = (
     ISSUE_61_PROMOTION_IDS,
 )
 
-PROMOTION_REVIEW_DIRS: dict[str, str] = {
-    "promo--idle--palette_drift_pass": "idle--palette_drift_pass--001",
-    "promo--idle--silhouette_budget": "idle--silhouette_budget--001",
-    "promo--blob_idle--loop_closure_pass": "blob_idle--loop_closure_pass--004",
-    "promo--blob_idle--min_pair_cohort_pass": "blob_idle--min_pair_cohort_pass--005",
-    "promo--blob_idle--palette_drift_pass": "blob_idle--palette_drift_pass--001",
-    "promo--blob_idle--silhouette_budget": "blob_idle--silhouette_budget--004",
-    "promo--emissive--loop_closure_pass": "emissive--loop_closure_pass--001",
-    "promo--emissive--palette_drift_pass": "emissive--palette_drift_pass--001",
-    "promo--emissive--silhouette_budget": "emissive--silhouette_budget--001",
-    "promo--airborne--loop_closure_pass": "airborne--loop_closure_pass--002",
-    "promo--airborne--min_pair_cohort_pass": "airborne--min_pair_cohort_pass--004",
-    "promo--airborne--palette_drift_pass": "airborne--palette_drift_pass--001",
-    "promo--walk--loop_closure_pass": "walk--loop_closure_pass--002",
-    "promo--walk--palette_drift_pass": "walk--palette_drift_pass--001",
-    "promo--walk--silhouette_budget": "walk--silhouette_budget--002",
-    "promo--swing--palette_drift_pass": "swing--palette_drift_pass--001",
-    "promo--swing--silhouette_budget": "swing--silhouette_budget--002",
-}
-
 
 class VerificationError(ValueError):
     """Fail-closed Promotion verification failure."""
 
 
-def _slice_index(promotion_id: str) -> int:
+def _slice_index(promotion_id: str) -> int | None:
     for index, promotion_ids in enumerate(ACTIVATION_SLICES):
         if promotion_id in promotion_ids:
             return index
-    raise VerificationError(f"unknown promotion_id {promotion_id!r}")
+    return None
 
 
 def _manifest_doc_at_slice_binding(
@@ -112,6 +93,8 @@ def _manifest_doc_at_slice_binding(
 ) -> dict[str, Any]:
     doc = json.loads(manifest_path.read_text())
     slice_index = _slice_index(promotion_id)
+    if slice_index is None:
+        raise VerificationError(f"unknown promotion_id {promotion_id!r}")
     later_slices = frozenset().union(*ACTIVATION_SLICES[slice_index + 1 :])
     current_slice = ACTIVATION_SLICES[slice_index]
     for promo in doc.get("promotions", []):
@@ -231,11 +214,18 @@ def manifest_sha256_at_binding(
             "provide exactly one of promotion_ids or promotion_id"
         )
     if promotion_id is not None:
-        doc = _manifest_doc_at_slice_binding(
-            manifest_path,
-            promotion_id=promotion_id,
-            status=status,
-        )
+        if _slice_index(promotion_id) is not None:
+            doc = _manifest_doc_at_slice_binding(
+                manifest_path,
+                promotion_id=promotion_id,
+                status=status,
+            )
+        else:
+            doc = _manifest_doc_at_binding(
+                manifest_path,
+                promotion_ids=frozenset({promotion_id}),
+                status=status,
+            )
     else:
         assert promotion_ids is not None
         doc = _manifest_doc_at_binding(
@@ -247,11 +237,10 @@ def manifest_sha256_at_binding(
     return ge.sha256_bytes(canonical.encode())
 
 
-def review_dir_for_promotion(promotion_id: str) -> str:
-    attempt_id = PROMOTION_REVIEW_DIRS.get(promotion_id)
-    if attempt_id is None:
-        raise VerificationError(f"unknown promotion_id {promotion_id!r}")
-    return attempt_id
+def review_dir_for_promotion(root: Path, promotion_id: str) -> str:
+    """Return the Attempt review directory bound to one manifest Promotion."""
+    graph = ge.validate_evidence_graph(root, promotion_ids=[promotion_id])
+    return graph.promotions[promotion_id].attempt_id
 
 
 def ensure_blinded_second_review_input(review_dir: Path) -> None:
@@ -274,7 +263,7 @@ def ensure_blinded_second_review_input(review_dir: Path) -> None:
 
 def validate_promotion_reviews(root: Path, promotion_id: str) -> dict[str, Any]:
     """Validate the review graph for one Promotion; require two matching APPROVE audits."""
-    attempt_id = review_dir_for_promotion(promotion_id)
+    attempt_id = review_dir_for_promotion(root, promotion_id)
     review_dir = root / "gate-controls" / "reviews" / attempt_id
     ensure_blinded_second_review_input(review_dir)
     report = gr.validate_review_dir(review_dir, root=root)
@@ -315,7 +304,7 @@ def build_verification_record(
     measurement = graph.measurements[promo.attempt_id]
     provenance = graph.provenances[promo.attempt_id]
 
-    attempt_id = review_dir_for_promotion(promotion_id)
+    attempt_id = promo.attempt_id
     review_dir = gc / "reviews" / attempt_id
     packet_path = review_dir / "packet.json"
     packet_doc = ge.load_json(packet_path)
@@ -396,11 +385,6 @@ def validate_verification_record(root: Path, path: Path) -> None:
     ge.require_schema(doc, ge.KNOWN_SCHEMAS["verification"], where=str(path))
 
     promotion_id = str(doc["promotion_id"])
-    if promotion_id not in VERIFICATION_PROMOTION_IDS:
-        raise VerificationError(
-            f"verification record promotion_id {promotion_id!r} outside verification scope"
-        )
-
     promo = ge.load_manifest(gc / "manifest.json")
     promotion = next((p for p in promo.promotions if p.id == promotion_id), None)
     if promotion is None:
@@ -496,10 +480,11 @@ def verify_promotion(
     commands: Sequence[CommandResult] | None = None,
 ) -> dict[str, Any]:
     """Validate reviews and assemble a verification record for one Promotion."""
-    if promotion_id not in VERIFICATION_PROMOTION_IDS:
-        raise VerificationError(f"promotion {promotion_id!r} is outside verification scope")
     ge.validate_evidence_graph(root, promotion_ids=[promotion_id])
-    review_report = validate_promotion_reviews(root, promotion_id)
+    try:
+        review_report = validate_promotion_reviews(root, promotion_id)
+    except VerificationError as exc:
+        review_report = {"ok": False, "error": str(exc)}
     command_results = list(commands) if commands is not None else run_required_commands(root)
     return build_verification_record(
         root=root,
@@ -530,15 +515,15 @@ def apply_manifest_statuses(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Run and validate Wave A Promotion verification records."
+        description="Run and validate manifest-backed Promotion verification records."
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
     run = sub.add_parser("run", help="Verify one Promotion and print its record")
-    run.add_argument("promotion_id", choices=sorted(VERIFICATION_PROMOTION_IDS))
+    run.add_argument("promotion_id")
 
     write = sub.add_parser("write", help="Write verification JSON for one Promotion")
-    write.add_argument("promotion_id", choices=sorted(VERIFICATION_PROMOTION_IDS))
+    write.add_argument("promotion_id")
     write.add_argument(
         "--root",
         type=Path,
@@ -562,13 +547,21 @@ def main(argv: list[str] | None = None) -> int:
 
     args = parser.parse_args(argv)
     if args.command == "run":
-        record = verify_promotion(Path(".").resolve(), args.promotion_id)
+        try:
+            record = verify_promotion(Path(".").resolve(), args.promotion_id)
+        except (VerificationError, ge.EvidenceError) as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
         print(json.dumps(record, indent=2, sort_keys=True))
         return 0 if record["status"] == ACTIVE_STATUS else 1
 
     if args.command == "write":
         root = args.root.resolve()
-        record = verify_promotion(root, args.promotion_id)
+        try:
+            record = verify_promotion(root, args.promotion_id)
+        except (VerificationError, ge.EvidenceError) as exc:
+            print(str(exc), file=sys.stderr)
+            return 2
         out = root / "gate-controls" / "verification" / f"{args.promotion_id}.json"
         write_verification_record(out, record)
         print(json.dumps({"ok": True, "path": str(out), "status": record["status"]}))
@@ -589,8 +582,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "ensure-review-input":
         root = Path(".").resolve()
-        for promotion_id in sorted(VERIFICATION_PROMOTION_IDS):
-            attempt_id = review_dir_for_promotion(promotion_id)
+        manifest = ge.load_manifest(root / "gate-controls" / "manifest.json")
+        for promotion in manifest.promotions:
+            attempt_id = review_dir_for_promotion(root, promotion.id)
             review_dir = root / "gate-controls" / "reviews" / attempt_id
             ensure_blinded_second_review_input(review_dir)
             print(json.dumps({"ok": True, "review_dir": str(review_dir)}))

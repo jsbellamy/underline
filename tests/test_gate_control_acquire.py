@@ -801,3 +801,143 @@ def test_measurement_persist_is_append_only_on_rescore(tmp_path: Path) -> None:
         gc.persist_measurement_run(second_path, {**_isolated_run(), "isolation": "NOT_ISOLATED"})
         assert Path(tmp_path / row["measurement_path"]).read_bytes() == first
         assert second_path.is_file()
+
+
+def _ok_commands() -> list[gv.CommandResult]:
+    return [
+        gv.CommandResult(command="npm test", exit_code=0, evidence_row="1 passed"),
+        gv.CommandResult(
+            command="npm run prototype:strip:corpus",
+            exit_code=0,
+            evidence_row="scored 1/1",
+        ),
+        gv.CommandResult(
+            command="npm run prototype:strip:adversarial",
+            exit_code=0,
+            evidence_row="Separated=17",
+        ),
+        gv.CommandResult(
+            command="npm run prototype:strip:alpha-budgets",
+            exit_code=0,
+            evidence_row="Separated=17",
+        ),
+    ]
+
+
+def test_complete_promotion_verification_activates_pending_candidate(
+    tmp_path: Path,
+) -> None:
+    from tests.test_gate_verification import _seed_manifest_promotion_candidate
+
+    promotion_id = "promo--idle--silhouette_budget"
+    gc_root = _seed_manifest_promotion_candidate(tmp_path, promotion_id=promotion_id)
+    with patch.dict("os.environ", {"UNDERLINE_GATE_CONTROLS_ROOT": str(gc_root)}):
+        record = gca.complete_promotion_verification(
+            tmp_path,
+            promotion_id,
+            commands=_ok_commands(),
+        )
+    assert record["status"] == gv.ACTIVE_STATUS
+    verification_path = gc_root / "verification" / f"{promotion_id}.json"
+    assert verification_path.is_file()
+    gv.validate_verification_record(tmp_path, verification_path)
+    manifest = ge.load_manifest(gc_root / "manifest.json")
+    promo = next(p for p in manifest.promotions if p.id == promotion_id)
+    assert promo.status == gv.ACTIVE_STATUS
+
+
+def test_complete_promotion_verification_invalidates_on_failed_reviews(
+    tmp_path: Path,
+) -> None:
+    from tests.test_gate_verification import _seed_manifest_promotion_candidate
+
+    promotion_id = "promo--idle--silhouette_budget"
+    attempt_id = "idle--silhouette_budget--099"
+    gc_root = _seed_manifest_promotion_candidate(tmp_path, promotion_id=promotion_id)
+    review_dir = gc_root / "reviews" / attempt_id
+    packet = gr.review_packet_from_manifest(json.loads((review_dir / "packet.json").read_text()))
+    reject = gr.make_audit_record(
+        packet=packet,
+        review_id="review--02",
+        verdict="REJECT",
+        frames=[0, 1],
+        observed_feature="fixture",
+        rationale="fixture",
+        reviewer_identity="reviewer-2",
+        model_identity="fixture-model",
+        model_version="1",
+        timestamp="2026-07-27T12:00:00+00:00",
+        primary_gate="silhouette_budget",
+        primary_reason_code="IDENTITY_DRIFT",
+        retry_intent="tighten framing",
+    )
+    (review_dir / "review--02.json").write_text(
+        json.dumps(reject, indent=2, sort_keys=True) + "\n"
+    )
+    with patch.dict("os.environ", {"UNDERLINE_GATE_CONTROLS_ROOT": str(gc_root)}):
+        record = gca.complete_promotion_verification(
+            tmp_path,
+            promotion_id,
+            commands=_ok_commands(),
+        )
+    assert record["status"] == gv.INVALIDATED_STATUS
+    assert record["failure_reason"] == "review_not_approved"
+    manifest = ge.load_manifest(gc_root / "manifest.json")
+    promo = next(p for p in manifest.promotions if p.id == promotion_id)
+    assert promo.status == gv.INVALIDATED_STATUS
+
+
+def test_complete_promotion_verification_invalidates_on_failed_command(
+    tmp_path: Path,
+) -> None:
+    from tests.test_gate_verification import _seed_manifest_promotion_candidate
+
+    promotion_id = "promo--idle--silhouette_budget"
+    gc_root = _seed_manifest_promotion_candidate(tmp_path, promotion_id=promotion_id)
+    failed = list(_ok_commands())
+    failed[0] = gv.CommandResult(
+        command="npm test", exit_code=1, evidence_row="1 failed"
+    )
+    with patch.dict("os.environ", {"UNDERLINE_GATE_CONTROLS_ROOT": str(gc_root)}):
+        record = gca.complete_promotion_verification(
+            tmp_path,
+            promotion_id,
+            commands=failed,
+        )
+    assert record["status"] == gv.INVALIDATED_STATUS
+    assert record["failure_reason"] == "verification_command_failed"
+    manifest = ge.load_manifest(gc_root / "manifest.json")
+    promo = next(p for p in manifest.promotions if p.id == promotion_id)
+    assert promo.status == gv.INVALIDATED_STATUS
+
+
+def test_complete_promotion_verification_leaves_unrelated_statuses_unchanged(
+    tmp_path: Path,
+) -> None:
+    from tests.test_gate_verification import _seed_manifest_promotion_candidate
+
+    promotion_id = "promo--idle--silhouette_budget"
+    gc_root = _seed_manifest_promotion_candidate(tmp_path, promotion_id=promotion_id)
+    manifest_path = gc_root / "manifest.json"
+    doc = json.loads(manifest_path.read_text())
+    doc["promotions"].append(
+        {
+            "id": "promo--walk--loop_closure_pass",
+            "specification_id": "walk/loop_closure_pass",
+            "attempt_id": "walk--loop_closure_pass--002",
+            "measurement_path": "gate-controls/reports/walk--loop_closure_pass--002/m.json",
+            "status": gv.ACTIVE_STATUS,
+            "recorded_at": "2026-07-27T12:00:00+00:00",
+        }
+    )
+    manifest_path.write_text(json.dumps(doc, indent=2) + "\n")
+    with patch.dict("os.environ", {"UNDERLINE_GATE_CONTROLS_ROOT": str(gc_root)}):
+        gca.complete_promotion_verification(
+            tmp_path,
+            promotion_id,
+            commands=_ok_commands(),
+        )
+    updated = json.loads(manifest_path.read_text())
+    statuses = {promo["id"]: promo["status"] for promo in updated["promotions"]}
+    assert statuses[promotion_id] == gv.ACTIVE_STATUS
+    assert statuses["promo--walk--loop_closure_pass"] == gv.ACTIVE_STATUS
