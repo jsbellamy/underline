@@ -1,4 +1,4 @@
-"""Proof tests for pipeline.ingest_strip CLI (issue #11 C3–C7)."""
+"""Proof tests for pipeline.ingest_strip CLI (issue #11 C3–C7, issue #62 C7)."""
 
 from __future__ import annotations
 
@@ -7,14 +7,27 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from unittest.mock import patch
 
 from PIL import Image
 
-from pipeline.strip import DEFAULT_LAYOUT
+from pipeline.ingest_strip import main
+from pipeline.strip import DEFAULT_LAYOUT, IngestResult, StripLayout, ingest_strip_provider
 
 ROOT = Path(__file__).resolve().parents[1]
 INBOX = ROOT / "prototype" / "strip-coherence" / "inbox"
 LOGICAL_SIZE = (DEFAULT_LAYOUT.frame_w, DEFAULT_LAYOUT.frame_h)
+
+
+def _corpus_layout() -> StripLayout:
+    return StripLayout(
+        frame_w=DEFAULT_LAYOUT.frame_w,
+        frame_h=DEFAULT_LAYOUT.frame_h,
+        frame_count=DEFAULT_LAYOUT.frame_count,
+        gutter=DEFAULT_LAYOUT.gutter,
+        pitch_px=24,
+        margin_cells=0,
+    )
 
 
 def _run(args: list[str]) -> subprocess.CompletedProcess[str]:
@@ -38,8 +51,8 @@ def test_good_idle_strip_passes_coherence_gates() -> None:
         ]
     )
     assert result.returncode == 0, result.stderr
-    assert "palette_drift_pass: pass" in result.stdout
-    assert "silhouette_budget" not in result.stdout or "max_silhouette: pass" in result.stdout
+    assert "palette_drift_pass: PASS" in result.stdout
+    assert "silhouette_budget" not in result.stdout or "max_silhouette: PASS" in result.stdout
     assert "expected " not in result.stdout
     assert "raster_match" not in result.stdout
     assert "Slice  mode=pitch" in result.stdout
@@ -96,6 +109,64 @@ def test_failing_strip_writes_no_frames_and_reports_tripped_gates(tmp_path: Path
     assert "silhouette_budget" in result.stdout or "max_silhouette: FAIL" in result.stdout
 
 
+def test_review_strip_exit_code_3_and_skips_export(tmp_path: Path, capsys) -> None:
+    png = INBOX / "01-miner-idle.png"
+    out = tmp_path / "frames"
+    base = ingest_strip_provider(
+        png,
+        _corpus_layout(),
+        motion_class="idle",
+    )
+    review = IngestResult(
+        layout=base.layout,
+        source=base.source,
+        recovered=base.recovered,
+        slice_meta=base.slice_meta,
+        coherence={**base.coherence, "outcome": "REVIEW", "pass": False},
+        pass_=False,
+        outcome="REVIEW",
+    )
+    with patch("pipeline.ingest_strip.ingest_strip_provider", return_value=review):
+        code = main(
+            [
+                str(png),
+                "--motion-class",
+                "idle",
+                "--out",
+                str(out),
+                "--json",
+            ]
+        )
+    assert code == 3
+    assert not out.exists() or list(out.iterdir()) == []
+    data = json.loads(capsys.readouterr().out)
+    assert data["outcome"] == "REVIEW"
+    assert data["pass"] is False
+    assert "gate_outcomes" in data
+
+
+def test_review_human_report_labels_review(capsys) -> None:
+    png = INBOX / "01-miner-idle.png"
+    base = ingest_strip_provider(
+        png,
+        _corpus_layout(),
+        motion_class="idle",
+    )
+    review = IngestResult(
+        layout=base.layout,
+        source=base.source,
+        recovered=base.recovered,
+        slice_meta=base.slice_meta,
+        coherence={**base.coherence, "outcome": "REVIEW", "pass": False},
+        pass_=False,
+        outcome="REVIEW",
+    )
+    with patch("pipeline.ingest_strip.ingest_strip_provider", return_value=review):
+        code = main([str(png), "--motion-class", "idle"])
+    assert code == 3
+    assert "Overall  REVIEW" in capsys.readouterr().out
+
+
 def test_unknown_motion_class_raises_on_stderr() -> None:
     result = _run(
         [
@@ -121,6 +192,7 @@ def test_json_mode_emits_single_parseable_object() -> None:
     assert result.stdout.strip()
     data = json.loads(result.stdout)
     assert data["pass"] is True
+    assert data["outcome"] == "PASS"
 
 
 def test_airborne_json_reports_inapplicable_gates_with_reasons() -> None:

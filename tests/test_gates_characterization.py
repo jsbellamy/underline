@@ -49,12 +49,12 @@ PINNED = {
 }
 
 DERIVED_BUDGETS = {
-    "idle": (0.17, 0.30, 0.14, 0.07),
-    "blob_idle": (0.36, 0.35, 0.22, 0.13),
-    "emissive": (0.21, 0.16, 0.17, 0.12),
-    "walk": (0.42, 0.17, 0.19, 0.17),
-    "swing": (0.59, None, 0.20, None),
-    "airborne": (None, 0.68, 0.23, 0.29),
+    "idle": (0.2239, 0.30, 0.1974, 0.07),
+    "blob_idle": (0.3951, 0.3906, 0.2377, 0.1199),
+    "emissive": (0.3226, 0.1694, 0.2123, 0.12),
+    "walk": (0.4136, 0.2112, 0.2217, 0.17),
+    "swing": (0.5860, None, 0.2294, None),
+    "airborne": (None, 0.7032, 0.2423, 0.3013),
 }
 
 GATES = (
@@ -135,7 +135,7 @@ def test_motion_class_budgets_match_contract() -> None:
 def test_none_silhouette_budget_excluded_from_pass() -> None:
     budget = S.MOTION_CLASSES["airborne"]
     assert budget.max_silhouette is None
-    assert budget.max_min_pair == 0.29
+    assert budget.max_min_pair == 0.3013
     path = INBOX / "04-bat-flap.png"
     result = S.ingest_strip_provider(path, _corpus_layout(), motion_class="airborne")
     coh = result.coherence
