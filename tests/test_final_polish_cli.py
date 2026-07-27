@@ -17,7 +17,7 @@ from PIL import Image
 
 from pipeline.final_polish import initialize_bundle
 from pipeline.final_polish_cli import main
-from pipeline.gate_evidence import sha256_file
+from pipeline.gate_evidence import sha256_bytes, sha256_file
 from pipeline.strip import DEFAULT_LAYOUT, IngestResult, StripLayout, ingest_strip_provider
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -26,6 +26,9 @@ PASS_STRIP = INBOX / "01-miner-idle.png"
 FAIL_STRIP = INBOX / "08-NEG-identity-drift.png"
 WALK_STRIP = INBOX / "05-miner-walk.png"
 LANTERN_STRIP = INBOX / "14-lantern-flicker.png"
+IDENTITY_PNG = ROOT / "assets" / "first-room" / "dwarf" / "identity.png"
+IDLE_SEED_STRIP = ROOT / "assets" / "first-room" / "dwarf" / "idle" / "provider" / "source.png"
+CANONICAL_IDENTITY_SHA = "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9"
 LOGICAL_SIZE = (DEFAULT_LAYOUT.frame_w, DEFAULT_LAYOUT.frame_h)
 FRAME_COUNT = DEFAULT_LAYOUT.frame_count
 
@@ -62,9 +65,157 @@ def _run_npm(args: list[str]) -> subprocess.CompletedProcess[str]:
     )
 
 
+def _provider_dimensions(provider_path: Path) -> list[int]:
+    with Image.open(provider_path) as image:
+        return [image.width, image.height]
+
+
+def _write_animation_provenance(
+    provider_path: Path,
+    provenance_path: Path,
+    *,
+    motion_class: str,
+    generation_mode: str = "text-to-image",
+    reference_image_sha256: list[str] | None = None,
+    edit_source_sha256: str | None = None,
+) -> None:
+    if reference_image_sha256 is None:
+        reference_image_sha256 = []
+    prompt_text = "underline cli test provenance prompt"
+    provenance_path.write_text(
+        json.dumps(
+            {
+                "schema": "animation-strip-provenance/0",
+                "specification_id": f"test/{motion_class}",
+                "attempt_id": "cli-test--001",
+                "predecessor_attempt_id": None,
+                "generator": "cursor-image-gen",
+                "model": "cursor-image-gen",
+                "prompt_text": prompt_text,
+                "prompt_sha256": sha256_bytes(prompt_text.encode("utf-8")),
+                "generation_mode": generation_mode,
+                "reference_image_sha256": reference_image_sha256,
+                "edit_source_sha256": edit_source_sha256,
+                "generated_at": "2026-07-27T22:00:00+00:00",
+                "acquiring_agent": "pytest",
+                "repository_commit": "0000000000000000000000000000000000000000",
+                "raw_path": str(provider_path),
+                "raw_sha256": sha256_file(provider_path),
+                "media_type": "image/png",
+                "dimensions": _provider_dimensions(provider_path),
+                "motion_class": motion_class,
+                "master_palette_id": "first-room",
+                "item_geometry": {
+                    "frame_w": DEFAULT_LAYOUT.frame_w,
+                    "frame_h": DEFAULT_LAYOUT.frame_h,
+                    "frame_count": DEFAULT_LAYOUT.frame_count,
+                    "gutter": DEFAULT_LAYOUT.gutter,
+                },
+            },
+            indent=2,
+            sort_keys=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+
+def _provenance_args(
+    tmp_path: Path,
+    provider_path: Path,
+    motion_class: str,
+    *,
+    polish_profile: str | None = None,
+) -> list[str]:
+    provenance_path = tmp_path / f"{provider_path.stem}.source.json"
+    kwargs: dict[str, object] = {"motion_class": motion_class}
+    identity_args: list[str] = []
+    if polish_profile == "dwarf-miner" and motion_class in {"walk", "swing"}:
+        kwargs.update(
+            {
+                "generation_mode": "image-edit",
+                "reference_image_sha256": [CANONICAL_IDENTITY_SHA],
+                "edit_source_sha256": sha256_file(IDLE_SEED_STRIP),
+            }
+        )
+        identity_args = [
+            "--identity-reference",
+            str(IDENTITY_PNG),
+            "--edit-source",
+            str(IDLE_SEED_STRIP),
+        ]
+    _write_animation_provenance(provider_path, provenance_path, **kwargs)
+    return ["--provenance", str(provenance_path), *identity_args]
+
+
+def _init_cli_args(
+    tmp_path: Path,
+    provider_path: Path,
+    motion_class: str,
+    bundle: Path,
+    *,
+    polish_profile: str | None = None,
+    json_mode: bool = False,
+) -> list[str]:
+    args = [
+        "init",
+        str(provider_path),
+        "--motion-class",
+        motion_class,
+        "--out",
+        str(bundle),
+        *_provenance_args(
+            tmp_path,
+            provider_path,
+            motion_class,
+            polish_profile=polish_profile,
+        ),
+    ]
+    if polish_profile is not None:
+        args.extend(["--polish-profile", polish_profile])
+    if json_mode:
+        args.append("--json")
+    return args
+
+
+def _library_init_bundle(
+    provider_path: Path,
+    motion_class: str,
+    bundle: Path,
+    tmp_path: Path,
+    *,
+    polish_profile: str | None = None,
+) -> None:
+    provenance_args = _provenance_args(
+        tmp_path,
+        provider_path,
+        motion_class,
+        polish_profile=polish_profile,
+    )
+    provenance_path = Path(provenance_args[1])
+    identity = Path(provenance_args[3]) if len(provenance_args) > 3 else None
+    edit = Path(provenance_args[5]) if len(provenance_args) > 5 else None
+    initialize_bundle(
+        provider_path,
+        motion_class,
+        bundle,
+        provenance_sidecar=provenance_path,
+        polish_profile=polish_profile,
+        identity_reference=identity,
+        edit_source=edit,
+    )
+
+
 def _init_bundle(tmp_path: Path) -> Path:
     bundle = tmp_path / "bundle"
-    initialize_bundle(PASS_STRIP, "idle", bundle)
+    provenance_path = tmp_path / "pass.source.json"
+    _write_animation_provenance(PASS_STRIP, provenance_path, motion_class="idle")
+    initialize_bundle(
+        PASS_STRIP,
+        "idle",
+        bundle,
+        provenance_sidecar=provenance_path,
+    )
     return bundle
 
 
@@ -100,16 +251,7 @@ def _set_opaque_rgb(path: Path, x: int, y: int, rgb: tuple[int, int, int]) -> No
 
 def test_npm_entrypoint_runs_init_check_finalize(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    init = _run_npm(
-        [
-            "init",
-            str(PASS_STRIP),
-            "--motion-class",
-            "idle",
-            "--out",
-            str(bundle),
-        ]
-    )
+    init = _run_npm(_init_cli_args(tmp_path, PASS_STRIP, "idle", bundle))
     assert init.returncode == 0, init.stderr
     assert bundle.is_dir()
 
@@ -123,16 +265,7 @@ def test_npm_entrypoint_runs_init_check_finalize(tmp_path: Path) -> None:
 
 def test_init_creates_bundle_via_module_entrypoint(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    result = _run_module(
-        [
-            "init",
-            str(PASS_STRIP),
-            "--motion-class",
-            "idle",
-            "--out",
-            str(bundle),
-        ]
-    )
+    result = _run_module(_init_cli_args(tmp_path, PASS_STRIP, "idle", bundle))
     assert result.returncode == 0, result.stderr
     assert (bundle / "manifest.json").is_file()
     assert (bundle / "polished" / "frame-0.png").is_file()
@@ -140,16 +273,7 @@ def test_init_creates_bundle_via_module_entrypoint(tmp_path: Path) -> None:
 
 def test_init_fail_strip_exit_1(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    result = _run_module(
-        [
-            "init",
-            str(FAIL_STRIP),
-            "--motion-class",
-            "idle",
-            "--out",
-            str(bundle),
-        ]
-    )
+    result = _run_module(_init_cli_args(tmp_path, FAIL_STRIP, "idle", bundle))
     assert result.returncode == 1
     assert not bundle.exists()
     assert "FAIL" in result.stdout
@@ -158,17 +282,7 @@ def test_init_fail_strip_exit_1(tmp_path: Path) -> None:
 
 def test_init_fail_strip_json_exit_1(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    result = _run_module(
-        [
-            "init",
-            str(FAIL_STRIP),
-            "--motion-class",
-            "idle",
-            "--out",
-            str(bundle),
-            "--json",
-        ]
-    )
+    result = _run_module(_init_cli_args(tmp_path, FAIL_STRIP, "idle", bundle, json_mode=True))
     assert result.returncode == 1
     assert not bundle.exists()
     data = json.loads(result.stdout)
@@ -180,17 +294,7 @@ def test_init_fail_strip_json_exit_1(tmp_path: Path) -> None:
 
 def test_init_pass_json_exit_0(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    result = _run_module(
-        [
-            "init",
-            str(PASS_STRIP),
-            "--motion-class",
-            "idle",
-            "--out",
-            str(bundle),
-            "--json",
-        ]
-    )
+    result = _run_module(_init_cli_args(tmp_path, PASS_STRIP, "idle", bundle, json_mode=True))
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
     assert data["outcome"] == "PASS"
@@ -201,17 +305,14 @@ def test_init_pass_json_exit_0(tmp_path: Path) -> None:
 def test_init_with_profile_binds_profile_in_json_result(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
     result = _run_module(
-        [
-            "init",
-            str(PASS_STRIP),
-            "--motion-class",
+        _init_cli_args(
+            tmp_path,
+            PASS_STRIP,
             "idle",
-            "--out",
-            str(bundle),
-            "--polish-profile",
-            "miner",
-            "--json",
-        ]
+            bundle,
+            polish_profile="miner",
+            json_mode=True,
+        )
     )
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
@@ -236,17 +337,14 @@ def test_init_with_production_profile_binds_profile_in_json_result(
 ) -> None:
     bundle = tmp_path / "bundle"
     result = _run_module(
-        [
-            "init",
-            str(strip),
-            "--motion-class",
+        _init_cli_args(
+            tmp_path,
+            strip,
             motion_class,
-            "--out",
-            str(bundle),
-            "--polish-profile",
-            profile_id,
-            "--json",
-        ]
+            bundle,
+            polish_profile=profile_id,
+            json_mode=True,
+        )
     )
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
@@ -271,7 +369,19 @@ def test_brief_json_selects_production_profile_motion_questions(
     motion_ids: list[str],
 ) -> None:
     bundle = tmp_path / "bundle"
-    initialize_bundle(strip, motion_class, bundle, polish_profile=profile_id)
+    provenance_path = _provenance_args(tmp_path, strip, motion_class, polish_profile=profile_id)
+    provenance = Path(provenance_path[1])
+    identity = Path(provenance_path[3]) if len(provenance_path) > 3 else None
+    edit = Path(provenance_path[5]) if len(provenance_path) > 5 else None
+    initialize_bundle(
+        strip,
+        motion_class,
+        bundle,
+        provenance_sidecar=provenance,
+        polish_profile=profile_id,
+        identity_reference=identity,
+        edit_source=edit,
+    )
     before = _bundle_fingerprint(bundle)
 
     result = _run_module(["brief", str(bundle), "--json"])
@@ -287,16 +397,13 @@ def test_brief_json_selects_production_profile_motion_questions(
 def test_init_unknown_profile_exit_2_without_partial_bundle(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
     result = _run_module(
-        [
-            "init",
-            str(PASS_STRIP),
-            "--motion-class",
+        _init_cli_args(
+            tmp_path,
+            PASS_STRIP,
             "idle",
-            "--out",
-            str(bundle),
-            "--polish-profile",
-            "missing",
-        ]
+            bundle,
+            polish_profile="missing",
+        )
     )
     assert result.returncode == 2
     assert "unknown Polish profile" in result.stderr
@@ -319,17 +426,7 @@ def test_init_review_strip_json_exit_3(tmp_path: Path, capsys) -> None:
         patch("pipeline.final_polish.ingest_strip_provider", return_value=review),
         patch("pipeline.final_polish_cli.ingest_strip_provider", return_value=review),
     ):
-        code = main(
-            [
-                "init",
-                str(PASS_STRIP),
-                "--motion-class",
-                "idle",
-                "--out",
-                str(bundle),
-                "--json",
-            ]
-        )
+        code = main(_init_cli_args(tmp_path, PASS_STRIP, "idle", bundle, json_mode=True))
     assert code == 3
     data = json.loads(capsys.readouterr().out)
     assert data["outcome"] == "REVIEW"
@@ -352,16 +449,7 @@ def test_init_review_strip_exit_3(tmp_path: Path, capsys) -> None:
         patch("pipeline.final_polish.ingest_strip_provider", return_value=review),
         patch("pipeline.final_polish_cli.ingest_strip_provider", return_value=review),
     ):
-        code = main(
-            [
-                "init",
-                str(PASS_STRIP),
-                "--motion-class",
-                "idle",
-                "--out",
-                str(bundle),
-            ]
-        )
+        code = main(_init_cli_args(tmp_path, PASS_STRIP, "idle", bundle))
     assert code == 3
     assert not bundle.exists()
     assert "REVIEW" in capsys.readouterr().out
@@ -369,14 +457,19 @@ def test_init_review_strip_exit_3(tmp_path: Path, capsys) -> None:
 
 def test_init_invalid_provider_exit_2(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
+    missing = tmp_path / "missing.png"
+    provenance_path = tmp_path / "missing.source.json"
+    _write_animation_provenance(PASS_STRIP, provenance_path, motion_class="idle")
     result = _run_module(
         [
             "init",
-            str(tmp_path / "missing.png"),
+            str(missing),
             "--motion-class",
             "idle",
             "--out",
             str(bundle),
+            "--provenance",
+            str(provenance_path),
         ]
     )
     assert result.returncode == 2
@@ -386,16 +479,7 @@ def test_init_invalid_provider_exit_2(tmp_path: Path) -> None:
 
 def test_init_unknown_motion_class_exit_2(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    result = _run_module(
-        [
-            "init",
-            str(PASS_STRIP),
-            "--motion-class",
-            "nonsense",
-            "--out",
-            str(bundle),
-        ]
-    )
+    result = _run_module(_init_cli_args(tmp_path, PASS_STRIP, "nonsense", bundle))
     assert result.returncode == 2
     assert "unknown motion_class" in result.stderr
 
@@ -403,16 +487,7 @@ def test_init_unknown_motion_class_exit_2(tmp_path: Path) -> None:
 def test_init_existing_bundle_exit_2(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
     bundle.mkdir()
-    result = _run_module(
-        [
-            "init",
-            str(PASS_STRIP),
-            "--motion-class",
-            "idle",
-            "--out",
-            str(bundle),
-        ]
-    )
+    result = _run_module(_init_cli_args(tmp_path, PASS_STRIP, "idle", bundle))
     assert result.returncode == 2
     assert "already exists" in result.stderr
 
@@ -426,7 +501,7 @@ def test_check_pass_exit_0(tmp_path: Path) -> None:
 
 def test_brief_json_is_read_only_and_selects_walk_questions(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    initialize_bundle(WALK_STRIP, "walk", bundle, polish_profile="miner")
+    _library_init_bundle(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="miner")
     before = _bundle_fingerprint(bundle)
 
     result = _run_module(["brief", str(bundle), "--json"])
@@ -448,7 +523,7 @@ def test_brief_json_is_read_only_and_selects_walk_questions(tmp_path: Path) -> N
 
 def test_brief_human_output_is_actionable(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    initialize_bundle(WALK_STRIP, "walk", bundle, polish_profile="miner")
+    _library_init_bundle(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="miner")
 
     result = _run_module(["brief", str(bundle)])
 

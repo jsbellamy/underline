@@ -10,7 +10,7 @@ import json
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Sequence
+from typing import Any, Mapping, Sequence
 
 from PIL import Image, UnidentifiedImageError
 
@@ -28,13 +28,45 @@ from pipeline.strip import (
     load_provider_frames,
 )
 
-BUNDLE_SCHEMA = "final-polish-bundle/1"
-BUNDLE_SCHEMAS = frozenset({"final-polish-bundle/0", BUNDLE_SCHEMA})
+BUNDLE_SCHEMA_LEGACY_0 = "final-polish-bundle/0"
+BUNDLE_SCHEMA_LEGACY_1 = "final-polish-bundle/1"
+BUNDLE_SCHEMA = "final-polish-bundle/2"
+BUNDLE_SCHEMAS = frozenset(
+    {BUNDLE_SCHEMA_LEGACY_0, BUNDLE_SCHEMA_LEGACY_1, BUNDLE_SCHEMA}
+)
+PROVENANCE_SCHEMA = "animation-strip-provenance/0"
+ATTEMPT_LEDGER_SCHEMA = "animation-attempt-ledger/0"
 PROFILE_SCHEMA = "polish-profile/0"
 REPORT_SCHEMA = "final-polish-report/0"
+GENERATION_MODES = frozenset({"text-to-image", "image-edit"})
+ATTEMPT_OUTCOMES = frozenset({"accepted", "rejected"})
+PROVENANCE_REQUIRED_FIELDS = (
+    "schema",
+    "specification_id",
+    "attempt_id",
+    "predecessor_attempt_id",
+    "generator",
+    "model",
+    "prompt_text",
+    "prompt_sha256",
+    "generation_mode",
+    "reference_image_sha256",
+    "edit_source_sha256",
+    "generated_at",
+    "acquiring_agent",
+    "repository_commit",
+    "raw_path",
+    "raw_sha256",
+    "media_type",
+    "dimensions",
+    "motion_class",
+    "master_palette_id",
+    "item_geometry",
+)
 
 EXPECTED_FRAME_NAMES = tuple(f"frame-{index}.png" for index in range(DEFAULT_LAYOUT.frame_count))
 _REPO_ROOT = Path(__file__).resolve().parents[1]
+_DWARF_IDENTITY_DOC = _REPO_ROOT / "assets" / "first-room" / "dwarf" / "identity.json"
 _PROFILE_ROOT = _REPO_ROOT / "polish-profiles"
 _PROFILE_REGISTRY = {
     "dwarf-miner": _PROFILE_ROOT / "dwarf-miner.json",
@@ -522,6 +554,641 @@ def _visible_cell_delta(
     )
 
 
+def _canonical_identity_sha256() -> str:
+    if not _DWARF_IDENTITY_DOC.is_file():
+        raise FinalPolishError(
+            f"missing dwarf identity authority: {_DWARF_IDENTITY_DOC}",
+            reason_code="missing_identity_authority",
+        )
+    doc = json.loads(_DWARF_IDENTITY_DOC.read_text(encoding="utf-8"))
+    binding = doc.get("identity_png")
+    if not isinstance(binding, dict):
+        raise FinalPolishError(
+            "dwarf identity authority missing identity_png",
+            reason_code="missing_identity_authority",
+        )
+    digest = binding.get("sha256")
+    if not isinstance(digest, str) or len(digest) != 64:
+        raise FinalPolishError(
+            "dwarf identity authority has invalid sha256",
+            reason_code="missing_identity_authority",
+        )
+    return digest
+
+
+def _requires_image_edit_evidence(polish_profile: str | None, motion_class: str) -> bool:
+    return polish_profile == "dwarf-miner" and motion_class in {"walk", "swing"}
+
+
+def _is_sha256_hex(value: object) -> bool:
+    return isinstance(value, str) and len(value) == 64 and all(
+        ch in "0123456789abcdef" for ch in value
+    )
+
+
+def _expected_item_geometry(layout: StripLayout) -> dict[str, int]:
+    return {
+        "frame_w": layout.frame_w,
+        "frame_h": layout.frame_h,
+        "frame_count": layout.frame_count,
+        "gutter": layout.gutter,
+    }
+
+
+def _load_json_object(
+    path: Path,
+    *,
+    reason_code: str,
+    error_class: type[FinalPolishError] = InitializationRejectedError,
+) -> dict[str, Any]:
+    if not path.is_file():
+        raise error_class(
+            f"missing JSON sidecar: {path}",
+            reason_code=reason_code,
+        )
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise error_class(
+            f"invalid JSON sidecar: {exc}",
+            reason_code=reason_code,
+        ) from exc
+    if not isinstance(doc, dict):
+        raise error_class(
+            "JSON sidecar must be an object",
+            reason_code=reason_code,
+        )
+    return doc
+
+
+def _validate_animation_provenance_record(
+    record: Mapping[str, Any],
+    provider_path: Path,
+    motion_class: str,
+    layout: StripLayout,
+    *,
+    identity_reference_sha256: str | None = None,
+    edit_source_sha256: str | None = None,
+    require_image_edit: bool = False,
+    expected_raw_basename: str | None = None,
+    error_class: type[FinalPolishError] = InitializationRejectedError,
+) -> dict[str, Any]:
+    """Validate animation-strip-provenance/0 and semantic bindings."""
+    def reject(message: str, reason_code: str) -> None:
+        raise error_class(message, reason_code=reason_code)
+
+    if record.get("schema") != PROVENANCE_SCHEMA:
+        reject(
+            f"provenance schema must be {PROVENANCE_SCHEMA!r}",
+            "invalid_provenance",
+        )
+    for field in PROVENANCE_REQUIRED_FIELDS:
+        if field not in record:
+            reject(f"provenance missing required field {field!r}", "invalid_provenance")
+
+    for field in (
+        "specification_id",
+        "attempt_id",
+        "generator",
+        "model",
+        "prompt_text",
+        "prompt_sha256",
+        "generation_mode",
+        "generated_at",
+        "acquiring_agent",
+        "repository_commit",
+        "raw_path",
+        "raw_sha256",
+        "media_type",
+        "motion_class",
+        "master_palette_id",
+    ):
+        value = record.get(field)
+        if not isinstance(value, str) or not value:
+            reject(
+                f"provenance field {field!r} must be a non-empty string",
+                "invalid_provenance",
+            )
+
+    predecessor = record.get("predecessor_attempt_id")
+    if predecessor is not None and (not isinstance(predecessor, str) or not predecessor):
+        reject(
+            "provenance predecessor_attempt_id must be null or a non-empty string",
+            "invalid_provenance",
+        )
+
+    prompt_text = str(record["prompt_text"])
+    expected_prompt_sha = sha256_bytes(prompt_text.encode("utf-8"))
+    if record.get("prompt_sha256") != expected_prompt_sha:
+        reject(
+            "provenance prompt_sha256 does not match prompt_text",
+            "invalid_provenance",
+        )
+
+    provider_sha = sha256_file(provider_path)
+    if record.get("raw_sha256") != provider_sha:
+        reject(
+            "provider bytes differ from provenance raw_sha256",
+            "provenance_hash_mismatch",
+        )
+
+    raw_path = str(record["raw_path"])
+    raw_basename = expected_raw_basename or provider_path.name
+    if Path(raw_path).name != raw_basename:
+        reject(
+            "provenance raw_path does not identify the provider input",
+            "invalid_provenance",
+        )
+
+    if str(record["motion_class"]) != motion_class:
+        reject(
+            "provenance motion_class does not match init motion_class",
+            "invalid_provenance",
+        )
+
+    generation_mode = str(record["generation_mode"])
+    if generation_mode not in GENERATION_MODES:
+        reject(
+            f"provenance generation_mode must be one of {sorted(GENERATION_MODES)}",
+            "invalid_provenance",
+        )
+
+    references = record.get("reference_image_sha256")
+    if not isinstance(references, list):
+        reject(
+            "provenance reference_image_sha256 must be an array",
+            "invalid_provenance",
+        )
+    seen_refs: set[str] = set()
+    ordered_refs: list[str] = []
+    for entry in references:
+        if not _is_sha256_hex(entry):
+            reject(
+                "provenance reference_image_sha256 entries must be SHA-256 hex",
+                "invalid_provenance",
+            )
+        ref = str(entry)
+        if ref in seen_refs:
+            reject(
+                "provenance reference_image_sha256 must be unique",
+                "invalid_provenance",
+            )
+        seen_refs.add(ref)
+        ordered_refs.append(ref)
+
+    edit_source = record.get("edit_source_sha256")
+    if generation_mode == "text-to-image":
+        if edit_source is not None:
+            reject(
+                "provenance edit_source_sha256 must be null for text-to-image",
+                "invalid_provenance",
+            )
+    else:
+        if not _is_sha256_hex(edit_source):
+            reject(
+                "provenance edit_source_sha256 must be a SHA-256 hex for image-edit",
+                "invalid_provenance",
+            )
+
+    dimensions = record.get("dimensions")
+    if (
+        not isinstance(dimensions, list)
+        or len(dimensions) != 2
+        or not all(isinstance(axis, int) and axis > 0 for axis in dimensions)
+    ):
+        reject(
+            "provenance dimensions must be a two-element positive integer array",
+            "invalid_provenance",
+        )
+
+    item_geometry = record.get("item_geometry")
+    if not isinstance(item_geometry, dict):
+        reject(
+            "provenance item_geometry must be an object",
+            "invalid_provenance",
+        )
+    expected_geometry = _expected_item_geometry(layout)
+    for key, expected in expected_geometry.items():
+        if item_geometry.get(key) != expected:
+            reject(
+                f"provenance item_geometry.{key} does not match production Strip layout",
+                "invalid_provenance",
+            )
+
+    if require_image_edit or generation_mode == "image-edit":
+        if generation_mode != "image-edit":
+            reject(
+                "dwarf-miner walk/swing requires generation_mode=image-edit",
+                "generation_mode_mismatch",
+            )
+        canonical_identity = _canonical_identity_sha256()
+        if ordered_refs != [canonical_identity]:
+            reject(
+                "provenance reference_image_sha256 must bind the canonical identity",
+                "reference_image_mismatch",
+            )
+        if identity_reference_sha256 is not None and identity_reference_sha256 != canonical_identity:
+            reject(
+                "identity reference bytes do not match canonical identity hash",
+                "identity_hash_mismatch",
+            )
+        if edit_source_sha256 is not None and str(edit_source) != edit_source_sha256:
+            reject(
+                "provenance edit_source_sha256 does not match edit-source bytes",
+                "edit_source_hash_mismatch",
+            )
+
+    return dict(record)
+
+
+def _validate_provenance_sidecar(
+    provider_path: Path,
+    provenance_path: Path,
+    motion_class: str,
+    layout: StripLayout,
+    *,
+    polish_profile: str | None = None,
+    identity_reference_path: Path | None = None,
+    edit_source_path: Path | None = None,
+) -> dict[str, Any]:
+    record = _load_json_object(provenance_path, reason_code="invalid_provenance")
+    require_image_edit = _requires_image_edit_evidence(polish_profile, motion_class)
+    if require_image_edit:
+        if identity_reference_path is None:
+            raise InitializationRejectedError(
+                "dwarf-miner walk/swing requires --identity-reference",
+                reason_code="missing_identity_reference",
+            )
+        if edit_source_path is None:
+            raise InitializationRejectedError(
+                "dwarf-miner walk/swing requires --edit-source",
+                reason_code="missing_edit_source",
+            )
+        if not identity_reference_path.is_file():
+            raise InitializationRejectedError(
+                f"missing identity reference: {identity_reference_path}",
+                reason_code="missing_identity_reference",
+            )
+        if not edit_source_path.is_file():
+            raise InitializationRejectedError(
+                f"missing edit source: {edit_source_path}",
+                reason_code="missing_edit_source",
+            )
+    identity_sha = (
+        sha256_file(identity_reference_path)
+        if identity_reference_path is not None and identity_reference_path.is_file()
+        else None
+    )
+    edit_sha = (
+        sha256_file(edit_source_path)
+        if edit_source_path is not None and edit_source_path.is_file()
+        else None
+    )
+    return _validate_animation_provenance_record(
+        record,
+        provider_path,
+        motion_class,
+        layout,
+        identity_reference_sha256=identity_sha,
+        edit_source_sha256=edit_sha,
+        require_image_edit=require_image_edit,
+    )
+
+
+def _build_initial_attempt_ledger(provenance: Mapping[str, Any]) -> dict[str, Any]:
+    predecessor = provenance.get("predecessor_attempt_id")
+    if predecessor is not None:
+        raise InitializationRejectedError(
+            "init cannot create a bundle when provenance predecessor_attempt_id is set",
+            reason_code="invalid_provenance",
+        )
+    return {
+        "schema": ATTEMPT_LEDGER_SCHEMA,
+        "attempts": [
+            {
+                "attempt_id": provenance["attempt_id"],
+                "predecessor_attempt_id": None,
+                "outcome": "accepted",
+                "rejection_reason": None,
+                "prompt_sha256": provenance["prompt_sha256"],
+                "raw_sha256": provenance["raw_sha256"],
+                "selected": True,
+            }
+        ],
+    }
+
+
+def _validate_attempt_ledger_row(row: Mapping[str, Any], *, where: str) -> None:
+    for field in (
+        "attempt_id",
+        "outcome",
+        "prompt_sha256",
+        "raw_sha256",
+    ):
+        value = row.get(field)
+        if not isinstance(value, str) or not value:
+            raise InvalidBundleError(
+                f"attempt ledger row missing {field!r}",
+                reason_code="invalid_attempt_ledger",
+            )
+    predecessor = row.get("predecessor_attempt_id")
+    if predecessor is not None and (not isinstance(predecessor, str) or not predecessor):
+        raise InvalidBundleError(
+            "attempt ledger predecessor_attempt_id must be null or a non-empty string",
+            reason_code="invalid_attempt_ledger",
+        )
+    outcome = str(row["outcome"])
+    if outcome not in ATTEMPT_OUTCOMES:
+        raise InvalidBundleError(
+            f"attempt ledger outcome must be one of {sorted(ATTEMPT_OUTCOMES)}",
+            reason_code="invalid_attempt_ledger",
+        )
+    rejection_reason = row.get("rejection_reason")
+    if outcome == "accepted":
+        if rejection_reason is not None:
+            raise InvalidBundleError(
+                "accepted attempt ledger row must have null rejection_reason",
+                reason_code="invalid_attempt_ledger",
+            )
+    else:
+        if not isinstance(rejection_reason, str) or not rejection_reason:
+            raise InvalidBundleError(
+                "rejected attempt ledger row requires rejection_reason",
+                reason_code="invalid_attempt_ledger",
+            )
+    if not _is_sha256_hex(row.get("prompt_sha256")):
+        raise InvalidBundleError(
+            "attempt ledger prompt_sha256 must be SHA-256 hex",
+            reason_code="invalid_attempt_ledger",
+        )
+    if not _is_sha256_hex(row.get("raw_sha256")):
+        raise InvalidBundleError(
+            "attempt ledger raw_sha256 must be SHA-256 hex",
+            reason_code="invalid_attempt_ledger",
+        )
+    if not isinstance(row.get("selected"), bool):
+        raise InvalidBundleError(
+            "attempt ledger selected must be a boolean",
+            reason_code="invalid_attempt_ledger",
+        )
+
+
+def _validate_attempt_ledger_document(
+    ledger: Mapping[str, Any],
+    provenance: Mapping[str, Any],
+    *,
+    provider_sha256: str,
+    original_filename: str,
+    where: str,
+) -> None:
+    if ledger.get("schema") != ATTEMPT_LEDGER_SCHEMA:
+        raise InvalidBundleError(
+            f"attempt ledger schema must be {ATTEMPT_LEDGER_SCHEMA!r}",
+            reason_code="invalid_attempt_ledger",
+        )
+    attempts = ledger.get("attempts")
+    if not isinstance(attempts, list) or not attempts:
+        raise InvalidBundleError(
+            "attempt ledger attempts must be a non-empty array",
+            reason_code="invalid_attempt_ledger",
+        )
+
+    seen_ids: set[str] = set()
+    selected_indices: list[int] = []
+    id_to_index: dict[str, int] = {}
+
+    for index, row in enumerate(attempts):
+        if not isinstance(row, dict):
+            raise InvalidBundleError(
+                "attempt ledger row must be an object",
+                reason_code="invalid_attempt_ledger",
+            )
+        _validate_attempt_ledger_row(row, where=f"{where}[{index}]")
+        attempt_id = str(row["attempt_id"])
+        if attempt_id in seen_ids:
+            raise InvalidBundleError(
+                f"duplicate attempt_id in ledger: {attempt_id!r}",
+                reason_code="invalid_attempt_ledger",
+            )
+        seen_ids.add(attempt_id)
+        id_to_index[attempt_id] = index
+        if row.get("selected"):
+            selected_indices.append(index)
+
+    if len(selected_indices) != 1:
+        raise InvalidBundleError(
+            "attempt ledger must contain exactly one selected row",
+            reason_code="invalid_attempt_ledger",
+        )
+    selected_index = selected_indices[0]
+    if selected_index != len(attempts) - 1:
+        raise InvalidBundleError(
+            "selected attempt ledger row must be the final row",
+            reason_code="invalid_attempt_ledger",
+        )
+
+    selected = attempts[selected_index]
+    predecessor = selected.get("predecessor_attempt_id")
+    if selected_index == 0:
+        if predecessor is not None:
+            raise InvalidBundleError(
+                "first attempt ledger row must have null predecessor_attempt_id",
+                reason_code="invalid_attempt_ledger",
+            )
+    else:
+        if not isinstance(predecessor, str):
+            raise InvalidBundleError(
+                "selected attempt must name a predecessor_attempt_id",
+                reason_code="invalid_attempt_ledger",
+            )
+        if id_to_index.get(predecessor) != selected_index - 1:
+            raise InvalidBundleError(
+                "attempt ledger predecessor chain is broken",
+                reason_code="invalid_attempt_ledger",
+            )
+        if attempts[selected_index - 1].get("outcome") != "rejected":
+            raise InvalidBundleError(
+                "predecessor attempt must be rejected",
+                reason_code="invalid_attempt_ledger",
+            )
+
+    for index, row in enumerate(attempts):
+        if index < len(attempts) - 1 and row.get("outcome") != "rejected":
+            raise InvalidBundleError(
+                "non-final attempt ledger rows must be rejected",
+                reason_code="invalid_attempt_ledger",
+            )
+        if index < len(attempts) - 1 and row.get("selected"):
+            raise InvalidBundleError(
+                "only the final attempt ledger row may be selected",
+                reason_code="invalid_attempt_ledger",
+            )
+        predecessor_id = row.get("predecessor_attempt_id")
+        if predecessor_id is None:
+            if index != 0:
+                raise InvalidBundleError(
+                    "only the first attempt may have null predecessor_attempt_id",
+                    reason_code="invalid_attempt_ledger",
+                )
+        else:
+            pred_index = id_to_index.get(str(predecessor_id))
+            if pred_index is None:
+                raise InvalidBundleError(
+                    f"missing predecessor attempt_id {predecessor_id!r}",
+                    reason_code="invalid_attempt_ledger",
+                )
+            if pred_index != index - 1:
+                raise InvalidBundleError(
+                    "attempt ledger predecessor chain is not sequential",
+                    reason_code="invalid_attempt_ledger",
+                )
+
+    if str(provenance.get("attempt_id")) != str(selected["attempt_id"]):
+        raise InvalidBundleError(
+            "bundled provenance attempt_id disagrees with selected ledger row",
+            reason_code="attempt_ledger_mismatch",
+        )
+    if provenance.get("prompt_sha256") != selected["prompt_sha256"]:
+        raise InvalidBundleError(
+            "bundled provenance prompt_sha256 disagrees with selected ledger row",
+            reason_code="attempt_ledger_mismatch",
+        )
+    if provenance.get("raw_sha256") != selected["raw_sha256"]:
+        raise InvalidBundleError(
+            "bundled provenance raw_sha256 disagrees with selected ledger row",
+            reason_code="attempt_ledger_mismatch",
+        )
+    if selected["raw_sha256"] != provider_sha256:
+        raise InvalidBundleError(
+            "selected attempt raw_sha256 does not match bundled provider",
+            reason_code="attempt_ledger_mismatch",
+        )
+    if provenance.get("raw_sha256") != provider_sha256:
+        raise InvalidBundleError(
+            "bundled provenance raw_sha256 does not match provider",
+            reason_code="provenance_hash_mismatch",
+        )
+
+
+def _verify_hash_binding(
+    bundle_root: Path,
+    binding: Mapping[str, Any],
+    *,
+    label: str,
+) -> None:
+    rel = binding.get("relative_path")
+    expected = binding.get("sha256")
+    if not isinstance(rel, str) or not isinstance(expected, str):
+        raise InvalidBundleError(
+            f"invalid {label} binding in manifest",
+            reason_code=f"{label}_hash_mismatch",
+        )
+    path = bundle_root / rel
+    if not path.is_file():
+        raise InvalidBundleError(
+            f"missing bundled {label}: {rel}",
+            reason_code=f"missing_{label}",
+        )
+    actual = sha256_file(path)
+    if actual != expected:
+        raise InvalidBundleError(
+            f"bundled {label} hash does not match manifest",
+            reason_code=f"{label}_hash_mismatch",
+        )
+
+
+def _verify_evidence_bindings(bundle_root: Path, manifest: Mapping[str, Any]) -> dict[str, Any]:
+    if manifest.get("schema") != BUNDLE_SCHEMA:
+        return {}
+
+    provenance_binding = manifest.get("provenance")
+    if not isinstance(provenance_binding, dict):
+        raise InvalidBundleError(
+            "schema /2 bundle missing provenance binding",
+            reason_code="missing_provenance",
+        )
+    _verify_hash_binding(bundle_root, provenance_binding, label="provenance")
+    provenance_path = bundle_root / str(provenance_binding["relative_path"])
+    provenance = _load_json_object(
+        provenance_path,
+        reason_code="invalid_provenance",
+        error_class=InvalidBundleError,
+    )
+
+    provider_rel = manifest["provider"]["relative_path"]
+    provider_path = bundle_root / provider_rel
+    provider_sha = sha256_file(provider_path)
+    layout = _corpus_layout()
+    polish_profile_id = (
+        None
+        if manifest.get("polish_profile") is None
+        else str(manifest["polish_profile"]["id"])
+    )
+    _validate_animation_provenance_record(
+        provenance,
+        provider_path,
+        str(manifest["motion_class"]),
+        layout,
+        identity_reference_sha256=(
+            sha256_file(bundle_root / "reference" / "identity.png")
+            if (bundle_root / "reference" / "identity.png").is_file()
+            else None
+        ),
+        edit_source_sha256=(
+            sha256_file(bundle_root / "provider" / "edit-source.png")
+            if (bundle_root / "provider" / "edit-source.png").is_file()
+            else None
+        ),
+        require_image_edit=_requires_image_edit_evidence(
+            polish_profile_id,
+            str(manifest["motion_class"]),
+        ),
+        expected_raw_basename=str(manifest["provider"]["original_filename"]),
+        error_class=InvalidBundleError,
+    )
+
+    identity_binding = manifest.get("identity_reference")
+    edit_binding = manifest.get("edit_source")
+    if _requires_image_edit_evidence(polish_profile_id, str(manifest["motion_class"])):
+        if identity_binding is None:
+            raise InvalidBundleError(
+                "schema /2 dwarf-miner walk/swing bundle missing identity_reference binding",
+                reason_code="missing_identity_reference",
+            )
+        if edit_binding is None:
+            raise InvalidBundleError(
+                "schema /2 dwarf-miner walk/swing bundle missing edit_source binding",
+                reason_code="missing_edit_source",
+            )
+    if identity_binding is not None:
+        _verify_hash_binding(bundle_root, identity_binding, label="identity_reference")
+    if edit_binding is not None:
+        _verify_hash_binding(bundle_root, edit_binding, label="edit_source")
+
+    ledger_binding = manifest.get("attempt_ledger")
+    if not isinstance(ledger_binding, dict):
+        raise InvalidBundleError(
+            "schema /2 bundle missing attempt_ledger binding",
+            reason_code="missing_attempt_ledger",
+        )
+    _verify_hash_binding(bundle_root, ledger_binding, label="attempt_ledger")
+    ledger_path = bundle_root / str(ledger_binding["relative_path"])
+    ledger = _load_json_object(
+        ledger_path,
+        reason_code="invalid_attempt_ledger",
+        error_class=InvalidBundleError,
+    )
+    _validate_attempt_ledger_document(
+        ledger,
+        provenance,
+        provider_sha256=provider_sha,
+        original_filename=str(manifest["provider"]["original_filename"]),
+        where=str(ledger_path),
+    )
+
+    return provenance
+
+
 def _aggregate_outcome(
     *,
     provider_outcome: Outcome,
@@ -536,6 +1203,9 @@ def _aggregate_outcome(
 
 
 def _verify_provider_and_drafts(bundle_root: Path, manifest: dict[str, Any]) -> Outcome:
+    if manifest.get("schema") == BUNDLE_SCHEMA:
+        _verify_evidence_bindings(bundle_root, manifest)
+
     provider_rel = manifest["provider"]["relative_path"]
     expected_provider_hash = manifest["provider"]["sha256"]
     provider_path = bundle_root / provider_rel
@@ -579,7 +1249,10 @@ def initialize_bundle(
     motion_class: str,
     bundle_root: Path,
     *,
+    provenance_sidecar: Path,
     polish_profile: str | None = None,
+    identity_reference: Path | None = None,
+    edit_source: Path | None = None,
 ) -> None:
     """Create a hash-bound bundle when provider ingest PASSes; fail closed otherwise."""
     if bundle_root.exists():
@@ -587,9 +1260,25 @@ def initialize_bundle(
             f"bundle destination already exists: {bundle_root}",
             reason_code="bundle_exists",
         )
+    if not provider_path.is_file():
+        raise InitializationRejectedError(
+            f"missing provider: {provider_path}",
+            reason_code="missing_provider",
+        )
     profile_source = _profile_source(polish_profile) if polish_profile is not None else None
 
     probe_layout = _corpus_layout()
+    provenance_record = _validate_provenance_sidecar(
+        provider_path,
+        provenance_sidecar,
+        motion_class,
+        probe_layout,
+        polish_profile=polish_profile,
+        identity_reference_path=identity_reference,
+        edit_source_path=edit_source,
+    )
+    attempt_ledger = _build_initial_attempt_ledger(provenance_record)
+
     ingest = ingest_strip_provider(provider_path, probe_layout, motion_class=motion_class)
     if ingest.outcome != "PASS" or not ingest.pass_:
         raise InitializationRejectedError(
@@ -615,6 +1304,35 @@ def initialize_bundle(
         provider_dest = temp_root / "provider" / "source.png"
         provider_dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(provider_path, provider_dest)
+
+        provenance_dest = temp_root / "provider" / "source.source.json"
+        shutil.copy2(provenance_sidecar, provenance_dest)
+
+        identity_manifest: dict[str, Any] | None = None
+        if identity_reference is not None:
+            identity_dest = temp_root / "reference" / "identity.png"
+            identity_dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(identity_reference, identity_dest)
+            identity_manifest = {
+                "relative_path": "reference/identity.png",
+                "sha256": sha256_file(identity_dest),
+            }
+
+        edit_source_manifest: dict[str, Any] | None = None
+        if edit_source is not None:
+            edit_dest = temp_root / "provider" / "edit-source.png"
+            shutil.copy2(edit_source, edit_dest)
+            edit_source_manifest = {
+                "relative_path": "provider/edit-source.png",
+                "sha256": sha256_file(edit_dest),
+            }
+
+        ledger_dest = temp_root / "provider" / "attempts.json"
+        ledger_dest.write_text(
+            json.dumps(attempt_ledger, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+
         profile_manifest: dict[str, Any] | None = None
         if profile_source is not None:
             profile_dest = temp_root / "profile.json"
@@ -643,7 +1361,7 @@ def initialize_bundle(
                 }
             )
 
-        manifest = {
+        manifest: dict[str, Any] = {
             "schema": BUNDLE_SCHEMA,
             "motion_class": motion_class,
             "layout": {
@@ -658,9 +1376,22 @@ def initialize_bundle(
                 "relative_path": "provider/source.png",
                 "sha256": sha256_file(provider_dest),
             },
+            "provenance": {
+                "relative_path": "provider/source.source.json",
+                "sha256": sha256_file(provenance_dest),
+            },
+            "attempt_ledger": {
+                "relative_path": "provider/attempts.json",
+                "sha256": sha256_file(ledger_dest),
+            },
             "draft_frames": draft_hashes,
             "polish_profile": profile_manifest,
         }
+        if identity_manifest is not None:
+            manifest["identity_reference"] = identity_manifest
+        if edit_source_manifest is not None:
+            manifest["edit_source"] = edit_source_manifest
+
         (temp_root / "manifest.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",

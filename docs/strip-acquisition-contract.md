@@ -409,12 +409,22 @@ production contract after ingest. It does not supersede the AFK acquisition
 evidence model, add Gates, or change Budgets.
 
 1. **`init`** accepts only a provider Strip that currently passes production
-   ingest (`PASS`). It creates a retained provider copy, immutable Draft Frames,
-   and seeded Polished Frames (one per logical Frame slot). `REVIEW` and `FAIL`
-   ingest outcomes create no Polish Bundle. Optional `--polish-profile <id>`
-   copies a checked-in Polish profile into the bundle and binds its schema, id,
-   path, and SHA-256 in the `/1` manifest. Existing unprofiled `/0` bundles
-   remain valid for `check` and `finalize`.
+   ingest (`PASS`). It requires `--provenance <source.json>` validating schema
+   `animation-strip-provenance/0` (provider SHA-256, motion class, Strip layout,
+   generation mode, and prompt hash). It creates a retained provider copy, the
+   provenance sidecar at `provider/source.source.json`, an
+   `animation-attempt-ledger/0` document at `provider/attempts.json`, immutable
+   Draft Frames, and seeded Polished Frames (one per logical Frame slot).
+   `REVIEW` and `FAIL` ingest outcomes create no Polish Bundle. New bundles use
+   manifest schema `final-polish-bundle/2` with hash bindings for provenance and
+   the attempt ledger. Optional `--polish-profile <id>` copies a checked-in
+   Polish profile into the bundle and binds its schema, id, path, and SHA-256.
+   For profile `dwarf-miner` with Motion class `walk` or `swing`, `init`
+   additionally requires `--identity-reference` and `--edit-source`, copies
+   those bytes to `reference/identity.png` and `provider/edit-source.png`,
+   requires `generation_mode=image-edit`, and binds the canonical identity hash
+   and seed-strip hash in provenance. Existing unprofiled `/0` and profiled
+   `/1` bundles remain valid for `check` and `finalize` under legacy rules.
 2. The four Polished Frames remain exact `16×24` RGBA with binary alpha, exact
    per-Frame Draft alpha masks, and opaque RGB values drawn only from the
    combined Draft palette (only RGB may differ from Draft; alpha is locked).
@@ -422,16 +432,22 @@ evidence model, add Gates, or change Budgets.
    identity, fixed visual questions, applicable Motion-class overrides, editing
    rules, audit workflow, and `PASS` / `EDIT` / `UNCERTAIN` verdict vocabulary.
    A bundle without a profile has no authoritative semantic brief.
-4. **`check`** is read-only: it reports every visible changed Cell (Draft vs
-   Polished RGB at occupied coordinates) and runs the exact Polished Frames
-   through the current Motion-class Acceptance profiles via `coherence_split`.
-5. **`finalize`** repeats current-policy validation, records a hash-bound
-   immutable report for every valid outcome, and produces Release Frames only on
-   automatic `PASS`; `REVIEW` and `FAIL` have no override.
-6. The provider Strip remains bundled provenance; Draft, Polished, Release,
-   Polish profile, and report hashes preserve the derivation chain. A missing,
-   malformed, identity-mismatched, or hash-mismatched embedded profile makes a
-   profiled bundle invalid.
+4. **`check`** is read-only: for `/2` bundles it revalidates every evidence hash
+   and semantic binding (provenance, identity reference, edit source, attempt
+   ledger) before structural polish and coherence Gates. It reports every visible
+   changed Cell (Draft vs Polished RGB at occupied coordinates) and runs the
+   exact Polished Frames through the current Motion-class Acceptance profiles
+   via `coherence_split`.
+5. **`finalize`** repeats current-policy validation (including `/2` evidence
+   bindings), records a hash-bound immutable report for every valid outcome,
+   and produces Release Frames only on automatic `PASS`; `REVIEW` and `FAIL`
+   have no override.
+6. The provider Strip, provenance sidecar, attempt ledger, optional identity and
+   edit-source inputs, Draft, Polished, Release, Polish profile, and report
+   hashes preserve the derivation chain. A missing, malformed, hash-mismatched,
+   or semantically unbound evidence record makes a `/2` bundle invalid. A
+   missing, malformed, identity-mismatched, or hash-mismatched embedded profile
+   makes a profiled bundle invalid.
 
 **Structural polish invariants** (alpha mask, palette membership, provenance
 reproduction) are enforced before coherence Gates run. Failures on these
