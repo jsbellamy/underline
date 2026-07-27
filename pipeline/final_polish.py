@@ -36,7 +36,11 @@ REPORT_SCHEMA = "final-polish-report/0"
 EXPECTED_FRAME_NAMES = tuple(f"frame-{index}.png" for index in range(DEFAULT_LAYOUT.frame_count))
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _PROFILE_ROOT = _REPO_ROOT / "polish-profiles"
-_PROFILE_REGISTRY = {"miner": _PROFILE_ROOT / "miner.json"}
+_PROFILE_REGISTRY = {
+    "dwarf-miner": _PROFILE_ROOT / "dwarf-miner.json",
+    "lantern": _PROFILE_ROOT / "lantern.json",
+    "miner": _PROFILE_ROOT / "miner.json",
+}
 
 
 class FinalPolishError(ValueError):

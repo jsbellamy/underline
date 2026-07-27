@@ -32,6 +32,8 @@ INBOX = ROOT / "prototype" / "strip-coherence" / "inbox"
 PASS_STRIP = INBOX / "01-miner-idle.png"
 FAIL_STRIP = INBOX / "08-NEG-identity-drift.png"
 WALK_STRIP = INBOX / "05-miner-walk.png"
+SWING_STRIP = INBOX / "06-miner-swing.png"
+LANTERN_STRIP = INBOX / "14-lantern-flicker.png"
 LOGICAL_SIZE = (DEFAULT_LAYOUT.frame_w, DEFAULT_LAYOUT.frame_h)
 FRAME_COUNT = DEFAULT_LAYOUT.frame_count
 
@@ -151,6 +153,179 @@ def test_miner_profile_declares_fixed_questions_and_motion_overrides(
     assert profile["occlusion_rule"]
     assert profile["editing_rules"]
     assert profile["audit_workflow"]
+
+
+DWARF_MINER_FIXED_IDS = [
+    "identity_anchors",
+    "black_eye_no_sclera",
+    "native_scale_separation",
+    "palette_lighting_outline",
+    "temporal_consistency",
+]
+DWARF_MINER_WALK_IDS = ["alternating_legs", "stable_torso"]
+DWARF_MINER_SWING_IDS = [
+    "readable_anticipation",
+    "continuous_pickaxe_arc",
+    "hand_handle_separation",
+    "planted_boots",
+    "contact_readability_frame3",
+]
+LANTERN_FIXED_IDS = [
+    "stable_housing_hang",
+    "intentional_amber_core",
+    "flame_core_housing_separation",
+    "upper_left_metal_highlights",
+    "closed_four_frame_loop",
+]
+LANTERN_EMISSIVE_IDS = ["emission_inside_lamp", "no_terrain_halo"]
+
+
+@pytest.mark.parametrize(
+    ("profile_id", "strip", "motion_class", "fixed_ids", "motion_key", "motion_ids"),
+    [
+        (
+            "dwarf-miner",
+            PASS_STRIP,
+            "idle",
+            DWARF_MINER_FIXED_IDS,
+            "walk",
+            DWARF_MINER_WALK_IDS,
+        ),
+        (
+            "lantern",
+            LANTERN_STRIP,
+            "emissive",
+            LANTERN_FIXED_IDS,
+            "emissive",
+            LANTERN_EMISSIVE_IDS,
+        ),
+    ],
+)
+def test_production_profile_declares_fixed_questions_and_motion_overrides(
+    tmp_path: Path,
+    profile_id: str,
+    strip: Path,
+    motion_class: str,
+    fixed_ids: list[str],
+    motion_key: str,
+    motion_ids: list[str],
+) -> None:
+    bundle = tmp_path / "bundle"
+    initialize_bundle(strip, motion_class, bundle, polish_profile=profile_id)
+    profile = json.loads((bundle / "profile.json").read_text())
+
+    assert profile["schema"] == "polish-profile/0"
+    assert profile["id"] == profile_id
+    assert profile["verdicts"] == ["PASS", "EDIT", "UNCERTAIN"]
+    assert [row["id"] for row in profile["fixed_questions"]] == fixed_ids
+    assert [row["id"] for row in profile["motion_overrides"][motion_key]] == motion_ids
+    assert profile["occlusion_rule"]
+    assert profile["editing_rules"]
+    assert profile["audit_workflow"]
+
+
+@pytest.mark.parametrize(
+    ("profile_id", "strip", "motion_class"),
+    [
+        ("dwarf-miner", PASS_STRIP, "idle"),
+        ("lantern", LANTERN_STRIP, "emissive"),
+    ],
+)
+def test_production_profiled_bundle_embeds_hash_bound_profile(
+    tmp_path: Path,
+    profile_id: str,
+    strip: Path,
+    motion_class: str,
+) -> None:
+    bundle = tmp_path / "bundle"
+    initialize_bundle(strip, motion_class, bundle, polish_profile=profile_id)
+
+    manifest = json.loads((bundle / "manifest.json").read_text())
+    profile = json.loads((bundle / "profile.json").read_text())
+    assert manifest["polish_profile"] == {
+        "schema": "polish-profile/0",
+        "id": profile_id,
+        "relative_path": "profile.json",
+        "sha256": sha256_file(bundle / "profile.json"),
+    }
+    assert profile["id"] == profile_id
+
+
+@pytest.mark.parametrize("profile_id", ["dwarf-miner", "lantern"])
+def test_tampered_production_profile_is_an_invalid_bundle(
+    tmp_path: Path,
+    profile_id: str,
+) -> None:
+    strip = PASS_STRIP if profile_id == "dwarf-miner" else LANTERN_STRIP
+    motion_class = "idle" if profile_id == "dwarf-miner" else "emissive"
+    bundle = tmp_path / "bundle"
+    initialize_bundle(strip, motion_class, bundle, polish_profile=profile_id)
+    profile = json.loads((bundle / "profile.json").read_text())
+    profile["description"] = "tampered"
+    (bundle / "profile.json").write_text(json.dumps(profile) + "\n")
+
+    with pytest.raises(InvalidBundleError) as exc:
+        check_bundle(bundle)
+    assert exc.value.reason_code == "profile_hash_mismatch"
+
+
+@pytest.mark.parametrize(
+    ("profile_id", "strip", "motion_class", "motion_key", "motion_ids"),
+    [
+        ("dwarf-miner", WALK_STRIP, "walk", "walk", DWARF_MINER_WALK_IDS),
+        ("dwarf-miner", SWING_STRIP, "swing", "swing", DWARF_MINER_SWING_IDS),
+        ("lantern", LANTERN_STRIP, "emissive", "emissive", LANTERN_EMISSIVE_IDS),
+    ],
+)
+def test_production_polish_brief_selects_motion_overrides(
+    tmp_path: Path,
+    profile_id: str,
+    strip: Path,
+    motion_class: str,
+    motion_key: str,
+    motion_ids: list[str],
+) -> None:
+    bundle = tmp_path / "bundle"
+    initialize_bundle(strip, motion_class, bundle, polish_profile=profile_id)
+
+    brief = load_polish_brief(bundle)
+    assert brief["profile"]["id"] == profile_id
+    assert brief["motion_class"] == motion_class
+    assert [row["id"] for row in brief["motion_questions"]] == motion_ids
+
+
+@pytest.mark.parametrize(
+    ("profile_id", "strip", "motion_class"),
+    [
+        ("dwarf-miner", PASS_STRIP, "idle"),
+        ("lantern", LANTERN_STRIP, "emissive"),
+    ],
+)
+def test_production_check_and_final_report_bind_embedded_profile(
+    tmp_path: Path,
+    profile_id: str,
+    strip: Path,
+    motion_class: str,
+) -> None:
+    bundle = tmp_path / "bundle"
+    initialize_bundle(strip, motion_class, bundle, polish_profile=profile_id)
+    result = check_bundle(bundle)
+    profile_hash = sha256_file(bundle / "profile.json")
+    assert result.profile_id == profile_id
+    assert result.profile_sha256 == profile_hash
+
+    report = json.loads(finalize_bundle(bundle).read_text())
+    assert report["polish_profile"] == {
+        "id": profile_id,
+        "sha256": profile_hash,
+    }
+
+
+def test_readme_documents_production_polish_profiles() -> None:
+    text = (ROOT / "README.md").read_text()
+    for profile_id in ("dwarf-miner", "lantern", "miner"):
+        assert profile_id in text
+    assert "does not recognize the semantic questions in any profile" in text
 
 
 def test_tampered_embedded_profile_is_an_invalid_bundle(tmp_path: Path) -> None:
