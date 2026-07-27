@@ -13,6 +13,7 @@
     "prototype:strip:derive-budgets": "PYTHONPATH=. python3 prototype/strip-coherence/derive_budgets.py",
     "prototype:strip:alpha-budgets": "PYTHONPATH=. python3 prototype/strip-coherence/alpha_budgets.py",
     "prototype:strip:displacement": "PYTHONPATH=. python3 prototype/strip-coherence/displacement_probe.py",
-    "prototype:strip:sharpness": "PYTHONPATH=. python3 prototype/strip-coherence/alignment_sharpness.py"
+    "prototype:strip:sharpness": "PYTHONPATH=. python3 prototype/strip-coherence/alignment_sharpness.py",
+    "gate-control:acquire": "PYTHONPATH=. python3 -m pipeline.gate_control_acquire"
   }
 }
