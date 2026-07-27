@@ -204,6 +204,12 @@
           "active_promotion": "promo--airborne--min_pair_cohort_pass",
           "control_attempt": "airborne--min_pair_cohort_pass--004",
           "note": "control caveated: displacement_pass undecidable"
+        },
+        "displacement_pass": {
+          "status": "UNSEPARATED",
+          "budget": null,
+          "hard_fail": null,
+          "rationale": "class-applicable binary Gate; undecidable on measured airborne Strips (sharpness floor) so no isolatable control; when None caveat, when False agent Review, when True pass"
         }
       }
     },

@@ -67,7 +67,8 @@ quantized isolated Gate-control metric. Unseparated pairs keep the runtime Budge
 and Review open with no hard-fail boundary. Full tables, deltas, and headroom live in
 [`docs/alpha-budget-tables.md`](alpha-budget-tables.md); reproduce with
 `npm run prototype:strip:alpha-budgets`. Landing these numbers into runtime
-`MOTION_CLASSES` is deferred to the post-map implementation wave.
+`MOTION_CLASSES` is deferred to the post-map implementation wave described in
+[`docs/afk-acceptance-implementation-spec.md`](afk-acceptance-implementation-spec.md).
 
 ### Monotonicity and separation expiry
 
