@@ -109,6 +109,22 @@ Static-sheet prompt authority: [`prompts/production/static-sheet.md`](prompts/pr
 Static-asset authority: [`docs/strip-acquisition-contract.md`](docs/strip-acquisition-contract.md)
 (Consumers → Static assets).
 
+## Asset pack validation and preview
+
+Animation and static Release bundles share one hash-bound `asset-pack/0` manifest
+with first-room playback metadata and a preview-only Terraced Shaft scene
+description. The validator checks PASS reports, Release hashes, Master Palette
+membership, and approved timing/contact metadata; preview composes only bound
+Release bytes into deterministic 320×180 and 4× nearest-neighbor PNGs.
+
+```bash
+npm run asset:pack -- check <manifest.json> [--json]
+npm run asset:pack -- preview <manifest.json> --out <dir> [--json]
+```
+
+Exit codes: `0` valid pack, `2` invalid manifest/hash/report/palette/metadata error.
+Preview scene metadata is review evidence — not a TypeScript runtime map format.
+
 ## Corpus analysis and proof tooling
 
 Historical corpus scoring and budget derivation remain under `prototype:strip:*`.

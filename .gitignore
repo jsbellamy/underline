@@ -1,4 +1,5 @@
 prototype/strip-coherence/fixtures/*.png
+.pytest-asset-pack/
 __pycache__/
 *.py[cod]
 *$py.class
