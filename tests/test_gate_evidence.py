@@ -360,3 +360,40 @@ def test_measurement_v1_schema_is_accepted(tmp_path: Path) -> None:
     _write(path, doc)
     graph = ge.validate_evidence_graph(fx["root"])
     assert graph.measurements[fx["attempt_id"]].schema == "gate-control-measurement/1"
+
+
+def test_focused_promotion_validation_skips_unrelated_missing_raws(
+    tmp_path: Path,
+) -> None:
+    fx = _fixture(tmp_path)
+    # Historical retained Attempt with broken raw must not block a focused Promotion.
+    other_attempt = {
+        "schema": "gate-control-acquisition/0",
+        "attempt_id": "idle--loop_closure_pass--099",
+        "specification_id": "idle/loop_closure_pass",
+        "ordinal": 99,
+        "predecessor_attempt_id": None,
+        "recorded_at": "2026-07-26T16:00:00+00:00",
+        "prompt_path": None,
+        "prompt_sha256": "a" * 64,
+        "prompt_delta": None,
+        "acquiring_agent": "test",
+        "artifact_state": "retained",
+        "isolation": "NOT_ISOLATED",
+        "primary_failure": None,
+        "promotion_blockers": [],
+        "measurement_path": "gate-controls/reports/missing.json",
+        "provenance_path": "gate-controls/provenance/missing.json",
+        "composite_path": None,
+        "raw_sha256": "b" * 64,
+    }
+    ledger = fx["gc"] / "attempts.jsonl"
+    ledger.write_text(
+        ledger.read_text() + json.dumps(other_attempt, sort_keys=True) + "\n"
+    )
+    graph = ge.validate_evidence_graph(
+        fx["root"], promotion_ids=[fx["promo_id"]]
+    )
+    assert fx["promo_id"] in graph.promotions
+    with pytest.raises(ge.EvidenceError, match="missing required file"):
+        ge.validate_evidence_graph(fx["root"])

@@ -234,27 +234,55 @@ def build_review_packet(
 ) -> ReviewPacket:
     """Build a deterministic hash-bound Review packet for one Gate."""
     root = root.resolve()
-    graph = ge.validate_evidence_graph(root)
+    focus = [promotion_id] if promotion_id is not None else None
+    graph = ge.validate_evidence_graph(root, promotion_ids=focus)
     attempt = graph.attempts.get(attempt_id)
     if attempt is None:
         raise ReviewError(f"unknown attempt_id {attempt_id!r}")
-    measurement = graph.measurements.get(attempt_id)
-    if measurement is None:
-        raise ReviewError(f"missing Measurement run for attempt {attempt_id}")
-    if measurement.target_gate != gate and packet_kind != "PROMOTION_VERIFICATION":
-        # Candidate review may target any applicable Gate; promotion verification
-        # always uses the specification target.
-        pass
+
+    # Ensure the subject Attempt's Measurement/provenance are loaded even when
+    # the call focused on a Promotion that already validated them.
+    if attempt_id not in graph.measurements:
+        if not attempt.measurement_path:
+            raise ReviewError(f"missing Measurement run for attempt {attempt_id}")
+        mpath = root / attempt.measurement_path
+        if not mpath.is_file():
+            raise ReviewError(f"missing Measurement run for attempt {attempt_id}")
+        measurements = dict(graph.measurements)
+        measurements[attempt_id] = ge.load_measurement(mpath)
+    else:
+        measurements = dict(graph.measurements)
+    measurement = measurements[attempt_id]
+
     if measurement.target_gate != gate and packet_kind == "PROMOTION_VERIFICATION":
         raise ReviewError(
             f"identity mismatch: measurement target {measurement.target_gate!r} "
             f"!= packet gate {gate!r}"
         )
 
-    provenance = graph.provenances.get(attempt_id)
-    if provenance is None:
-        raise ReviewError(f"missing provenance for attempt {attempt_id}")
+    if attempt_id not in graph.provenances:
+        if not attempt.provenance_path:
+            raise ReviewError(f"missing provenance for attempt {attempt_id}")
+        ppath = root / attempt.provenance_path
+        if not ppath.is_file():
+            raise ReviewError(f"missing provenance for attempt {attempt_id}")
+        provenances = dict(graph.provenances)
+        provenances[attempt_id] = ge.load_provenance(ppath)
+    else:
+        provenances = dict(graph.provenances)
+    provenance = provenances[attempt_id]
+
     raw_path = root / provenance.raw_path
+    if not raw_path.is_file():
+        raise ReviewError(f"missing required file for packet role candidate: {raw_path}")
+    actual = ge.sha256_file(raw_path)
+    if provenance.raw_sha256 != actual or (
+        attempt.raw_sha256 is not None and attempt.raw_sha256 != actual
+    ):
+        raise ReviewError(
+            f"SHA-256 mismatch for candidate attempt {attempt_id}: "
+            f"raw {actual} vs provenance {provenance.raw_sha256}"
+        )
     candidate = _reference(root, "candidate", raw_path)
     binding = _reference(root, "budget_binding_good", Path(budget_binding_good))
 
@@ -294,15 +322,19 @@ def build_review_packet(
             raise ReviewError(
                 f"Separated pair {measurement.motion_class}/{gate} missing control_attempt"
             )
-        control_prov = graph.provenances.get(control_attempt_id)
+        control_prov = provenances.get(control_attempt_id)
         if control_prov is None:
-            # Control may be the same attempt currently under review.
-            if control_attempt_id == attempt_id:
-                control_prov = provenance
-            else:
+            control_attempt = graph.attempts.get(control_attempt_id)
+            if control_attempt is None or not control_attempt.provenance_path:
                 raise ReviewError(
                     f"missing provenance for Gate control attempt {control_attempt_id}"
                 )
+            cpath = root / control_attempt.provenance_path
+            if not cpath.is_file():
+                raise ReviewError(
+                    f"missing provenance for Gate control attempt {control_attempt_id}"
+                )
+            control_prov = ge.load_provenance(cpath)
         control_raw = root / control_prov.raw_path
         gate_control = _reference(root, "gate_control", control_raw)
         if promotion_id is None and profile.active_promotion:
@@ -358,7 +390,7 @@ def build_promotion_verification_packet(
     budget_binding_good: Path,
 ) -> ReviewPacket:
     root = root.resolve()
-    graph = ge.validate_evidence_graph(root)
+    graph = ge.validate_evidence_graph(root, promotion_ids=[promotion_id])
     promo = graph.promotions.get(promotion_id)
     if promo is None:
         raise ReviewError(f"unknown promotion_id {promotion_id!r}")

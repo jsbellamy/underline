@@ -10,7 +10,7 @@ import hashlib
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Mapping
+from typing import Any, Iterable, Mapping, Sequence
 
 KNOWN_SCHEMAS: dict[str, frozenset[str]] = {
     "manifest": frozenset({"gate-control-manifest/0"}),
@@ -445,8 +445,102 @@ def _gate_controls_root(root: Path) -> Path:
     return gc
 
 
-def validate_evidence_graph(root: Path) -> EvidenceGraph:
-    """Load and fail-closed-validate the evidence graph under ``root/gate-controls``."""
+def _validate_promotion_subgraph(
+    *,
+    root: Path,
+    promo: Promotion,
+    attempt: Attempt,
+    spec: Specification,
+    measurements: dict[str, MeasurementRun],
+    provenances: dict[str, Provenance],
+) -> None:
+    """Fail-closed identity/hash/artifact checks for one Promotion candidate."""
+    if promo.specification_id != attempt.specification_id:
+        raise EvidenceError(
+            f"identity mismatch: promotion {promo.id} specification_id "
+            f"{promo.specification_id!r} != attempt {attempt.specification_id!r}"
+        )
+    if attempt.artifact_state == "discarded":
+        raise EvidenceError(
+            f"discarded promotion candidate: attempt {attempt.attempt_id} "
+            f"cannot back promotion {promo.id}"
+        )
+
+    measurement_path = _resolve(root, promo.measurement_path)
+    if measurement_path is None or not measurement_path.is_file():
+        raise EvidenceError(
+            f"missing required file: {promo.measurement_path} "
+            f"(promotion {promo.id})"
+        )
+    measurement = load_measurement(measurement_path)
+    if measurement.target_gate != spec.target_gate:
+        raise EvidenceError(
+            f"identity mismatch: measurement target_gate "
+            f"{measurement.target_gate!r} != specification "
+            f"{spec.target_gate!r} for promotion {promo.id}"
+        )
+    if measurement.motion_class != spec.motion_class:
+        raise EvidenceError(
+            f"identity mismatch: measurement motion_class "
+            f"{measurement.motion_class!r} != specification "
+            f"{spec.motion_class!r} for promotion {promo.id}"
+        )
+    measurements[attempt.attempt_id] = measurement
+
+    if attempt.provenance_path is None:
+        raise EvidenceError(
+            f"missing required file: provenance for promoted attempt "
+            f"{attempt.attempt_id}"
+        )
+    provenance_path = _resolve(root, attempt.provenance_path)
+    if provenance_path is None or not provenance_path.is_file():
+        raise EvidenceError(f"missing required file: {attempt.provenance_path}")
+    provenance = load_provenance(provenance_path)
+    if provenance.attempt_id != attempt.attempt_id:
+        raise EvidenceError(
+            f"identity mismatch: provenance attempt_id "
+            f"{provenance.attempt_id!r} != {attempt.attempt_id!r}"
+        )
+    if provenance.specification_id != attempt.specification_id:
+        raise EvidenceError(
+            f"identity mismatch: provenance specification_id "
+            f"{provenance.specification_id!r} != {attempt.specification_id!r}"
+        )
+    provenances[attempt.attempt_id] = provenance
+
+    raw_path = _resolve(root, provenance.raw_path)
+    if raw_path is None or not raw_path.is_file():
+        raise EvidenceError(f"missing required file: {provenance.raw_path}")
+    actual = sha256_file(raw_path)
+    for label, expected in (
+        ("provenance", provenance.raw_sha256),
+        ("measurement", measurement.raw_sha256),
+        ("attempt", attempt.raw_sha256),
+    ):
+        if expected is None:
+            raise EvidenceError(
+                f"missing raw_sha256 on {label} for attempt {attempt.attempt_id}"
+            )
+        if expected != actual:
+            raise EvidenceError(
+                f"SHA-256 mismatch: {label} hash {expected} != raw {actual} "
+                f"for attempt {attempt.attempt_id}"
+            )
+
+
+def validate_evidence_graph(
+    root: Path,
+    *,
+    promotion_ids: Sequence[str] | None = None,
+) -> EvidenceGraph:
+    """Load and fail-closed-validate the evidence graph under ``root/gate-controls``.
+
+    Promotion candidates are always checked for retained raw bytes and SHA-256
+    identity. Historical non-promoted Attempts are schema/reference-checked when
+    their declared Measurement/provenance files exist; missing discarded raws do
+    not fail the graph. Pass ``promotion_ids`` to deep-validate only those
+    Promotions (Wave A named-Promotion reviews).
+    """
     root = root.resolve()
     gc = _gate_controls_root(root)
     manifest = load_manifest(gc / "manifest.json")
@@ -456,6 +550,13 @@ def validate_evidence_graph(root: Path) -> EvidenceGraph:
     attempts = {a.attempt_id: a for a in attempts_list}
     specifications = {s.id: s for s in manifest.specifications}
     promotions = {p.id: p for p in manifest.promotions}
+
+    focus: set[str] | None = None
+    if promotion_ids is not None:
+        focus = set(promotion_ids)
+        for pid in focus:
+            if pid not in promotions:
+                raise EvidenceError(f"unknown promotion_id {pid!r}")
 
     for spec in manifest.specifications:
         if spec.active_promotion is None:
@@ -476,21 +577,13 @@ def validate_evidence_graph(root: Path) -> EvidenceGraph:
     provenances: dict[str, Provenance] = {}
 
     for promo in manifest.promotions:
+        if focus is not None and promo.id not in focus:
+            continue
         attempt = attempts.get(promo.attempt_id)
         if attempt is None:
             raise EvidenceError(
                 f"identity mismatch: promotion {promo.id} references missing "
                 f"attempt {promo.attempt_id!r}"
-            )
-        if promo.specification_id != attempt.specification_id:
-            raise EvidenceError(
-                f"identity mismatch: promotion {promo.id} specification_id "
-                f"{promo.specification_id!r} != attempt {attempt.specification_id!r}"
-            )
-        if attempt.artifact_state == "discarded":
-            raise EvidenceError(
-                f"discarded promotion candidate: attempt {attempt.attempt_id} "
-                f"cannot back promotion {promo.id}"
             )
         spec = specifications.get(promo.specification_id)
         if spec is None:
@@ -498,108 +591,55 @@ def validate_evidence_graph(root: Path) -> EvidenceGraph:
                 f"broken reference: promotion {promo.id} specification "
                 f"{promo.specification_id!r}"
             )
+        _validate_promotion_subgraph(
+            root=root,
+            promo=promo,
+            attempt=attempt,
+            spec=spec,
+            measurements=measurements,
+            provenances=provenances,
+        )
 
-        measurement_path = _resolve(root, promo.measurement_path)
-        if measurement_path is None or not measurement_path.is_file():
-            raise EvidenceError(
-                f"missing required file: {promo.measurement_path} "
-                f"(promotion {promo.id})"
-            )
-        measurement = load_measurement(measurement_path)
-        if measurement.target_gate != spec.target_gate:
-            raise EvidenceError(
-                f"identity mismatch: measurement target_gate "
-                f"{measurement.target_gate!r} != specification "
-                f"{spec.target_gate!r} for promotion {promo.id}"
-            )
-        if measurement.motion_class != spec.motion_class:
-            raise EvidenceError(
-                f"identity mismatch: measurement motion_class "
-                f"{measurement.motion_class!r} != specification "
-                f"{spec.motion_class!r} for promotion {promo.id}"
-            )
-        measurements[attempt.attempt_id] = measurement
-
-        if attempt.provenance_path is None:
-            raise EvidenceError(
-                f"missing required file: provenance for promoted attempt "
-                f"{attempt.attempt_id}"
-            )
-        provenance_path = _resolve(root, attempt.provenance_path)
-        if provenance_path is None or not provenance_path.is_file():
-            raise EvidenceError(f"missing required file: {attempt.provenance_path}")
-        provenance = load_provenance(provenance_path)
-        if provenance.attempt_id != attempt.attempt_id:
-            raise EvidenceError(
-                f"identity mismatch: provenance attempt_id "
-                f"{provenance.attempt_id!r} != {attempt.attempt_id!r}"
-            )
-        if provenance.specification_id != attempt.specification_id:
-            raise EvidenceError(
-                f"identity mismatch: provenance specification_id "
-                f"{provenance.specification_id!r} != {attempt.specification_id!r}"
-            )
-        provenances[attempt.attempt_id] = provenance
-
-        raw_path = _resolve(root, provenance.raw_path)
-        if raw_path is None or not raw_path.is_file():
-            raise EvidenceError(f"missing required file: {provenance.raw_path}")
-        actual = sha256_file(raw_path)
-        for label, expected in (
-            ("raw file", actual),
-            ("provenance", provenance.raw_sha256),
-            ("measurement", measurement.raw_sha256),
-            ("attempt", attempt.raw_sha256),
-        ):
-            if label == "raw file":
-                continue
-            if expected is None:
-                raise EvidenceError(
-                    f"missing raw_sha256 on {label} for attempt {attempt.attempt_id}"
-                )
-            if expected != actual:
-                raise EvidenceError(
-                    f"SHA-256 mismatch: {label} hash {expected} != raw {actual} "
-                    f"for attempt {attempt.attempt_id}"
-                )
-
-    # Also validate measurement/provenance/raw for non-promoted retained attempts
-    # that declare paths — still fail closed on broken refs when present.
+    # Schema-load non-promoted Attempt evidence when files exist. Raw bytes are
+    # required only for Promotion candidates (above); discarded PNGs are expected
+    # to be absent for historical Attempts.
     for attempt in attempts.values():
         if attempt.attempt_id in measurements:
             continue
         if attempt.measurement_path:
             mpath = _resolve(root, attempt.measurement_path)
-            if mpath is None or not mpath.is_file():
+            if mpath is not None and mpath.is_file():
+                measurements[attempt.attempt_id] = load_measurement(mpath)
+            elif focus is None:
                 raise EvidenceError(f"missing required file: {attempt.measurement_path}")
-            measurements[attempt.attempt_id] = load_measurement(mpath)
         if attempt.provenance_path:
             ppath = _resolve(root, attempt.provenance_path)
-            if ppath is None or not ppath.is_file():
-                raise EvidenceError(f"missing required file: {attempt.provenance_path}")
-            provenance = load_provenance(ppath)
-            provenances[attempt.attempt_id] = provenance
-            if attempt.artifact_state == "retained":
+            if ppath is not None and ppath.is_file():
+                provenance = load_provenance(ppath)
+                provenances[attempt.attempt_id] = provenance
                 raw_path = _resolve(root, provenance.raw_path)
-                if raw_path is None or not raw_path.is_file():
-                    raise EvidenceError(f"missing required file: {provenance.raw_path}")
-                actual = sha256_file(raw_path)
-                if provenance.raw_sha256 != actual:
-                    raise EvidenceError(
-                        f"SHA-256 mismatch: provenance hash {provenance.raw_sha256} "
-                        f"!= raw {actual} for attempt {attempt.attempt_id}"
-                    )
-                measurement = measurements.get(attempt.attempt_id)
-                if measurement is not None and measurement.raw_sha256 != actual:
-                    raise EvidenceError(
-                        f"SHA-256 mismatch: measurement hash {measurement.raw_sha256} "
-                        f"!= raw {actual} for attempt {attempt.attempt_id}"
-                    )
-                if attempt.raw_sha256 is not None and attempt.raw_sha256 != actual:
-                    raise EvidenceError(
-                        f"SHA-256 mismatch: attempt hash {attempt.raw_sha256} "
-                        f"!= raw {actual} for attempt {attempt.attempt_id}"
-                    )
+                if raw_path is not None and raw_path.is_file():
+                    actual = sha256_file(raw_path)
+                    if provenance.raw_sha256 != actual:
+                        raise EvidenceError(
+                            f"SHA-256 mismatch: provenance hash "
+                            f"{provenance.raw_sha256} != raw {actual} "
+                            f"for attempt {attempt.attempt_id}"
+                        )
+                    measurement = measurements.get(attempt.attempt_id)
+                    if measurement is not None and measurement.raw_sha256 != actual:
+                        raise EvidenceError(
+                            f"SHA-256 mismatch: measurement hash "
+                            f"{measurement.raw_sha256} != raw {actual} "
+                            f"for attempt {attempt.attempt_id}"
+                        )
+                    if attempt.raw_sha256 is not None and attempt.raw_sha256 != actual:
+                        raise EvidenceError(
+                            f"SHA-256 mismatch: attempt hash {attempt.raw_sha256} "
+                            f"!= raw {actual} for attempt {attempt.attempt_id}"
+                        )
+            elif focus is None and attempt.artifact_state == "retained":
+                raise EvidenceError(f"missing required file: {attempt.provenance_path}")
 
     reviews: dict[str, ReviewRecord] = {}
     reviews_root = gc / "reviews"
