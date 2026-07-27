@@ -1,0 +1,42 @@
+{
+  "blinded": true,
+  "packet": {
+    "attempt_id": "blob_idle--min_pair_cohort_pass--005",
+    "budget": 0.1199,
+    "budget_binding_good": {
+      "path": "prototype/strip-coherence/inbox/13-ooze-idle.png",
+      "raw_sha256": "072a3ab1b91c322acdf79acdff14a0919543d2dce82b6797ceb8e8e49154b1c3",
+      "role": "budget_binding_good"
+    },
+    "candidate": {
+      "path": "gate-controls/raw/blob_idle--min_pair_cohort_pass--005.png",
+      "raw_sha256": "a4d78206e746f490f64dd60a3a7171a1c955a905701b2d3231986969d4640155",
+      "role": "candidate"
+    },
+    "caveats": [],
+    "fixed_question": "Same subject, one coherent animation despite no sufficiently similar pair?",
+    "gate": "min_pair_cohort_pass",
+    "gate_control": null,
+    "hard_fail_boundary": 0.1371,
+    "metric": 0.1371,
+    "motion_class": "blob_idle",
+    "no_autonomous_hard_fail": false,
+    "no_autonomous_hard_fail_reason": null,
+    "packet_kind": "PROMOTION_VERIFICATION",
+    "packet_sha256": "cd31890d60a39e05144eccedca3d1283de5cfe5e0615edfeda59a6d87e26a830",
+    "panel_kind": "occupancy_difference",
+    "promotion_id": "promo--blob_idle--min_pair_cohort_pass",
+    "promotion_status": "PENDING_VERIFICATION",
+    "proposed_hard_fail_reference": {
+      "path": "gate-controls/raw/blob_idle--min_pair_cohort_pass--005.png",
+      "raw_sha256": "a4d78206e746f490f64dd60a3a7171a1c955a905701b2d3231986969d4640155",
+      "role": "proposed_hard_fail_reference"
+    },
+    "schema": "gate-review-packet/0"
+  },
+  "packet_sha256": "cd31890d60a39e05144eccedca3d1283de5cfe5e0615edfeda59a6d87e26a830",
+  "prior_review_visible": false,
+  "review_id": "review--02",
+  "reviewer_identity": "cursor-agent/issue-51/review-02",
+  "schema": "gate-review-packet/0"
+}

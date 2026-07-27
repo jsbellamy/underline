@@ -197,6 +197,72 @@ def _reference(root: Path, role: str, path: Path) -> PacketReference:
     )
 
 
+def _packet_reference(doc: Mapping[str, Any] | None, *, role: str) -> PacketReference | None:
+    if doc is None:
+        return None
+    if not isinstance(doc, Mapping):
+        raise ReviewError(f"packet reference for {role!r} must be an object")
+    return PacketReference(
+        role=str(doc.get("role") or role),
+        path=str(doc["path"]),
+        raw_sha256=str(doc["raw_sha256"]),
+    )
+
+
+def review_packet_from_manifest(doc: Mapping[str, Any]) -> ReviewPacket:
+    """Rehydrate a ReviewPacket from an on-disk packet manifest."""
+    ge.require_schema(doc, ge.KNOWN_SCHEMAS["packet"], where="packet manifest")
+    gate_control = _packet_reference(doc.get("gate_control"), role="gate_control")
+    proposed = _packet_reference(
+        doc.get("proposed_hard_fail_reference"),
+        role="proposed_hard_fail_reference",
+    )
+    candidate = _packet_reference(doc.get("candidate"), role="candidate")
+    binding = _packet_reference(doc.get("budget_binding_good"), role="budget_binding_good")
+    if candidate is None or binding is None:
+        raise ReviewError("packet manifest missing candidate or budget_binding_good")
+    packet = ReviewPacket(
+        schema=str(doc["schema"]),
+        packet_kind=str(doc["packet_kind"]),
+        motion_class=str(doc["motion_class"]),
+        gate=str(doc["gate"]),
+        panel_kind=str(doc["panel_kind"]),
+        fixed_question=str(doc["fixed_question"]),
+        attempt_id=str(doc["attempt_id"]),
+        promotion_id=(
+            str(doc["promotion_id"]) if doc.get("promotion_id") is not None else None
+        ),
+        promotion_status=(
+            str(doc["promotion_status"])
+            if doc.get("promotion_status") is not None
+            else None
+        ),
+        candidate=candidate,
+        budget_binding_good=binding,
+        gate_control=gate_control,
+        proposed_hard_fail_reference=proposed,
+        no_autonomous_hard_fail=bool(doc.get("no_autonomous_hard_fail")),
+        no_autonomous_hard_fail_reason=(
+            str(doc["no_autonomous_hard_fail_reason"])
+            if doc.get("no_autonomous_hard_fail_reason") is not None
+            else None
+        ),
+        metric=float(doc["metric"]) if doc.get("metric") is not None else None,
+        budget=float(doc["budget"]) if doc.get("budget") is not None else None,
+        hard_fail_boundary=(
+            float(doc["hard_fail_boundary"])
+            if doc.get("hard_fail_boundary") is not None
+            else None
+        ),
+        caveats=tuple(str(item) for item in doc.get("caveats", [])),
+        packet_sha256=str(doc["packet_sha256"]),
+    )
+    manifest = packet.to_manifest()
+    if manifest["packet_sha256"] != packet.packet_sha256:
+        raise ReviewError("packet manifest hash does not match recomputed digest")
+    return packet
+
+
 def _finalize(packet: ReviewPacket) -> ReviewPacket:
     manifest = packet.to_manifest()
     return ReviewPacket(

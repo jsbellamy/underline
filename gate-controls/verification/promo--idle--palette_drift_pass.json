@@ -1,0 +1,62 @@
+{
+  "attempt_id": "idle--palette_drift_pass--001",
+  "commands": [
+    {
+      "command": "npm test",
+      "evidence_row": "152 passed, 2 skipped in 22.98s",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run prototype:strip:corpus",
+      "evidence_row": "scored 23/23   pending 0   regressions 0",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run prototype:strip:adversarial",
+      "evidence_row": "2 GAPS (documented, not green)",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run prototype:strip:alpha-budgets",
+      "evidence_row": "Separated=17  Unseparated=4  Inapplicable=3",
+      "exit_code": 0
+    }
+  ],
+  "failure_reason": null,
+  "manifest_sha256": "0ca4c72caea5aaf2165d3e8c35964bb28c40b022b7041e8db8b98ce6cea54988",
+  "measurement_path": "gate-controls/reports/idle--palette_drift_pass--001/2026-07-26T16-21-45+00-00.json",
+  "measurement_sha256": "cb3b7215dfbfff038796af2938812411cd490e0f15d0b03b618a134fe9908827",
+  "packet_path": "reviews/idle--palette_drift_pass--001/packet.json",
+  "packet_sha256": "daf58b999d4377b302c7fcd41a7998be227dfd935fc89b756f3f9c3cabb14f4f",
+  "promotion_id": "promo--idle--palette_drift_pass",
+  "provenance_path": "gate-controls/provenance/idle--palette_drift_pass--001.json",
+  "provenance_sha256": "a8046ce5ff2e2f23041542fbc840db6be287e51ae28130980e087dc36ebd2cb0",
+  "raw_sha256": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd",
+  "recorded_at": "2026-07-27T11:48:15+00:00",
+  "repository_commit": "6ce276bdfb47e3bacc8d3ec0c2b493094bbb25b4",
+  "review_report": {
+    "ok": true,
+    "packet_sha256": "daf58b999d4377b302c7fcd41a7998be227dfd935fc89b756f3f9c3cabb14f4f",
+    "reviews": [
+      "review--01",
+      "review--02"
+    ]
+  },
+  "reviews": [
+    {
+      "path": "reviews/idle--palette_drift_pass--001/review--01.json",
+      "review_id": "review--01",
+      "sha256": "c7a303b5a5d889e24dfe352862c8510e7ec67a02a4c9b13c102a7276ab7ec9a6",
+      "verdict": "APPROVE"
+    },
+    {
+      "path": "reviews/idle--palette_drift_pass--001/review--02.json",
+      "review_id": "review--02",
+      "sha256": "2f0aac9be9563023b552eb16a9bb0da351f78519709c0f764b541f85bdf8865d",
+      "verdict": "APPROVE"
+    }
+  ],
+  "schema": "gate-control-verification/0",
+  "specification_id": "idle/palette_drift_pass",
+  "status": "ACTIVE"
+}

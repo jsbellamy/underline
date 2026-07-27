@@ -1,0 +1,62 @@
+{
+  "attempt_id": "blob_idle--silhouette_budget--004",
+  "commands": [
+    {
+      "command": "npm test",
+      "evidence_row": "152 passed, 2 skipped in 22.98s",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run prototype:strip:corpus",
+      "evidence_row": "scored 23/23   pending 0   regressions 0",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run prototype:strip:adversarial",
+      "evidence_row": "2 GAPS (documented, not green)",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run prototype:strip:alpha-budgets",
+      "evidence_row": "Separated=17  Unseparated=4  Inapplicable=3",
+      "exit_code": 0
+    }
+  ],
+  "failure_reason": null,
+  "manifest_sha256": "0ca4c72caea5aaf2165d3e8c35964bb28c40b022b7041e8db8b98ce6cea54988",
+  "measurement_path": "gate-controls/reports/blob_idle--silhouette_budget--004/2026-07-26T17-00-51+00-00.json",
+  "measurement_sha256": "1e2edd8d398f6aa7322228b861f565a405459841747c31e6d22a440fb6356f04",
+  "packet_path": "reviews/blob_idle--silhouette_budget--004/packet.json",
+  "packet_sha256": "6a99a6f2962182f2a18b922b0ff1bc0c22adebc9fcc1def8fda8867e0d87a034",
+  "promotion_id": "promo--blob_idle--silhouette_budget",
+  "provenance_path": "gate-controls/provenance/blob_idle--silhouette_budget--004.json",
+  "provenance_sha256": "e6ba63d1992e1a0eef2cd8bfbbeef269a08920b053753327281fd7fb2c561ac7",
+  "raw_sha256": "b24c8aa9eae9e49f93c5cfbf6dc311d3d313f6cb79bbbac8ca4dfad27e2f2cb7",
+  "recorded_at": "2026-07-27T11:48:15+00:00",
+  "repository_commit": "6ce276bdfb47e3bacc8d3ec0c2b493094bbb25b4",
+  "review_report": {
+    "ok": true,
+    "packet_sha256": "6a99a6f2962182f2a18b922b0ff1bc0c22adebc9fcc1def8fda8867e0d87a034",
+    "reviews": [
+      "review--01",
+      "review--02"
+    ]
+  },
+  "reviews": [
+    {
+      "path": "reviews/blob_idle--silhouette_budget--004/review--01.json",
+      "review_id": "review--01",
+      "sha256": "796a4f23b4e4f3a9b60d858a343d959971e8df614668957f0cf4b52514f06bf0",
+      "verdict": "APPROVE"
+    },
+    {
+      "path": "reviews/blob_idle--silhouette_budget--004/review--02.json",
+      "review_id": "review--02",
+      "sha256": "728d63551089bf8aa643e7ce5b6691f2a7119e72d8f42503c35d0d02ee6cc01c",
+      "verdict": "APPROVE"
+    }
+  ],
+  "schema": "gate-control-verification/0",
+  "specification_id": "blob_idle/silhouette_budget",
+  "status": "ACTIVE"
+}
