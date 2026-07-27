@@ -52,13 +52,24 @@ ISSUE_60_PROMOTION_IDS: frozenset[str] = frozenset(
     }
 )
 
+ISSUE_61_PROMOTION_IDS: frozenset[str] = frozenset(
+    {
+        "promo--walk--loop_closure_pass",
+        "promo--walk--palette_drift_pass",
+        "promo--walk--silhouette_budget",
+        "promo--swing--palette_drift_pass",
+        "promo--swing--silhouette_budget",
+    }
+)
+
 VERIFICATION_PROMOTION_IDS: frozenset[str] = (
-    ISSUE_59_PROMOTION_IDS | ISSUE_60_PROMOTION_IDS
+    ISSUE_59_PROMOTION_IDS | ISSUE_60_PROMOTION_IDS | ISSUE_61_PROMOTION_IDS
 )
 
 ACTIVATION_SLICES: tuple[frozenset[str], ...] = (
     ISSUE_59_PROMOTION_IDS,
     ISSUE_60_PROMOTION_IDS,
+    ISSUE_61_PROMOTION_IDS,
 )
 
 PROMOTION_REVIEW_DIRS: dict[str, str] = {
@@ -74,6 +85,11 @@ PROMOTION_REVIEW_DIRS: dict[str, str] = {
     "promo--airborne--loop_closure_pass": "airborne--loop_closure_pass--002",
     "promo--airborne--min_pair_cohort_pass": "airborne--min_pair_cohort_pass--004",
     "promo--airborne--palette_drift_pass": "airborne--palette_drift_pass--001",
+    "promo--walk--loop_closure_pass": "walk--loop_closure_pass--002",
+    "promo--walk--palette_drift_pass": "walk--palette_drift_pass--001",
+    "promo--walk--silhouette_budget": "walk--silhouette_budget--002",
+    "promo--swing--palette_drift_pass": "swing--palette_drift_pass--001",
+    "promo--swing--silhouette_budget": "swing--silhouette_budget--002",
 }
 
 

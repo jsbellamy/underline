@@ -12,7 +12,11 @@ import pytest
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "prototype" / "strip-coherence"))
 
-from alpha_budgets import ALPHA, derive_separated_budget  # noqa: E402
+from alpha_budgets import (  # noqa: E402
+    ALPHA,
+    _required_separated_promotion_ids,
+    derive_separated_budget,
+)
 from numeric_policy import canonical_metric  # noqa: E402
 
 
@@ -36,6 +40,13 @@ def test_derive_separated_budget_matches_issue_28_tightest_pairs() -> None:
         assert result.good_headroom == round(expected - g, 4)
         assert result.review_width == round(c - expected, 4)
         assert result.budget < result.c
+
+
+def test_required_separated_promotion_ids_counts_seventeen_provider_controls() -> None:
+    required = _required_separated_promotion_ids()
+    assert len(required) == 17
+    assert "promo--walk--loop_closure_pass" in required
+    assert "promo--swing--silhouette_budget" in required
 
 
 @pytest.mark.slow

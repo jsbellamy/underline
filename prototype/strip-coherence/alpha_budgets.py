@@ -145,6 +145,34 @@ def _worst_good_by_class() -> dict[str, dict[str, tuple[str, float]]]:
     return out
 
 
+def _required_separated_promotion_ids() -> frozenset[str]:
+    """Provider-controlled Separated pairs that require an ACTIVE Promotion."""
+    profiles = json.loads(ACCEPTANCE_PROFILES.read_text())["profiles"]
+    required: set[str] = set()
+    for profile in profiles.values():
+        for gate, row in profile["gates"].items():
+            if gate == "baseline_row_stable":
+                continue
+            if row.get("status") == "SEPARATED" and "active_promotion" in row:
+                required.add(row["active_promotion"])
+    return frozenset(required)
+
+
+def _assert_all_separated_promotions_active() -> None:
+    """Fail closed when any required Separated Promotion is not ACTIVE."""
+    required = _required_separated_promotion_ids()
+    manifest = json.loads(GC_MANIFEST.read_text())
+    statuses = {p["id"]: p["status"] for p in manifest["promotions"]}
+    inactive = sorted(
+        pid for pid in required if statuses.get(pid) != "ACTIVE"
+    )
+    if inactive:
+        raise SystemExit(
+            "α-Budget derivation blocked: required Separated Promotions "
+            f"not ACTIVE: {', '.join(inactive)}"
+        )
+
+
 def _promoted_controls() -> dict[tuple[str, str], dict]:
     """(motion_class, gate) → {metric, attempt, caveats, measurement_path}."""
     manifest = json.loads(GC_MANIFEST.read_text())
@@ -170,6 +198,7 @@ def _runtime_budget(motion_class: str, gate: str) -> float | None:
 
 
 def main() -> int:
+    _assert_all_separated_promotions_active()
     status = _load_acceptance_status()
     worst = _worst_good_by_class()
     controls = _promoted_controls()

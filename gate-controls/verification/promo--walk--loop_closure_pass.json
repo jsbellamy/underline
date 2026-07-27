@@ -1,0 +1,62 @@
+{
+  "attempt_id": "walk--loop_closure_pass--002",
+  "commands": [
+    {
+      "command": "npm test",
+      "evidence_row": "160 passed, 2 skipped in 19.73s",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run prototype:strip:corpus",
+      "evidence_row": "scored 23/23   pending 0   regressions 0",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run prototype:strip:adversarial",
+      "evidence_row": "2 GAPS (documented, not green)",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run prototype:strip:alpha-budgets",
+      "evidence_row": "Separated=17  Unseparated=4  Inapplicable=3",
+      "exit_code": 0
+    }
+  ],
+  "failure_reason": null,
+  "manifest_sha256": "5e530454c43940c64a51ca9b1ff9be3ed4ad88176f3c1d4b1b3694dc04c4bdff",
+  "measurement_path": "gate-controls/reports/walk--loop_closure_pass--002/2026-07-26T17-24-47+00-00.json",
+  "measurement_sha256": "ccd3021625a57139353323d7c655eac7ea66595f91790f924e01976e9fdb2ba2",
+  "packet_path": "reviews/walk--loop_closure_pass--002/packet.json",
+  "packet_sha256": "cf744b5a42a4810b7389a74098f06574c2802314de5b20c98982dc56d7981487",
+  "promotion_id": "promo--walk--loop_closure_pass",
+  "provenance_path": "gate-controls/provenance/walk--loop_closure_pass--002.json",
+  "provenance_sha256": "e687782d16b066f39133be800441368327ef27be684be5260270e4190b25c58e",
+  "raw_sha256": "3e8e37a636ff9ffc16b18a6ef9e7c2b5dd10a94866064d4b40e045576adc05eb",
+  "recorded_at": "2026-07-27T12:09:19+00:00",
+  "repository_commit": "57829732f364aa5f1c8a78d20f9591baa423ba43",
+  "review_report": {
+    "ok": true,
+    "packet_sha256": "cf744b5a42a4810b7389a74098f06574c2802314de5b20c98982dc56d7981487",
+    "reviews": [
+      "review--01",
+      "review--02"
+    ]
+  },
+  "reviews": [
+    {
+      "path": "reviews/walk--loop_closure_pass--002/review--01.json",
+      "review_id": "review--01",
+      "sha256": "e14b0787cfda741f237e42bfcc0c3878c3dc3a3926eb486c8dd18a9bac0b1ed8",
+      "verdict": "APPROVE"
+    },
+    {
+      "path": "reviews/walk--loop_closure_pass--002/review--02.json",
+      "review_id": "review--02",
+      "sha256": "1e5a11b65b524a91bcbb9cde7526ae7dcf013a86b23f7538d4a019f8d947a614",
+      "verdict": "APPROVE"
+    }
+  ],
+  "schema": "gate-control-verification/0",
+  "specification_id": "walk/loop_closure_pass",
+  "status": "ACTIVE"
+}

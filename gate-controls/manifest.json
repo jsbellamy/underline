@@ -218,7 +218,7 @@
       "specification_id": "walk/loop_closure_pass",
       "attempt_id": "walk--loop_closure_pass--002",
       "measurement_path": "gate-controls/reports/walk--loop_closure_pass--002/2026-07-26T17-24-47+00-00.json",
-      "status": "PENDING_VERIFICATION",
+      "status": "ACTIVE",
       "recorded_at": "2026-07-26T17:24:47+00:00",
       "note": "visual review deferred to #27; full verification deferred to #30"
     },
@@ -227,7 +227,7 @@
       "specification_id": "walk/palette_drift_pass",
       "attempt_id": "walk--palette_drift_pass--001",
       "measurement_path": "gate-controls/reports/walk--palette_drift_pass--001/2026-07-26T17-24-45+00-00.json",
-      "status": "PENDING_VERIFICATION",
+      "status": "ACTIVE",
       "recorded_at": "2026-07-26T17:24:45+00:00",
       "note": "visual review deferred to #27; full verification deferred to #30"
     },
@@ -236,7 +236,7 @@
       "specification_id": "walk/silhouette_budget",
       "attempt_id": "walk--silhouette_budget--002",
       "measurement_path": "gate-controls/reports/walk--silhouette_budget--002/2026-07-26T17-24-46+00-00.json",
-      "status": "PENDING_VERIFICATION",
+      "status": "ACTIVE",
       "recorded_at": "2026-07-26T17:24:46+00:00",
       "note": "visual review deferred to #27; full verification deferred to #30"
     },
@@ -245,7 +245,7 @@
       "specification_id": "swing/palette_drift_pass",
       "attempt_id": "swing--palette_drift_pass--001",
       "measurement_path": "gate-controls/reports/swing--palette_drift_pass--001/2026-07-26T17-29-11+00-00.json",
-      "status": "PENDING_VERIFICATION",
+      "status": "ACTIVE",
       "recorded_at": "2026-07-26T17:29:12+00:00",
       "note": "visual review deferred to #27; full verification deferred to #30"
     },
@@ -254,7 +254,7 @@
       "specification_id": "swing/silhouette_budget",
       "attempt_id": "swing--silhouette_budget--002",
       "measurement_path": "gate-controls/reports/swing--silhouette_budget--002/2026-07-26T17-29-07+00-00.json",
-      "status": "PENDING_VERIFICATION",
+      "status": "ACTIVE",
       "recorded_at": "2026-07-26T17:29:08+00:00",
       "note": "visual review deferred to #27; full verification deferred to #30"
     }
