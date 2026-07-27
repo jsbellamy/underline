@@ -1,11 +1,16 @@
 #!/usr/bin/env python3
-"""PROTOTYPE — derive per-class budgets from scored corpus samples.
+"""PROTOTYPE — historical pre-α Budget estimator from scored corpus samples.
 
 Reads manifest.json, ingests every declared-good strip (contract_expect PASS) with a
 PNG in inbox/, and prints worst-good measurements plus ceil+0.02 derived budgets.
 Good-strip membership is a manifest judgment about the art — not whether the strip
 passes under the budgets being calibrated. Negative controls are scored for
 separation checks. Pending samples are listed but skipped.
+
+This command is retained as historical evidence of the pre-α estimator
+(ceil₀.₀₁(worst Manifest-good) + 0.02). It does not enforce equality with runtime
+MOTION_CLASSES and is not the post-α Budget oracle — that is
+`prototype:strip:alpha-budgets`.
 """
 
 from __future__ import annotations
@@ -38,25 +43,8 @@ def _ceil_001(value: float) -> float:
 
 
 def _derive(worst: float) -> float:
+    """Historical pre-α estimator: ceil₀.₀₁(worst Manifest-good) + 0.02."""
     return round(_ceil_001(worst) + 0.02, 2)
-
-
-def _derived_budget_tuple(
-    motion_class: str, worst: dict[str, float]
-) -> tuple[float | None, float | None, float, float | None]:
-    budget = S.MOTION_CLASSES[motion_class]
-    sil = None if budget.max_silhouette is None else _derive(worst["sil"])
-    loop = None if budget.max_loop is None else _derive(worst["loop"])
-    drift = _derive(worst["drift"])
-    min_pair = (
-        None if budget.max_min_pair is None else _derive(worst["worst_good_min_pair"])
-    )
-    return sil, loop, drift, min_pair
-
-
-def _runtime_budget_tuple(motion_class: str) -> tuple[float | None, float | None, float, float | None]:
-    budget = S.MOTION_CLASSES[motion_class]
-    return budget.max_silhouette, budget.max_loop, budget.max_drift, budget.max_min_pair
 
 
 def _ingest_metrics(path: pathlib.Path, motion_class: str) -> dict[str, float] | None:
@@ -122,6 +110,8 @@ def main() -> int:
             label = name.removesuffix(".png")
             by_class.setdefault(motion_class, []).append((label, metrics))
 
+    print("Historical pre-α Budget baseline (ceil₀.₀₁(worst Manifest-good) + 0.02)")
+    print("Not a runtime policy check — α Budgets: npm run prototype:strip:alpha-budgets")
     print("Per-class worst-good measurements (manifest-good, gate-agnostic)")
     print("-" * 72)
     for motion_class in sorted(by_class):
@@ -169,29 +159,6 @@ def main() -> int:
 
     if pending:
         print(f"\nPending ({len(pending)}): {', '.join(pending)}")
-
-    mismatches: list[str] = []
-    for motion_class in sorted(by_class):
-        rows = by_class[motion_class]
-        worst = {
-            "sil": max(m["sil"] for _, m in rows),
-            "loop": max(m["loop"] for _, m in rows),
-            "drift": max(m["drift"] for _, m in rows),
-            "worst_good_min_pair": max(m["min_pair"] for _, m in rows),
-        }
-        derived = _derived_budget_tuple(motion_class, worst)
-        runtime = _runtime_budget_tuple(motion_class)
-        if derived != runtime:
-            mismatches.append(
-                f"{motion_class}: derived={derived} runtime={runtime}"
-            )
-
-    if mismatches:
-        print("\nRUNTIME BUDGET MISMATCH")
-        print("-" * 72)
-        for row in mismatches:
-            print(f"  {row}")
-        return 1
 
     return 0
 
