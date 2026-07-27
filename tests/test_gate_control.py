@@ -169,14 +169,7 @@ def test_canonical_score_command_help_exits_zero() -> None:
 
 
 def test_prototype_scorer_shim_documents_production_replacement() -> None:
-    import importlib.util
-
-    path = ROOT / "prototype/strip-coherence/gate_control.py"
-    spec = importlib.util.spec_from_file_location("prototype_gate_control_doc", path)
-    assert spec and spec.loader
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    doc = path.read_text()
+    doc = (ROOT / "prototype/strip-coherence/gate_control.py").read_text()
     assert "DEPRECATED" in doc
     assert "pipeline.gate_control" in doc
     assert "gate-control:score" in doc
