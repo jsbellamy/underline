@@ -211,7 +211,7 @@ _Avoid_: tile (ambiguous with Mineable Block), background cell
 One atomic 32×32 mining target occupying a 2×2 area of Rendering Tiles.
 _Avoid_: tile, ore tile, destructible tile
 
-**Autotile mask**:
+**Autotile Mask**:
 The four-bit north/east/south/west neighbor signature selecting a Mineable Block
 edge treatment. Bit values: north=1, east=2, south=4, west=8.
 _Avoid_: bitmask, neighbor mask

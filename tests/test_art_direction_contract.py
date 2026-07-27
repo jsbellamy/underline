@@ -6,14 +6,13 @@ import json
 import re
 from pathlib import Path
 
-import pytest
-
 ROOT = Path(__file__).resolve().parents[1]
 PALETTE_PATH = ROOT / "assets" / "palettes" / "first-room.json"
 
 HEX_COLOR = re.compile(r"^#[0-9A-F]{6}$")
 MAGENTA_KEY = "#FF00FF"
 
+# Pinned contract values — C3 requires exactly these 32 opaque RGB members.
 EXPECTED_UNIQUE_COLORS = [
     "#111018",
     "#1D1720",
@@ -73,17 +72,13 @@ def _collect_colors(palette: dict) -> list[str]:
     return colors
 
 
-def test_palette_file_exists() -> None:
-    assert PALETTE_PATH.is_file()
-
-
-def test_palette_schema_and_id() -> None:
+def test_first_room_master_palette_declares_schema_and_id() -> None:
     palette = _load_palette()
     assert palette["schema"] == "master-palette/0"
     assert palette["id"] == "first-room"
 
 
-def test_palette_has_exactly_thirty_two_unique_colors() -> None:
+def test_first_room_master_palette_members_are_thirty_two_unique_opaque_hex_colors() -> None:
     palette = _load_palette()
     colors = _collect_colors(palette)
     assert len(colors) == 32
@@ -92,26 +87,26 @@ def test_palette_has_exactly_thirty_two_unique_colors() -> None:
         assert HEX_COLOR.match(color)
 
 
-def test_palette_matches_pinned_hex_values() -> None:
+def test_first_room_master_palette_matches_pinned_contract_hex_values() -> None:
     palette = _load_palette()
     colors = sorted(_collect_colors(palette))
     expected = sorted(c.upper() for c in EXPECTED_UNIQUE_COLORS)
     assert colors == expected
 
 
-def test_palette_excludes_magenta_transport_key() -> None:
+def test_first_room_master_palette_excludes_magenta_transport_key() -> None:
     palette = _load_palette()
     colors = _collect_colors(palette)
     assert MAGENTA_KEY not in colors
 
 
-def test_palette_has_required_role_groups() -> None:
+def test_first_room_master_palette_groups_roles_per_contract() -> None:
     palette = _load_palette()
     labels = [group["label"] for group in palette["role_groups"]]
     assert labels == list(REQUIRED_ROLE_GROUPS)
 
 
-def test_each_role_group_has_four_colors() -> None:
+def test_first_room_master_palette_assigns_four_colors_per_role_group() -> None:
     palette = _load_palette()
     for group in palette["role_groups"]:
         assert len(group["colors"]) == 4
