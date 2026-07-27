@@ -6,10 +6,13 @@ Machine-readable index: [`gate-controls/acceptance-profiles.json`](../../gate-co
 
 ## Separated
 
-| Gate | Budget | Control | Promotion |
-|------|--------|---------|-----------|
-| `silhouette_budget` | 0.17 | `idle--silhouette_budget--001` | `promo--idle--silhouette_budget` (`PENDING_VERIFICATION`) |
-| `palette_drift_pass` | 0.14 | `idle--palette_drift_pass--001` (corpus `07` cross-class) | `promo--idle--palette_drift_pass` (`PENDING_VERIFICATION`) |
+α-Budgets from [Re-derive Budgets and rebuild fragile-claim evidence](https://github.com/jsbellamy/underline/issues/29)
+(`npm run prototype:strip:alpha-budgets`). Hard-fail is the Gate-control metric `C`.
+
+| Gate | Budget | Hard-fail C | Control | Promotion |
+|------|--------|-------------|---------|-----------|
+| `silhouette_budget` | 0.2239 | 0.3000 | `idle--silhouette_budget--001` | `promo--idle--silhouette_budget` (`PENDING_VERIFICATION`) |
+| `palette_drift_pass` | 0.1974 | 0.2793 | `idle--palette_drift_pass--001` (corpus `07` cross-class) | `promo--idle--palette_drift_pass` (`PENDING_VERIFICATION`) |
 
 `baseline_row_stable` is structural and does not require a provider Gate control.
 

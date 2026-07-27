@@ -6,11 +6,14 @@ Machine-readable index: [`gate-controls/acceptance-profiles.json`](../../gate-co
 
 ## Separated
 
-| Gate | Budget | Control | Promotion |
-|------|--------|---------|-----------|
-| `palette_drift_pass` | 0.17 | `emissive--palette_drift_pass--001` (corpus `07` cross-class) | `promo--emissive--palette_drift_pass` (`PENDING_VERIFICATION`) |
-| `silhouette_budget` | 0.21 | `emissive--silhouette_budget--001` | `promo--emissive--silhouette_budget` (`PENDING_VERIFICATION`) |
-| `loop_closure_pass` | 0.16 | `emissive--loop_closure_pass--001` | `promo--emissive--loop_closure_pass` (`PENDING_VERIFICATION`) |
+α-Budgets from [Re-derive Budgets and rebuild fragile-claim evidence](https://github.com/jsbellamy/underline/issues/29)
+(`npm run prototype:strip:alpha-budgets`). Hard-fail is the Gate-control metric `C`.
+
+| Gate | Budget | Hard-fail C | Control | Promotion |
+|------|--------|-------------|---------|-----------|
+| `palette_drift_pass` | 0.2123 | 0.2793 | `emissive--palette_drift_pass--001` (corpus `07` cross-class) | `promo--emissive--palette_drift_pass` (`PENDING_VERIFICATION`) |
+| `silhouette_budget` | 0.3226 | 0.4633 | `emissive--silhouette_budget--001` | `promo--emissive--silhouette_budget` (`PENDING_VERIFICATION`) |
+| `loop_closure_pass` | 0.1694 | 0.2067 | `emissive--loop_closure_pass--001` | `promo--emissive--loop_closure_pass` (`PENDING_VERIFICATION`) |
 
 `baseline_row_stable` is structural and does not require a provider Gate control.
 

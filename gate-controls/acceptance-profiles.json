@@ -1,47 +1,11 @@
 {
   "schema": "acceptance-profile-index/0",
   "profiles": {
-    "emissive": {
-      "motion_class": "emissive",
-      "recorded_at": "2026-07-26T19:10:00+00:00",
-      "decided_in": "https://github.com/jsbellamy/underline/issues/23",
-      "detail": "docs/acceptance-profiles/emissive.md",
-      "gates": {
-        "baseline_row_stable": {
-          "status": "SEPARATED",
-          "budget": null,
-          "note": "structural; no provider Gate control required"
-        },
-        "palette_drift_pass": {
-          "status": "SEPARATED",
-          "budget": 0.17,
-          "active_promotion": "promo--emissive--palette_drift_pass",
-          "control_attempt": "emissive--palette_drift_pass--001"
-        },
-        "silhouette_budget": {
-          "status": "SEPARATED",
-          "budget": 0.21,
-          "active_promotion": "promo--emissive--silhouette_budget",
-          "control_attempt": "emissive--silhouette_budget--001"
-        },
-        "loop_closure_pass": {
-          "status": "SEPARATED",
-          "budget": 0.16,
-          "active_promotion": "promo--emissive--loop_closure_pass",
-          "control_attempt": "emissive--loop_closure_pass--001"
-        },
-        "min_pair_cohort_pass": {
-          "status": "UNSEPARATED",
-          "budget": 0.12,
-          "evidence_attempt": "emissive--min_pair_cohort_pass--006",
-          "rationale": "best near-miss couples min-pair and silhouette failures at shared flame-motion geometry"
-        }
-      }
-    },
     "idle": {
       "motion_class": "idle",
-      "recorded_at": "2026-07-26T19:15:00+00:00",
+      "recorded_at": "2026-07-27T08:00:00+00:00",
       "decided_in": "https://github.com/jsbellamy/underline/issues/21",
+      "budgets_from": "https://github.com/jsbellamy/underline/issues/29",
       "detail": "docs/acceptance-profiles/idle.md",
       "gates": {
         "baseline_row_stable": {
@@ -51,13 +15,15 @@
         },
         "silhouette_budget": {
           "status": "SEPARATED",
-          "budget": 0.17,
+          "budget": 0.2239,
+          "hard_fail": 0.3,
           "active_promotion": "promo--idle--silhouette_budget",
           "control_attempt": "idle--silhouette_budget--001"
         },
         "palette_drift_pass": {
           "status": "SEPARATED",
-          "budget": 0.14,
+          "budget": 0.1974,
+          "hard_fail": 0.2793,
           "active_promotion": "promo--idle--palette_drift_pass",
           "control_attempt": "idle--palette_drift_pass--001"
         },
@@ -72,6 +38,210 @@
           "budget": 0.07,
           "evidence_attempt": "idle--min_pair_cohort_pass--016",
           "rationale": "best near-miss 0.0698 still passes under four-place ceiling quantization"
+        }
+      }
+    },
+    "blob_idle": {
+      "motion_class": "blob_idle",
+      "recorded_at": "2026-07-27T08:00:00+00:00",
+      "decided_in": "https://github.com/jsbellamy/underline/issues/22",
+      "budgets_from": "https://github.com/jsbellamy/underline/issues/29",
+      "detail": "docs/alpha-budget-tables.md",
+      "gates": {
+        "baseline_row_stable": {
+          "status": "SEPARATED",
+          "budget": null,
+          "note": "structural; no provider Gate control required"
+        },
+        "silhouette_budget": {
+          "status": "SEPARATED",
+          "budget": 0.3951,
+          "hard_fail": 0.4531,
+          "active_promotion": "promo--blob_idle--silhouette_budget",
+          "control_attempt": "blob_idle--silhouette_budget--004"
+        },
+        "palette_drift_pass": {
+          "status": "SEPARATED",
+          "budget": 0.2377,
+          "hard_fail": 0.2793,
+          "active_promotion": "promo--blob_idle--palette_drift_pass",
+          "control_attempt": "blob_idle--palette_drift_pass--001"
+        },
+        "loop_closure_pass": {
+          "status": "SEPARATED",
+          "budget": 0.3906,
+          "hard_fail": 0.4516,
+          "active_promotion": "promo--blob_idle--loop_closure_pass",
+          "control_attempt": "blob_idle--loop_closure_pass--004"
+        },
+        "min_pair_cohort_pass": {
+          "status": "SEPARATED",
+          "budget": 0.1199,
+          "hard_fail": 0.1371,
+          "active_promotion": "promo--blob_idle--min_pair_cohort_pass",
+          "control_attempt": "blob_idle--min_pair_cohort_pass--005"
+        }
+      }
+    },
+    "emissive": {
+      "motion_class": "emissive",
+      "recorded_at": "2026-07-27T08:00:00+00:00",
+      "decided_in": "https://github.com/jsbellamy/underline/issues/23",
+      "budgets_from": "https://github.com/jsbellamy/underline/issues/29",
+      "detail": "docs/acceptance-profiles/emissive.md",
+      "gates": {
+        "baseline_row_stable": {
+          "status": "SEPARATED",
+          "budget": null,
+          "note": "structural; no provider Gate control required"
+        },
+        "palette_drift_pass": {
+          "status": "SEPARATED",
+          "budget": 0.2123,
+          "hard_fail": 0.2793,
+          "active_promotion": "promo--emissive--palette_drift_pass",
+          "control_attempt": "emissive--palette_drift_pass--001"
+        },
+        "silhouette_budget": {
+          "status": "SEPARATED",
+          "budget": 0.3226,
+          "hard_fail": 0.4633,
+          "active_promotion": "promo--emissive--silhouette_budget",
+          "control_attempt": "emissive--silhouette_budget--001"
+        },
+        "loop_closure_pass": {
+          "status": "SEPARATED",
+          "budget": 0.1694,
+          "hard_fail": 0.2067,
+          "active_promotion": "promo--emissive--loop_closure_pass",
+          "control_attempt": "emissive--loop_closure_pass--001"
+        },
+        "min_pair_cohort_pass": {
+          "status": "UNSEPARATED",
+          "budget": 0.12,
+          "evidence_attempt": "emissive--min_pair_cohort_pass--006",
+          "rationale": "best near-miss couples min-pair and silhouette failures at shared flame-motion geometry"
+        }
+      }
+    },
+    "walk": {
+      "motion_class": "walk",
+      "recorded_at": "2026-07-27T08:00:00+00:00",
+      "decided_in": "https://github.com/jsbellamy/underline/issues/25",
+      "budgets_from": "https://github.com/jsbellamy/underline/issues/29",
+      "detail": "docs/alpha-budget-tables.md",
+      "gates": {
+        "baseline_row_stable": {
+          "status": "SEPARATED",
+          "budget": null,
+          "note": "structural; no provider Gate control required"
+        },
+        "silhouette_budget": {
+          "status": "SEPARATED",
+          "budget": 0.4136,
+          "hard_fail": 0.4294,
+          "active_promotion": "promo--walk--silhouette_budget",
+          "control_attempt": "walk--silhouette_budget--002"
+        },
+        "palette_drift_pass": {
+          "status": "SEPARATED",
+          "budget": 0.2217,
+          "hard_fail": 0.2793,
+          "active_promotion": "promo--walk--palette_drift_pass",
+          "control_attempt": "walk--palette_drift_pass--001"
+        },
+        "loop_closure_pass": {
+          "status": "SEPARATED",
+          "budget": 0.2112,
+          "hard_fail": 0.2795,
+          "active_promotion": "promo--walk--loop_closure_pass",
+          "control_attempt": "walk--loop_closure_pass--002"
+        },
+        "min_pair_cohort_pass": {
+          "status": "UNSEPARATED",
+          "budget": 0.17,
+          "evidence_attempt": "walk--min_pair_cohort_pass--003",
+          "rationale": "shared 0.17 f3↔f0 boundary formally incompatible with isolating from loop_closure_pass"
+        }
+      }
+    },
+    "airborne": {
+      "motion_class": "airborne",
+      "recorded_at": "2026-07-27T08:00:00+00:00",
+      "decided_in": "https://github.com/jsbellamy/underline/issues/24",
+      "budgets_from": "https://github.com/jsbellamy/underline/issues/29",
+      "detail": "docs/alpha-budget-tables.md",
+      "gates": {
+        "baseline_row_stable": {
+          "status": "INAPPLICABLE",
+          "budget": null,
+          "note": "not grounded"
+        },
+        "silhouette_budget": {
+          "status": "INAPPLICABLE",
+          "budget": null,
+          "note": "max_silhouette=None"
+        },
+        "palette_drift_pass": {
+          "status": "SEPARATED",
+          "budget": 0.2423,
+          "hard_fail": 0.2793,
+          "active_promotion": "promo--airborne--palette_drift_pass",
+          "control_attempt": "airborne--palette_drift_pass--001"
+        },
+        "loop_closure_pass": {
+          "status": "SEPARATED",
+          "budget": 0.7032,
+          "hard_fail": 0.7529,
+          "active_promotion": "promo--airborne--loop_closure_pass",
+          "control_attempt": "airborne--loop_closure_pass--002",
+          "note": "control caveated: displacement_pass undecidable"
+        },
+        "min_pair_cohort_pass": {
+          "status": "SEPARATED",
+          "budget": 0.3013,
+          "hard_fail": 0.3333,
+          "active_promotion": "promo--airborne--min_pair_cohort_pass",
+          "control_attempt": "airborne--min_pair_cohort_pass--004",
+          "note": "control caveated: displacement_pass undecidable"
+        }
+      }
+    },
+    "swing": {
+      "motion_class": "swing",
+      "recorded_at": "2026-07-27T08:00:00+00:00",
+      "decided_in": "https://github.com/jsbellamy/underline/issues/26",
+      "budgets_from": "https://github.com/jsbellamy/underline/issues/29",
+      "detail": "docs/alpha-budget-tables.md",
+      "gates": {
+        "baseline_row_stable": {
+          "status": "SEPARATED",
+          "budget": null,
+          "note": "structural; no provider Gate control required"
+        },
+        "silhouette_budget": {
+          "status": "SEPARATED",
+          "budget": 0.5860,
+          "hard_fail": 0.6067,
+          "active_promotion": "promo--swing--silhouette_budget",
+          "control_attempt": "swing--silhouette_budget--002"
+        },
+        "palette_drift_pass": {
+          "status": "SEPARATED",
+          "budget": 0.2294,
+          "hard_fail": 0.2793,
+          "active_promotion": "promo--swing--palette_drift_pass",
+          "control_attempt": "swing--palette_drift_pass--001"
+        },
+        "loop_closure_pass": {
+          "status": "INAPPLICABLE",
+          "budget": null,
+          "note": "one-shot swing; loops=false"
+        },
+        "min_pair_cohort_pass": {
+          "status": "INAPPLICABLE",
+          "budget": null,
+          "note": "one-shot swing; max_min_pair=None"
         }
       }
     }
