@@ -326,6 +326,8 @@ def test_spec_row_major_traversal_matches_slice(tmp_path: Path) -> None:
     )
     cells, _ = recover_static_sheet_cells(provider, spec)
     sliced = slice_static_item(cells, spec, 2)
+    assert len(sliced) == spec.cell_h
+    assert len(sliced[0]) == spec.cell_w
     assert sliced[0][0] in {STONE, STONE_LIGHT}
 
 
@@ -350,6 +352,40 @@ def test_initialize_slices_items_to_declared_dimensions(tmp_path: Path) -> None:
     with Image.open(bundle / "draft" / "tile-a.png") as image:
         assert image.size == (4, 4)
         assert image.mode == "RGBA"
+    with Image.open(bundle / "draft" / "tile-b.png") as image:
+        assert image.size == (4, 4)
+
+
+def test_initialize_slices_correct_grid_slots(tmp_path: Path) -> None:
+    bundle = _init_bundle(tmp_path)
+    spec = load_static_sheet_spec(bundle / "spec.json", repo_root=ROOT)
+    cells, _ = recover_static_sheet_cells(bundle / "provider" / "source.png", spec)
+    expected_a = slice_static_item(cells, spec, 0)
+    expected_b = slice_static_item(cells, spec, 1)
+
+    def cells_from_png(path: Path) -> list[list[Cell]]:
+        with Image.open(path) as image:
+            rgba = image.convert("RGBA")
+            width, height = rgba.size
+            pixels = rgba.load()
+            assert pixels is not None
+            out: list[list[Cell]] = []
+            for y in range(height):
+                row: list[Cell] = []
+                for x in range(width):
+                    r, g, b, a = pixels[x, y]
+                    row.append(None if a == 0 else (int(r), int(g), int(b)))
+                out.append(row)
+            return out
+
+    bundled_a = cells_from_png(bundle / "draft" / "tile-a.png")
+    bundled_b = cells_from_png(bundle / "draft" / "tile-b.png")
+
+    assert bundled_a == expected_a
+    assert bundled_b == expected_b
+    assert bundled_a != bundled_b
+    assert bundled_a[0][0] == STONE
+    assert bundled_b[0][0] == STONE_LIGHT
 
 
 def test_initialize_rejects_invalid_provider(tmp_path: Path) -> None:
@@ -391,11 +427,36 @@ def test_initialize_refuses_existing_bundle(tmp_path: Path) -> None:
         initialize_static_bundle(provider, provenance, spec_path, bundle, repo_root=ROOT)
 
 
+def test_draft_tamper_raises_invalid_bundle(tmp_path: Path) -> None:
+    bundle = _init_bundle(tmp_path)
+    draft = bundle / "draft" / "tile-a.png"
+    with Image.open(draft) as image:
+        rgba = image.convert("RGBA")
+        pixels = rgba.load()
+        assert pixels is not None
+        pixels[0, 0] = (17, 23, 32, 255)
+        rgba.save(draft)
+    with pytest.raises(InvalidBundleError, match="draft item hash mismatch"):
+        check_static_bundle(bundle)
+
+
+def test_provider_tamper_raises_invalid_bundle(tmp_path: Path) -> None:
+    bundle = _init_bundle(tmp_path)
+    provider = bundle / "provider" / "source.png"
+    with Image.open(provider) as image:
+        rgba = image.convert("RGBA")
+        pixels = rgba.load()
+        assert pixels is not None
+        pixels[0, 0] = (0, 0, 0, 255)
+        rgba.save(provider)
+    with pytest.raises(InvalidBundleError, match="provider hash does not match"):
+        check_static_bundle(bundle)
+
+
 # --- C3 structural check tests ---
 
 
-@pytest.mark.parametrize("mode", ["RGBA"])
-def test_check_passes_valid_bundle(tmp_path: Path, mode: str) -> None:
+def test_check_passes_valid_bundle(tmp_path: Path) -> None:
     bundle = _init_bundle(tmp_path)
     result = check_static_bundle(bundle)
     assert result.outcome == "PASS"
@@ -467,7 +528,7 @@ def test_check_fails_missing_polished_item(tmp_path: Path) -> None:
         check_static_bundle(bundle)
 
 
-def test_check_fails_extra_polished_item(tmp_path: Path) -> None:
+def test_check_ignores_extra_polished_item(tmp_path: Path) -> None:
     bundle = _init_bundle(tmp_path)
     shutil.copy2(bundle / "polished" / "tile-a.png", bundle / "polished" / "extra.png")
     result = check_static_bundle(bundle)
