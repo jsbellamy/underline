@@ -321,7 +321,9 @@ def test_unknown_review_schema_is_rejected(tmp_path: Path) -> None:
         ge.validate_evidence_graph(fx["root"])
 
 
-def test_packet_manifest_json_is_not_loaded_as_audit(tmp_path: Path) -> None:
+def test_coexisting_packet_manifest_does_not_break_evidence_graph(
+    tmp_path: Path,
+) -> None:
     """Wave A packet.json coexists with review--*.json under reviews/<attempt>/."""
     fx = _fixture(tmp_path)
     review_dir = fx["gc"] / "reviews" / fx["attempt_id"]
