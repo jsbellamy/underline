@@ -50,14 +50,7 @@ def test_derive_budgets_emits_historical_pre_alpha_baseline() -> None:
     assert "pre-α" in out or "pre-alpha" in out
     assert "historical" in out.lower()
     assert "RUNTIME BUDGET MISMATCH" not in out
+    assert "Not a runtime policy check" in out
     # C1 corpus pin: blob_idle loop worst-good 0.330 → historical baseline 0.35
     assert "blob_idle" in out
     assert "loop=0.330 -> 0.35" in out
-
-
-def test_historical_baseline_omits_runtime_mismatch_failure_path() -> None:
-    """C2: historical baseline must not fail by comparing derived Budgets to runtime policy."""
-    source = DERIVE_BUDGETS.read_text()
-    assert "_runtime_budget_tuple" not in source
-    assert "RUNTIME BUDGET MISMATCH" not in source
-    assert "mismatches" not in source
