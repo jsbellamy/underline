@@ -1,0 +1,32 @@
+{
+  "attempt_id": "walk--silhouette_budget--002",
+  "budget": 0.4136,
+  "candidate_sha256": "c11d13de833ccfa34fc89b929288ff07c975238560370f54de0e92ad3d277257",
+  "caveats": [],
+  "fixed_question": "Intentional pose transition vs identity drift / framing / translation?",
+  "frames": [
+    1,
+    2
+  ],
+  "gate": "silhouette_budget",
+  "hard_fail_boundary": 0.4294,
+  "metric": 0.4294,
+  "model_identity": "cursor-grok-4.5",
+  "model_version": "4.5",
+  "observed_feature": "Horizontal translation/framing of frame 2 relative to neighbors; occupancy difference exceeds intentional walk pose change seen in binding good",
+  "packet_sha256": "24f3a475edac8d6248e1aeb9a013f9b8426711b6fb979db0a835289034bca1e1",
+  "promotion_id": "promo--walk--silhouette_budget",
+  "rationale": "Fixed question: identity drift / framing / translation, not intentional pose. Candidate occupancy panel shows excess silhouette change versus binding-good 05-miner-walk (0.3977 pass); metric 0.4294 sits at hard-fail C. Provenance slide of frame 2 (+3 cols) is visible as translation, isolating silhouette_budget. Approve as proposed hard-fail reference; subject and proposed reference share raw hash.",
+  "reference_hashes": {
+    "budget_binding_good": "573c3d0092c20a893b986da54812a86b0fc3488bfcdeb1997a904a4a47f2fd7b",
+    "proposed_hard_fail_reference": "c11d13de833ccfa34fc89b929288ff07c975238560370f54de0e92ad3d277257"
+  },
+  "review_id": "review--01",
+  "reviewer_identity": "cursor-grok-4.5#issue-57-review-01",
+  "schema": "gate-review-audit/0",
+  "second_review_triggers": [
+    "metric_at_or_beyond_midpoint"
+  ],
+  "timestamp": "2026-07-27T10:10:12+00:00",
+  "verdict": "APPROVE"
+}

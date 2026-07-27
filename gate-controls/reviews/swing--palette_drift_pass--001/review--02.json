@@ -1,0 +1,34 @@
+{
+  "attempt_id": "swing--palette_drift_pass--001",
+  "budget": 0.2294,
+  "candidate_sha256": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd",
+  "caveats": [],
+  "fixed_question": "Intentional subject/Motion-class change (e.g. emissive flicker) vs unintended recolour?",
+  "frames": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "gate": "palette_drift_pass",
+  "hard_fail_boundary": 0.2793,
+  "metric": 0.2793,
+  "model_identity": "cursor-grok-4.5",
+  "model_version": "4.5",
+  "observed_feature": "Per-frame tunic/helmet recolour with pose held; quantized palette histograms diverge across f0\u2013f3 without subject/Motion-class change",
+  "packet_sha256": "1788cc65a48adf43a4f7f73c69babeb9bd8765f76cacc5ea14d653c3a337cc31",
+  "promotion_id": "promo--swing--palette_drift_pass",
+  "rationale": "Packet panel is quantized palette histograms. Candidate frames keep the miner pose but swap clothing/helmet colors every frame \u2014 classic unintended recolour, not emissive flicker. Binding-good swing strip is palette-stable. Metric at C (0.2793) with collateral Gates passing. Approve this raw as the hard-fail control.",
+  "reference_hashes": {
+    "budget_binding_good": "fba96b27a7ff13568aba6c04b01adacca65b49a3ef010acec0360738972ee7bb",
+    "proposed_hard_fail_reference": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd"
+  },
+  "review_id": "review--02",
+  "reviewer_identity": "cursor-grok-4.5#issue-57-review-02",
+  "schema": "gate-review-audit/0",
+  "second_review_triggers": [
+    "metric_at_or_beyond_midpoint"
+  ],
+  "timestamp": "2026-07-27T10:11:40+00:00",
+  "verdict": "APPROVE"
+}

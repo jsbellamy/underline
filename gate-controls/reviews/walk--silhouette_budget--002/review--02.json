@@ -1,0 +1,32 @@
+{
+  "attempt_id": "walk--silhouette_budget--002",
+  "budget": 0.4136,
+  "candidate_sha256": "c11d13de833ccfa34fc89b929288ff07c975238560370f54de0e92ad3d277257",
+  "caveats": [],
+  "fixed_question": "Intentional pose transition vs identity drift / framing / translation?",
+  "frames": [
+    1,
+    2
+  ],
+  "gate": "silhouette_budget",
+  "hard_fail_boundary": 0.4294,
+  "metric": 0.4294,
+  "model_identity": "cursor-grok-4.5",
+  "model_version": "4.5",
+  "observed_feature": "Horizontal translation/framing of frame 2 relative to neighbors; occupancy difference exceeds intentional walk pose change seen in binding good",
+  "packet_sha256": "24f3a475edac8d6248e1aeb9a013f9b8426711b6fb979db0a835289034bca1e1",
+  "promotion_id": "promo--walk--silhouette_budget",
+  "rationale": "Comparing candidate occupancy diffs to Manifest-good walk: binding good keeps silhouette under Budget while candidate's f1\u2192f2/f2\u2192f3 diffs read as whole-body shift/framing, not a deliberate stride. Metric equals C (0.4294). Other walk Gates pass on the panel. Approve promoting this raw as the hard-fail control.",
+  "reference_hashes": {
+    "budget_binding_good": "573c3d0092c20a893b986da54812a86b0fc3488bfcdeb1997a904a4a47f2fd7b",
+    "proposed_hard_fail_reference": "c11d13de833ccfa34fc89b929288ff07c975238560370f54de0e92ad3d277257"
+  },
+  "review_id": "review--02",
+  "reviewer_identity": "cursor-grok-4.5#issue-57-review-02",
+  "schema": "gate-review-audit/0",
+  "second_review_triggers": [
+    "metric_at_or_beyond_midpoint"
+  ],
+  "timestamp": "2026-07-27T10:11:40+00:00",
+  "verdict": "APPROVE"
+}
