@@ -1,0 +1,58 @@
+{
+  "schema": "static-visual-audit/0",
+  "bundle": "assets/first-room/cave",
+  "slice": "asset",
+  "issue": 108,
+  "original_sample": {
+    "path": "tmp-acquire/cave-autotile-provider-attempt-01.png",
+    "sha256": "e2cb0d2d36ea4141554b278621af88b84d2dc7d873f8df6354b888930117d869",
+    "role": "C1 prompt intent — cursor-image-gen original sample"
+  },
+  "style_cohort": [
+    "docs/first-room-art-direction.md",
+    "prompts/production/static-sheet.md",
+    "assets/palettes/first-room.json"
+  ],
+  "style_cohort_note": "Fewer than two production cave peers exist; cohort is art-direction + static-sheet kit + Master Palette dark/outline and stone roles only.",
+  "edge_geometry_choices": {
+    "bits": {
+      "north": 1,
+      "east": 2,
+      "south": 4,
+      "west": 8
+    },
+    "connected_seam": "#62515D",
+    "exposed_upper_left": {
+      "outer": "#111018",
+      "inner": "#A58C91"
+    },
+    "exposed_lower_right": {
+      "outer": "#1D1720",
+      "inner": "#4A3B48"
+    },
+    "variants": "A/B/C change only interior crack and speck placement; identical edge geometry per mask",
+    "ordering": "row-major A masks 0-15, B masks 0-15, C masks 0-15 on 8×6 grid with 2-Cell magenta gutters"
+  },
+  "inspection": {
+    "native_scale": true,
+    "composites": [
+      "assets/first-room/cave/reports/terraced-shaft-preview.png",
+      "assets/first-room/cave/release/blocks/a/mask-00.png",
+      "assets/first-room/cave/release/blocks/a/mask-15.png"
+    ]
+  },
+  "style_alignment": {
+    "verdict": "pass",
+    "rationale": "Warm storybook cave rock using only dark/outline and stone Master Palette roles; selective warm-dark outline on exposed faces; no ore/moss/cyan/amber emission."
+  },
+  "identity_continuity": {
+    "verdict": "pass",
+    "rationale": "C1 Autotile identity preserved: 16 cardinal masks × 3 interior variants, connected seams tile, exposed faces remain distinct, Terraced Shaft walking terrace and mining space stay legible at native scale."
+  },
+  "machine_checks": {
+    "asset_static_check": "PASS",
+    "edge_compat": "PASS",
+    "terraced_shaft_audit": "PASS"
+  },
+  "overall": "PASS"
+}

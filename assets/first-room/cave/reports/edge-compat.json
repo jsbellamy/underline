@@ -1,0 +1,11 @@
+{
+  "bundle": "assets/first-room/cave",
+  "exposed_edges_distinct": true,
+  "failures": [],
+  "geometry_count": 64,
+  "geometry_failures": 0,
+  "outcome": "PASS",
+  "pair_count": 384,
+  "pair_failures": 0,
+  "schema": "cave-autotile-edge-compat/0"
+}

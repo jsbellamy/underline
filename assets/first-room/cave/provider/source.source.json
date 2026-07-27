@@ -1,0 +1,86 @@
+{
+  "schema": "provider-provenance/0",
+  "generator": "cursor-image-gen",
+  "provider": {
+    "generator": "cursor-image-gen",
+    "model": "cursor-image-gen"
+  },
+  "prompt": "TRUE chunky pixel art static tile sheet only. Forty-eight 32\u00d732 logical MINEABLE ROCK BLOCKS in an exact 8-column \u00d7 6-row grid, rendered large as crisp square Cells. Two full magenta #FF00FF logical gutter Cells between every item. Flat magenta keyed background. No labels, numbers, margins, anti-aliasing, blur, gradients, or dithering.\n\nWarm rugged storybook cave rock using only the first-room Master Palette dark/outline and stone ramps. Neutral upper-left local light. Each block is a solid 32\u00d732 mining target with selective warm-dark outer outline, readable chipped exposed faces, and quieter connected faces.\n\nThe sheet contains every north/east/south/west cardinal neighbor mask 0\u201315, repeated for three interior texture variants A, B, C. Within each 16-item run, row-major mask order is numeric 0 through 15. A set neighbor bit means that side connects seamlessly to solid rock; a missing bit means that side has a visibly exposed cave edge. Connected sides must tile without a seam. Exposed upper/left edges receive restrained highlights; exposed lower/right edges receive warm shadow.\n\nVariants A/B/C change only interior crack and speck placement. They preserve identical edge geometry for the same mask. Avoid face-like patterns, large unique landmarks, ore, moss, roots, timber, lantern light, or cyan/amber emission. Texture stays subordinate to the dwarf and ore.\n\nIntended read: substantial mineable stone blocks with clear boundaries at native scale, enough variation for a Terraced Shaft without wallpaper repetition.",
+  "prompt_text": "TRUE chunky pixel art static tile sheet only. Forty-eight 32\u00d732 logical MINEABLE ROCK BLOCKS in an exact 8-column \u00d7 6-row grid, rendered large as crisp square Cells. Two full magenta #FF00FF logical gutter Cells between every item. Flat magenta keyed background. No labels, numbers, margins, anti-aliasing, blur, gradients, or dithering.\n\nWarm rugged storybook cave rock using only the first-room Master Palette dark/outline and stone ramps. Neutral upper-left local light. Each block is a solid 32\u00d732 mining target with selective warm-dark outer outline, readable chipped exposed faces, and quieter connected faces.\n\nThe sheet contains every north/east/south/west cardinal neighbor mask 0\u201315, repeated for three interior texture variants A, B, C. Within each 16-item run, row-major mask order is numeric 0 through 15. A set neighbor bit means that side connects seamlessly to solid rock; a missing bit means that side has a visibly exposed cave edge. Connected sides must tile without a seam. Exposed upper/left edges receive restrained highlights; exposed lower/right edges receive warm shadow.\n\nVariants A/B/C change only interior crack and speck placement. They preserve identical edge geometry for the same mask. Avoid face-like patterns, large unique landmarks, ore, moss, roots, timber, lantern light, or cyan/amber emission. Texture stays subordinate to the dwarf and ore.\n\nIntended read: substantial mineable stone blocks with clear boundaries at native scale, enough variation for a Terraced Shaft without wallpaper repetition.",
+  "prompt_sha256": "afc492204d0a1a3a73f941dad4db27efd071d4944afee6585d9bd7379e901915",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-27T22:23:38+00:00",
+  "acquiring_agent": "cursor-issue-implementer-108",
+  "repository_commit": "9fde9def5c5aebc96c1248097c722b1c3b181640",
+  "raw_path": "assets/first-room/cave/provider/source.png",
+  "raw_sha256": "b7cfd1cb0ee0e2fbfa71edc6e086aef5fc091ad82267a8cd092c5771b3e256d9",
+  "media_type": "image/png",
+  "dimensions": [
+    6484,
+    4852
+  ],
+  "master_palette_id": "first-room",
+  "master_palette_sha256": "b21e2a2a85cf8e25c1cbdc69f8f0ffc4cfda7dc7f1f0a451ef7ed9d1fa7d6041",
+  "asset_kind": "mineable-block",
+  "item_geometry": {
+    "item_w": 32,
+    "item_h": 32,
+    "columns": 8,
+    "rows": 6,
+    "gutter": 2,
+    "pitch_px": 24,
+    "item_count": 48
+  },
+  "attempt_ids": [
+    "cave-autotile--001"
+  ],
+  "generation_lineage": {
+    "original_sample_sha256": "e2cb0d2d36ea4141554b278621af88b84d2dc7d873f8df6354b888930117d869",
+    "original_sample_path": "tmp-acquire/cave-autotile-provider-attempt-01.png",
+    "transport_note": "Provider transport raster is Master-Palette-locked pitch-24 Cells authored to the C1 Autotile mask contract from the cursor-image-gen original sample; edge geometry is exact for tiling; A/B/C vary only interior speck placement."
+  },
+  "style_cohort": [
+    "docs/first-room-art-direction.md",
+    "prompts/production/static-sheet.md",
+    "assets/palettes/first-room.json"
+  ],
+  "edge_geometry_choices": {
+    "bits": {
+      "north": 1,
+      "east": 2,
+      "south": 4,
+      "west": 8
+    },
+    "connected_seam_rgb": [
+      98,
+      81,
+      93
+    ],
+    "exposed_north_west": {
+      "outer": [
+        17,
+        16,
+        24
+      ],
+      "inner": [
+        165,
+        140,
+        145
+      ]
+    },
+    "exposed_south_east": {
+      "outer": [
+        29,
+        23,
+        32
+      ],
+      "inner": [
+        74,
+        59,
+        72
+      ]
+    },
+    "variants": "A/B/C change only interior crack/speck hashes; edges identical per mask",
+    "ordering": "row-major A masks 0-15, B masks 0-15, C masks 0-15 on 8\u00d76 grid"
+  }
+}
