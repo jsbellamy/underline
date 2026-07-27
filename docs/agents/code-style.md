@@ -104,8 +104,9 @@ Test at these public boundaries, nowhere internal.
   `airborne`'s excluded silhouette gate is the worked example.
 - Budgets live in `MOTION_CLASSES` and must match
   `docs/strip-acquisition-contract.md`. Changing a number in one without the
-  other is a documented-standard violation. Budget changes cite
-  `npm run prototype:strip:derive-budgets` output.
+  other is a documented-standard violation. Production Budget changes cite
+  `npm run prototype:strip:alpha-budgets` output; the historical pre-α baseline
+  remains `npm run prototype:strip:derive-budgets`.
 - Invalid input raises — never silently return a passing verdict. A strip that
   cannot be recovered or sliced fails *before* the gates, and says which layer
   failed.

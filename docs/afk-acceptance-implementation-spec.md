@@ -415,8 +415,8 @@ Every claim cites a command and a row of its output:
 npm test                              # pytest suite
 npm run prototype:strip:corpus        # inbox vs prompts/manifest.json
 npm run prototype:strip:adversarial   # per-class mutations must reject
-npm run prototype:strip:derive-budgets  # pre-α runtime budget oracle
-npm run prototype:strip:alpha-budgets   # α=0.5 Separated budgets + fragile claims
+npm run prototype:strip:derive-budgets  # historical pre-α Budget baseline evidence
+npm run prototype:strip:alpha-budgets   # α=0.5 Separated budgets + fragile claims (runtime oracle)
 npm run prototype:strip:displacement
 npm run prototype:strip:sharpness
 ```

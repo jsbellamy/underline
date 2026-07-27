@@ -76,8 +76,8 @@ a command whose output is text:
 npm test                                # test suites (pytest today; TS tests as they land)
 npm run prototype:strip:corpus          # score inbox/ against prompts/manifest.json
 npm run prototype:strip:adversarial     # per-class mutations — gates must reject
-npm run prototype:strip:derive-budgets  # per-class worst-good → runtime budgets
-npm run prototype:strip:alpha-budgets   # α=0.5 Separated Budgets + fragile claims
+npm run prototype:strip:derive-budgets  # historical pre-α Budget baseline (worst-good)
+npm run prototype:strip:alpha-budgets   # α=0.5 Separated Budgets + fragile claims (runtime oracle)
 npm run prototype:strip:displacement    # displacement falsification + coverage
 npm run prototype:strip:sharpness       # alignment-minimum margins, corpus-wide
 ```
