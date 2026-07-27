@@ -1,0 +1,34 @@
+{
+  "attempt_id": "airborne--loop_closure_pass--002",
+  "budget": 0.7032,
+  "candidate_sha256": "92439bbb56e9f64905898135993978814fc447f2c49c9ddd4a12e0cb23545d37",
+  "caveats": [
+    "displacement_pass is undecidable \u2014 this control does not evidence that dimension"
+  ],
+  "fixed_question": "Final\u2192first reads as deliberate continuous loop vs pose jump / identity break?",
+  "frames": [
+    3,
+    0
+  ],
+  "gate": "loop_closure_pass",
+  "hard_fail_boundary": 0.7529,
+  "metric": 0.7529,
+  "model_identity": "cursor-grok-4.5",
+  "model_version": "grok-4.5",
+  "observed_feature": "f3 collapses to a much smaller folded/partial silhouette versus full wing poses on f0\u2013f2; final\u2192first therefore jumps from a compact blob back to wings-high, while binding-good 04-bat-flap keeps a continuous wingbeat cycle",
+  "packet_sha256": "9e656a48452839c2d402e270a3c7a1602d8999960f5792fcc33e06ee6872684a",
+  "promotion_id": "promo--airborne--loop_closure_pass",
+  "rationale": "At C this strip is an admissible loop_closure_pass hard-fail control: final\u2192first is a clear pose/identity break, not a deliberate continuous loop. Judgement uses only loop closure evidence; the displacement_pass undecidable caveat is noted and not relied upon.",
+  "reference_hashes": {
+    "budget_binding_good": "d9a5e52d1aa0eca6d3d964c70bee4ff802e39c1c876876c3fec11a7339e5f629",
+    "proposed_hard_fail_reference": "92439bbb56e9f64905898135993978814fc447f2c49c9ddd4a12e0cb23545d37"
+  },
+  "review_id": "review--02",
+  "reviewer_identity": "cursor-grok-4.5-review-session-02",
+  "schema": "gate-review-audit/0",
+  "second_review_triggers": [
+    "metric_at_or_beyond_midpoint"
+  ],
+  "timestamp": "2026-07-27T10:25:00+00:00",
+  "verdict": "APPROVE"
+}

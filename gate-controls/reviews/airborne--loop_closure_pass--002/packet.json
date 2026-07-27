@@ -1,0 +1,36 @@
+{
+  "attempt_id": "airborne--loop_closure_pass--002",
+  "budget": 0.7032,
+  "budget_binding_good": {
+    "path": "prototype/strip-coherence/inbox/04-bat-flap.png",
+    "raw_sha256": "d9a5e52d1aa0eca6d3d964c70bee4ff802e39c1c876876c3fec11a7339e5f629",
+    "role": "budget_binding_good"
+  },
+  "candidate": {
+    "path": "gate-controls/raw/airborne--loop_closure_pass--002.png",
+    "raw_sha256": "92439bbb56e9f64905898135993978814fc447f2c49c9ddd4a12e0cb23545d37",
+    "role": "candidate"
+  },
+  "caveats": [
+    "displacement_pass is undecidable \u2014 this control does not evidence that dimension"
+  ],
+  "fixed_question": "Final\u2192first reads as deliberate continuous loop vs pose jump / identity break?",
+  "gate": "loop_closure_pass",
+  "gate_control": null,
+  "hard_fail_boundary": 0.7529,
+  "metric": 0.7529,
+  "motion_class": "airborne",
+  "no_autonomous_hard_fail": false,
+  "no_autonomous_hard_fail_reason": null,
+  "packet_kind": "PROMOTION_VERIFICATION",
+  "packet_sha256": "9e656a48452839c2d402e270a3c7a1602d8999960f5792fcc33e06ee6872684a",
+  "panel_kind": "occupancy_difference",
+  "promotion_id": "promo--airborne--loop_closure_pass",
+  "promotion_status": "PENDING_VERIFICATION",
+  "proposed_hard_fail_reference": {
+    "path": "gate-controls/raw/airborne--loop_closure_pass--002.png",
+    "raw_sha256": "92439bbb56e9f64905898135993978814fc447f2c49c9ddd4a12e0cb23545d37",
+    "role": "proposed_hard_fail_reference"
+  },
+  "schema": "gate-review-packet/0"
+}
