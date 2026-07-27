@@ -31,7 +31,7 @@ Negative controls 07, 08, and 09 declare `idle`.
 
 ## Budget derivation (C5)
 
-### Runtime estimator (current `MOTION_CLASSES`)
+### Runtime estimator (historical pre-α baseline)
 
 For each class and each applicable gate:
 
@@ -66,9 +66,10 @@ where `G` is the four-place upward-quantized worst Manifest-good metric and `C` 
 quantized isolated Gate-control metric. Unseparated pairs keep the runtime Budget above
 and Review open with no hard-fail boundary. Full tables, deltas, and headroom live in
 [`docs/alpha-budget-tables.md`](alpha-budget-tables.md); reproduce with
-`npm run prototype:strip:alpha-budgets`. Landing these numbers into runtime
-`MOTION_CLASSES` is deferred to the post-map implementation wave described in
-[`docs/afk-acceptance-implementation-spec.md`](afk-acceptance-implementation-spec.md).
+`npm run prototype:strip:alpha-budgets`. Runtime `MOTION_CLASSES` projects these
+Budgets from `gate-controls/acceptance-profiles.json` (landed in
+[#62](https://github.com/jsbellamy/underline/issues/62)); the pre-α tables in this
+section remain historical evidence for `npm run prototype:strip:derive-budgets`.
 
 ### Monotonicity and separation expiry
 
@@ -144,6 +145,23 @@ table in [`docs/alpha-budget-tables.md`](alpha-budget-tables.md).
 `swing` n=3 adjacent silhouette: 0.565 / 0.492 / 0.359 (06 still worst-good).
 
 ## Class budgets
+
+### Runtime budgets (α = 0.5 — `MOTION_CLASSES`)
+
+Projected from `gate-controls/acceptance-profiles.json`. Separated pairs use the α
+Budget; Unseparated pairs keep the pre-α runtime value; Inapplicable gates are
+`None`. Reproduce with `npm run prototype:strip:alpha-budgets`.
+
+| Class | silhouette | loop | palette drift | min-pair |
+|-------|------------|------|---------------|----------|
+| `idle` | 0.2239 | 0.30 | 0.1974 | 0.07 |
+| `blob_idle` | 0.3951 | 0.3906 | 0.2377 | 0.1199 |
+| `emissive` | 0.3226 | 0.1694 | 0.2123 | 0.12 |
+| `walk` | 0.4136 | 0.2112 | 0.2217 | 0.17 |
+| `swing` | 0.5860 | — | 0.2294 | — |
+| `airborne` | — | 0.7032 | 0.2423 | 0.3013 |
+
+### Historical pre-α derivation (evidence only)
 
 Widened from n=3 manifest-good cohorts where the prior gate-pass filter had excluded
 legitimate art (13-ooze-idle, 15-campfire-flicker, 16-moth-flap, 18-guard-walk). Every
@@ -383,9 +401,14 @@ explicitly in human and JSON output.
 
 ## Implementation
 
-`MOTION_CLASSES` in `pipeline/strip.py` is the runtime source.
-`coherence_split(frames, motion_class=...)` reads budgets from it. Unknown classes
-raise `ValueError`. `None` budgets exclude their gate from pass and report `None`.
+`MOTION_CLASSES` in `pipeline/strip.py` is the runtime projection of
+`gate-controls/acceptance-profiles.json` (Budgets and Gate status) joined with class
+metadata (`grounded`, `loops`, `facing`, displacement sharpness). Construction fails
+closed when any provider-controlled Separated pair lacks its referenced `ACTIVE`
+Promotion. `coherence_split(frames, motion_class=...)` emits tri-state
+`PASS` / `REVIEW` / `FAIL` outcomes per Gate plus structural hard failure.
+Unknown classes raise `ValueError`. `None` budgets exclude their gate from pass and
+report `None`.
 
 Per-sample `grounded` was removed from `prompts/manifest.json`; groundedness is
 derived from the motion class.

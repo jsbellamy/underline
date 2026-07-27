@@ -17,11 +17,11 @@ MANIFEST = ROOT / "gate-controls" / "manifest.json"
 
 
 def _idle_silhouette_policy() -> GatePolicy:
-  return GatePolicy(status="SEPARATED", budget=0.2239, hard_fail=0.3, active_promotion="promo--idle--silhouette_budget")
+    return GatePolicy(status="SEPARATED", budget=0.2239, hard_fail=0.3, active_promotion="promo--idle--silhouette_budget")
 
 
 def _idle_loop_policy() -> GatePolicy:
-  return GatePolicy(status="UNSEPARATED", budget=0.3, hard_fail=None, active_promotion=None)
+    return GatePolicy(status="UNSEPARATED", budget=0.3, hard_fail=None, active_promotion=None)
 
 
 def test_canonical_metric_matches_production_and_prototype_imports() -> None:
@@ -107,6 +107,34 @@ def test_runtime_policy_rejects_non_active_separated_promotion(tmp_path: Path) -
             profiles_path=PROFILES,
             manifest_path=manifest_path,
         )
+
+
+def test_runtime_policy_rejects_missing_separated_promotion(tmp_path: Path) -> None:
+    manifest_path = tmp_path / "manifest.json"
+    doc = json.loads(MANIFEST.read_text())
+    doc["promotions"] = [
+        promo for promo in doc["promotions"] if promo["id"] != "promo--walk--loop_closure_pass"
+    ]
+    manifest_path.write_text(json.dumps(doc))
+    with pytest.raises(ValueError, match="missing Promotion"):
+        build_runtime_acceptance_policy(
+            profiles_path=PROFILES,
+            manifest_path=manifest_path,
+        )
+
+
+def test_recovery_failure_yields_structural_fail() -> None:
+    path = ROOT / "prototype" / "strip-coherence" / "inbox" / "09-NEG-no-gutter.png"
+    layout = S.StripLayout(
+        frame_w=16,
+        frame_h=24,
+        frame_count=4,
+        gutter=2,
+        pitch_px=24,
+        margin_cells=0,
+    )
+    with pytest.raises(ValueError):
+        S.ingest_strip_provider(path, layout, motion_class="idle")
 
 
 def test_runtime_policy_rejects_alternate_promotion_reference(tmp_path: Path) -> None:
