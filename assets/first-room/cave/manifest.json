@@ -351,7 +351,7 @@
   },
   "provenance": {
     "relative_path": "provider/source.source.json",
-    "sha256": "97699d830e89c56729ccf141e902a271f7ce16ebf036a457917b38e17fbc14c6"
+    "sha256": "21613ac3d7bb0141e23df7d5e9bbd96dc392689131b78ac27500c732533c529f"
   },
   "provider": {
     "original_filename": "cave-provider.png",

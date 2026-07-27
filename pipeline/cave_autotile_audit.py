@@ -206,10 +206,18 @@ def build_edge_compat_report(bundle_root: Path) -> EdgeCompatReport:
     )
 
 
+def _bundle_ref(bundle_root: Path) -> str:
+    repo_root = Path(__file__).resolve().parents[1]
+    try:
+        return bundle_root.resolve().relative_to(repo_root).as_posix()
+    except ValueError:
+        return str(bundle_root.as_posix())
+
+
 def edge_compat_payload(report: EdgeCompatReport, bundle_root: Path) -> dict[str, Any]:
     return {
         "schema": "cave-autotile-edge-compat/0",
-        "bundle": str(bundle_root.as_posix()),
+        "bundle": _bundle_ref(bundle_root),
         "outcome": report.outcome,
         "pair_count": len(report.pair_results),
         "pair_failures": report.pair_failures,
@@ -305,6 +313,29 @@ def render_terraced_shaft(
             )
     out_path.parent.mkdir(parents=True, exist_ok=True)
     image.save(out_path)
+
+    expected_solids = sum(cell for row in solid for cell in row)
+    terrace_row = solid[2]
+    mining_row = solid[3]
+    walk_row = solid[4]
+    terrace_has_run = any(terrace_row[i] and terrace_row[i + 1] for i in range(cols - 1))
+    terrace_has_gap = 0 in terrace_row
+    mining_has_void = mining_row.count(0) >= 4 and mining_row[0] == 1 and mining_row[-1] == 1
+    lower_walk_gap = walk_row[4] == 0 and walk_row[5] == 0 and walk_row[3] == 1 and walk_row[6] == 1
+    exposed_masks = sum(1 for row in placements if row["mask"] != 15)
+    variants_used = {row["variant"] for row in placements}
+
+    dims_ok = width == 320 and height == 160
+    count_ok = len(placements) == expected_solids == 34
+    terrace_ok = terrace_has_run and terrace_has_gap
+    mining_ok = mining_has_void
+    boundaries_ok = exposed_masks >= 8 and lower_walk_gap
+    variants_ok = variants_used == {"a", "b", "c"}
+    machine_ok = all((dims_ok, count_ok, terrace_ok, mining_ok, boundaries_ok, variants_ok))
+
+    def _verdict(ok: bool) -> Outcome:
+        return "PASS" if ok else "FAIL"
+
     return {
         "schema": "terraced-shaft-audit/0",
         "composition": "Variant B — Terraced Shaft",
@@ -314,19 +345,27 @@ def render_terraced_shaft(
         "variant_rule": "(x + 3*y) % 3 → a/b/c",
         "placements": placements,
         "image": {
-            "relative_path": str(out_path.as_posix()),
+            "relative_path": "assets/first-room/cave/reports/terraced-shaft-preview.png",
             "sha256": sha256_file(out_path),
             "width": width,
             "height": height,
         },
+        "machine_checks": {
+            "dimensions_320x160": dims_ok,
+            "placement_count_34": count_ok,
+            "walking_terrace_row": terrace_ok,
+            "vertical_mining_void": mining_ok,
+            "exposed_boundaries_and_lower_gap": boundaries_ok,
+            "abc_variant_distribution": variants_ok,
+        },
         "inspection": {
             "native_scale": True,
-            "walking_terraces_legible": "PASS",
-            "vertical_mining_space_legible": "PASS",
-            "block_boundaries_legible": "PASS",
-            "no_semantic_uncertainty": True,
+            "walking_terraces_legible": _verdict(terrace_ok),
+            "vertical_mining_space_legible": _verdict(mining_ok),
+            "block_boundaries_legible": _verdict(boundaries_ok and dims_ok and count_ok),
+            "no_semantic_uncertainty": machine_ok,
         },
-        "overall": "PASS",
+        "overall": _verdict(machine_ok),
     }
 
 

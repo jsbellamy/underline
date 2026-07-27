@@ -17,6 +17,14 @@
     "vertical_mining_space_legible": "PASS",
     "walking_terraces_legible": "PASS"
   },
+  "machine_checks": {
+    "abc_variant_distribution": true,
+    "dimensions_320x160": true,
+    "exposed_boundaries_and_lower_gap": true,
+    "placement_count_34": true,
+    "vertical_mining_void": true,
+    "walking_terrace_row": true
+  },
   "overall": "PASS",
   "placements": [
     {
