@@ -485,6 +485,12 @@ def test_validate_cli_accepts_written_packet_and_audits(tmp_path: Path) -> None:
     assert report["ok"] is True
     assert report["reviews"] == ["review--01", "review--02"]
     assert report["packet_sha256"] == packet.packet_sha256
+    assert report["packet_kind"] == "PROMOTION_VERIFICATION"
+    assert report["roles"] == {
+        "candidate": "candidate",
+        "budget_binding_good": "budget_binding_good",
+        "proposed_hard_fail_reference": "proposed_hard_fail_reference",
+    }
 
 
 @pytest.mark.parametrize(

@@ -1,0 +1,34 @@
+{
+  "attempt_id": "walk--palette_drift_pass--001",
+  "budget": 0.2217,
+  "candidate_sha256": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd",
+  "caveats": [],
+  "fixed_question": "Intentional subject/Motion-class change (e.g. emissive flicker) vs unintended recolour?",
+  "frames": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "gate": "palette_drift_pass",
+  "hard_fail_boundary": 0.2793,
+  "metric": 0.2793,
+  "model_identity": "cursor-grok-4.5",
+  "model_version": "4.5",
+  "observed_feature": "per-frame wholesale subject recolour with pose and framing held; quantized palette histograms diverge across f0\u2013f3 (costume/helmet colours swap each frame)",
+  "packet_sha256": "0e3392de3c217d737e1c4e8245b8223aef973968bc39a59ff48afe72e682fc48",
+  "promotion_id": "promo--walk--palette_drift_pass",
+  "rationale": "Fixed question: intentional subject/Motion-class change vs unintended recolour? Candidate holds a grounded walk-capable pose cohort (silhouette/loop/min-pair all pass) while palette histograms show a full costume/body recolour each frame \u2014 not emissive flicker or a Motion-class subject change. Metric 0.2793 sits at hard-fail boundary C (\u03b1-Budget 0.2217). Compared with Budget-binding good 18-guard-walk (stable armour/tunic palette, palette metric 0.1640), this is a clean unintended-recolour isolation. Approve as the proposed palette_drift_pass hard-fail reference; Promotion remains PENDING_VERIFICATION.",
+  "reference_hashes": {
+    "budget_binding_good": "1444860d423e323cca0feb180d41470d583186b9f4754b72da76992e1e51f400",
+    "proposed_hard_fail_reference": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd"
+  },
+  "review_id": "review--01",
+  "reviewer_identity": "cursor-agent/issue-56/review-01",
+  "schema": "gate-review-audit/0",
+  "second_review_triggers": [
+    "metric_at_or_beyond_midpoint"
+  ],
+  "timestamp": "2026-07-27T10:20:00+00:00",
+  "verdict": "APPROVE"
+}

@@ -607,7 +607,36 @@ def blinded_packet_for_second_review(
     return payload
 
 
-def validate_review_dir(review_dir: Path) -> dict[str, Any]:
+def _verify_packet_reference(
+    root: Path, ref: Mapping[str, Any] | None, *, expected_role: str
+) -> None:
+    if ref is None:
+        raise ReviewError(f"missing packet reference role {expected_role!r}")
+    role = ref.get("role")
+    if role != expected_role:
+        raise ReviewError(
+            f"packet reference role {role!r} != expected {expected_role!r}"
+        )
+    rel = ref.get("path")
+    digest = ref.get("raw_sha256")
+    if not isinstance(rel, str) or not rel:
+        raise ReviewError(f"missing path for packet role {expected_role!r}")
+    if not isinstance(digest, str) or not digest:
+        raise ReviewError(f"missing raw_sha256 for packet role {expected_role!r}")
+    path = (root / rel).resolve()
+    if not path.is_file():
+        raise ReviewError(
+            f"missing required file for packet role {expected_role}: {path}"
+        )
+    actual = ge.sha256_file(path)
+    if actual != digest:
+        raise ReviewError(
+            f"SHA-256 mismatch for packet role {expected_role}: "
+            f"manifest {digest} != file {actual}"
+        )
+
+
+def validate_review_dir(review_dir: Path, *, root: Path | None = None) -> dict[str, Any]:
     """Validate a review directory's packet manifest and audit records."""
     review_dir = review_dir.resolve()
     if not review_dir.is_dir():
@@ -624,6 +653,23 @@ def validate_review_dir(review_dir: Path) -> dict[str, Any]:
     if expected_hash != digest:
         raise ReviewError(
             f"SHA-256 mismatch: packet manifest hash {expected_hash} != {digest}"
+        )
+
+    repo_root = root.resolve() if root is not None else review_dir.parents[2]
+    _verify_packet_reference(
+        repo_root, packet_doc.get("candidate"), expected_role="candidate"
+    )
+    _verify_packet_reference(
+        repo_root,
+        packet_doc.get("budget_binding_good"),
+        expected_role="budget_binding_good",
+    )
+    packet_kind = packet_doc.get("packet_kind")
+    if packet_kind == "PROMOTION_VERIFICATION":
+        _verify_packet_reference(
+            repo_root,
+            packet_doc.get("proposed_hard_fail_reference"),
+            expected_role="proposed_hard_fail_reference",
         )
 
     reviews: list[str] = []
@@ -651,6 +697,16 @@ def validate_review_dir(review_dir: Path) -> dict[str, Any]:
         "review_dir": str(review_dir),
         "packet_sha256": expected_hash,
         "reviews": reviews,
+        "packet_kind": packet_kind,
+        "roles": {
+            "candidate": (packet_doc.get("candidate") or {}).get("role"),
+            "budget_binding_good": (packet_doc.get("budget_binding_good") or {}).get(
+                "role"
+            ),
+            "proposed_hard_fail_reference": (
+                packet_doc.get("proposed_hard_fail_reference") or {}
+            ).get("role"),
+        },
     }
 
 
