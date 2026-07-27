@@ -12,6 +12,7 @@ MOTION_CLASSES — landing production Budgets is a later implementation wave.
 from __future__ import annotations
 
 import json
+import os
 import pathlib
 import sys
 from dataclasses import dataclass
@@ -27,8 +28,11 @@ from numeric_policy import canonical_metric  # noqa: E402
 from pipeline import strip as S  # noqa: E402
 
 ALPHA = 0.5
-GC_MANIFEST = ROOT / "gate-controls" / "manifest.json"
-ACCEPTANCE_PROFILES = ROOT / "gate-controls" / "acceptance-profiles.json"
+GC_ROOT = pathlib.Path(
+    os.environ.get("UNDERLINE_GATE_CONTROLS_ROOT", ROOT / "gate-controls")
+)
+GC_MANIFEST = GC_ROOT / "manifest.json"
+ACCEPTANCE_PROFILES = GC_ROOT / "acceptance-profiles.json"
 
 GATE_METRIC_KEY = {
     "silhouette_budget": "sil",
