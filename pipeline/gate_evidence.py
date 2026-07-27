@@ -6,11 +6,14 @@ evidence graph under ``gate-controls/`` without mutating any record.
 
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import json
+import os
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterable, Mapping, Sequence
+from typing import Any, Callable, Iterable, Iterator, Mapping, Sequence
 
 KNOWN_SCHEMAS: dict[str, frozenset[str]] = {
     "manifest": frozenset({"gate-control-manifest/0"}),
@@ -453,6 +456,102 @@ def write_json_immutable(path: Path, payload: Mapping[str, Any]) -> None:
         raise EvidenceError(f"refusing to mutate existing evidence record: {path}")
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(dict(payload), indent=2, sort_keys=True) + "\n")
+
+
+@contextmanager
+def repository_lock(lock_path: Path) -> Iterator[None]:
+    """Exclusive repository-local lock for append-only ledgers and ID allocation."""
+    lock_path.parent.mkdir(parents=True, exist_ok=True)
+    with lock_path.open("a") as handle:
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+_repository_lock = repository_lock
+
+
+def validate_attempt_record(doc: Mapping[str, Any], *, where: str = "attempt record") -> None:
+    require_schema(doc, KNOWN_SCHEMAS["attempt"], where=where)
+    require_str(doc, "attempt_id", where=where)
+    require_str(doc, "specification_id", where=where)
+    require_str(doc, "artifact_state", where=where)
+    require_str(doc, "isolation", where=where)
+    require_str(doc, "recorded_at", where=where)
+    if doc.get("artifact_state") not in {"retained", "discarded"}:
+        raise EvidenceError(f"invalid artifact_state at {where}")
+
+
+def append_attempt_record(path: Path, doc: Mapping[str, Any]) -> None:
+    """Append one validated Attempt ledger row without interleaving partial JSON."""
+    validate_attempt_record(doc, where=str(path))
+    line = json.dumps(dict(doc), sort_keys=True)
+    json.loads(line)
+    attempt_id = str(doc["attempt_id"])
+    lock_path = path.parent / ".attempts.lock"
+    with repository_lock(lock_path):
+        if path.is_file():
+            for line_no, existing_line in enumerate(path.read_text().splitlines(), start=1):
+                if not existing_line.strip():
+                    continue
+                existing = json.loads(existing_line)
+                if existing.get("attempt_id") == attempt_id:
+                    raise EvidenceError(f"duplicate attempt_id {attempt_id!r} at {path}:{line_no}")
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with path.open("a") as handle:
+            handle.write(line + "\n")
+            handle.flush()
+            os.fsync(handle.fileno())
+
+
+def validate_provenance_record(doc: Mapping[str, Any], *, where: str = "provenance") -> None:
+    require_schema(doc, KNOWN_SCHEMAS["provenance"], where=where)
+    require_str(doc, "specification_id", where=where)
+    require_str(doc, "attempt_id", where=where)
+    require_str(doc, "generator", where=where)
+    require_str(doc, "prompt_text", where=where)
+    require_str(doc, "prompt_sha256", where=where)
+    require_str(doc, "generated_at", where=where)
+    require_str(doc, "acquiring_agent", where=where)
+    require_str(doc, "repository_commit", where=where)
+    require_str(doc, "raw_path", where=where)
+    require_str(doc, "raw_sha256", where=where)
+    require_str(doc, "media_type", where=where)
+    if doc.get("generator") != "cursor-image-gen":
+        raise EvidenceError(f"unsupported generator at {where}")
+
+
+def write_provenance_record(path: Path, doc: Mapping[str, Any]) -> None:
+    validate_provenance_record(doc, where=str(path))
+    write_json_immutable(path, doc)
+
+
+def write_manifest_document(path: Path, doc: Mapping[str, Any]) -> None:
+    require_schema(doc, KNOWN_SCHEMAS["manifest"], where=str(path))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(dict(doc), indent=2) + "\n")
+
+
+def mutate_manifest_document(
+    path: Path,
+    mutator: Callable[[dict[str, Any]], dict[str, Any]],
+) -> dict[str, Any]:
+    """Read-modify-write one manifest under an exclusive repository lock."""
+    lock_path = path.parent / ".manifest.lock"
+    with repository_lock(lock_path):
+        if path.is_file():
+            doc = load_json(path)
+        else:
+            doc = {
+                "schema": "gate-control-manifest/0",
+                "specifications": [],
+                "promotions": [],
+            }
+        updated = mutator(doc)
+        write_manifest_document(path, updated)
+        return updated
 
 
 def _gate_controls_root(root: Path) -> Path:
