@@ -4,7 +4,7 @@
   "profile_sha256": "d6f634ba92228ecafd982a827193f2727f6b2f76d018199bd73e540c1c85c487",
   "bundle": "assets/first-room/lantern",
   "motion_class": "emissive",
-  "audited_at": "2026-07-27T22:14:59+00:00",
+  "audited_at": "2026-07-27T23:45:00+00:00",
   "inspection": {
     "native_scale": true,
     "nearest_neighbor_enlargement": "12x",
@@ -57,7 +57,7 @@
       "id": "closed_four_frame_loop",
       "question": "Does the four-Frame sequence close as a readable loop without a visible seam break?",
       "verdict": "PASS",
-      "notes": "Frame 3 returns near Frame 0; loop_closure_pass automatic PASS; no visible seam at native or enlarged scale."
+      "notes": "Frame 3 matches Frame 0 at all amber glass Cells (pixel closure after polish); loop_closure_pass automatic PASS; no visible seam at native or enlarged scale."
     },
     {
       "id": "emission_inside_lamp",
@@ -72,9 +72,15 @@
       "notes": "No baked terrain-scale halo; magenta/transparent surround has no glow bloom outside the lamp silhouette."
     }
   ],
+  "machine_check": {
+    "command": "npm run strip:polish -- check assets/first-room/lantern --json",
+    "outcome": "PASS",
+    "fingerprint": "8592d7a0f6ac4aaf9235181ea351fdc2a2fe6894b85b5e13001108e5e95ca0d3",
+    "edit_summary": "Aligned four amber glass Cells in polished/release frame-3 to match frame-0 for pixel loop closure after initial polish asymmetry."
+  },
   "summary": {
     "all_pass": true,
     "uncertain_count": 0,
-    "edit_count": 0
+    "edit_count": 4
   }
 }
