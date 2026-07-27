@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
 from pathlib import Path
 
 import pytest
@@ -20,9 +19,8 @@ ACCEPTANCE_PROFILES = (
     ROOT / "docs" / "acceptance-profiles" / "emissive.md",
 )
 
-PRODUCTION_DOC_PATHS = (
+PRODUCTION_DOC_PATHS_WITHOUT_SHIM_TABLE = (
     README,
-    AFK_SPEC,
     ALPHA_TABLES,
     STRIP_README,
     *ACCEPTANCE_PROFILES,
@@ -39,12 +37,6 @@ DEPRECATED_SHIM_BASENAMES = (
     "gate_control.py",
     "gate_control_acquire.py",
     "numeric_policy.py",
-)
-
-DOCS_WITHOUT_SHIM_PATHS = (
-    README,
-    ALPHA_TABLES,
-    *ACCEPTANCE_PROFILES,
 )
 
 WAVE_A_AWAIT_PHRASES = (
@@ -87,7 +79,7 @@ def test_production_docs_point_to_pipeline_numeric_policy() -> None:
 
 
 def test_production_docs_do_not_reference_prototype_numeric_policy() -> None:
-    for path in DOCS_WITHOUT_SHIM_PATHS:
+    for path in PRODUCTION_DOC_PATHS_WITHOUT_SHIM_TABLE:
         text = path.read_text()
         assert "prototype/strip-coherence/numeric_policy.py" not in text
 
@@ -142,8 +134,8 @@ def test_afk_spec_documents_exactly_two_bat_flap_adversarial_gaps() -> None:
     assert "slide" in text
     assert "blob_idle" in text and "mirror" in text.lower()
     gap_section = text.split("Adversarial suite")[1]
-    assert gap_section.count("GAP") >= 1 or "two" in gap_section.lower()
-    assert "displacement undecidability" in gap_section.lower() or "degenerate alignment" in gap_section.lower()
+    assert "exactly **two**" in gap_section.lower() or "exactly two" in gap_section.lower()
+    assert "hop" in gap_section and "slide" in gap_section
 
 
 def test_afk_spec_does_not_name_blob_idle_slide_or_emissive_mirror_as_gaps() -> None:
