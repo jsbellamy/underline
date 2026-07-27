@@ -17,6 +17,7 @@ from pipeline.final_polish import (
     check_bundle,
     finalize_bundle,
     initialize_bundle,
+    load_polish_brief,
 )
 from pipeline.strip import (
     DEFAULT_LAYOUT,
@@ -107,6 +108,14 @@ def _check_json_payload(
         "draft_hashes": list(result.draft_hashes),
         "polished_hashes": list(result.polished_hashes),
         "fingerprint": result.fingerprint,
+        "polish_profile": (
+            None
+            if result.profile_id is None
+            else {
+                "id": result.profile_id,
+                "sha256": result.profile_sha256,
+            }
+        ),
         "outcome": result.outcome,
     }
     if report_path is not None:
@@ -145,6 +154,7 @@ def _format_check_report(
         f"Bundle    {bundle_root.resolve()}",
         f"Provider  {provider_path.name}",
         f"Motion    {manifest['motion_class']}",
+        f"Profile   {result.profile_id or '(none)'}",
         (
             "Structural  "
             f"{result.structural.outcome}"
@@ -195,9 +205,37 @@ def _emit_json(payload: dict[str, Any]) -> None:
     print(json.dumps(payload, separators=(",", ":")))
 
 
+def _format_brief(brief: dict[str, Any]) -> str:
+    lines = [
+        f"Profile   {brief['profile']['id']} ({brief['profile']['sha256']})",
+        f"Motion    {brief['motion_class']}",
+        f"Verdicts  {', '.join(brief['verdicts'])}",
+        f"Occlusion {brief['occlusion_rule']}",
+        "Fixed questions",
+    ]
+    for row in brief["fixed_questions"]:
+        lines.append(f"  {row['id']}: {row['question']}")
+    lines.append("Motion questions")
+    if brief["motion_questions"]:
+        for row in brief["motion_questions"]:
+            lines.append(f"  {row['id']}: {row['question']}")
+    else:
+        lines.append("  (none)")
+    lines.append("Editing rules")
+    lines.extend(f"  - {rule}" for rule in brief["editing_rules"])
+    lines.append("Audit workflow")
+    lines.extend(f"  {index}. {step}" for index, step in enumerate(brief["audit_workflow"], 1))
+    return "\n".join(lines)
+
+
 def _handle_init(args: argparse.Namespace) -> int:
     try:
-        initialize_bundle(args.provider, args.motion_class, args.out)
+        initialize_bundle(
+            args.provider,
+            args.motion_class,
+            args.out,
+            polish_profile=args.polish_profile,
+        )
     except BundleExistsError as exc:
         print(str(exc), file=sys.stderr)
         return 2
@@ -243,6 +281,19 @@ def _handle_check(args: argparse.Namespace) -> int:
     return _exit_code(result.outcome)
 
 
+def _handle_brief(args: argparse.Namespace) -> int:
+    try:
+        brief = load_polish_brief(args.bundle)
+    except (InvalidBundleError, FinalPolishError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    if args.json:
+        _emit_json(brief)
+    else:
+        print(_format_brief(brief))
+    return 0
+
+
 def _handle_finalize(args: argparse.Namespace) -> int:
     try:
         report_path = finalize_bundle(args.bundle)
@@ -280,11 +331,16 @@ def _configure_parser(parser: argparse.ArgumentParser) -> None:
     init.add_argument("provider", type=pathlib.Path, help="Provider strip PNG")
     init.add_argument("--motion-class", required=True, help="Motion class for gating")
     init.add_argument("--out", type=pathlib.Path, required=True, help="Bundle destination directory")
+    init.add_argument("--polish-profile", help="Embed a checked-in visual audit profile")
     init.add_argument("--json", action="store_true", help="Emit machine-readable JSON on stdout")
 
     check = sub.add_parser("check", help="Validate a bundle without writing")
     check.add_argument("bundle", type=pathlib.Path, help="Final-polish bundle directory")
     check.add_argument("--json", action="store_true", help="Emit machine-readable JSON on stdout")
+
+    brief = sub.add_parser("brief", help="Read the bundle's visual audit profile")
+    brief.add_argument("bundle", type=pathlib.Path, help="Final-polish bundle directory")
+    brief.add_argument("--json", action="store_true", help="Emit machine-readable JSON on stdout")
 
     finalize = sub.add_parser("finalize", help="Record report and create release frames on PASS")
     finalize.add_argument("bundle", type=pathlib.Path, help="Final-polish bundle directory")
@@ -293,7 +349,7 @@ def _configure_parser(parser: argparse.ArgumentParser) -> None:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Initialize, check, and finalize final-polish bundles."
+        description="Initialize, brief, check, and finalize final-polish bundles."
     )
     _configure_parser(parser)
     args = parser.parse_args(argv)
@@ -302,6 +358,8 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_init(args)
     if args.command == "check":
         return _handle_check(args)
+    if args.command == "brief":
+        return _handle_brief(args)
     if args.command == "finalize":
         return _handle_finalize(args)
     parser.print_help()

@@ -44,7 +44,9 @@ into releasable Frames. Edit the `polished/` PNG sequence (in Aseprite or by
 direct Cell-coordinate changes), then validate and release.
 
 ```bash
-npm run strip:polish -- init <provider.png> --motion-class <class> --out <bundle> [--json]
+npm run strip:polish -- init <provider.png> --motion-class <class> --out <bundle> \
+  [--polish-profile miner] [--json]
+npm run strip:polish -- brief <bundle> [--json]
 npm run strip:polish -- check <bundle> [--json]
 npm run strip:polish -- finalize <bundle> [--json]
 ```
@@ -52,6 +54,14 @@ npm run strip:polish -- finalize <bundle> [--json]
 Exit codes: `0` `PASS`, `1` `FAIL`, `2` invalid or structural error, `3`
 `REVIEW`. `polished/` is the editor-facing PNG sequence; `release/` is written
 only on automatic `PASS`.
+
+For a prompt-independent miner audit, initialize with `--polish-profile miner`.
+The profile is copied into the Polish Bundle and hash-bound by its manifest.
+Before editing, a cold-start agent runs `brief` to read the fixed visual
+questions, applicable Motion-class questions, editing rules, and audit workflow.
+The verdicts are `PASS`, `EDIT`, and `UNCERTAIN`; an agent reports `UNCERTAIN`
+instead of inventing intent. The profile guides visual judgment but does not
+add deterministic Gates or replace `check`.
 
 Aseprite is optional: an operator may edit Polished Frames in Aseprite or by
 direct Cell-coordinate changes to the `polished/` PNG sequence. Automatic accent

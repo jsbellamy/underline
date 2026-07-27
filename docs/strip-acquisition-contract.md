@@ -411,23 +411,40 @@ evidence model, add Gates, or change Budgets.
 1. **`init`** accepts only a provider Strip that currently passes production
    ingest (`PASS`). It creates a retained provider copy, immutable Draft Frames,
    and seeded Polished Frames (one per logical Frame slot). `REVIEW` and `FAIL`
-   ingest outcomes create no Polish Bundle.
+   ingest outcomes create no Polish Bundle. Optional `--polish-profile <id>`
+   copies a checked-in Polish profile into the bundle and binds its schema, id,
+   path, and SHA-256 in the `/1` manifest. Existing unprofiled `/0` bundles
+   remain valid for `check` and `finalize`.
 2. The four Polished Frames remain exact `16×24` RGBA with binary alpha, exact
    per-Frame Draft alpha masks, and opaque RGB values drawn only from the
    combined Draft palette (only RGB may differ from Draft; alpha is locked).
-3. **`check`** is read-only: it reports every visible changed Cell (Draft vs
+3. **`brief`** is read-only: for a profiled bundle, it reports the profile
+   identity, fixed visual questions, applicable Motion-class overrides, editing
+   rules, audit workflow, and `PASS` / `EDIT` / `UNCERTAIN` verdict vocabulary.
+   A bundle without a profile has no authoritative semantic brief.
+4. **`check`** is read-only: it reports every visible changed Cell (Draft vs
    Polished RGB at occupied coordinates) and runs the exact Polished Frames
    through the current Motion-class Acceptance profiles via `coherence_split`.
-4. **`finalize`** repeats current-policy validation, records a hash-bound
+5. **`finalize`** repeats current-policy validation, records a hash-bound
    immutable report for every valid outcome, and produces Release Frames only on
    automatic `PASS`; `REVIEW` and `FAIL` have no override.
-5. The provider Strip remains bundled provenance; Draft, Polished, Release, and
-   report hashes preserve the derivation chain.
+6. The provider Strip remains bundled provenance; Draft, Polished, Release,
+   Polish profile, and report hashes preserve the derivation chain. A missing,
+   malformed, identity-mismatched, or hash-mismatched embedded profile makes a
+   profiled bundle invalid.
 
 **Structural polish invariants** (alpha mask, palette membership, provenance
 reproduction) are enforced before coherence Gates run. Failures on these
 invariants are structural hard failures — they do not become new Gates and do
 not change any Budget.
+
+The checked-in `miner` Polish profile asks fixed questions about identity
+anchors, semantic separation, temporal consistency, native-scale contrast, and
+outline continuity. Its `walk` override asks about alternating-leg readability
+and belt/buckle stability. Its `swing` override asks about face/hand and
+hand/tool separation plus the tool arc. Intentional pose occlusion is not a
+missing feature. These questions guide an agent's visual verdict; they do not
+become coherence Gates and the validator does not answer them automatically.
 
 Aseprite is optional: an operator may edit Polished Frames in Aseprite or by
 direct Cell-coordinate changes to the `polished/` PNG sequence. Automatic accent

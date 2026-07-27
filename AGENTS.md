@@ -45,6 +45,20 @@ late. Where a runtime supports subagents, run that review in one: it opens the
 artifact, answers the question, and returns text, so the artifact never enters
 the main task's context.
 
+### Final-polish agent audit
+
+For a profiled Polish Bundle, run
+`npm run strip:polish -- brief <bundle> --json` before opening art. The embedded,
+hash-bound Polish profile is the art-direction authority: answer every fixed
+question and applicable Motion-class question with `PASS`, `EDIT`, or
+`UNCERTAIN`. Report `UNCERTAIN` instead of inventing intent.
+
+Read the machine report first, then inspect one late composite or GIF at native
+scale and enlarged with nearest-neighbor scaling. Apply the fewest permitted
+Cell edits for `EDIT` verdicts, regenerate the preview, and run
+`npm run strip:polish -- check <bundle>`. A profile guides visual judgment; it
+does not override structural locks, coherence Gates, or PASS-only finalization.
+
 ### Strip acquisition contract
 
 `docs/strip-acquisition-contract.md` is the authority for motion classes, gates,
