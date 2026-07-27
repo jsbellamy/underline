@@ -325,7 +325,7 @@ def test_readme_documents_production_polish_profiles() -> None:
     text = (ROOT / "README.md").read_text()
     for profile_id in ("dwarf-miner", "lantern", "miner"):
         assert profile_id in text
-    assert "does not recognize those semantics" in text or "does not recognize" in text
+    assert "does not recognize the semantic questions in any profile" in text
 
 
 def test_tampered_embedded_profile_is_an_invalid_bundle(tmp_path: Path) -> None:
