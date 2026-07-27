@@ -303,7 +303,7 @@
     "gutter": 2,
     "rows": 6
   },
-  "manifest_sha256": "10dd4dee3aa86ae0525bf3f0b23b38e6184fd7b02c5d5e2b3e5a32f2ad48c5ca",
+  "manifest_sha256": "a0de755efaff5f2e4601cf85226c2b24bc907e6ba49e3a0f8f8e4387f43eb8ee",
   "master_palette": {
     "id": "first-room",
     "relative_path": "palette.json",
