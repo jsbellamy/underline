@@ -780,6 +780,71 @@ def test_npm_script_invokes_production_module() -> None:
     assert "--target-gate" in result.stdout
 
 
+@pytest.mark.parametrize(
+    "script",
+    [
+        "gate-control:acquire",
+        "gate-control:review",
+        "gate-control:verify",
+    ],
+)
+def test_canonical_gate_control_commands_help_exits_zero(script: str) -> None:
+    env = {**dict(__import__("os").environ), "PYTHONPATH": str(ROOT)}
+    result = subprocess.run(
+        ["npm", "run", "-s", script, "--", "--help"],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0
+
+
+def test_canonical_verify_help_exposes_generalized_promotion_id() -> None:
+    env = {**dict(__import__("os").environ), "PYTHONPATH": str(ROOT)}
+    top = subprocess.run(
+        ["npm", "run", "-s", "gate-control:verify", "--", "--help"],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    run = subprocess.run(
+        ["npm", "run", "-s", "gate-control:verify", "--", "run", "--help"],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "promotion_id" in run.stdout
+    for wave_a_id in gv.ISSUE_59_PROMOTION_IDS:
+        assert wave_a_id not in top.stdout
+        assert wave_a_id not in run.stdout
+
+
+def test_canonical_review_help_exposes_validate_subcommand() -> None:
+    env = {**dict(__import__("os").environ), "PYTHONPATH": str(ROOT)}
+    result = subprocess.run(
+        ["npm", "run", "-s", "gate-control:review", "--", "--help"],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert "validate" in result.stdout
+
+
+def test_prototype_acquire_shim_documents_production_replacement() -> None:
+    doc = (ROOT / "prototype/strip-coherence/gate_control_acquire.py").read_text()
+    assert "DEPRECATED" in doc
+    assert "pipeline.gate_control_acquire" in doc
+    assert "gate-control:acquire" in doc
+
+
 def test_measurement_persist_is_append_only_on_rescore(tmp_path: Path) -> None:
     _seed_gate_controls(tmp_path)
     png = tmp_path / "candidate.png"

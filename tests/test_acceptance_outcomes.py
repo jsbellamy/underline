@@ -37,6 +37,12 @@ def test_canonical_metric_matches_production_and_prototype_imports() -> None:
     assert prototype(value) == production(value)
 
 
+def test_numeric_policy_shim_documents_production_replacement() -> None:
+    doc = (ROOT / "prototype/strip-coherence/numeric_policy.py").read_text()
+    assert "DEPRECATED" in doc
+    assert "pipeline.numeric_policy" in doc
+
+
 @pytest.mark.parametrize(
     ("metric", "expected"),
     [

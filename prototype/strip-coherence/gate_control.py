@@ -1,8 +1,12 @@
 #!/usr/bin/env python3
-"""COMPATIBILITY — score one candidate Gate control via pipeline.gate_control.
+"""DEPRECATED compatibility shim — use ``pipeline.gate_control`` via ``npm run gate-control:score``.
 
 Forwards measurement, isolation, primary-failure, retry, and composite rendering
-to the production scorer.
+to the production scorer. Existing callers may keep invoking this module path;
+new code should use the canonical production command.
+
+    npm run gate-control:score -- inbox/22-NEG-airborne-identity.png \
+        --motion-class airborne --target-gate min_pair_cohort_pass
 
     PYTHONPATH=. python3 prototype/strip-coherence/gate_control.py \
         inbox/22-NEG-airborne-identity.png --motion-class airborne \
