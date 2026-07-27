@@ -15,8 +15,8 @@
   "gate": "min_pair_cohort_pass",
   "hard_fail_boundary": 0.3333,
   "metric": 0.3333,
-  "model_identity": "Cursor Grok 4.5",
-  "model_version": "cursor-grok-4.5",
+  "model_identity": "cursor-grok-4.5",
+  "model_version": "4.5",
   "observed_feature": "four unrelated purple sprites (bat, grid-moth, flame-wisp, jagged wing) with large occupancy diffs 0->1,1->2,2->3",
   "packet_sha256": "9c3d014eefef2d5ca2ad5821b680660b1e6777facb20ebf3812e95aa3f45e599",
   "promotion_id": "promo--airborne--min_pair_cohort_pass",
@@ -26,11 +26,11 @@
     "proposed_hard_fail_reference": "fd464b8cf471e375311a47fae800a6e13a7e4a098512d394d337dd0fe9320060"
   },
   "review_id": "review--02",
-  "reviewer_identity": "cursor-grok-4.5-review-02",
+  "reviewer_identity": "cursor-agent/issue-55/review-02",
   "schema": "gate-review-audit/0",
   "second_review_triggers": [
     "metric_at_or_beyond_midpoint"
   ],
-  "timestamp": "2026-07-27T10:17:30+00:00",
+  "timestamp": "2026-07-27T10:17:31+00:00",
   "verdict": "APPROVE"
 }

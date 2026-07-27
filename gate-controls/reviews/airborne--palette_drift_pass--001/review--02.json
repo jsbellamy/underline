@@ -13,8 +13,8 @@
   "gate": "palette_drift_pass",
   "hard_fail_boundary": 0.2793,
   "metric": 0.2793,
-  "model_identity": "Cursor Grok 4.5",
-  "model_version": "cursor-grok-4.5",
+  "model_identity": "cursor-grok-4.5",
+  "model_version": "4.5",
   "observed_feature": "Wholesale per-frame recolour of same airborne subject (hat/body hues swap while pose/silhouette hold)",
   "packet_sha256": "d7537be8f0ac7a7e7ef97939ba31ebef34261c70988f443ab65f4e09d75ac0b3",
   "promotion_id": "promo--airborne--palette_drift_pass",
@@ -24,11 +24,11 @@
     "proposed_hard_fail_reference": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd"
   },
   "review_id": "review--02",
-  "reviewer_identity": "cursor-grok-4.5-review-02",
+  "reviewer_identity": "cursor-agent/issue-55/review-02",
   "schema": "gate-review-audit/0",
   "second_review_triggers": [
     "metric_at_or_beyond_midpoint"
   ],
-  "timestamp": "2026-07-27T10:17:30+00:00",
+  "timestamp": "2026-07-27T10:17:33+00:00",
   "verdict": "APPROVE"
 }
