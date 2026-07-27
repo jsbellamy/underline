@@ -5,8 +5,8 @@ Separated pairs use Budget = ceil₄(G + α·(C − G)) with α = 0.5 (#28).
 Unseparated pairs keep the current ceil₀.₀₁(worst-good)+0.02 Budget and have no
 hard-fail boundary. Inapplicable Gates are omitted.
 
-Reproduces the tables in docs/alpha-budget-tables.md. Does not mutate runtime
-MOTION_CLASSES — landing production Budgets is a later implementation wave.
+Reproduces the tables in docs/alpha-budget-tables.md and verifies the production
+`MOTION_CLASSES` / `ACCEPTANCE_GATES` projection matches derived evidence.
 """
 
 from __future__ import annotations
@@ -80,37 +80,23 @@ def derive_separated_budget(
     )
 
 
-def _load_acceptance_status() -> dict[tuple[str, str], str]:
-    """Build (motion_class, gate) → SEPARATED|UNSEPARATED|INAPPLICABLE."""
+def _load_acceptance_profiles() -> dict[tuple[str, str], dict]:
+    """(motion_class, gate) → profile row (status, budget, hard_fail, …)."""
     profiles = json.loads(ACCEPTANCE_PROFILES.read_text())["profiles"]
-    status: dict[tuple[str, str], str] = {}
+    rows: dict[tuple[str, str], dict] = {}
     for motion_class, profile in profiles.items():
         for gate, row in profile["gates"].items():
             if gate == "baseline_row_stable":
                 continue
-            status[(motion_class, gate)] = row["status"]
-    # Classes not yet in acceptance-profiles.json — decided on the map tickets.
-    decided = {
-        ("blob_idle", "silhouette_budget"): "SEPARATED",
-        ("blob_idle", "palette_drift_pass"): "SEPARATED",
-        ("blob_idle", "loop_closure_pass"): "SEPARATED",
-        ("blob_idle", "min_pair_cohort_pass"): "SEPARATED",
-        ("walk", "silhouette_budget"): "SEPARATED",
-        ("walk", "palette_drift_pass"): "SEPARATED",
-        ("walk", "loop_closure_pass"): "SEPARATED",
-        ("walk", "min_pair_cohort_pass"): "UNSEPARATED",
-        ("airborne", "silhouette_budget"): "INAPPLICABLE",
-        ("airborne", "palette_drift_pass"): "SEPARATED",
-        ("airborne", "loop_closure_pass"): "SEPARATED",
-        ("airborne", "min_pair_cohort_pass"): "SEPARATED",
-        ("swing", "silhouette_budget"): "SEPARATED",
-        ("swing", "palette_drift_pass"): "SEPARATED",
-        ("swing", "loop_closure_pass"): "INAPPLICABLE",
-        ("swing", "min_pair_cohort_pass"): "INAPPLICABLE",
+            rows[(motion_class, gate)] = row
+    return rows
+
+
+def _load_acceptance_status() -> dict[tuple[str, str], str]:
+    """Build (motion_class, gate) → SEPARATED|UNSEPARATED|INAPPLICABLE."""
+    return {
+        pair: row["status"] for pair, row in _load_acceptance_profiles().items()
     }
-    for key, value in decided.items():
-        status.setdefault(key, value)
-    return status
 
 
 def _worst_good_by_class() -> dict[str, dict[str, tuple[str, float]]]:
@@ -151,14 +137,10 @@ def _worst_good_by_class() -> dict[str, dict[str, tuple[str, float]]]:
 
 def _required_separated_promotion_ids() -> frozenset[str]:
     """Provider-controlled Separated pairs that require an ACTIVE Promotion."""
-    profiles = json.loads(ACCEPTANCE_PROFILES.read_text())["profiles"]
     required: set[str] = set()
-    for profile in profiles.values():
-        for gate, row in profile["gates"].items():
-            if gate == "baseline_row_stable":
-                continue
-            if row.get("status") == "SEPARATED" and "active_promotion" in row:
-                required.add(row["active_promotion"])
+    for row in _load_acceptance_profiles().values():
+        if row.get("status") == "SEPARATED" and "active_promotion" in row:
+            required.add(row["active_promotion"])
     return frozenset(required)
 
 
@@ -179,15 +161,58 @@ def _assert_all_separated_promotions_active() -> None:
 
 def _promoted_controls() -> dict[tuple[str, str], dict]:
     """(motion_class, gate) → {metric, attempt, caveats, measurement_path}."""
+    profiles = _load_acceptance_profiles()
     manifest = json.loads(GC_MANIFEST.read_text())
     promotions = {p["id"]: p for p in manifest["promotions"]}
+    specifications = {
+        (spec["motion_class"], spec["target_gate"]): spec
+        for spec in manifest["specifications"]
+    }
     out: dict[tuple[str, str], dict] = {}
-    for spec in manifest["specifications"]:
-        promo = promotions[spec["active_promotion"]]
-        run = json.loads((ROOT / promo["measurement_path"]).read_text())
-        gate = spec["target_gate"]
-        out[(spec["motion_class"], gate)] = {
-            "metric": run["gates"][gate]["metric"],
+    for (motion_class, gate), row in profiles.items():
+        if row.get("status") != "SEPARATED":
+            continue
+        promo_id = row.get("active_promotion")
+        if promo_id is None:
+            continue
+        pair = f"{motion_class}/{gate}"
+        promo = promotions.get(promo_id)
+        if promo is None:
+            raise SystemExit(
+                f"α-Budget derivation blocked: missing Promotion {promo_id!r} "
+                f"for {pair}"
+            )
+        if promo["status"] != "ACTIVE":
+            raise SystemExit(
+                f"α-Budget derivation blocked: Promotion {promo_id!r} not ACTIVE "
+                f"(status={promo['status']!r}) for {pair}"
+            )
+        spec = specifications.get((motion_class, gate))
+        if spec is None:
+            raise SystemExit(
+                f"α-Budget derivation blocked: missing specification for {pair}"
+            )
+        if spec["active_promotion"] != promo_id:
+            raise SystemExit(
+                f"α-Budget derivation blocked: mismatched Promotion for {pair}: "
+                f"profile references {promo_id!r} but manifest spec has "
+                f"{spec['active_promotion']!r}"
+            )
+        measurement_path = ROOT / promo["measurement_path"]
+        if not measurement_path.is_file():
+            raise SystemExit(
+                f"α-Budget derivation blocked: missing Measurement evidence at "
+                f"{promo['measurement_path']!r} for {pair}"
+            )
+        run = json.loads(measurement_path.read_text())
+        gate_row = run.get("gates", {}).get(gate)
+        if gate_row is None or "metric" not in gate_row:
+            raise SystemExit(
+                f"α-Budget derivation blocked: invalid Measurement evidence for "
+                f"{pair} at {promo['measurement_path']!r}"
+            )
+        out[(motion_class, gate)] = {
+            "metric": gate_row["metric"],
             "attempt": promo["attempt_id"],
             "caveats": list(run.get("caveats") or []),
             "measurement_path": promo["measurement_path"],
@@ -201,8 +226,84 @@ def _runtime_budget(motion_class: str, gate: str) -> float | None:
     return getattr(budget, RUNTIME_BUDGET_ATTR[gate])
 
 
+def _runtime_gate_policy(motion_class: str, gate: str) -> S.GatePolicy:
+    return S.ACCEPTANCE_GATES[motion_class][gate]
+
+
+def _assert_runtime_equivalence(
+    *,
+    profiles: dict[tuple[str, str], dict],
+    separated_rows: list[dict],
+) -> None:
+    """Exit nonzero when derived α-Budgets diverge from production projection."""
+    mismatches: list[str] = []
+    derived_by_pair = {row["pair"]: row for row in separated_rows}
+
+    for motion_class in ("idle", "blob_idle", "emissive", "walk", "airborne", "swing"):
+        for gate in GATE_METRIC_KEY:
+            pair_key = (motion_class, gate)
+            pair = f"{motion_class}/{gate}"
+            profile_row = profiles.get(pair_key)
+            if profile_row is None:
+                mismatches.append(f"missing Acceptance profile row for {pair}")
+                continue
+
+            policy = _runtime_gate_policy(motion_class, gate)
+            profile_status = profile_row["status"]
+            if policy.status != profile_status:
+                mismatches.append(
+                    f"{pair}: status profile={profile_status!r} "
+                    f"runtime={policy.status!r}"
+                )
+
+            runtime_budget = _runtime_budget(motion_class, gate)
+            profile_budget = profile_row.get("budget")
+            if profile_status == "INAPPLICABLE":
+                if runtime_budget is not None:
+                    mismatches.append(
+                        f"{pair}: runtime budget {runtime_budget!r} but INAPPLICABLE"
+                    )
+            elif profile_budget != runtime_budget:
+                mismatches.append(
+                    f"{pair}: budget profile={profile_budget} "
+                    f"runtime={runtime_budget}"
+                )
+
+            profile_hard_fail = profile_row.get("hard_fail")
+            runtime_hard_fail = policy.hard_fail
+            if profile_status == "SEPARATED":
+                if profile_hard_fail != runtime_hard_fail:
+                    mismatches.append(
+                        f"{pair}: hard_fail profile={profile_hard_fail} "
+                        f"runtime={runtime_hard_fail}"
+                    )
+                derived = derived_by_pair.get(pair)
+                if derived is None:
+                    mismatches.append(f"{pair}: missing derived Separated row")
+                elif derived["budget"] != runtime_budget:
+                    mismatches.append(
+                        f"{pair}: derived budget={derived['budget']} "
+                        f"runtime={runtime_budget}"
+                    )
+                elif derived["c"] != profile_hard_fail:
+                    mismatches.append(
+                        f"{pair}: derived C={derived['c']} "
+                        f"profile hard_fail={profile_hard_fail}"
+                    )
+            elif profile_status == "UNSEPARATED" and profile_hard_fail is not None:
+                mismatches.append(
+                    f"{pair}: UNSEPARATED profile must not declare hard_fail"
+                )
+
+    if mismatches:
+        lines = ["α-Budget derivation blocked: runtime projection mismatch:"]
+        lines.extend(f"  - {line}" for line in mismatches)
+        raise SystemExit("\n".join(lines))
+
+
 def main() -> int:
     _assert_all_separated_promotions_active()
+    profiles = _load_acceptance_profiles()
     status = _load_acceptance_status()
     worst = _worst_good_by_class()
     controls = _promoted_controls()
@@ -233,6 +334,11 @@ def main() -> int:
 
             sample_id, raw_g = worst[motion_class][metric_key]
             old = _runtime_budget(motion_class, gate)
+            if old is None and pair_status != "INAPPLICABLE":
+                raise SystemExit(
+                    f"α-Budget derivation blocked: runtime omits Budget for {pair} "
+                    f"but profile status is {pair_status}"
+                )
             assert old is not None
 
             if pair_status == "UNSEPARATED":
@@ -297,6 +403,8 @@ def main() -> int:
         f"Separated={len(separated_rows)}  Unseparated={len(unseparated_rows)}  "
         f"Inapplicable={len(inapplicable)}"
     )
+
+    _assert_runtime_equivalence(profiles=profiles, separated_rows=separated_rows)
     return 0
 
 

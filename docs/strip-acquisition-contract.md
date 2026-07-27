@@ -134,7 +134,7 @@ table in [`docs/alpha-budget-tables.md`](alpha-budget-tables.md).
 | `blob_idle/min_pair_cohort_pass` | **0.1199** | 0.1371 | **0.0173** | **0.0172** |
 | `swing/silhouette_budget` | **0.5860** | 0.6067 | **0.0208** | **0.0207** |
 
-**Runtime corpus negatives (pre-α estimator)** — retained until production Budgets land:
+**Runtime corpus negatives (α runtime)** — subject-matched controls vs current Budgets:
 
 | Class | Binding gate | Budget | Control | Margin | Notes |
 |-------|--------------|--------|---------|--------|-------|
@@ -395,9 +395,14 @@ vs fixed controls). Do not add more good strips to strengthen separation.
 
 `python -m pipeline.ingest_strip` (npm `strip:ingest`) is the
 production reader for this contract: it recovers a provider strip, gates it under the
-declared motion class via `coherence_split`, and on pass exports one logical-resolution
-RGBA frame per slice. Failing strips write no frames; inapplicable gates are reported
-explicitly in human and JSON output.
+declared motion class via `coherence_split`, and on automatic pass exports one
+logical-resolution RGBA frame per slice. Review-band and hard-fail strips write no
+frames; inapplicable gates are reported explicitly in human and JSON output.
+
+`npm run prototype:strip:corpus` and `npm run prototype:strip:adversarial` consume the
+same production tri-state outcomes — they do not derive or own Budget numbers.
+`npm run prototype:strip:derive-budgets` remains the explicitly historical pre-α
+baseline estimator only.
 
 ## Implementation
 

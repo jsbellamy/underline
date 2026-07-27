@@ -36,7 +36,6 @@ GATES = (
 
 GREEN, RED, YELLOW, DIM, RESET = "\033[32m", "\033[31m", "\033[33m", "\033[2m", "\033[0m"
 
-
 def find_png(sample_id: str) -> pathlib.Path | None:
     exact = INBOX / f"{sample_id}.png"
     if exact.exists():
@@ -62,6 +61,19 @@ def _gates_agree(expect_gates: list[str], tripped: list[str]) -> bool:
     return all(set(want.split("|")) & set(tripped) for want in expect_gates)
 
 
+def _gate_outcome_lists(coh: dict) -> tuple[list[str], list[str], list[str]]:
+    """Return failed, review, and structural trip lists from coherence output."""
+    gate_outcomes = coh.get("gate_outcomes") or {}
+    failed = [gate for gate, row in gate_outcomes.items() if row["outcome"] == "FAIL"]
+    review = [gate for gate, row in gate_outcomes.items() if row["outcome"] == "REVIEW"]
+    structural: list[str] = []
+    if coh.get("dimension_parity") is False:
+        structural.append("dimension_parity")
+    if coh.get("baseline_row_stable") is False:
+        structural.append("baseline_row_stable")
+    return failed, review, structural
+
+
 def evaluate(path: pathlib.Path, *, motion_class: str) -> dict:
     layout = S.StripLayout(
         frame_w=S.DEFAULT_LAYOUT.frame_w,
@@ -74,13 +86,32 @@ def evaluate(path: pathlib.Path, *, motion_class: str) -> dict:
     try:
         result = S.ingest_strip_provider(path, layout, motion_class=motion_class)
     except (ValueError, OSError) as error:
-        return {"pass": False, "tripped": ["recover"], "note": str(error)[:70]}
+        return {
+            "outcome": "FAIL",
+            "pass": False,
+            "failed_gates": [],
+            "review_gates": [],
+            "structural_gates": ["recover"],
+            "tripped": ["recover"],
+            "note": str(error)[:70],
+        }
 
     coh = result.coherence
     if "reason" in coh:
-        return {"pass": False, "tripped": ["slice"], "note": coh["reason"][:70]}
+        return {
+            "outcome": "FAIL",
+            "pass": False,
+            "failed_gates": [],
+            "review_gates": [],
+            "structural_gates": ["slice"],
+            "tripped": ["slice"],
+            "note": coh["reason"][:70],
+        }
 
-    tripped = [g for g in GATES if coh.get(g) is False]
+    failed, review, structural = _gate_outcome_lists(coh)
+    outcome = result.outcome
+    tripped = structural + failed
+
     sil = max((r["frac"] for r in coh.get("silhouette_adjacent", [])), default=0.0)
     loop = (coh.get("loop_closure") or {}).get("frac", 0.0)
     pairwise = coh.get("silhouette_pairwise") or {}
@@ -95,12 +126,39 @@ def evaluate(path: pathlib.Path, *, motion_class: str) -> dict:
     elif coh.get("displacement_pass") is not None:
         note += f"  disp={'pass' if coh['displacement_pass'] else 'FAIL'}"
     return {
-        "pass": result.pass_,
+        "outcome": outcome,
+        "pass": outcome == "PASS",
+        "failed_gates": failed,
+        "review_gates": review,
+        "structural_gates": structural,
         "tripped": tripped,
         "note": note,
         "displacement_inapplicable": coh.get("displacement_inapplicable", False),
         "displacement_reason": coh.get("displacement_reason"),
     }
+
+
+def _contract_agrees(expect: str, expect_gates: list[str], result: dict) -> bool:
+    if result["outcome"] != expect:
+        return False
+    if expect == "PASS":
+        return not result["tripped"] and not result["review_gates"]
+    if expect == "REVIEW":
+        return _gates_agree(expect_gates, result["review_gates"])
+    if expect == "FAIL":
+        tripped = result["tripped"] + result["failed_gates"]
+        return _gates_agree(expect_gates, tripped)
+    raise ValueError(f"unknown contract_expect {expect!r}")
+
+
+def _outcome_color(outcome: str, agrees: bool) -> str:
+    if not agrees:
+        return RED
+    if outcome == "PASS":
+        return GREEN
+    if outcome == "REVIEW":
+        return YELLOW
+    return RED
 
 
 def main() -> int:
@@ -110,7 +168,7 @@ def main() -> int:
     }
     samples = manifest["samples"]
 
-    print(f"{'sample':<22} {'class':<11} {'want':<5} {'got':<5}  {'agrees':<7} detail")
+    print(f"{'sample':<22} {'class':<11} {'want':<6} {'got':<6}  {'agrees':<7} detail")
     print("-" * 100)
 
     pending, regressions, ledger_mismatches, scored = [], [], [], 0
@@ -121,7 +179,7 @@ def main() -> int:
         path = find_png(s["id"])
         if path is None:
             pending.append(s["id"])
-            print(f"{s['id']:<22} {motion_class:<11} {s['contract_expect']:<5} {DIM}{'--':<5}  "
+            print(f"{s['id']:<22} {motion_class:<11} {s['contract_expect']:<6} {DIM}{'--':<6}  "
                   f"{'pending':<7} no PNG in inbox/  {DIM}{budget_note}{RESET}")
             continue
 
@@ -132,9 +190,9 @@ def main() -> int:
             detail_extra = f"  {YELLOW}disp inapplicable: {r['displacement_reason']}{RESET}"
         else:
             detail_extra = ""
-        got = "PASS" if r["pass"] else "FAIL"
-        contract_agrees = got == s["contract_expect"] and _gates_agree(
-            s["contract_expect_gates"], r["tripped"]
+        got = r["outcome"]
+        contract_agrees = _contract_agrees(
+            s["contract_expect"], s["contract_expect_gates"], r
         )
         if not contract_agrees:
             regressions.append((s, r))
@@ -147,11 +205,13 @@ def main() -> int:
             if not ledger_agrees:
                 ledger_mismatches.append((s, r, frozen))
 
-        color = GREEN if contract_agrees else RED
+        color = _outcome_color(got, contract_agrees)
         detail = r["note"]
+        if r["review_gates"]:
+            detail += f"  review={r['review_gates']}"
         if r["tripped"]:
-            detail += f"  tripped={r['tripped']}"
-        print(f"{s['id']:<22} {motion_class:<11} {s['contract_expect']:<5} {got:<5}  "
+            detail += f"  failed={r['tripped']}"
+        print(f"{s['id']:<22} {motion_class:<11} {s['contract_expect']:<6} {got:<6}  "
               f"{color}{'yes' if contract_agrees else 'NO':<7}{RESET} {detail}{detail_extra}  "
               f"{DIM}{budget_note}{RESET}")
 
@@ -170,7 +230,8 @@ def main() -> int:
         for s, r in regressions:
             print(f"  {s['id']}: expected {s['contract_expect']} "
                   f"{s['contract_expect_gates'] or '(all gates clean)'}, "
-                  f"got {'PASS' if r['pass'] else 'FAIL'} {r['tripped'] or '(clean)'}")
+                  f"got {r['outcome']} failed={r['tripped'] or '(clean)'} "
+                  f"review={r['review_gates'] or '(none)'}")
             print(f"    {DIM}premise: {s['why']}{RESET}")
 
     if ledger_mismatches:
@@ -178,7 +239,7 @@ def main() -> int:
         for s, r, frozen in ledger_mismatches:
             print(f"  {s['id']}: predicted {frozen['expect']} "
                   f"{frozen['expect_gates'] or '(all gates clean)'}, "
-                  f"got {'PASS' if r['pass'] else 'FAIL'} {r['tripped'] or '(clean)'}")
+                  f"got {r['outcome']} failed={r['tripped'] or '(clean)'}")
             print(f"    {DIM}premise: {s['why']}{RESET}")
         print(f"\n  {DIM}Ledger is frozen in prediction-ledger.json — update contract_expect "
               f"in manifest.json when the gate design changes.{RESET}")
