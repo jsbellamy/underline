@@ -16,7 +16,7 @@ from derive_budgets import _derive  # noqa: E402
 
 
 def _hand_derive(worst: float) -> float:
-    """Contract runtime estimator: ceil_to_0.01(worst) + 0.02 (worked independently)."""
+    """Historical pre-α estimator: ceil_to_0.01(worst) + 0.02 (worked independently)."""
     return round(math.ceil(worst * 100) / 100 + 0.02, 2)
 
 
@@ -55,7 +55,8 @@ def test_derive_budgets_emits_historical_pre_alpha_baseline() -> None:
     assert "loop=0.330 -> 0.35" in out
 
 
-def test_derive_budgets_has_no_runtime_equality_enforcement() -> None:
+def test_historical_baseline_omits_runtime_mismatch_failure_path() -> None:
+    """C2: historical baseline must not fail by comparing derived Budgets to runtime policy."""
     source = DERIVE_BUDGETS.read_text()
     assert "_runtime_budget_tuple" not in source
     assert "RUNTIME BUDGET MISMATCH" not in source
