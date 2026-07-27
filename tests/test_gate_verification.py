@@ -22,7 +22,7 @@ def _issue_59_records_present() -> bool:
     )
 
 
-def test_manifest_sha256_at_binding_resets_named_promotion_statuses(tmp_path: Path) -> None:
+def test_pre_transition_manifest_hash_resets_named_promotion_status(tmp_path: Path) -> None:
     manifest = {
         "schema": "gate-control-manifest/0",
         "specifications": [],
@@ -143,7 +143,7 @@ def test_validate_verification_record_rejects_active_without_manifest_match(
         gv.validate_verification_record(tmp_path, path)
 
 
-def test_issue_59_verification_records_validate_against_repository() -> None:
+def test_active_promotion_verification_records_validate_against_repository() -> None:
     if not _issue_59_records_present():
         pytest.skip("verification records not written yet")
     verification_root = ROOT / "gate-controls" / "verification"
@@ -156,7 +156,7 @@ def test_issue_59_verification_records_validate_against_repository() -> None:
         gv.validate_verification_record(ROOT, path)
 
 
-def test_issue_59_terminal_state_truth_table() -> None:
+def test_active_promotion_manifest_matches_verification_record() -> None:
     if not _issue_59_records_present():
         pytest.skip("verification records not written yet")
     manifest = ge.load_manifest(ROOT / "gate-controls" / "manifest.json")
@@ -175,6 +175,40 @@ def test_issue_59_terminal_state_truth_table() -> None:
         else:
             assert promotion.status == "INVALIDATED"
             assert record["failure_reason"]
+
+
+def test_apply_manifest_statuses_transitions_named_promotions_only(tmp_path: Path) -> None:
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "schema": "gate-control-manifest/0",
+                "specifications": [],
+                "promotions": [
+                    {
+                        "id": "promo--idle--palette_drift_pass",
+                        "status": "PENDING_VERIFICATION",
+                    },
+                    {
+                        "id": "promo--walk--loop_closure_pass",
+                        "status": "PENDING_VERIFICATION",
+                    },
+                ],
+            },
+            indent=2,
+        )
+        + "\n"
+    )
+    gv.apply_manifest_statuses(
+        manifest_path,
+        statuses={"promo--idle--palette_drift_pass": "ACTIVE"},
+    )
+    doc = json.loads(manifest_path.read_text())
+    statuses = {promo["id"]: promo["status"] for promo in doc["promotions"]}
+    assert statuses == {
+        "promo--idle--palette_drift_pass": "ACTIVE",
+        "promo--walk--loop_closure_pass": "PENDING_VERIFICATION",
+    }
 
 
 def test_repository_review_dirs_validate_after_second_review_input() -> None:

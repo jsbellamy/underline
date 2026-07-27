@@ -485,6 +485,21 @@ def _write_two_audits(review_dir: Path, packet: gr.ReviewPacket) -> dict[str, ob
     return audits
 
 
+def test_review_packet_from_manifest_rehydrates_stored_packet(tmp_path: Path) -> None:
+    fx = _evidence(tmp_path)
+    packet = gr.build_promotion_verification_packet(
+        root=fx["root"],
+        promotion_id=fx["promo_id"],
+        budget_binding_good=fx["good_path"],
+    )
+    review_dir = fx["gc"] / "reviews" / fx["attempt_id"]
+    manifest_path = review_dir / "packet.json"
+    gr.write_packet_manifest(manifest_path, packet)
+    restored = gr.review_packet_from_manifest(json.loads(manifest_path.read_text()))
+    assert restored.packet_sha256 == packet.packet_sha256
+    assert restored.promotion_status == "PENDING_VERIFICATION"
+
+
 def test_validate_cli_accepts_written_packet_and_audits(tmp_path: Path) -> None:
     fx = _evidence(tmp_path)
     packet = gr.build_promotion_verification_packet(
