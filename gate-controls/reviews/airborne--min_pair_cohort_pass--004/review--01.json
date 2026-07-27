@@ -1,0 +1,36 @@
+{
+  "attempt_id": "airborne--min_pair_cohort_pass--004",
+  "budget": 0.3013,
+  "candidate_sha256": "fd464b8cf471e375311a47fae800a6e13a7e4a098512d394d337dd0fe9320060",
+  "caveats": [
+    "displacement_pass is undecidable \u2014 this control does not evidence that dimension"
+  ],
+  "fixed_question": "Same subject, one coherent animation despite no sufficiently similar pair?",
+  "frames": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "gate": "min_pair_cohort_pass",
+  "hard_fail_boundary": 0.3333,
+  "metric": 0.3333,
+  "model_identity": "cursor-grok-4.5",
+  "model_version": "4.5",
+  "observed_feature": "Four unrelated subjects across f0\u2013f3 (winged bat, blocky insectoid, thin wisp, large jagged beast) with high occupancy mismatch on every consecutive pair",
+  "packet_sha256": "9c3d014eefef2d5ca2ad5821b680660b1e6777facb20ebf3812e95aa3f45e599",
+  "promotion_id": "promo--airborne--min_pair_cohort_pass",
+  "rationale": "Fixed question asks whether this is still same subject / one coherent animation despite no sufficiently similar pair. Candidate Frame row shows four visually distinct creatures, not pose variants of one airborne subject. Required occupancy_difference panel backs that: 0\u21921, 1\u21922, and 2\u21923 are all large red difference maps with little shared silhouette. Budget-binding good (17-wisp-float) is one coherent wisp by contrast. Candidate and proposed_hard_fail_reference share raw_sha256 and look identical. Caveat displacement_pass undecidable is ignored for this dimension. Visually this is a valid min_pair hard-fail reference.",
+  "reference_hashes": {
+    "budget_binding_good": "58fa2edbb6f70a80486f07c933f58c0abca842ba847751522f71703f4960a8db",
+    "proposed_hard_fail_reference": "fd464b8cf471e375311a47fae800a6e13a7e4a098512d394d337dd0fe9320060"
+  },
+  "review_id": "review--01",
+  "reviewer_identity": "cursor-agent/issue-55/review-01",
+  "schema": "gate-review-audit/0",
+  "second_review_triggers": [
+    "metric_at_or_beyond_midpoint"
+  ],
+  "timestamp": "2026-07-27T10:17:30+00:00",
+  "verdict": "APPROVE"
+}
