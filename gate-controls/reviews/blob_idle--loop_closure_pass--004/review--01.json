@@ -1,0 +1,32 @@
+{
+  "attempt_id": "blob_idle--loop_closure_pass--004",
+  "budget": 0.3906,
+  "candidate_sha256": "f211aa49c7f82ace3b86f3ea28bdb9b98d734610c504fef269f7498b15126461",
+  "caveats": [],
+  "fixed_question": "Final\u2192first reads as deliberate continuous loop vs pose jump / identity break?",
+  "frames": [
+    3,
+    0
+  ],
+  "gate": "loop_closure_pass",
+  "hard_fail_boundary": 0.4516,
+  "metric": 0.4516,
+  "model_identity": "cursor-grok-4.5",
+  "model_version": "4.5",
+  "observed_feature": "Final frame is an extreme flat squash puddle; first frame is a tall resting dome of the same green slime. Occupancy difference 3\u21920 is a large arch rewrite, not a small continuous loop step. Adjacent 0\u21921 is small; identity is stable (same subject/palette).",
+  "packet_sha256": "bac311b05e67f3b68a9e41e1d5c9a4bba4694f5b5cfb0405780dd626dca75605",
+  "promotion_id": "promo--blob_idle--loop_closure_pass",
+  "rationale": "Promotion-verification of hard-fail control at C=0.4516. Fixed question: final\u2192first reads as pose jump / identity break, not a deliberate continuous loop. Binding-good 02-slime-idle closes with alternating tall/squash breaths; this candidate ends far from f0 and snaps back. Same subject throughout, so the Gate's loop-closure defect is cleanly isolated. APPROVE as proposed hard-fail reference.",
+  "reference_hashes": {
+    "budget_binding_good": "2ed2fad5410131b71b0ed36cd12a902378d3130938e0522f568a70037d73f7fb",
+    "proposed_hard_fail_reference": "f211aa49c7f82ace3b86f3ea28bdb9b98d734610c504fef269f7498b15126461"
+  },
+  "review_id": "review--01",
+  "reviewer_identity": "cursor-agent/issue-51/review-01",
+  "schema": "gate-review-audit/0",
+  "second_review_triggers": [
+    "metric_at_or_beyond_midpoint"
+  ],
+  "timestamp": "2026-07-27T10:15:00+00:00",
+  "verdict": "APPROVE"
+}
