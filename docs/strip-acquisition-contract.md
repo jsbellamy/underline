@@ -243,9 +243,12 @@ never repeat a pose (06 min_pair 0.437 > 08's 0.344).
 ## Adversarial suite and strip gaps
 
 `adversarial.py` mutates each class baseline and checks `MUST_FAIL` mutations against
-live gates. **`STRIP_GAPS`** documents per-strip holes (not per-class); the suite prints
-**`GAP`**, never **`ok`**. **`displacement_inapplicable`** strips print an **`N/A`** line —
-never silent `None`.
+live gates. Every required mutation must yield a non-`PASS` production outcome under the
+locked Acceptance profiles — class-specific mutation strength is tuned in the runner,
+not by widening Budgets. **`STRIP_GAPS`** documents per-strip holes (not per-class); the
+suite prints **`GAP`**, never **`ok`**. **`KNOWN_GAPS`** is empty after α-budget
+activation; only the two airborne displacement cases below remain documented gaps.
+**`displacement_inapplicable`** strips print an **`N/A`** line — never silent `None`.
 
 | Strip | Mutation | Status | Reason |
 |-------|----------|--------|--------|

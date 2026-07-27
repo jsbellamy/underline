@@ -43,11 +43,21 @@ MUTATIONS = (
 
 MUST_FAIL: dict[str, set[str]] = {
     "idle": {"recolour", "hop", "wrong_pose", "slide"},
-    "blob_idle": {"recolour", "hop"},
-    "emissive": {"recolour", "hop", "slide"},
+    "blob_idle": {"recolour", "hop", "slide"},
+    "emissive": {"recolour", "hop", "slide", "wrong_pose"},
     "walk": {"recolour", "hop", "wrong_pose", "slide"},
     "swing": {"recolour", "hop", "wrong_pose", "slide"},
     "airborne": {"recolour"},
+}
+
+# Class-specific mutation strength — deterministic, named in adversarial output.
+CLASS_MUTATION_OVERRIDES: dict[str, dict[str, dict[str, object]]] = {
+    "blob_idle": {
+        "slide": {"dx": 4, "label": "slide frame 2 (+4 cols)"},
+    },
+    "emissive": {
+        "wrong_pose": {"indices": (0, 2), "label": "mirror frames 0,2"},
+    },
 }
 
 # Per-strip holes — displacement undecidable or otherwise ungated on this PNG.
@@ -64,20 +74,7 @@ STRIP_GAPS: dict[str, dict[str, str]] = {
     },
 }
 
-KNOWN_GAPS: dict[str, dict[str, str]] = {
-    "blob_idle": {
-        "slide": (
-            "α silhouette_budget 0.3951 absorbs slide mutation sil_max≈0.391 "
-            "(pre-α budget was 0.36)"
-        ),
-    },
-    "emissive": {
-        "wrong_pose": (
-            "α silhouette_budget 0.3226 absorbs mirror mutation sil_max≈0.231 "
-            "(pre-α budget was 0.21)"
-        ),
-    },
-}
+KNOWN_GAPS: dict[str, dict[str, str]] = {}
 
 
 def _corpus_layout() -> S.StripLayout:
@@ -163,10 +160,12 @@ def hop(frames, idx=2, dy=3):
     return out
 
 
-def wrong_pose(frames, idx=2):
+def wrong_pose(frames, idx=2, *, indices: tuple[int, ...] | None = None):
     """Mirror frame idx — same palette, same baseline, totally different silhouette."""
     out = [[row[:] for row in f] for f in frames]
-    out[idx] = [list(reversed(row)) for row in out[idx]]
+    mirror_indices = indices if indices is not None else (idx,)
+    for mirror_idx in mirror_indices:
+        out[mirror_idx] = [list(reversed(row)) for row in out[mirror_idx]]
     return out
 
 
@@ -183,6 +182,25 @@ _MUTATORS = {
     "wrong_pose": wrong_pose,
     "slide": slide,
 }
+
+
+def mutation_label(motion_class: str, mutation_key: str, default_label: str) -> str:
+    override = CLASS_MUTATION_OVERRIDES.get(motion_class, {}).get(mutation_key, {})
+    return str(override.get("label", default_label))
+
+
+def mutate(motion_class: str, mutation_key: str, frames):
+    """Apply a class-aware mutation with deterministic per-class strength."""
+    override = CLASS_MUTATION_OVERRIDES.get(motion_class, {}).get(mutation_key)
+    if override is None:
+        return _MUTATORS[mutation_key](frames)
+    if mutation_key == "slide":
+        return slide(frames, dx=int(override["dx"]))
+    if mutation_key == "wrong_pose":
+        indices = override["indices"]
+        assert isinstance(indices, tuple)
+        return wrong_pose(frames, indices=indices)
+    return _MUTATORS[mutation_key](frames)
 
 
 def _tripped(result: dict) -> list[str]:
@@ -204,6 +222,7 @@ def report(
     name: str,
     frames,
     *,
+    mutation_key: str | None = None,
     verbose: bool = True,
 ) -> str:
     """Return 'ok', 'MISMATCH', or 'GAP'."""
@@ -213,7 +232,8 @@ def report(
     tripped = _tripped(result)
     review_gates = _review_gates(result)
     outcome = _outcome(result)
-    mutation_key = next((k for label, k in MUTATIONS if label == name), None)
+    if mutation_key is None:
+        mutation_key = next((k for label, k in MUTATIONS if label == name), None)
     gap_reason = _gap_reason(motion_class, mutation_key)
 
     if name == "baseline (untouched)":
@@ -278,10 +298,12 @@ def run_class(motion_class: str, *, verbose: bool = True) -> tuple[bool, int, in
         inapplicable = 1
     ok = report(motion_class, "baseline (untouched)", frames, verbose=verbose) == "ok"
     for label, key in MUTATIONS:
+        display_label = mutation_label(motion_class, key, label)
         status = report(
             motion_class,
-            label,
-            _MUTATORS[key](frames),
+            display_label,
+            mutate(motion_class, key, frames),
+            mutation_key=key,
             verbose=verbose,
         )
         if status == "MISMATCH":
