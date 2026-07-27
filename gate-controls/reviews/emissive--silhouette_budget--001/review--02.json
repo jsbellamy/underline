@@ -1,0 +1,32 @@
+{
+  "attempt_id": "emissive--silhouette_budget--001",
+  "budget": 0.3226,
+  "candidate_sha256": "f854b74d3a1a3812161f468e0efec39e80183f22cf6aca2b69f16e66bc6ab693",
+  "caveats": [],
+  "fixed_question": "Intentional pose transition vs identity drift / framing / translation?",
+  "frames": [
+    1,
+    2
+  ],
+  "gate": "silhouette_budget",
+  "hard_fail_boundary": 0.4633,
+  "metric": 0.4633,
+  "model_identity": "cursor-grok-4.5",
+  "model_version": "grok-4.5",
+  "observed_feature": "f2 nearly doubles opaque occupancy versus neighbors; occupancy_difference panel 1->2 shows a broad red flare. Relative to binding-good campfire, this is framing/identity scale drift, not intentional small flicker.",
+  "packet_sha256": "6b762a0a2d28ffa3f5dd8ef72290f735a93e68f6e5b5e2481afd2d23450db97a",
+  "promotion_id": "promo--emissive--silhouette_budget",
+  "rationale": "Blinded Promotion-verification judgment for emissive/silhouette_budget: the f2 scale balloon is identity/framing drift at hard-fail boundary C, so the pending candidate is an admissible proposed hard-fail reference. Displacement not in play; no caveat on this packet.",
+  "reference_hashes": {
+    "budget_binding_good": "4799f1ca09004dbd3edd76a2f6423256a0f9f27e97bf1d94b5fbe5ad8dcc5055",
+    "proposed_hard_fail_reference": "f854b74d3a1a3812161f468e0efec39e80183f22cf6aca2b69f16e66bc6ab693"
+  },
+  "review_id": "review--02",
+  "reviewer_identity": "cursor-agent/issue-54/review-02",
+  "schema": "gate-review-audit/0",
+  "second_review_triggers": [
+    "metric_at_or_beyond_midpoint"
+  ],
+  "timestamp": "2026-07-27T10:25:00+00:00",
+  "verdict": "APPROVE"
+}

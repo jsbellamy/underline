@@ -575,6 +575,13 @@ def write_packet_manifest(path: Path, packet: ReviewPacket) -> None:
     ge.write_json_immutable(path, packet.to_manifest())
 
 
+def write_second_review_input(path: Path, payload: Mapping[str, Any]) -> None:
+    """Persist the blinded second-review input record (immutable)."""
+    if not payload.get("blinded") or payload.get("prior_review_visible") is not False:
+        raise ReviewError("second-review input must be blinded with prior review hidden")
+    ge.write_json_immutable(path, payload)
+
+
 def blinded_packet_for_second_review(
     packet: ReviewPacket,
     *,
@@ -607,6 +614,16 @@ def blinded_packet_for_second_review(
     return payload
 
 
+def _repo_root_from_review_dir(review_dir: Path) -> Path:
+    reviews = review_dir.parent
+    gc = reviews.parent
+    if reviews.name != "reviews" or gc.name != "gate-controls":
+        raise ReviewError(
+            f"review directory must be gate-controls/reviews/<attempt>: {review_dir}"
+        )
+    return gc.parent
+
+
 def _verify_packet_reference(
     root: Path, ref: Mapping[str, Any] | None, *, expected_role: str
 ) -> None:
@@ -625,15 +642,71 @@ def _verify_packet_reference(
         raise ReviewError(f"missing raw_sha256 for packet role {expected_role!r}")
     path = (root / rel).resolve()
     if not path.is_file():
-        raise ReviewError(
-            f"missing required file for packet role {expected_role}: {path}"
-        )
+        raise ReviewError(f"missing required file for packet role {expected_role}: {path}")
     actual = ge.sha256_file(path)
     if actual != digest:
         raise ReviewError(
             f"SHA-256 mismatch for packet role {expected_role}: "
             f"manifest {digest} != file {actual}"
         )
+
+
+def _verify_promotion_verification_roles(packet_doc: Mapping[str, Any]) -> None:
+    candidate = packet_doc.get("candidate")
+    binding = packet_doc.get("budget_binding_good")
+    proposed = packet_doc.get("proposed_hard_fail_reference")
+    if not isinstance(candidate, Mapping):
+        raise ReviewError("PROMOTION_VERIFICATION packet missing candidate")
+    if not isinstance(binding, Mapping):
+        raise ReviewError("PROMOTION_VERIFICATION packet missing budget_binding_good")
+    if not isinstance(proposed, Mapping):
+        raise ReviewError(
+            "PROMOTION_VERIFICATION packet missing proposed_hard_fail_reference"
+        )
+    if candidate.get("role") != "candidate":
+        raise ReviewError("candidate role must be 'candidate'")
+    if binding.get("role") != "budget_binding_good":
+        raise ReviewError("budget_binding_good role must be 'budget_binding_good'")
+    if proposed.get("role") != "proposed_hard_fail_reference":
+        raise ReviewError(
+            "proposed_hard_fail_reference role must be 'proposed_hard_fail_reference'"
+        )
+
+
+def _verify_blinded_second_review_input(
+    review_dir: Path,
+    *,
+    packet_sha256: str,
+    first_review: Mapping[str, Any],
+    second_review: Mapping[str, Any],
+) -> None:
+    path = review_dir / "review-input--02.json"
+    if not path.is_file():
+        raise ReviewError(
+            f"missing blinded second-review input record: {path.name}"
+        )
+    payload = ge.load_json(path)
+    if payload.get("blinded") is not True or payload.get("prior_review_visible") is not False:
+        raise ReviewError("second-review input must be blinded with prior review hidden")
+    if payload.get("packet_sha256") != packet_sha256:
+        raise ReviewError(
+            f"SHA-256 mismatch: second-review input packet hash "
+            f"{payload.get('packet_sha256')} != {packet_sha256}"
+        )
+    if payload.get("review_id") != second_review.get("review_id"):
+        raise ReviewError("second-review input review_id must match review--02")
+    if payload.get("reviewer_identity") != second_review.get("reviewer_identity"):
+        raise ReviewError(
+            "second-review input reviewer_identity must match review--02"
+        )
+    blob = json.dumps(payload, sort_keys=True)
+    for leak in (
+        str(first_review.get("verdict", "")),
+        str(first_review.get("rationale", "")),
+        str(first_review.get("review_id", "")),
+    ):
+        if leak and leak in blob:
+            raise ReviewError("blinded second-review serialization leaked prior review")
 
 
 def validate_review_dir(review_dir: Path, *, root: Path | None = None) -> dict[str, Any]:
@@ -655,7 +728,7 @@ def validate_review_dir(review_dir: Path, *, root: Path | None = None) -> dict[s
             f"SHA-256 mismatch: packet manifest hash {expected_hash} != {digest}"
         )
 
-    repo_root = root.resolve() if root is not None else review_dir.parents[2]
+    repo_root = root.resolve() if root is not None else _repo_root_from_review_dir(review_dir)
     _verify_packet_reference(
         repo_root, packet_doc.get("candidate"), expected_role="candidate"
     )
@@ -671,10 +744,17 @@ def validate_review_dir(review_dir: Path, *, root: Path | None = None) -> dict[s
             packet_doc.get("proposed_hard_fail_reference"),
             expected_role="proposed_hard_fail_reference",
         )
+        _verify_promotion_verification_roles(packet_doc)
+    gate_control = packet_doc.get("gate_control")
+    if gate_control is not None:
+        _verify_packet_reference(
+            repo_root, gate_control, expected_role="gate_control"
+        )
 
     reviews: list[str] = []
     identities: set[str] = set()
     review_ids: set[str] = set()
+    records: list[ge.ReviewRecord] = []
     for path in sorted(review_dir.glob("review--*.json")):
         record = ge.load_review(path)
         validate_audit_record(record.raw)
@@ -691,6 +771,15 @@ def validate_review_dir(review_dir: Path, *, root: Path | None = None) -> dict[s
         if identity in identities:
             raise ReviewError("second review identity must be distinct")
         identities.add(identity)
+        records.append(record)
+
+    if len(records) >= 2:
+        _verify_blinded_second_review_input(
+            review_dir,
+            packet_sha256=str(expected_hash),
+            first_review=records[0].raw,
+            second_review=records[1].raw,
+        )
 
     return {
         "ok": True,

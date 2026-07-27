@@ -1,0 +1,34 @@
+{
+  "attempt_id": "airborne--loop_closure_pass--002",
+  "budget": 0.7032,
+  "candidate_sha256": "92439bbb56e9f64905898135993978814fc447f2c49c9ddd4a12e0cb23545d37",
+  "caveats": [
+    "displacement_pass is undecidable \u2014 this control does not evidence that dimension"
+  ],
+  "fixed_question": "Final\u2192first reads as deliberate continuous loop vs pose jump / identity break?",
+  "frames": [
+    3,
+    0
+  ],
+  "gate": "loop_closure_pass",
+  "hard_fail_boundary": 0.7529,
+  "metric": 0.7529,
+  "model_identity": "cursor-grok-4.5",
+  "model_version": "grok-4.5",
+  "observed_feature": "f3 collapses to a fragmented partial wing (occ 30 vs 76/59/70); final\u2192first occupancy change ratio ~0.78 shows a pose/identity break rather than a deliberate continuous wingbeat loop. Binding-good 04-bat-flap keeps subject scale across the cycle.",
+  "packet_sha256": "9e656a48452839c2d402e270a3c7a1602d8999960f5792fcc33e06ee6872684a",
+  "promotion_id": "promo--airborne--loop_closure_pass",
+  "rationale": "Under the loop_closure_pass question, final\u2192first does not read as a deliberate continuous loop: f3 is an identity break and the loop jump is large. Metric equals C (0.7529). Displacement caveat is noted but this verdict does not rely on the undecidable displacement dimension \u2014 only on final\u2192first occupancy continuity. Admissible hard-fail reference for airborne/loop_closure_pass; status stays PENDING_VERIFICATION.",
+  "reference_hashes": {
+    "budget_binding_good": "d9a5e52d1aa0eca6d3d964c70bee4ff802e39c1c876876c3fec11a7339e5f629",
+    "proposed_hard_fail_reference": "92439bbb56e9f64905898135993978814fc447f2c49c9ddd4a12e0cb23545d37"
+  },
+  "review_id": "review--01",
+  "reviewer_identity": "cursor-agent/issue-54/review-01",
+  "schema": "gate-review-audit/0",
+  "second_review_triggers": [
+    "metric_at_or_beyond_midpoint"
+  ],
+  "timestamp": "2026-07-27T10:15:00+00:00",
+  "verdict": "APPROVE"
+}

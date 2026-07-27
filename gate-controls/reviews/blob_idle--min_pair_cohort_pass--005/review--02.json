@@ -1,0 +1,34 @@
+{
+  "attempt_id": "blob_idle--min_pair_cohort_pass--005",
+  "budget": 0.1199,
+  "candidate_sha256": "a4d78206e746f490f64dd60a3a7171a1c955a905701b2d3231986969d4640155",
+  "caveats": [],
+  "fixed_question": "Same subject, one coherent animation despite no sufficiently similar pair?",
+  "frames": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "gate": "min_pair_cohort_pass",
+  "hard_fail_boundary": 0.1371,
+  "metric": 0.1371,
+  "model_identity": "cursor-grok-4.5",
+  "model_version": "4.5",
+  "observed_feature": "Full Frame row is one translucent green blob with eyes/highlight. Occupancy diffs 0\u21921, 1\u21922, 2\u21923 are all large arches; closest frames still diverge. Motion reads as intentional idle variation, not identity swap.",
+  "packet_sha256": "cd31890d60a39e05144eccedca3d1283de5cfe5e0615edfeda59a6d87e26a830",
+  "promotion_id": "promo--blob_idle--min_pair_cohort_pass",
+  "rationale": "Min-pair fixed question: coherent same-subject animation without a sufficiently similar pair. Metric equals hard-fail boundary C above budget 0.1199. Visual panel confirms the cohort failure mode without collateral identity/palette break versus binding-good 13-ooze-idle. APPROVE proposed hard-fail reference.",
+  "reference_hashes": {
+    "budget_binding_good": "072a3ab1b91c322acdf79acdff14a0919543d2dce82b6797ceb8e8e49154b1c3",
+    "proposed_hard_fail_reference": "a4d78206e746f490f64dd60a3a7171a1c955a905701b2d3231986969d4640155"
+  },
+  "review_id": "review--02",
+  "reviewer_identity": "cursor-agent/issue-51/review-02",
+  "schema": "gate-review-audit/0",
+  "second_review_triggers": [
+    "metric_at_or_beyond_midpoint"
+  ],
+  "timestamp": "2026-07-27T10:30:00+00:00",
+  "verdict": "APPROVE"
+}

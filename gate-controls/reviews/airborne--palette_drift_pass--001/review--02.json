@@ -1,0 +1,34 @@
+{
+  "attempt_id": "airborne--palette_drift_pass--001",
+  "budget": 0.2423,
+  "candidate_sha256": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd",
+  "caveats": [],
+  "fixed_question": "Intentional subject/Motion-class change (e.g. emissive flicker) vs unintended recolour?",
+  "frames": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "gate": "palette_drift_pass",
+  "hard_fail_boundary": 0.2793,
+  "metric": 0.2793,
+  "model_identity": "cursor-grok-4.5",
+  "model_version": "4.5",
+  "observed_feature": "Wholesale per-frame recolour of same airborne subject (hat/body hues swap while pose/silhouette hold)",
+  "packet_sha256": "d7537be8f0ac7a7e7ef97939ba31ebef34261c70988f443ab65f4e09d75ac0b3",
+  "promotion_id": "promo--airborne--palette_drift_pass",
+  "rationale": "Candidate and proposed_hard_fail_reference share raw_sha256 and sit at metric=hard_fail_boundary 0.2793 (above budget 0.2423). Across f0\u2013f3 the same pickaxe-bearing figure keeps pose/silhouette while hat and clothing hues jump (blue/green \u2192 yellow/red \u2192 white/purple \u2192 black/orange). The quantized_palette_histogram panels show correspondingly distinct dominant bins each frame, unlike the budget_binding_good moth strip whose palette stays stable. That pattern is unintended recolour, not intentional subject or motion-class change such as localized emissive flicker. Valid hard-fail reference for palette_drift.",
+  "reference_hashes": {
+    "budget_binding_good": "28b75b9a67b671d47ec5eedddc72095da559950ad2622e0d202a4eb03747e821",
+    "proposed_hard_fail_reference": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd"
+  },
+  "review_id": "review--02",
+  "reviewer_identity": "cursor-agent/issue-55/review-02",
+  "schema": "gate-review-audit/0",
+  "second_review_triggers": [
+    "metric_at_or_beyond_midpoint"
+  ],
+  "timestamp": "2026-07-27T10:17:33+00:00",
+  "verdict": "APPROVE"
+}

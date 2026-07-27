@@ -1,0 +1,32 @@
+{
+  "attempt_id": "swing--silhouette_budget--002",
+  "budget": 0.586,
+  "candidate_sha256": "6c6d2450c1c91e26e4b3bba2b07657ce04a514cea4e3ee2017532b45a7cdb96a",
+  "caveats": [],
+  "fixed_question": "Intentional pose transition vs identity drift / framing / translation?",
+  "frames": [
+    1,
+    2
+  ],
+  "gate": "silhouette_budget",
+  "hard_fail_boundary": 0.6067,
+  "metric": 0.6067,
+  "model_identity": "cursor-grok-4.5",
+  "model_version": "2026-07-27",
+  "observed_feature": "Occupancy difference peaks on the 1\u21922 transition where Frame 2 is laterally shifted relative to the Manifest-good swing; red occupancy mass shows framing/translation rather than a new pose articulation. Other adjacent pairs remain swing-like. Isolation of silhouette_budget is visually confirmed; suitable proposed hard-fail reference at C.",
+  "packet_sha256": "90aa38543dc83cddb62bde2b3ed7033f1521c01244201fe64d4627f87dbe8c3c",
+  "promotion_id": "promo--swing--silhouette_budget",
+  "rationale": "Fixed question: intentional pose vs identity drift / framing / translation. Compared against budget_binding_good (06-miner-swing), the candidate keeps the same miner-swing subject and palette but Frame 2 is translated (+3 cols per provenance). The Gate-specific occupancy panel flags that translation as the silhouette failure (metric 0.6067 = C 0.6067, above Budget 0.586) while dimension_parity, baseline_row_stable, and palette_drift_pass remain clean. This is exactly the silhouette hard-fail mode the Gate should catch, so the PROMOTION_VERIFICATION subject is approved as the proposed hard-fail reference. Reference_hashes bind candidate==proposed_hard_fail_reference; promotion remains PENDING_VERIFICATION.",
+  "reference_hashes": {
+    "budget_binding_good": "fba96b27a7ff13568aba6c04b01adacca65b49a3ef010acec0360738972ee7bb",
+    "proposed_hard_fail_reference": "6c6d2450c1c91e26e4b3bba2b07657ce04a514cea4e3ee2017532b45a7cdb96a"
+  },
+  "review_id": "review--01",
+  "reviewer_identity": "cursor-agent-review-01",
+  "schema": "gate-review-audit/0",
+  "second_review_triggers": [
+    "metric_at_or_beyond_midpoint"
+  ],
+  "timestamp": "2026-07-27T10:10:42+00:00",
+  "verdict": "APPROVE"
+}

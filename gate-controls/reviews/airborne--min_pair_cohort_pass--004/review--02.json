@@ -1,0 +1,36 @@
+{
+  "attempt_id": "airborne--min_pair_cohort_pass--004",
+  "budget": 0.3013,
+  "candidate_sha256": "fd464b8cf471e375311a47fae800a6e13a7e4a098512d394d337dd0fe9320060",
+  "caveats": [
+    "displacement_pass is undecidable \u2014 this control does not evidence that dimension"
+  ],
+  "fixed_question": "Same subject, one coherent animation despite no sufficiently similar pair?",
+  "frames": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "gate": "min_pair_cohort_pass",
+  "hard_fail_boundary": 0.3333,
+  "metric": 0.3333,
+  "model_identity": "cursor-grok-4.5",
+  "model_version": "4.5",
+  "observed_feature": "four unrelated purple sprites (bat, grid-moth, flame-wisp, jagged wing) with large occupancy diffs 0->1,1->2,2->3",
+  "packet_sha256": "9c3d014eefef2d5ca2ad5821b680660b1e6777facb20ebf3812e95aa3f45e599",
+  "promotion_id": "promo--airborne--min_pair_cohort_pass",
+  "rationale": "Fixed question asks whether this is the same subject in one coherent animation despite no sufficiently similar pair. Occupancy_difference shows dense red change clusters on every adjacent transition; frame content is visually distinct subjects (spread-wing bat; square-grid moth; simple flame/wisp; jagged winged form), not pose variation of one airborne body. Contrast with budget_binding_good (17-wisp-float) same-subject float. Metric equals hard-fail boundary C (0.3333) and proposed_hard_fail_reference shares candidate raw hash. displacement_pass undecidable is caveated and not relied on; defect for min_pair is decidable and real. Valid hard-fail reference \u2014 APPROVE.",
+  "reference_hashes": {
+    "budget_binding_good": "58fa2edbb6f70a80486f07c933f58c0abca842ba847751522f71703f4960a8db",
+    "proposed_hard_fail_reference": "fd464b8cf471e375311a47fae800a6e13a7e4a098512d394d337dd0fe9320060"
+  },
+  "review_id": "review--02",
+  "reviewer_identity": "cursor-agent/issue-55/review-02",
+  "schema": "gate-review-audit/0",
+  "second_review_triggers": [
+    "metric_at_or_beyond_midpoint"
+  ],
+  "timestamp": "2026-07-27T10:17:31+00:00",
+  "verdict": "APPROVE"
+}

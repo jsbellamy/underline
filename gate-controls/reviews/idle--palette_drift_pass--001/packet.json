@@ -1,0 +1,34 @@
+{
+  "attempt_id": "idle--palette_drift_pass--001",
+  "budget": 0.1974,
+  "budget_binding_good": {
+    "path": "prototype/strip-coherence/inbox/11-dwarf-idle.png",
+    "raw_sha256": "21902812dea04a37cac1f6f8d39736e3178ea943add6b2a66e7ca7af79433180",
+    "role": "budget_binding_good"
+  },
+  "candidate": {
+    "path": "gate-controls/raw/idle--palette_drift_pass--001.png",
+    "raw_sha256": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd",
+    "role": "candidate"
+  },
+  "caveats": [],
+  "fixed_question": "Intentional subject/Motion-class change (e.g. emissive flicker) vs unintended recolour?",
+  "gate": "palette_drift_pass",
+  "gate_control": null,
+  "hard_fail_boundary": 0.2793,
+  "metric": 0.2793,
+  "motion_class": "idle",
+  "no_autonomous_hard_fail": false,
+  "no_autonomous_hard_fail_reason": null,
+  "packet_kind": "PROMOTION_VERIFICATION",
+  "packet_sha256": "daf58b999d4377b302c7fcd41a7998be227dfd935fc89b756f3f9c3cabb14f4f",
+  "panel_kind": "quantized_palette_histogram",
+  "promotion_id": "promo--idle--palette_drift_pass",
+  "promotion_status": "PENDING_VERIFICATION",
+  "proposed_hard_fail_reference": {
+    "path": "gate-controls/raw/idle--palette_drift_pass--001.png",
+    "raw_sha256": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd",
+    "role": "proposed_hard_fail_reference"
+  },
+  "schema": "gate-review-packet/0"
+}

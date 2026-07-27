@@ -1,0 +1,34 @@
+{
+  "attempt_id": "blob_idle--min_pair_cohort_pass--005",
+  "budget": 0.1199,
+  "candidate_sha256": "a4d78206e746f490f64dd60a3a7171a1c955a905701b2d3231986969d4640155",
+  "caveats": [],
+  "fixed_question": "Same subject, one coherent animation despite no sufficiently similar pair?",
+  "frames": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "gate": "min_pair_cohort_pass",
+  "hard_fail_boundary": 0.1371,
+  "metric": 0.1371,
+  "model_identity": "cursor-grok-4.5",
+  "model_version": "4.5",
+  "observed_feature": "Four micro-poses of one green slime (neutral, squash, stretch, lean). Every adjacent occupancy panel shows a substantial red difference band; no near-duplicate pair. Subject/palette identity is constant.",
+  "packet_sha256": "cd31890d60a39e05144eccedca3d1283de5cfe5e0615edfeda59a6d87e26a830",
+  "promotion_id": "promo--blob_idle--min_pair_cohort_pass",
+  "rationale": "Promotion-verification of hard-fail control at C=0.1371. Fixed question: same subject, one coherent animation despite no sufficiently similar pair. Binding-good 13-ooze-idle has tighter cohort neighbors; this candidate keeps one blob identity while every pair stays visibly dissimilar \u2014 the min-pair cohort defect the Gate measures. APPROVE as proposed hard-fail reference.",
+  "reference_hashes": {
+    "budget_binding_good": "072a3ab1b91c322acdf79acdff14a0919543d2dce82b6797ceb8e8e49154b1c3",
+    "proposed_hard_fail_reference": "a4d78206e746f490f64dd60a3a7171a1c955a905701b2d3231986969d4640155"
+  },
+  "review_id": "review--01",
+  "reviewer_identity": "cursor-agent/issue-51/review-01",
+  "schema": "gate-review-audit/0",
+  "second_review_triggers": [
+    "metric_at_or_beyond_midpoint"
+  ],
+  "timestamp": "2026-07-27T10:25:00+00:00",
+  "verdict": "APPROVE"
+}

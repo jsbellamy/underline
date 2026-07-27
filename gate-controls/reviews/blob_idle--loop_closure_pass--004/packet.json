@@ -1,0 +1,34 @@
+{
+  "attempt_id": "blob_idle--loop_closure_pass--004",
+  "budget": 0.3906,
+  "budget_binding_good": {
+    "path": "prototype/strip-coherence/inbox/02-slime-idle.png",
+    "raw_sha256": "2ed2fad5410131b71b0ed36cd12a902378d3130938e0522f568a70037d73f7fb",
+    "role": "budget_binding_good"
+  },
+  "candidate": {
+    "path": "gate-controls/raw/blob_idle--loop_closure_pass--004.png",
+    "raw_sha256": "f211aa49c7f82ace3b86f3ea28bdb9b98d734610c504fef269f7498b15126461",
+    "role": "candidate"
+  },
+  "caveats": [],
+  "fixed_question": "Final\u2192first reads as deliberate continuous loop vs pose jump / identity break?",
+  "gate": "loop_closure_pass",
+  "gate_control": null,
+  "hard_fail_boundary": 0.4516,
+  "metric": 0.4516,
+  "motion_class": "blob_idle",
+  "no_autonomous_hard_fail": false,
+  "no_autonomous_hard_fail_reason": null,
+  "packet_kind": "PROMOTION_VERIFICATION",
+  "packet_sha256": "bac311b05e67f3b68a9e41e1d5c9a4bba4694f5b5cfb0405780dd626dca75605",
+  "panel_kind": "occupancy_difference",
+  "promotion_id": "promo--blob_idle--loop_closure_pass",
+  "promotion_status": "PENDING_VERIFICATION",
+  "proposed_hard_fail_reference": {
+    "path": "gate-controls/raw/blob_idle--loop_closure_pass--004.png",
+    "raw_sha256": "f211aa49c7f82ace3b86f3ea28bdb9b98d734610c504fef269f7498b15126461",
+    "role": "proposed_hard_fail_reference"
+  },
+  "schema": "gate-review-packet/0"
+}

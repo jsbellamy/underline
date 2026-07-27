@@ -1,0 +1,34 @@
+{
+  "attempt_id": "blob_idle--palette_drift_pass--001",
+  "budget": 0.2377,
+  "candidate_sha256": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd",
+  "caveats": [],
+  "fixed_question": "Intentional subject/Motion-class change (e.g. emissive flicker) vs unintended recolour?",
+  "frames": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "gate": "palette_drift_pass",
+  "hard_fail_boundary": 0.2793,
+  "metric": 0.2793,
+  "model_identity": "cursor-grok-4.5",
+  "model_version": "4.5",
+  "observed_feature": "per-frame wholesale subject recolour with pose and framing held; quantized palette histograms diverge across f0\u2013f3",
+  "packet_sha256": "90ce10e443156c347885b296d554e7190edfb0e5538a9d8027035de5675ab9d6",
+  "promotion_id": "promo--blob_idle--palette_drift_pass",
+  "rationale": "Fixed question: intentional subject/Motion-class change vs unintended recolour? Candidate holds the same grounded idle pose across frames (silhouette/loop/min-pair all pass) while palette histograms show a full costume/body recolour each frame \u2014 not emissive flicker or a Motion-class subject change. Metric 0.2793 sits at hard-fail boundary C (budget 0.2377). Compared with Budget-binding good 13-ooze-idle (stable green ooze palette), this is a clean unintended-recolour isolation. Approve as the proposed palette_drift_pass hard-fail reference; Promotion remains PENDING_VERIFICATION.",
+  "reference_hashes": {
+    "budget_binding_good": "072a3ab1b91c322acdf79acdff14a0919543d2dce82b6797ceb8e8e49154b1c3",
+    "proposed_hard_fail_reference": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd"
+  },
+  "review_id": "review--01",
+  "reviewer_identity": "cursor-agent/issue-52/review-01",
+  "schema": "gate-review-audit/0",
+  "second_review_triggers": [
+    "metric_at_or_beyond_midpoint"
+  ],
+  "timestamp": "2026-07-27T10:10:00+00:00",
+  "verdict": "APPROVE"
+}
