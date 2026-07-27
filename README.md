@@ -63,6 +63,17 @@ The verdicts are `PASS`, `EDIT`, and `UNCERTAIN`; an agent reports `UNCERTAIN`
 instead of inventing intent. The profile guides visual judgment but does not
 add deterministic Gates or replace `check`.
 
+Production first-room assets use subject-specific profiles:
+
+| Profile id | Intended production asset |
+|------------|---------------------------|
+| `dwarf-miner` | First-room player miner Strips (`idle`, `walk`, `swing`) |
+| `lantern` | First-room hanging lantern `emissive` Strip |
+| `miner` | Corpus motion and pipeline evidence Strips (unchanged) |
+
+The generic `miner` profile remains for corpus Strips and existing `/0` bundles.
+The validator does not recognize the semantic questions in any profile.
+
 Aseprite is optional: an operator may edit Polished Frames in Aseprite or by
 direct Cell-coordinate changes to the `polished/` PNG sequence. Automatic accent
 recognition, Aseprite project generation or automation, original raster

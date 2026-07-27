@@ -12,6 +12,7 @@ import sys
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 from PIL import Image
 
 from pipeline.final_polish import initialize_bundle
@@ -24,6 +25,7 @@ INBOX = ROOT / "prototype" / "strip-coherence" / "inbox"
 PASS_STRIP = INBOX / "01-miner-idle.png"
 FAIL_STRIP = INBOX / "08-NEG-identity-drift.png"
 WALK_STRIP = INBOX / "05-miner-walk.png"
+LANTERN_STRIP = INBOX / "14-lantern-flicker.png"
 LOGICAL_SIZE = (DEFAULT_LAYOUT.frame_w, DEFAULT_LAYOUT.frame_h)
 FRAME_COUNT = DEFAULT_LAYOUT.frame_count
 
@@ -217,6 +219,69 @@ def test_init_with_profile_binds_profile_in_json_result(tmp_path: Path) -> None:
         "id": "miner",
         "sha256": sha256_file(bundle / "profile.json"),
     }
+
+
+@pytest.mark.parametrize(
+    ("profile_id", "strip", "motion_class"),
+    [
+        ("dwarf-miner", PASS_STRIP, "idle"),
+        ("lantern", LANTERN_STRIP, "emissive"),
+    ],
+)
+def test_init_with_production_profile_binds_profile_in_json_result(
+    tmp_path: Path,
+    profile_id: str,
+    strip: Path,
+    motion_class: str,
+) -> None:
+    bundle = tmp_path / "bundle"
+    result = _run_module(
+        [
+            "init",
+            str(strip),
+            "--motion-class",
+            motion_class,
+            "--out",
+            str(bundle),
+            "--polish-profile",
+            profile_id,
+            "--json",
+        ]
+    )
+    assert result.returncode == 0, result.stderr
+    data = json.loads(result.stdout)
+    assert data["polish_profile"] == {
+        "id": profile_id,
+        "sha256": sha256_file(bundle / "profile.json"),
+    }
+
+
+@pytest.mark.parametrize(
+    ("profile_id", "strip", "motion_class", "motion_ids"),
+    [
+        ("dwarf-miner", WALK_STRIP, "walk", ["alternating_legs", "stable_torso"]),
+        ("lantern", LANTERN_STRIP, "emissive", ["emission_inside_lamp", "no_terrain_halo"]),
+    ],
+)
+def test_brief_json_selects_production_profile_motion_questions(
+    tmp_path: Path,
+    profile_id: str,
+    strip: Path,
+    motion_class: str,
+    motion_ids: list[str],
+) -> None:
+    bundle = tmp_path / "bundle"
+    initialize_bundle(strip, motion_class, bundle, polish_profile=profile_id)
+    before = _bundle_fingerprint(bundle)
+
+    result = _run_module(["brief", str(bundle), "--json"])
+
+    assert result.returncode == 0, result.stderr
+    data = json.loads(result.stdout)
+    assert data["profile"]["id"] == profile_id
+    assert data["motion_class"] == motion_class
+    assert [row["id"] for row in data["motion_questions"]] == motion_ids
+    assert _bundle_fingerprint(bundle) == before
 
 
 def test_init_unknown_profile_exit_2_without_partial_bundle(tmp_path: Path) -> None:
