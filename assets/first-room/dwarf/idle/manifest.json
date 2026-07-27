@@ -1,0 +1,49 @@
+{
+  "draft_frames": [
+    {
+      "index": 0,
+      "relative_path": "draft/frame-0.png",
+      "sha256": "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9"
+    },
+    {
+      "index": 1,
+      "relative_path": "draft/frame-1.png",
+      "sha256": "ca10966d5a3f7e02d890f9ba99720fe66b5871723d4bcb11df64396e1666669b"
+    },
+    {
+      "index": 2,
+      "relative_path": "draft/frame-2.png",
+      "sha256": "9f2006eb111cc2f545f3a9eb32d18b2c193aad4c268557cf0f9540a92fae1072"
+    },
+    {
+      "index": 3,
+      "relative_path": "draft/frame-3.png",
+      "sha256": "e973993b80f49f36c99b59b516ab7a352bf290e1f792505e262ca7b2fe58b4ab"
+    }
+  ],
+  "layout": {
+    "frame_count": 4,
+    "frame_h": 24,
+    "frame_order": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "frame_w": 16,
+    "gutter": 2
+  },
+  "motion_class": "idle",
+  "polish_profile": {
+    "id": "dwarf-miner",
+    "relative_path": "profile.json",
+    "schema": "polish-profile/0",
+    "sha256": "0e60aee8d4a630bad6fdabc8d2525c8ae9e2cda8ceab92e37a1dd972a4fcedcf"
+  },
+  "provider": {
+    "original_filename": "attempt1.png",
+    "relative_path": "provider/source.png",
+    "sha256": "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3"
+  },
+  "schema": "final-polish-bundle/1"
+}
