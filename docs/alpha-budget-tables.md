@@ -30,9 +30,13 @@ Runtime `MOTION_CLASSES` project these α-Budgets from
 `ceil₀.₀₁(worst-good)+0.02` estimator remains available only via
 `npm run prototype:strip:derive-budgets`.
 
-Four-place ceiling uses Decimal quantization (`prototype/strip-coherence/numeric_policy.py`)
+Four-place ceiling uses Decimal quantization (`pipeline/numeric_policy.py`)
 so exact four-place values such as walk loop control `0.2795` are not pushed to `0.2796`
 by IEEE float.
+
+All **17** Separated Promotions in `gate-controls/manifest.json` are **`ACTIVE`**;
+none remain pending verification. Budget derivation and hard-fail boundaries use
+only active Promotions.
 
 ## Separated pairs
 
