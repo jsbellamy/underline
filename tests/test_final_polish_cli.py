@@ -1,4 +1,4 @@
-"""Subprocess proof for pipeline.final_polish_cli (issue #96 C1–C6)."""
+"""Subprocess proof for pipeline.final_polish_cli (issues #96 and #101)."""
 
 from __future__ import annotations
 
@@ -23,6 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 INBOX = ROOT / "prototype" / "strip-coherence" / "inbox"
 PASS_STRIP = INBOX / "01-miner-idle.png"
 FAIL_STRIP = INBOX / "08-NEG-identity-drift.png"
+WALK_STRIP = INBOX / "05-miner-walk.png"
 LOGICAL_SIZE = (DEFAULT_LAYOUT.frame_w, DEFAULT_LAYOUT.frame_h)
 FRAME_COUNT = DEFAULT_LAYOUT.frame_count
 
@@ -195,6 +196,48 @@ def test_init_pass_json_exit_0(tmp_path: Path) -> None:
     assert "structural" in data
 
 
+def test_init_with_profile_binds_profile_in_json_result(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    result = _run_module(
+        [
+            "init",
+            str(PASS_STRIP),
+            "--motion-class",
+            "idle",
+            "--out",
+            str(bundle),
+            "--polish-profile",
+            "miner",
+            "--json",
+        ]
+    )
+    assert result.returncode == 0, result.stderr
+    data = json.loads(result.stdout)
+    assert data["polish_profile"] == {
+        "id": "miner",
+        "sha256": sha256_file(bundle / "profile.json"),
+    }
+
+
+def test_init_unknown_profile_exit_2_without_partial_bundle(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    result = _run_module(
+        [
+            "init",
+            str(PASS_STRIP),
+            "--motion-class",
+            "idle",
+            "--out",
+            str(bundle),
+            "--polish-profile",
+            "missing",
+        ]
+    )
+    assert result.returncode == 2
+    assert "unknown Polish profile" in result.stderr
+    assert not bundle.exists()
+
+
 def test_init_review_strip_json_exit_3(tmp_path: Path, capsys) -> None:
     bundle = tmp_path / "bundle"
     base = ingest_strip_provider(PASS_STRIP, _corpus_layout(), motion_class="idle")
@@ -314,6 +357,53 @@ def test_check_pass_exit_0(tmp_path: Path) -> None:
     result = _run_module(["check", str(bundle)])
     assert result.returncode == 0, result.stderr
     assert "Overall  PASS" in result.stdout
+
+
+def test_brief_json_is_read_only_and_selects_walk_questions(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    initialize_bundle(WALK_STRIP, "walk", bundle, polish_profile="miner")
+    before = _bundle_fingerprint(bundle)
+
+    result = _run_module(["brief", str(bundle), "--json"])
+
+    assert result.returncode == 0, result.stderr
+    data = json.loads(result.stdout)
+    assert data["profile"]["id"] == "miner"
+    assert data["motion_class"] == "walk"
+    assert [row["id"] for row in data["motion_questions"]] == [
+        "alternating_legs",
+        "stable_belt_buckle",
+    ]
+    assert data["verdicts"] == ["PASS", "EDIT", "UNCERTAIN"]
+    assert data["fixed_questions"]
+    assert data["editing_rules"]
+    assert data["audit_workflow"]
+    assert _bundle_fingerprint(bundle) == before
+
+
+def test_brief_human_output_is_actionable(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    initialize_bundle(WALK_STRIP, "walk", bundle, polish_profile="miner")
+
+    result = _run_module(["brief", str(bundle)])
+
+    assert result.returncode == 0, result.stderr
+    assert "Profile   miner" in result.stdout
+    assert "Verdicts  PASS, EDIT, UNCERTAIN" in result.stdout
+    assert "identity_anchors:" in result.stdout
+    assert "alternating_legs:" in result.stdout
+    assert "Editing rules" in result.stdout
+    assert "Audit workflow" in result.stdout
+
+
+def test_brief_requires_a_profiled_bundle(tmp_path: Path) -> None:
+    bundle = _init_bundle(tmp_path)
+
+    result = _run_module(["brief", str(bundle), "--json"])
+
+    assert result.returncode == 2
+    assert "--polish-profile" in result.stderr
+    assert not result.stdout
 
 
 def test_check_fail_exit_1(tmp_path: Path) -> None:

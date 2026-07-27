@@ -1,4 +1,4 @@
-"""Behavioral proof for pipeline.final_polish (issue #95 C1–C8)."""
+"""Behavioral proof for pipeline.final_polish (issues #95 and #101)."""
 
 from __future__ import annotations
 
@@ -16,11 +16,13 @@ from pipeline.final_polish import (
     BUNDLE_SCHEMA,
     REPORT_SCHEMA,
     BundleExistsError,
+    FinalPolishError,
     InitializationRejectedError,
     InvalidBundleError,
     check_bundle,
     finalize_bundle,
     initialize_bundle,
+    load_polish_brief,
 )
 from pipeline.gate_evidence import sha256_file
 from pipeline.strip import DEFAULT_LAYOUT, IngestResult, StripLayout, ingest_strip_provider
@@ -29,6 +31,7 @@ ROOT = Path(__file__).resolve().parents[1]
 INBOX = ROOT / "prototype" / "strip-coherence" / "inbox"
 PASS_STRIP = INBOX / "01-miner-idle.png"
 FAIL_STRIP = INBOX / "08-NEG-identity-drift.png"
+WALK_STRIP = INBOX / "05-miner-walk.png"
 LOGICAL_SIZE = (DEFAULT_LAYOUT.frame_w, DEFAULT_LAYOUT.frame_h)
 FRAME_COUNT = DEFAULT_LAYOUT.frame_count
 
@@ -102,6 +105,166 @@ def test_passing_corpus_strip_initializes_bundle(tmp_path: Path) -> None:
     assert manifest["layout"]["frame_w"] == 16
     assert manifest["layout"]["frame_h"] == 24
     assert manifest["layout"]["frame_count"] == 4
+
+
+def test_profiled_bundle_embeds_hash_bound_miner_profile(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    initialize_bundle(PASS_STRIP, "idle", bundle, polish_profile="miner")
+
+    manifest = json.loads((bundle / "manifest.json").read_text())
+    profile = json.loads((bundle / "profile.json").read_text())
+    assert manifest["schema"] == "final-polish-bundle/1"
+    assert manifest["polish_profile"] == {
+        "schema": "polish-profile/0",
+        "id": "miner",
+        "relative_path": "profile.json",
+        "sha256": sha256_file(bundle / "profile.json"),
+    }
+    assert profile["schema"] == "polish-profile/0"
+    assert profile["id"] == "miner"
+
+
+def test_miner_profile_declares_fixed_questions_and_motion_overrides(
+    tmp_path: Path,
+) -> None:
+    bundle = tmp_path / "bundle"
+    initialize_bundle(PASS_STRIP, "idle", bundle, polish_profile="miner")
+    profile = json.loads((bundle / "profile.json").read_text())
+
+    assert profile["verdicts"] == ["PASS", "EDIT", "UNCERTAIN"]
+    assert [row["id"] for row in profile["fixed_questions"]] == [
+        "identity_anchors",
+        "semantic_separation",
+        "temporal_consistency",
+        "native_scale_contrast",
+        "outline_continuity",
+    ]
+    assert [row["id"] for row in profile["motion_overrides"]["walk"]] == [
+        "alternating_legs",
+        "stable_belt_buckle",
+    ]
+    assert [row["id"] for row in profile["motion_overrides"]["swing"]] == [
+        "face_hand_separation",
+        "hand_tool_separation",
+        "readable_tool_arc",
+    ]
+    assert profile["occlusion_rule"]
+    assert profile["editing_rules"]
+    assert profile["audit_workflow"]
+
+
+def test_tampered_embedded_profile_is_an_invalid_bundle(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    initialize_bundle(PASS_STRIP, "idle", bundle, polish_profile="miner")
+    profile = json.loads((bundle / "profile.json").read_text())
+    profile["description"] = "tampered"
+    (bundle / "profile.json").write_text(json.dumps(profile) + "\n")
+
+    with pytest.raises(InvalidBundleError) as exc:
+        check_bundle(bundle)
+    assert exc.value.reason_code == "profile_hash_mismatch"
+
+
+@pytest.mark.parametrize(
+    ("mutation", "reason_code"),
+    [
+        ("missing", "missing_profile"),
+        ("malformed", "invalid_profile"),
+        ("schema", "profile_identity_mismatch"),
+        ("id", "profile_identity_mismatch"),
+        ("content", "invalid_profile"),
+    ],
+)
+def test_invalid_embedded_profiles_fail_closed(
+    tmp_path: Path,
+    mutation: str,
+    reason_code: str,
+) -> None:
+    bundle = tmp_path / "bundle"
+    initialize_bundle(PASS_STRIP, "idle", bundle, polish_profile="miner")
+    profile_path = bundle / "profile.json"
+    manifest_path = bundle / "manifest.json"
+
+    if mutation == "missing":
+        profile_path.unlink()
+    elif mutation == "malformed":
+        profile_path.write_text("{not-json")
+    else:
+        profile = json.loads(profile_path.read_text())
+        if mutation == "content":
+            profile.pop("fixed_questions")
+        else:
+            profile[mutation] = "wrong"
+        profile_path.write_text(json.dumps(profile) + "\n")
+
+    if mutation != "missing":
+        manifest = json.loads(manifest_path.read_text())
+        manifest["polish_profile"]["sha256"] = sha256_file(profile_path)
+        manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+
+    with pytest.raises(InvalidBundleError) as exc:
+        check_bundle(bundle)
+    assert exc.value.reason_code == reason_code
+
+
+def test_unknown_profile_creates_no_partial_bundle(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    with pytest.raises(FinalPolishError) as exc:
+        initialize_bundle(PASS_STRIP, "idle", bundle, polish_profile="missing")
+    assert exc.value.reason_code == "unknown_polish_profile"
+    assert not bundle.exists()
+
+
+def test_existing_v0_bundle_remains_check_compatible(tmp_path: Path) -> None:
+    bundle = _init_passing_bundle(tmp_path)
+    manifest_path = bundle / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["schema"] = "final-polish-bundle/0"
+    manifest.pop("polish_profile")
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+
+    assert check_bundle(bundle).outcome == "PASS"
+
+
+def test_check_and_final_report_bind_embedded_profile(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    initialize_bundle(PASS_STRIP, "idle", bundle, polish_profile="miner")
+    result = check_bundle(bundle)
+    profile_hash = sha256_file(bundle / "profile.json")
+    assert result.profile_id == "miner"
+    assert result.profile_sha256 == profile_hash
+
+    report = json.loads(finalize_bundle(bundle).read_text())
+    assert report["polish_profile"] == {
+        "id": "miner",
+        "sha256": profile_hash,
+    }
+
+
+def test_polish_brief_selects_fixed_questions_and_walk_overrides(
+    tmp_path: Path,
+) -> None:
+    bundle = tmp_path / "bundle"
+    initialize_bundle(WALK_STRIP, "walk", bundle, polish_profile="miner")
+
+    brief = load_polish_brief(bundle)
+    assert brief["profile"]["id"] == "miner"
+    assert brief["profile"]["sha256"] == sha256_file(bundle / "profile.json")
+    assert brief["motion_class"] == "walk"
+    assert [row["id"] for row in brief["fixed_questions"]] == [
+        "identity_anchors",
+        "semantic_separation",
+        "temporal_consistency",
+        "native_scale_contrast",
+        "outline_continuity",
+    ]
+    assert [row["id"] for row in brief["motion_questions"]] == [
+        "alternating_legs",
+        "stable_belt_buckle",
+    ]
+    assert brief["editing_rules"]
+    assert brief["audit_workflow"]
+    assert brief["verdicts"] == ["PASS", "EDIT", "UNCERTAIN"]
 
 
 def test_fail_strip_creates_nothing(tmp_path: Path) -> None:

@@ -28,10 +28,15 @@ from pipeline.strip import (
     load_provider_frames,
 )
 
-BUNDLE_SCHEMA = "final-polish-bundle/0"
+BUNDLE_SCHEMA = "final-polish-bundle/1"
+BUNDLE_SCHEMAS = frozenset({"final-polish-bundle/0", BUNDLE_SCHEMA})
+PROFILE_SCHEMA = "polish-profile/0"
 REPORT_SCHEMA = "final-polish-report/0"
 
 EXPECTED_FRAME_NAMES = tuple(f"frame-{index}.png" for index in range(DEFAULT_LAYOUT.frame_count))
+_REPO_ROOT = Path(__file__).resolve().parents[1]
+_PROFILE_ROOT = _REPO_ROOT / "polish-profiles"
+_PROFILE_REGISTRY = {"miner": _PROFILE_ROOT / "miner.json"}
 
 
 class FinalPolishError(ValueError):
@@ -98,6 +103,8 @@ class FinalPolishCheckResult:
     draft_hashes: tuple[str, ...]
     polished_hashes: tuple[str, ...]
     fingerprint: str
+    profile_id: str | None = None
+    profile_sha256: str | None = None
 
 
 def _corpus_layout() -> StripLayout:
@@ -266,9 +273,155 @@ def _load_manifest(bundle_root: Path) -> dict[str, Any]:
         doc = json.loads(path.read_text())
     except json.JSONDecodeError as exc:
         raise InvalidBundleError("invalid manifest JSON", reason_code="invalid_manifest") from exc
-    if doc.get("schema") != BUNDLE_SCHEMA:
+    if doc.get("schema") not in BUNDLE_SCHEMAS:
         raise InvalidBundleError("unknown bundle schema", reason_code="invalid_manifest")
     return doc
+
+
+def _profile_source(profile_id: str) -> Path:
+    path = _PROFILE_REGISTRY.get(profile_id)
+    if path is None or not path.is_file():
+        raise FinalPolishError(
+            f"unknown Polish profile: {profile_id!r}",
+            reason_code="unknown_polish_profile",
+        )
+    return path
+
+
+def _valid_question_list(value: object) -> bool:
+    if not isinstance(value, list) or not value:
+        return False
+    ids: list[str] = []
+    for row in value:
+        if not isinstance(row, dict):
+            return False
+        question_id = row.get("id")
+        question = row.get("question")
+        if not isinstance(question_id, str) or not question_id:
+            return False
+        if not isinstance(question, str) or not question:
+            return False
+        ids.append(question_id)
+    return len(ids) == len(set(ids))
+
+
+def _validate_profile_content(profile: dict[str, Any]) -> None:
+    if profile.get("verdicts") != ["PASS", "EDIT", "UNCERTAIN"]:
+        raise InvalidBundleError(
+            "embedded Polish profile has invalid verdicts",
+            reason_code="invalid_profile",
+        )
+    if not _valid_question_list(profile.get("fixed_questions")):
+        raise InvalidBundleError(
+            "embedded Polish profile has invalid fixed questions",
+            reason_code="invalid_profile",
+        )
+    overrides = profile.get("motion_overrides")
+    if not isinstance(overrides, dict) or any(
+        not _valid_question_list(questions) for questions in overrides.values()
+    ):
+        raise InvalidBundleError(
+            "embedded Polish profile has invalid Motion overrides",
+            reason_code="invalid_profile",
+        )
+    for key in ("editing_rules", "audit_workflow"):
+        value = profile.get(key)
+        if (
+            not isinstance(value, list)
+            or not value
+            or any(not isinstance(row, str) or not row for row in value)
+        ):
+            raise InvalidBundleError(
+                f"embedded Polish profile has invalid {key}",
+                reason_code="invalid_profile",
+            )
+    if not isinstance(profile.get("occlusion_rule"), str) or not profile["occlusion_rule"]:
+        raise InvalidBundleError(
+            "embedded Polish profile has invalid occlusion rule",
+            reason_code="invalid_profile",
+        )
+
+
+def _load_bound_profile(
+    bundle_root: Path,
+    manifest: dict[str, Any],
+) -> dict[str, Any] | None:
+    binding = manifest.get("polish_profile")
+    if binding is None:
+        return None
+    if not isinstance(binding, dict):
+        raise InvalidBundleError(
+            "invalid Polish profile binding",
+            reason_code="invalid_profile",
+        )
+    if binding.get("relative_path") != "profile.json":
+        raise InvalidBundleError(
+            "invalid Polish profile path",
+            reason_code="invalid_profile",
+        )
+    path = bundle_root / "profile.json"
+    if not path.is_file():
+        raise InvalidBundleError(
+            "missing embedded Polish profile",
+            reason_code="missing_profile",
+        )
+    if sha256_file(path) != binding.get("sha256"):
+        raise InvalidBundleError(
+            "embedded Polish profile hash does not match manifest",
+            reason_code="profile_hash_mismatch",
+        )
+    try:
+        profile = json.loads(path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as exc:
+        raise InvalidBundleError(
+            "invalid embedded Polish profile JSON",
+            reason_code="invalid_profile",
+        ) from exc
+    if not isinstance(profile, dict):
+        raise InvalidBundleError(
+            "embedded Polish profile must be an object",
+            reason_code="invalid_profile",
+        )
+    if (
+        profile.get("schema") != PROFILE_SCHEMA
+        or binding.get("schema") != PROFILE_SCHEMA
+        or profile.get("id") != binding.get("id")
+    ):
+        raise InvalidBundleError(
+            "embedded Polish profile identity mismatch",
+            reason_code="profile_identity_mismatch",
+        )
+    _validate_profile_content(profile)
+    return profile
+
+
+def load_polish_brief(bundle_root: Path) -> dict[str, Any]:
+    """Resolve the embedded visual questions for this bundle's Motion class."""
+    manifest = _load_manifest(bundle_root)
+    profile = _load_bound_profile(bundle_root, manifest)
+    if profile is None:
+        raise InvalidBundleError(
+            "bundle has no Polish profile; initialize with --polish-profile",
+            reason_code="profile_required",
+        )
+    overrides = profile.get("motion_overrides")
+    assert isinstance(overrides, dict)
+    binding = manifest["polish_profile"]
+    motion_class = str(manifest["motion_class"])
+    return {
+        "profile": {
+            "schema": profile["schema"],
+            "id": profile["id"],
+            "sha256": binding["sha256"],
+        },
+        "motion_class": motion_class,
+        "occlusion_rule": profile.get("occlusion_rule"),
+        "verdicts": profile["verdicts"],
+        "fixed_questions": profile["fixed_questions"],
+        "motion_questions": overrides.get(motion_class, []),
+        "editing_rules": profile["editing_rules"],
+        "audit_workflow": profile["audit_workflow"],
+    }
 
 
 def _manifest_sha256(bundle_root: Path) -> str:
@@ -421,6 +574,8 @@ def initialize_bundle(
     provider_path: Path,
     motion_class: str,
     bundle_root: Path,
+    *,
+    polish_profile: str | None = None,
 ) -> None:
     """Create a hash-bound bundle when provider ingest PASSes; fail closed otherwise."""
     if bundle_root.exists():
@@ -428,6 +583,7 @@ def initialize_bundle(
             f"bundle destination already exists: {bundle_root}",
             reason_code="bundle_exists",
         )
+    profile_source = _profile_source(polish_profile) if polish_profile is not None else None
 
     probe_layout = _corpus_layout()
     ingest = ingest_strip_provider(provider_path, probe_layout, motion_class=motion_class)
@@ -455,6 +611,17 @@ def initialize_bundle(
         provider_dest = temp_root / "provider" / "source.png"
         provider_dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(provider_path, provider_dest)
+        profile_manifest: dict[str, Any] | None = None
+        if profile_source is not None:
+            profile_dest = temp_root / "profile.json"
+            shutil.copy2(profile_source, profile_dest)
+            profile_doc = json.loads(profile_dest.read_text(encoding="utf-8"))
+            profile_manifest = {
+                "schema": profile_doc["schema"],
+                "id": profile_doc["id"],
+                "relative_path": "profile.json",
+                "sha256": sha256_file(profile_dest),
+            }
 
         draft_hashes: list[dict[str, Any]] = []
         for index, cells in enumerate(canonical_frames):
@@ -488,6 +655,7 @@ def initialize_bundle(
                 "sha256": sha256_file(provider_dest),
             },
             "draft_frames": draft_hashes,
+            "polish_profile": profile_manifest,
         }
         (temp_root / "manifest.json").write_text(
             json.dumps(manifest, indent=2, sort_keys=True) + "\n",
@@ -503,6 +671,7 @@ def initialize_bundle(
 def check_bundle(bundle_root: Path) -> FinalPolishCheckResult:
     """Validate provenance, logical Frames, structure, delta, and coherence."""
     manifest = _load_manifest(bundle_root)
+    profile = _load_bound_profile(bundle_root, manifest)
     manifest_hash = _manifest_sha256(bundle_root)
     provider_outcome = _verify_provider_and_drafts(bundle_root, manifest)
 
@@ -533,6 +702,12 @@ def check_bundle(bundle_root: Path) -> FinalPolishCheckResult:
         draft_hashes=draft_hashes,
         polished_hashes=polished_hashes,
         fingerprint=fingerprint,
+        profile_id=None if profile is None else str(profile["id"]),
+        profile_sha256=(
+            None
+            if profile is None
+            else str(manifest["polish_profile"]["sha256"])
+        ),
     )
 
 
@@ -557,6 +732,14 @@ def _report_payload(bundle_root: Path, result: FinalPolishCheckResult) -> dict[s
             for index, digest in enumerate(result.polished_hashes)
         ],
         "provider_acceptance": {"outcome": result.provider_outcome},
+        "polish_profile": (
+            None
+            if result.profile_id is None
+            else {
+                "id": result.profile_id,
+                "sha256": result.profile_sha256,
+            }
+        ),
         "structural": {
             "pass": result.structural.pass_,
             "outcome": result.structural.outcome,

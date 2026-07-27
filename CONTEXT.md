@@ -174,6 +174,12 @@ The self-contained provenance and working context connecting one accepted
 provider Strip to its Draft, Polished, and Release Frames.
 _Avoid_: polish workspace, edit session
 
+**Polish profile**:
+A versioned, hash-bound set of fixed visual questions, editing rules, and
+Motion-class overrides that tells an agent what finished art must preserve.
+It supplies art-direction judgment; it is not a deterministic Gate.
+_Avoid_: polish prompt, automatic accent detector
+
 **Draft Frame**:
 An immutable-by-hash canonical Frame exported from the accepted provider Strip
 before art edits.
