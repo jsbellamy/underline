@@ -487,3 +487,18 @@ def test_missing_required_manifest_field_is_rejected(tmp_path: Path) -> None:
     _write(path, doc)
     with pytest.raises(ge.EvidenceError, match="missing required field"):
         ge.validate_evidence_graph(fx["root"])
+
+
+def test_evidence_graph_ignores_packet_manifest_json(tmp_path: Path) -> None:
+    """Review dirs hold packet.json manifests; only review--*.json are audits."""
+    fx = _fixture(tmp_path)
+    review_dir = fx["gc"] / "reviews" / fx["attempt_id"]
+    packet_doc = {
+        "schema": "gate-review-packet/0",
+        "packet_kind": "PROMOTION_VERIFICATION",
+        "packet_sha256": "a" * 64,
+    }
+    _write(review_dir / "packet.json", packet_doc)
+    graph = ge.validate_evidence_graph(fx["root"])
+    assert any(k.endswith("review--01.json") for k in graph.reviews)
+    assert not any(k.endswith("packet.json") for k in graph.reviews)
