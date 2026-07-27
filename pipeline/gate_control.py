@@ -25,7 +25,7 @@ from pipeline.gate_evidence import (
     load_measurement,
     write_json_immutable,
 )
-from pipeline.numeric_policy import NUMERIC_POLICY, canonical_metric
+from pipeline.numeric_policy import NUMERIC_POLICY
 
 MEASUREMENT_SCHEMA = "gate-control-measurement/1"
 
@@ -257,8 +257,6 @@ def gate_row_from_coherence(
     value = coh.get(gate)
     if value is None:
         row["outcome"] = "undecidable"
-        if gate == "displacement_pass":
-            row["reason"] = coh.get("displacement_reason")
         return row
     row["outcome"] = "pass" if value else "fail"
     metric_key = METRIC_OF.get(gate, (None, None))[0]

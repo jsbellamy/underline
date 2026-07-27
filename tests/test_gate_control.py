@@ -331,11 +331,9 @@ def test_measurement_schema_fields_and_fraction_evidence() -> None:
     assert REQUIRED_FIELDS <= set(run)
     assert run["schema"] == gc.MEASUREMENT_SCHEMA
     sil = run["gates"]["silhouette_budget"]
-    assert sil["numerator"] == int(sil["denominator"] * sil["metric"]) or sil["numerator"] > 0
-    assert sil["denominator"] > 0
-    assert sil["metric"] == pytest.approx(
-        sil["numerator"] / sil["denominator"], rel=0, abs=0.0001
-    )
+    assert sil["numerator"] == 72
+    assert sil["denominator"] == 240
+    assert sil["metric"] == 0.3
 
 
 def test_gate_config_hash_changes_with_each_component(tmp_path: Path) -> None:
@@ -356,11 +354,8 @@ def test_gate_config_hash_changes_with_each_component(tmp_path: Path) -> None:
     assert gc.gate_config_hash(repo_root=tmp_path / "copy2") != base
 
     gate_controls3 = _gate_controls_copy(tmp_path / "copy3")
-    profiles_path = gate_controls3 / "acceptance-profiles.json"
-    profiles = json.loads(profiles_path.read_text())
-    profiles["profiles"]["idle"]["gates"]["silhouette_budget"]["budget"] = 0.9999
-    profiles_path.write_text(json.dumps(profiles, indent=2) + "\n")
-    assert gc.gate_config_hash(repo_root=tmp_path / "copy3") != base
+    with patch.dict(gc.NUMERIC_POLICY, {"precision_decimal_places": 3}):
+        assert gc.gate_config_hash(repo_root=tmp_path / "copy3") != base
 
 
 def test_persist_measurement_run_is_append_only(tmp_path: Path) -> None:
