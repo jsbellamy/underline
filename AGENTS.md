@@ -67,6 +67,13 @@ standing seam agreement for the `/tdd` (red-green) workflow. Changes are
 test-first at its seams, and code review judges every diff against its rules — a
 breach is a documented-standard violation, not a judgement call.
 
+### Gate blind review
+
+Promotion-verification issues that write `gate-controls/reviews/*/review--*.json`
+need two **blinded** visual audits before `/code-review` — see
+`.agents/issue-implementer.md` step 7. On Cursor, delegate each audit to the
+`gate-blind-review` subagent (`.cursor/agents/gate-blind-review.md`).
+
 ### Evidence
 
 There is no browser or native harness in this repo yet. Every claim is proved by
