@@ -77,7 +77,9 @@ runtime supports worktrees.
    source, passing the completion matrix in so the Spec reviewer returns a
    per-claim `met` / `unmet` / `needs manual` verdict with an evidence pointer
    satisfying the Proof mapping. If the runtime does not expose `/code-review`,
-   run the equivalent Standards and Spec reviews as parallel sub-agents.
+   run the equivalent Standards and Spec reviews as parallel sub-agents. On
+   Cursor, use `code-review-standards` and `code-review-spec` (not
+   `generalPurpose`).
    Rework every Spec finding, every `unmet` row, and every hard Standards
    violation (a documented repo-standard breach), then commit and re-run the
    review until those are clear. Judgement-call Standards smells need no rework —

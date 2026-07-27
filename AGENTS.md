@@ -74,6 +74,12 @@ need two **blinded** visual audits before `/code-review` — see
 `.agents/issue-implementer.md` step 7. On Cursor, delegate each audit to the
 `gate-blind-review` subagent (`.cursor/agents/gate-blind-review.md`).
 
+### Code review (Cursor)
+
+On Cursor, `/code-review` spawns `code-review-standards` and `code-review-spec`
+(`.cursor/agents/code-review-standards.md`, `.cursor/agents/code-review-spec.md`)
+for the Standards and Spec axes — Composer 2.5 non-fast is pinned in frontmatter.
+
 ### Evidence
 
 There is no browser or native harness in this repo yet. Every claim is proved by
