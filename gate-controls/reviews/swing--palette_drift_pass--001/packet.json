@@ -1,0 +1,34 @@
+{
+  "attempt_id": "swing--palette_drift_pass--001",
+  "budget": 0.2294,
+  "budget_binding_good": {
+    "path": "prototype/strip-coherence/inbox/06-miner-swing.png",
+    "raw_sha256": "fba96b27a7ff13568aba6c04b01adacca65b49a3ef010acec0360738972ee7bb",
+    "role": "budget_binding_good"
+  },
+  "candidate": {
+    "path": "gate-controls/raw/swing--palette_drift_pass--001.png",
+    "raw_sha256": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd",
+    "role": "candidate"
+  },
+  "caveats": [],
+  "fixed_question": "Intentional subject/Motion-class change (e.g. emissive flicker) vs unintended recolour?",
+  "gate": "palette_drift_pass",
+  "gate_control": null,
+  "hard_fail_boundary": 0.2793,
+  "metric": 0.2793,
+  "motion_class": "swing",
+  "no_autonomous_hard_fail": false,
+  "no_autonomous_hard_fail_reason": null,
+  "packet_kind": "PROMOTION_VERIFICATION",
+  "packet_sha256": "1788cc65a48adf43a4f7f73c69babeb9bd8765f76cacc5ea14d653c3a337cc31",
+  "panel_kind": "quantized_palette_histogram",
+  "promotion_id": "promo--swing--palette_drift_pass",
+  "promotion_status": "PENDING_VERIFICATION",
+  "proposed_hard_fail_reference": {
+    "path": "gate-controls/raw/swing--palette_drift_pass--001.png",
+    "raw_sha256": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd",
+    "role": "proposed_hard_fail_reference"
+  },
+  "schema": "gate-review-packet/0"
+}

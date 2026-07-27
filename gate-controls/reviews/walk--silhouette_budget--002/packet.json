@@ -1,0 +1,34 @@
+{
+  "attempt_id": "walk--silhouette_budget--002",
+  "budget": 0.4136,
+  "budget_binding_good": {
+    "path": "prototype/strip-coherence/inbox/05-miner-walk.png",
+    "raw_sha256": "573c3d0092c20a893b986da54812a86b0fc3488bfcdeb1997a904a4a47f2fd7b",
+    "role": "budget_binding_good"
+  },
+  "candidate": {
+    "path": "gate-controls/raw/walk--silhouette_budget--002.png",
+    "raw_sha256": "c11d13de833ccfa34fc89b929288ff07c975238560370f54de0e92ad3d277257",
+    "role": "candidate"
+  },
+  "caveats": [],
+  "fixed_question": "Intentional pose transition vs identity drift / framing / translation?",
+  "gate": "silhouette_budget",
+  "gate_control": null,
+  "hard_fail_boundary": 0.4294,
+  "metric": 0.4294,
+  "motion_class": "walk",
+  "no_autonomous_hard_fail": false,
+  "no_autonomous_hard_fail_reason": null,
+  "packet_kind": "PROMOTION_VERIFICATION",
+  "packet_sha256": "24f3a475edac8d6248e1aeb9a013f9b8426711b6fb979db0a835289034bca1e1",
+  "panel_kind": "occupancy_difference",
+  "promotion_id": "promo--walk--silhouette_budget",
+  "promotion_status": "PENDING_VERIFICATION",
+  "proposed_hard_fail_reference": {
+    "path": "gate-controls/raw/walk--silhouette_budget--002.png",
+    "raw_sha256": "c11d13de833ccfa34fc89b929288ff07c975238560370f54de0e92ad3d277257",
+    "role": "proposed_hard_fail_reference"
+  },
+  "schema": "gate-review-packet/0"
+}
