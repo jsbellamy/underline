@@ -1,0 +1,49 @@
+{
+  "draft_frames": [
+    {
+      "index": 0,
+      "relative_path": "draft/frame-0.png",
+      "sha256": "72dcd2f9de3f2da8ceec113426a98c5525111a004f789e275ed4026128a31b93"
+    },
+    {
+      "index": 1,
+      "relative_path": "draft/frame-1.png",
+      "sha256": "183e7903bc694a86188e55ce25bd4924b68440ac2050ff931165363bb8f1939d"
+    },
+    {
+      "index": 2,
+      "relative_path": "draft/frame-2.png",
+      "sha256": "cf8b0b21fffec544d4b8e6aaef4b8a09587bdf6620a3a8e52633ea7045928721"
+    },
+    {
+      "index": 3,
+      "relative_path": "draft/frame-3.png",
+      "sha256": "27a4e6dbc75f4c6a7dc0ace7a1859fbcd5639fec78bb0a56443ab5baa115f618"
+    }
+  ],
+  "layout": {
+    "frame_count": 4,
+    "frame_h": 24,
+    "frame_order": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "frame_w": 16,
+    "gutter": 2
+  },
+  "motion_class": "swing",
+  "polish_profile": {
+    "id": "dwarf-miner",
+    "relative_path": "profile.json",
+    "schema": "polish-profile/0",
+    "sha256": "0e60aee8d4a630bad6fdabc8d2525c8ae9e2cda8ceab92e37a1dd972a4fcedcf"
+  },
+  "provider": {
+    "original_filename": "dwarf-swing-attempt1.png",
+    "relative_path": "provider/source.png",
+    "sha256": "73c8ddbc1e80c3dfe0803f9aa34c190bdd15011a77dd23b44121a7142fdcf1b1"
+  },
+  "schema": "final-polish-bundle/1"
+}
