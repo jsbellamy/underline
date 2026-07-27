@@ -1,0 +1,12 @@
+{
+  "schema": "animation-timing/0",
+  "motion_class": "emissive",
+  "loop": true,
+  "frame_durations_ms": [
+    160,
+    160,
+    160,
+    160
+  ],
+  "authority": "docs/first-room-art-direction.md"
+}

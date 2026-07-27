@@ -1,0 +1,54 @@
+{
+  "schema": "provider-provenance/0",
+  "generator": "cursor-image-gen",
+  "prompt": "TRUE chunky pixel art animation Strip only. Four flicker Frames of the SAME small hanging MINER'S LANTERN, in one horizontal row.\n\nEach Frame is an exact 16\u00d724 logical grid rendered large as crisp square Cells. Four Frames, two full magenta #FF00FF logical gutter Cells, flat magenta keyed background, no labels, margins, extra rows, anti-aliasing, blur, gradients, or dithering.\n\nWarm rugged storybook prop. Stable dark metal hook and housing, small blue-metal upper-left highlights, amber glass/core. Use only the first-room Master Palette. The housing silhouette, hanging point, and baseline position remain identical in all Frames.\n\nMotion is a subtle closed emissive flicker: amber core changes by only a few internal Cells; Frame 3 closes into Frame 0. Emission remains inside the lantern. No wall, chain extending outside the Frame, terrain, smoke, sparks, or broad glow halo.\n\nIntended read: practical dwarf mining lantern, warm counterpart to cool cyan ore, readable at native 16\u00d724 scale.",
+  "prompt_text": "TRUE chunky pixel art animation Strip only. Four flicker Frames of the SAME small hanging MINER'S LANTERN, in one horizontal row.\n\nEach Frame is an exact 16\u00d724 logical grid rendered large as crisp square Cells. Four Frames, two full magenta #FF00FF logical gutter Cells, flat magenta keyed background, no labels, margins, extra rows, anti-aliasing, blur, gradients, or dithering.\n\nWarm rugged storybook prop. Stable dark metal hook and housing, small blue-metal upper-left highlights, amber glass/core. Use only the first-room Master Palette. The housing silhouette, hanging point, and baseline position remain identical in all Frames.\n\nMotion is a subtle closed emissive flicker: amber core changes by only a few internal Cells; Frame 3 closes into Frame 0. Emission remains inside the lantern. No wall, chain extending outside the Frame, terrain, smoke, sparks, or broad glow halo.\n\nIntended read: practical dwarf mining lantern, warm counterpart to cool cyan ore, readable at native 16\u00d724 scale.",
+  "prompt_sha256": "026d49610a044721693156f2ed5121ae0d6bd5527af76c4085e115f40db93940",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-27T22:10:25+00:00",
+  "acquiring_agent": "cursor-issue-implementer",
+  "repository_commit": "aa7c49dc0237b09f152ad2472e9084ae3b23c12d",
+  "raw_path": "assets/first-room/lantern/provider/source.png",
+  "raw_sha256": "b69c91df56a745834eebb23607ee4402968fe48d94b186757f4b903d7e888581",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    576
+  ],
+  "master_palette_id": "first-room",
+  "motion_class": "emissive",
+  "polish_profile": "lantern",
+  "frame_durations_ms": [
+    160,
+    160,
+    160,
+    160
+  ],
+  "loop": true,
+  "asset_kind": "prop",
+  "item_geometry": {
+    "frame_w": 16,
+    "frame_h": 24,
+    "frame_count": 4,
+    "gutter": 2,
+    "pitch_px": 24
+  },
+  "generation_lineage": {
+    "original_sample_sha256": "eb71dac8b1e3d79cfe88b3c6b3707ed17eef4ce79f73dc87b64b267c67aa93f4",
+    "original_sample_path": "assets/first-room/lantern/provider/original-sample.png",
+    "transport_note": "Provider transport raster is Master-Palette-quantized, pitch-24 Cells derived from cursor-image-gen original sample under the C1 prompt; emission and housing identity preserved."
+  },
+  "style_cohort": [
+    "docs/first-room-art-direction.md",
+    "polish-profiles/lantern.json",
+    "assets/palettes/first-room.json",
+    "prompts/production/animation-strip.md"
+  ],
+  "emissive_choices_preserved": [
+    "amber core flicker only",
+    "emission inside housing",
+    "no terrain-scale halo",
+    "blue-metal upper-left highlights",
+    "stable hook and housing silhouette"
+  ]
+}
