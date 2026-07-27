@@ -1,0 +1,34 @@
+{
+  "attempt_id": "emissive--silhouette_budget--001",
+  "budget": 0.3226,
+  "budget_binding_good": {
+    "path": "prototype/strip-coherence/inbox/15-campfire-flicker.png",
+    "raw_sha256": "4799f1ca09004dbd3edd76a2f6423256a0f9f27e97bf1d94b5fbe5ad8dcc5055",
+    "role": "budget_binding_good"
+  },
+  "candidate": {
+    "path": "gate-controls/raw/emissive--silhouette_budget--001.png",
+    "raw_sha256": "f854b74d3a1a3812161f468e0efec39e80183f22cf6aca2b69f16e66bc6ab693",
+    "role": "candidate"
+  },
+  "caveats": [],
+  "fixed_question": "Intentional pose transition vs identity drift / framing / translation?",
+  "gate": "silhouette_budget",
+  "gate_control": null,
+  "hard_fail_boundary": 0.4633,
+  "metric": 0.4633,
+  "motion_class": "emissive",
+  "no_autonomous_hard_fail": false,
+  "no_autonomous_hard_fail_reason": null,
+  "packet_kind": "PROMOTION_VERIFICATION",
+  "packet_sha256": "6b762a0a2d28ffa3f5dd8ef72290f735a93e68f6e5b5e2481afd2d23450db97a",
+  "panel_kind": "occupancy_difference",
+  "promotion_id": "promo--emissive--silhouette_budget",
+  "promotion_status": "PENDING_VERIFICATION",
+  "proposed_hard_fail_reference": {
+    "path": "gate-controls/raw/emissive--silhouette_budget--001.png",
+    "raw_sha256": "f854b74d3a1a3812161f468e0efec39e80183f22cf6aca2b69f16e66bc6ab693",
+    "role": "proposed_hard_fail_reference"
+  },
+  "schema": "gate-review-packet/0"
+}
