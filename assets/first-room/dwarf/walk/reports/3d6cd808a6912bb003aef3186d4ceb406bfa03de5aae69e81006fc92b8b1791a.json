@@ -1,0 +1,353 @@
+{
+  "coherence": {
+    "alignment_sharpness": null,
+    "anchor_row": 23,
+    "baseline_row_inapplicable": false,
+    "baseline_row_reason": null,
+    "baseline_row_stable": true,
+    "baseline_rows": [
+      23,
+      23,
+      23,
+      23
+    ],
+    "budgets": {
+      "loop": 0.2112,
+      "min_alignment_sharpness": null,
+      "min_pair": 0.17,
+      "palette_drift": 0.2217,
+      "silhouette": 0.4136
+    },
+    "caveats": [],
+    "dimension_parity": true,
+    "dimensions": [
+      [
+        16,
+        24
+      ]
+    ],
+    "displacement_flags": [],
+    "displacement_inapplicable": false,
+    "displacement_pass": null,
+    "displacement_reason": null,
+    "gate_outcomes": {
+      "loop_closure_pass": {
+        "acceptance_status": "SEPARATED",
+        "budget": 0.2112,
+        "hard_fail": 0.2795,
+        "metric": 0.0676,
+        "outcome": "PASS"
+      },
+      "min_pair_cohort_pass": {
+        "acceptance_status": "UNSEPARATED",
+        "budget": 0.17,
+        "hard_fail": null,
+        "metric": 0.0676,
+        "outcome": "PASS"
+      },
+      "palette_drift_pass": {
+        "acceptance_status": "SEPARATED",
+        "budget": 0.2217,
+        "hard_fail": 0.2793,
+        "metric": 0.1017,
+        "outcome": "PASS"
+      },
+      "silhouette_budget": {
+        "acceptance_status": "SEPARATED",
+        "budget": 0.4136,
+        "hard_fail": 0.4294,
+        "metric": 0.1457,
+        "outcome": "PASS"
+      }
+    },
+    "grounded": true,
+    "loop_closure": {
+      "changed_cells": 10,
+      "frac": 0.0676,
+      "pair": [
+        3,
+        0
+      ],
+      "pass": true,
+      "union_opaque": 148
+    },
+    "loop_closure_pass": true,
+    "min_pair_cohort_pass": true,
+    "motion_class": "walk",
+    "outcome": "PASS",
+    "palette_drift": [
+      {
+        "pair": [
+          0,
+          1
+        ],
+        "tv": 0.0581
+      },
+      {
+        "pair": [
+          1,
+          2
+        ],
+        "tv": 0.0549
+      },
+      {
+        "pair": [
+          2,
+          3
+        ],
+        "tv": 0.0702
+      },
+      {
+        "pair": [
+          3,
+          0
+        ],
+        "tv": 0.1017
+      }
+    ],
+    "palette_drift_pass": true,
+    "pass": true,
+    "quantize": {
+      "clusters": 11,
+      "input_unique": 587,
+      "merge_dist": 64,
+      "mode": "quantize-shared",
+      "palette": [
+        [
+          14,
+          12,
+          15
+        ],
+        [
+          99,
+          61,
+          22
+        ],
+        [
+          91,
+          120,
+          134
+        ],
+        [
+          179,
+          132,
+          44
+        ],
+        [
+          38,
+          65,
+          93
+        ],
+        [
+          167,
+          69,
+          3
+        ],
+        [
+          79,
+          121,
+          51
+        ],
+        [
+          243,
+          168,
+          77
+        ],
+        [
+          247,
+          181,
+          12
+        ],
+        [
+          112,
+          165,
+          206
+        ],
+        [
+          155,
+          154,
+          132
+        ]
+      ],
+      "palette_size": 11
+    },
+    "silhouette_adjacent": [
+      {
+        "changed_cells": 21,
+        "frac": 0.1364,
+        "pair": [
+          0,
+          1
+        ],
+        "union_opaque": 154
+      },
+      {
+        "changed_cells": 22,
+        "frac": 0.1457,
+        "pair": [
+          1,
+          2
+        ],
+        "union_opaque": 151
+      },
+      {
+        "changed_cells": 19,
+        "frac": 0.1275,
+        "pair": [
+          2,
+          3
+        ],
+        "union_opaque": 149
+      }
+    ],
+    "silhouette_adjacent_max": 0.1457,
+    "silhouette_budget": true,
+    "silhouette_pairwise": {
+      "max_pair": 0.1484,
+      "min_pair": 0.0676,
+      "orphan_max": 0.1364,
+      "pairs": [
+        {
+          "frac": 0.1364,
+          "pair": [
+            0,
+            1
+          ]
+        },
+        {
+          "frac": 0.1149,
+          "pair": [
+            0,
+            2
+          ]
+        },
+        {
+          "frac": 0.0676,
+          "pair": [
+            0,
+            3
+          ]
+        },
+        {
+          "frac": 0.1457,
+          "pair": [
+            1,
+            2
+          ]
+        },
+        {
+          "frac": 0.1484,
+          "pair": [
+            1,
+            3
+          ]
+        },
+        {
+          "frac": 0.1275,
+          "pair": [
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    "worst_palette_drift": 0.1017
+  },
+  "draft_frames": [
+    {
+      "index": 0,
+      "sha256": "bfab69192bae35f076153368407ab1165d364b462a7501ab8ac9c137defbe775"
+    },
+    {
+      "index": 1,
+      "sha256": "c69c6e9bbd190f04df63b1700c428f589389c3f0b91f956676d1a0c54986fa16"
+    },
+    {
+      "index": 2,
+      "sha256": "5f615d27a78237d0b156e2ccdbb9f7bc1f696142d849d1b2aca279d24a86ca70"
+    },
+    {
+      "index": 3,
+      "sha256": "5b13c5fcad371c9e027d50e40ea7efa2b88ea33b0268613d342802434bf85d76"
+    }
+  ],
+  "fingerprint": "3d6cd808a6912bb003aef3186d4ceb406bfa03de5aae69e81006fc92b8b1791a",
+  "layout": {
+    "frame_count": 4,
+    "frame_h": 24,
+    "frame_order": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "frame_w": 16,
+    "gutter": 2
+  },
+  "manifest_sha256": "bd949c28bee03205e80110958e21f0999c2329cb7e6bc8823fdd6c6d39def5df",
+  "motion_class": "walk",
+  "outcome": "PASS",
+  "polish_profile": {
+    "id": "dwarf-miner",
+    "sha256": "0e60aee8d4a630bad6fdabc8d2525c8ae9e2cda8ceab92e37a1dd972a4fcedcf"
+  },
+  "polished_frames": [
+    {
+      "index": 0,
+      "sha256": "bfab69192bae35f076153368407ab1165d364b462a7501ab8ac9c137defbe775"
+    },
+    {
+      "index": 1,
+      "sha256": "c69c6e9bbd190f04df63b1700c428f589389c3f0b91f956676d1a0c54986fa16"
+    },
+    {
+      "index": 2,
+      "sha256": "5f615d27a78237d0b156e2ccdbb9f7bc1f696142d849d1b2aca279d24a86ca70"
+    },
+    {
+      "index": 3,
+      "sha256": "5b13c5fcad371c9e027d50e40ea7efa2b88ea33b0268613d342802434bf85d76"
+    }
+  ],
+  "provider": {
+    "relative_path": "provider/source.png",
+    "sha256": "8031d7fce82650a2c3b87a318ebfc5264cc51869b8024a05e541589f673904c3"
+  },
+  "provider_acceptance": {
+    "outcome": "PASS"
+  },
+  "release_frames": [
+    {
+      "index": 0,
+      "sha256": "bfab69192bae35f076153368407ab1165d364b462a7501ab8ac9c137defbe775"
+    },
+    {
+      "index": 1,
+      "sha256": "c69c6e9bbd190f04df63b1700c428f589389c3f0b91f956676d1a0c54986fa16"
+    },
+    {
+      "index": 2,
+      "sha256": "5f615d27a78237d0b156e2ccdbb9f7bc1f696142d849d1b2aca279d24a86ca70"
+    },
+    {
+      "index": 3,
+      "sha256": "5b13c5fcad371c9e027d50e40ea7efa2b88ea33b0268613d342802434bf85d76"
+    }
+  ],
+  "schema": "final-polish-report/0",
+  "structural": {
+    "outcome": "PASS",
+    "pass": true,
+    "violations": []
+  },
+  "visible_cell_delta": {
+    "edits": [],
+    "per_frame_counts": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "total_edits": 0
+  }
+}

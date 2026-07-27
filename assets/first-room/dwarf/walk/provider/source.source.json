@@ -1,0 +1,36 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "first-room/dwarf/walk",
+  "attempt_id": "dwarf-walk--001",
+  "generator": "cursor-image-gen",
+  "prompt_text": "TRUE chunky pixel art animation Strip only. Four WALK Frames of exactly the SAME right-facing DWARF MINER shown in the supplied identity reference, in one horizontal row.\n\nExact 16\u00d724 logical Frames rendered as crisp square Cells; four Frames; two magenta #FF00FF logical gutter Cells; flat magenta keyed background; no labels, margins, extra rows, anti-aliasing, blur, gradients, or dithering.\n\nCopy the reference identity: same short broad proportions, rust beard shape, oversized blue lamp helmet, centered amber lamp, black eye Cell without white sclera, green tunic, gloves, leather belt and buckle, broad boots, and compact heavy pickaxe behind the shoulder. Use only the first-room Master Palette.\n\nStandard in-place four-step walk: Frame 0 contact, Frame 1 down, Frame 2 pass, Frame 3 up. Alternating legs and boots must remain separable from each other and the torso. The dwarf stays horizontally registered; runtime moves the actor. Preserve upper-body mass and all identity anchors while allowing a one-Cell vertical bob. Frame 3 leads cleanly to Frame 0.\n\nWarm rugged storybook pixel art, selective warm-dark outline, neutral upper-left local light. Intended read: heavy deliberate dwarf stride, not a light human jog.\n",
+  "prompt": "TRUE chunky pixel art animation Strip only. Four WALK Frames of exactly the SAME right-facing DWARF MINER shown in the supplied identity reference, in one horizontal row.\n\nExact 16\u00d724 logical Frames rendered as crisp square Cells; four Frames; two magenta #FF00FF logical gutter Cells; flat magenta keyed background; no labels, margins, extra rows, anti-aliasing, blur, gradients, or dithering.\n\nCopy the reference identity: same short broad proportions, rust beard shape, oversized blue lamp helmet, centered amber lamp, black eye Cell without white sclera, green tunic, gloves, leather belt and buckle, broad boots, and compact heavy pickaxe behind the shoulder. Use only the first-room Master Palette.\n\nStandard in-place four-step walk: Frame 0 contact, Frame 1 down, Frame 2 pass, Frame 3 up. Alternating legs and boots must remain separable from each other and the torso. The dwarf stays horizontally registered; runtime moves the actor. Preserve upper-body mass and all identity anchors while allowing a one-Cell vertical bob. Frame 3 leads cleanly to Frame 0.\n\nWarm rugged storybook pixel art, selective warm-dark outline, neutral upper-left local light. Intended read: heavy deliberate dwarf stride, not a light human jog.\n",
+  "prompt_sha256": "2e0b118c5827fd8da1dab5387344f1717b4736e1977d681d1c2ac140aad71de3",
+  "reference_image_sha256": [
+    "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9"
+  ],
+  "generated_at": "2026-07-27T22:30:00+00:00",
+  "acquiring_agent": "cursor-agent-issue-110",
+  "repository_commit": "87d3df920ddeba61795f4d8bd7c5b2d7095e5d0f",
+  "raw_path": "assets/first-room/dwarf/walk/provider/source.png",
+  "raw_sha256": "8031d7fce82650a2c3b87a318ebfc5264cc51869b8024a05e541589f673904c3",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ],
+  "master_palette_id": "first-room",
+  "motion_class": "walk",
+  "polish_profile": "dwarf-miner",
+  "item_geometry": {
+    "frame_w": 16,
+    "frame_h": 24,
+    "frame_count": 4,
+    "gutter": 2
+  },
+  "asset_kind": "animation-strip",
+  "provider": {
+    "generator": "cursor-image-gen",
+    "model": "cursor-image-gen"
+  }
+}

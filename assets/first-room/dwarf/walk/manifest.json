@@ -1,0 +1,49 @@
+{
+  "draft_frames": [
+    {
+      "index": 0,
+      "relative_path": "draft/frame-0.png",
+      "sha256": "bfab69192bae35f076153368407ab1165d364b462a7501ab8ac9c137defbe775"
+    },
+    {
+      "index": 1,
+      "relative_path": "draft/frame-1.png",
+      "sha256": "c69c6e9bbd190f04df63b1700c428f589389c3f0b91f956676d1a0c54986fa16"
+    },
+    {
+      "index": 2,
+      "relative_path": "draft/frame-2.png",
+      "sha256": "5f615d27a78237d0b156e2ccdbb9f7bc1f696142d849d1b2aca279d24a86ca70"
+    },
+    {
+      "index": 3,
+      "relative_path": "draft/frame-3.png",
+      "sha256": "5b13c5fcad371c9e027d50e40ea7efa2b88ea33b0268613d342802434bf85d76"
+    }
+  ],
+  "layout": {
+    "frame_count": 4,
+    "frame_h": 24,
+    "frame_order": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "frame_w": 16,
+    "gutter": 2
+  },
+  "motion_class": "walk",
+  "polish_profile": {
+    "id": "dwarf-miner",
+    "relative_path": "profile.json",
+    "schema": "polish-profile/0",
+    "sha256": "0e60aee8d4a630bad6fdabc8d2525c8ae9e2cda8ceab92e37a1dd972a4fcedcf"
+  },
+  "provider": {
+    "original_filename": "dwarf-walk-attempt3.png",
+    "relative_path": "provider/source.png",
+    "sha256": "8031d7fce82650a2c3b87a318ebfc5264cc51869b8024a05e541589f673904c3"
+  },
+  "schema": "final-polish-bundle/1"
+}
