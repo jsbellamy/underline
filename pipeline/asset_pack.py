@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import re
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal
@@ -11,7 +10,7 @@ from typing import Any, Literal
 from PIL import Image, UnidentifiedImageError
 
 from pipeline.gate_evidence import sha256_file
-from pipeline.static_asset import _hex_to_rgb, _palette_rgb_set
+from pipeline.static_asset import _palette_rgb_set
 
 PACK_SCHEMA = "asset-pack/0"
 ANIMATION_REPORT_SCHEMA = "final-polish-report/0"
@@ -19,7 +18,6 @@ STATIC_REPORT_SCHEMA = "static-asset-report/0"
 VIEWPORT_W = 320
 VIEWPORT_H = 180
 SCALE_FACTOR = 4
-_HEX_COLOR = re.compile(r"^#[0-9A-Fa-f]{6}$")
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 
 AssetKind = Literal["animation", "static"]
@@ -166,6 +164,7 @@ class AssetPackCheckResult:
     manifest_path: Path
     release_hashes: tuple[str, ...]
     errors: tuple[str, ...] = ()
+    reason_codes: tuple[str | None, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -330,12 +329,22 @@ def _parse_preview_scene(value: object) -> PreviewScene:
         raise InvalidAssetPackError("preview_scene entities required", reason_code="invalid_scene")
     if not isinstance(layer_order_raw, list) or not layer_order_raw:
         raise InvalidAssetPackError("preview_scene layer_order required", reason_code="invalid_scene")
+    blocks: list[dict[str, Any]] = []
+    for block in blocks_raw:
+        if not isinstance(block, dict):
+            raise InvalidAssetPackError("each preview_scene block must be an object", reason_code="invalid_scene")
+        blocks.append(dict(block))
+    entities: list[dict[str, Any]] = []
+    for entity in entities_raw:
+        if not isinstance(entity, dict):
+            raise InvalidAssetPackError("each preview_scene entity must be an object", reason_code="invalid_scene")
+        entities.append(dict(entity))
     return PreviewScene(
         composition=str(composition),
         grid_columns=int(grid_columns),
         grid_rows=grid_rows,
-        blocks=tuple(dict(block) for block in blocks_raw if isinstance(block, dict)),
-        entities=tuple(dict(entity) for entity in entities_raw if isinstance(entity, dict)),
+        blocks=tuple(blocks),
+        entities=tuple(entities),
         layer_order=tuple(str(layer) for layer in layer_order_raw),
     )
 
@@ -555,6 +564,7 @@ def check_asset_pack(manifest_path: Path, *, repo_root: Path | None = None) -> A
         )
     except InvalidAssetPackError as exc:
         errors.append(str(exc))
+        reason_codes: tuple[str | None, ...] = (exc.reason_code,)
         pack_id = "unknown"
         try:
             doc = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -569,6 +579,7 @@ def check_asset_pack(manifest_path: Path, *, repo_root: Path | None = None) -> A
             manifest_path=manifest_path.resolve(),
             release_hashes=(),
             errors=tuple(errors),
+            reason_codes=reason_codes,
         )
 
 

@@ -30,6 +30,9 @@ def _check_json_payload(result: AssetPackCheckResult) -> dict[str, Any]:
     if result.errors:
         payload["error"] = result.errors[0]
         payload["errors"] = list(result.errors)
+        if result.reason_codes:
+            payload["reason_code"] = result.reason_codes[0]
+            payload["reason_codes"] = list(result.reason_codes)
     return payload
 
 
@@ -81,15 +84,17 @@ def _handle_check(args: argparse.Namespace) -> int:
         result = check_asset_pack(args.manifest)
     except (InvalidAssetPackError, AssetPackError) as exc:
         print(str(exc), file=sys.stderr)
+        reason_code = exc.reason_code if isinstance(exc, AssetPackError) else None
         if args.json:
-            _emit_json(
-                {
-                    "valid": False,
-                    "outcome": "FAIL",
-                    "manifest": str(args.manifest.resolve()),
-                    "error": str(exc),
-                }
-            )
+            payload = {
+                "valid": False,
+                "outcome": "FAIL",
+                "manifest": str(args.manifest.resolve()),
+                "error": str(exc),
+            }
+            if reason_code is not None:
+                payload["reason_code"] = reason_code
+            _emit_json(payload)
         return 2
 
     if args.json:
@@ -104,15 +109,17 @@ def _handle_preview(args: argparse.Namespace) -> int:
         result = render_pack_preview(args.manifest, args.out)
     except (InvalidAssetPackError, AssetPackError) as exc:
         print(str(exc), file=sys.stderr)
+        reason_code = exc.reason_code if isinstance(exc, AssetPackError) else None
         if args.json:
-            _emit_json(
-                {
-                    "valid": False,
-                    "outcome": "FAIL",
-                    "manifest": str(args.manifest.resolve()),
-                    "error": str(exc),
-                }
-            )
+            payload = {
+                "valid": False,
+                "outcome": "FAIL",
+                "manifest": str(args.manifest.resolve()),
+                "error": str(exc),
+            }
+            if reason_code is not None:
+                payload["reason_code"] = reason_code
+            _emit_json(payload)
         return 2
 
     if args.json:
