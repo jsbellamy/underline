@@ -31,9 +31,25 @@ def test_required_mutation_not_automatically_accepted(
     motion_class: str, mutation: str
 ) -> None:
     frames = adversarial.real_frames(motion_class)
-    mutated = adversarial._MUTATORS[mutation](frames)
+    mutated = adversarial.mutate(motion_class, mutation, frames)
     result = S.coherence_split(mutated, motion_class=motion_class)
     assert result["outcome"] != "PASS"
+
+
+def test_blob_idle_slide_review_or_fail() -> None:
+    frames = adversarial.real_frames("blob_idle")
+    mutated = adversarial.mutate("blob_idle", "slide", frames)
+    result = S.coherence_split(mutated, motion_class="blob_idle")
+    assert result["outcome"] in ("REVIEW", "FAIL")
+    assert result["gate_outcomes"]["silhouette_budget"]["outcome"] in ("REVIEW", "FAIL")
+
+
+def test_emissive_mirror_review_or_fail() -> None:
+    frames = adversarial.real_frames("emissive")
+    mutated = adversarial.mutate("emissive", "wrong_pose", frames)
+    result = S.coherence_split(mutated, motion_class="emissive")
+    assert result["outcome"] in ("REVIEW", "FAIL")
+    assert result["gate_outcomes"]["loop_closure_pass"]["outcome"] == "REVIEW"
 
 
 def test_idle_recolour_fails_hard() -> None:
@@ -64,3 +80,15 @@ def test_strip_gap_passes_ungated(strip_id: str, mutation: str) -> None:
 def test_strip_gaps_04_displacement_undecidable() -> None:
     assert adversarial.STRIP_GAPS["04-bat-flap"].keys() == {"hop", "slide"}
     assert "degenerate alignment" in adversarial.STRIP_GAPS["04-bat-flap"]["hop"]
+
+
+def test_known_gaps_empty() -> None:
+    assert adversarial.KNOWN_GAPS == {}
+
+
+def test_adversarial_report_prints_exactly_two_gaps(capsys) -> None:
+    adversarial.main()
+    captured = capsys.readouterr()
+    gap_lines = [line for line in captured.out.splitlines() if line.startswith("GAP")]
+    assert len(gap_lines) == 2
+    assert all("04-bat-flap" in line or "airborne" in line for line in gap_lines)
