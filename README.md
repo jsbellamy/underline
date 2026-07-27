@@ -44,12 +44,35 @@ into releasable Frames. Edit the `polished/` PNG sequence (in Aseprite or by
 direct Cell-coordinate changes), then validate and release.
 
 ```bash
-npm run strip:polish -- init <provider.png> --motion-class <class> --out <bundle> \
-  [--polish-profile miner] [--json]
+npm run strip:polish -- init <provider.png> --provenance <source.json> \
+  --motion-class <class> --out <bundle> \
+  [--polish-profile <id>] [--identity-reference <identity.png>] \
+  [--edit-source <seed-strip.png>] [--json]
 npm run strip:polish -- brief <bundle> [--json]
 npm run strip:polish -- check <bundle> [--json]
 npm run strip:polish -- finalize <bundle> [--json]
 ```
+
+New Polish Bundles use schema `final-polish-bundle/2`. `init` requires a validated
+`animation-strip-provenance/0` sidecar (`--provenance`). The sidecar is copied to
+`provider/source.source.json` and hash-bound in the manifest together with an
+`animation-attempt-ledger/0` row in `provider/attempts.json`. Incomplete,
+malformed, or hash-mismatched provenance rejects `init` without creating a bundle.
+Provenance evidence cannot convert ingest `FAIL` or `REVIEW` into `PASS`.
+
+For `dwarf-miner` with Motion class `walk` or `swing`, `init` additionally
+requires `--identity-reference` (canonical `assets/first-room/dwarf/identity.png`)
+and `--edit-source` (idle seed strip PNG). Those bytes are copied to
+`reference/identity.png` and `provider/edit-source.png`, bound in the manifest,
+and must match `generation_mode=image-edit` with the canonical identity hash in
+`reference_image_sha256` and the seed hash in `edit_source_sha256`. First-room
+dwarf `walk` and `swing` generation is image-edit evidence, not an unbound
+reference claim.
+
+Existing `final-polish-bundle/0` and `/1` bundles (including the checked-in
+dwarf `idle` bundle) remain readable under their legacy rules; `check` and
+`finalize` revalidate every `/2` evidence hash and semantic binding before polish
+or Release Frames.
 
 Exit codes: `0` `PASS`, `1` `FAIL`, `2` invalid or structural error, `3`
 `REVIEW`. `polished/` is the editor-facing PNG sequence; `release/` is written

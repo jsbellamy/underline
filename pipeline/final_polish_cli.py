@@ -234,12 +234,18 @@ def _handle_init(args: argparse.Namespace) -> int:
             args.provider,
             args.motion_class,
             args.out,
+            provenance_sidecar=args.provenance,
             polish_profile=args.polish_profile,
+            identity_reference=args.identity_reference,
+            edit_source=args.edit_source,
         )
     except BundleExistsError as exc:
         print(str(exc), file=sys.stderr)
         return 2
-    except InitializationRejectedError:
+    except InitializationRejectedError as exc:
+        if exc.reason_code != "ingest_not_pass":
+            print(str(exc), file=sys.stderr)
+            return 2
         try:
             ingest = ingest_strip_provider(args.provider, _corpus_layout(), motion_class=args.motion_class)
         except ValueError as exc:
@@ -329,9 +335,25 @@ def _configure_parser(parser: argparse.ArgumentParser) -> None:
 
     init = sub.add_parser("init", help="Create a final-polish bundle from a provider strip")
     init.add_argument("provider", type=pathlib.Path, help="Provider strip PNG")
+    init.add_argument(
+        "--provenance",
+        type=pathlib.Path,
+        required=True,
+        help="Animation provenance sidecar (animation-strip-provenance/0)",
+    )
     init.add_argument("--motion-class", required=True, help="Motion class for gating")
     init.add_argument("--out", type=pathlib.Path, required=True, help="Bundle destination directory")
     init.add_argument("--polish-profile", help="Embed a checked-in visual audit profile")
+    init.add_argument(
+        "--identity-reference",
+        type=pathlib.Path,
+        help="Canonical identity PNG (required for dwarf-miner walk/swing)",
+    )
+    init.add_argument(
+        "--edit-source",
+        type=pathlib.Path,
+        help="Seed strip PNG for image-edit generation (required for dwarf-miner walk/swing)",
+    )
     init.add_argument("--json", action="store_true", help="Emit machine-readable JSON on stdout")
 
     check = sub.add_parser("check", help="Validate a bundle without writing")
