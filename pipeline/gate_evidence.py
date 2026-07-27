@@ -71,6 +71,13 @@ def require_schema(doc: Mapping[str, Any], allowed: Iterable[str], *, where: str
     return schema
 
 
+def require_str(doc: Mapping[str, Any], field: str, *, where: str) -> str:
+    value = doc.get(field)
+    if not isinstance(value, str) or value == "":
+        raise EvidenceError(f"missing required field {field!r} at {where}")
+    return value
+
+
 def _resolve(root: Path, rel: str | None) -> Path | None:
     if rel is None:
         return None
@@ -221,10 +228,10 @@ def load_manifest(path: Path) -> Manifest:
         specs.append(
             Specification(
                 id=sid,
-                motion_class=str(item.get("motion_class")),
-                target_gate=str(item.get("target_gate")),
+                motion_class=require_str(item, "motion_class", where=str(path)),
+                target_gate=require_str(item, "target_gate", where=str(path)),
                 active_promotion=(
-                    str(item["active_promotion"])
+                    require_str(item, "active_promotion", where=str(path))
                     if item.get("active_promotion") is not None
                     else None
                 ),
@@ -236,7 +243,7 @@ def load_manifest(path: Path) -> Manifest:
         if not isinstance(item, dict):
             raise EvidenceError(f"invalid promotion entry in {path}")
         pid = item.get("id")
-        if not isinstance(pid, str):
+        if not isinstance(pid, str) or pid == "":
             raise EvidenceError(f"promotion missing id in {path}")
         if pid in seen_promo:
             raise EvidenceError(f"duplicate promotion id {pid!r}")
@@ -244,11 +251,15 @@ def load_manifest(path: Path) -> Manifest:
         promotions.append(
             Promotion(
                 id=pid,
-                specification_id=str(item.get("specification_id")),
-                attempt_id=str(item.get("attempt_id")),
-                measurement_path=str(item.get("measurement_path")),
-                status=str(item.get("status")),
-                recorded_at=str(item.get("recorded_at")),
+                specification_id=require_str(
+                    item, "specification_id", where=str(path)
+                ),
+                attempt_id=require_str(item, "attempt_id", where=str(path)),
+                measurement_path=require_str(
+                    item, "measurement_path", where=str(path)
+                ),
+                status=require_str(item, "status", where=str(path)),
+                recorded_at=require_str(item, "recorded_at", where=str(path)),
                 note=item.get("note") if isinstance(item.get("note"), str) else None,
                 raw=item,
             )
@@ -282,33 +293,36 @@ def load_attempts(path: Path) -> tuple[Attempt, ...]:
         if attempt_id in seen:
             raise EvidenceError(f"duplicate attempt_id {attempt_id!r}")
         seen.add(attempt_id)
+        where = f"{path}:{line_no}"
         attempts.append(
             Attempt(
                 schema=schema,
                 attempt_id=attempt_id,
-                specification_id=str(doc.get("specification_id")),
+                specification_id=require_str(doc, "specification_id", where=where),
                 ordinal=int(doc.get("ordinal", 0)),
-                artifact_state=str(doc.get("artifact_state")),
-                isolation=str(doc.get("isolation")),
+                artifact_state=require_str(doc, "artifact_state", where=where),
+                isolation=require_str(doc, "isolation", where=where),
                 measurement_path=(
-                    str(doc["measurement_path"])
+                    require_str(doc, "measurement_path", where=where)
                     if doc.get("measurement_path") is not None
                     else None
                 ),
                 provenance_path=(
-                    str(doc["provenance_path"])
+                    require_str(doc, "provenance_path", where=where)
                     if doc.get("provenance_path") is not None
                     else None
                 ),
                 composite_path=(
-                    str(doc["composite_path"])
+                    require_str(doc, "composite_path", where=where)
                     if doc.get("composite_path") is not None
                     else None
                 ),
                 raw_sha256=(
-                    str(doc["raw_sha256"]) if doc.get("raw_sha256") is not None else None
+                    require_str(doc, "raw_sha256", where=where)
+                    if doc.get("raw_sha256") is not None
+                    else None
                 ),
-                recorded_at=str(doc.get("recorded_at")),
+                recorded_at=require_str(doc, "recorded_at", where=where),
                 raw=doc,
             )
         )
@@ -328,24 +342,25 @@ def load_acceptance_profiles(path: Path) -> AcceptanceProfiles:
                 raise EvidenceError(f"invalid gate profile {motion_class}/{gate}")
             budget = entry.get("budget")
             hard_fail = entry.get("hard_fail")
+            where = f"{path}:{motion_class}/{gate}"
             gates[gate] = GateProfile(
-                status=str(entry.get("status")),
+                status=require_str(entry, "status", where=where),
                 budget=float(budget) if isinstance(budget, (int, float)) else None,
                 hard_fail=(
                     float(hard_fail) if isinstance(hard_fail, (int, float)) else None
                 ),
                 active_promotion=(
-                    str(entry["active_promotion"])
+                    require_str(entry, "active_promotion", where=where)
                     if entry.get("active_promotion") is not None
                     else None
                 ),
                 control_attempt=(
-                    str(entry["control_attempt"])
+                    require_str(entry, "control_attempt", where=where)
                     if entry.get("control_attempt") is not None
                     else None
                 ),
                 evidence_attempt=(
-                    str(entry["evidence_attempt"])
+                    require_str(entry, "evidence_attempt", where=where)
                     if entry.get("evidence_attempt") is not None
                     else None
                 ),
@@ -365,13 +380,14 @@ def load_measurement(path: Path) -> MeasurementRun:
     gates = doc.get("gates") or {}
     if not isinstance(gates, dict):
         raise EvidenceError(f"measurement gates must be an object at {path}")
+    where = str(path)
     return MeasurementRun(
         schema=schema,
         path=path,
-        motion_class=str(doc.get("motion_class")),
-        target_gate=str(doc.get("target_gate")),
+        motion_class=require_str(doc, "motion_class", where=where),
+        target_gate=require_str(doc, "target_gate", where=where),
         raw_sha256=raw_sha,
-        isolation=str(doc.get("isolation")),
+        isolation=require_str(doc, "isolation", where=where),
         caveats=caveats,
         gates=gates,
         raw=doc,
@@ -382,14 +398,15 @@ def load_provenance(path: Path) -> Provenance:
     doc = load_json(path)
     schema = require_schema(doc, KNOWN_SCHEMAS["provenance"], where=str(path))
     raw_sha = doc.get("raw_sha256")
-    if not isinstance(raw_sha, str):
+    if not isinstance(raw_sha, str) or raw_sha == "":
         raise EvidenceError(f"provenance missing raw_sha256 at {path}")
+    where = str(path)
     return Provenance(
         schema=schema,
         path=path,
-        specification_id=str(doc.get("specification_id")),
-        attempt_id=str(doc.get("attempt_id")),
-        raw_path=str(doc.get("raw_path")),
+        specification_id=require_str(doc, "specification_id", where=where),
+        attempt_id=require_str(doc, "attempt_id", where=where),
+        raw_path=require_str(doc, "raw_path", where=where),
         raw_sha256=raw_sha,
         raw=doc,
     )

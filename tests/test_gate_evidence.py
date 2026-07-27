@@ -397,3 +397,93 @@ def test_focused_promotion_validation_skips_unrelated_missing_raws(
     assert fx["promo_id"] in graph.promotions
     with pytest.raises(ge.EvidenceError, match="missing required file"):
         ge.validate_evidence_graph(fx["root"])
+
+
+def test_unknown_attempt_schema_is_rejected(tmp_path: Path) -> None:
+    fx = _fixture(tmp_path)
+    path = fx["gc"] / "attempts.jsonl"
+    attempt = json.loads(path.read_text())
+    attempt["schema"] = "gate-control-acquisition/99"
+    path.write_text(json.dumps(attempt, sort_keys=True) + "\n")
+    with pytest.raises(ge.EvidenceError, match="unknown schema"):
+        ge.validate_evidence_graph(fx["root"])
+
+
+def test_unknown_provenance_schema_is_rejected(tmp_path: Path) -> None:
+    fx = _fixture(tmp_path)
+    path = fx["root"] / fx["provenance_rel"]
+    doc = json.loads(path.read_text())
+    doc["schema"] = "gate-control-provenance/99"
+    _write(path, doc)
+    with pytest.raises(ge.EvidenceError, match="unknown schema"):
+        ge.validate_evidence_graph(fx["root"])
+
+
+def test_duplicate_specification_id_is_rejected(tmp_path: Path) -> None:
+    fx = _fixture(tmp_path)
+    path = fx["gc"] / "manifest.json"
+    doc = json.loads(path.read_text())
+    doc["specifications"].append(dict(doc["specifications"][0]))
+    _write(path, doc)
+    with pytest.raises(ge.EvidenceError, match="duplicate specification id"):
+        ge.validate_evidence_graph(fx["root"])
+
+
+def test_broken_active_promotion_reference_is_rejected(tmp_path: Path) -> None:
+    fx = _fixture(tmp_path)
+    path = fx["gc"] / "manifest.json"
+    doc = json.loads(path.read_text())
+    doc["specifications"][0]["active_promotion"] = "promo--missing"
+    _write(path, doc)
+    with pytest.raises(ge.EvidenceError, match="broken reference"):
+        ge.validate_evidence_graph(fx["root"])
+
+
+def test_measurement_motion_class_mismatch_is_rejected(tmp_path: Path) -> None:
+    fx = _fixture(tmp_path)
+    path = fx["root"] / fx["measurement_rel"]
+    doc = json.loads(path.read_text())
+    doc["motion_class"] = "walk"
+    _write(path, doc)
+    with pytest.raises(ge.EvidenceError, match="identity"):
+        ge.validate_evidence_graph(fx["root"])
+
+
+def test_provenance_attempt_identity_mismatch_is_rejected(tmp_path: Path) -> None:
+    fx = _fixture(tmp_path)
+    path = fx["root"] / fx["provenance_rel"]
+    doc = json.loads(path.read_text())
+    doc["attempt_id"] = "idle--silhouette_budget--999"
+    _write(path, doc)
+    with pytest.raises(ge.EvidenceError, match="identity"):
+        ge.validate_evidence_graph(fx["root"])
+
+
+def test_measurement_raw_sha_mismatch_is_rejected(tmp_path: Path) -> None:
+    fx = _fixture(tmp_path)
+    path = fx["root"] / fx["measurement_rel"]
+    doc = json.loads(path.read_text())
+    doc["raw_sha256"] = "c" * 64
+    _write(path, doc)
+    with pytest.raises(ge.EvidenceError, match="SHA-256 mismatch"):
+        ge.validate_evidence_graph(fx["root"])
+
+
+def test_attempt_raw_sha_mismatch_is_rejected(tmp_path: Path) -> None:
+    fx = _fixture(tmp_path)
+    path = fx["gc"] / "attempts.jsonl"
+    attempt = json.loads(path.read_text())
+    attempt["raw_sha256"] = "d" * 64
+    path.write_text(json.dumps(attempt, sort_keys=True) + "\n")
+    with pytest.raises(ge.EvidenceError, match="SHA-256 mismatch"):
+        ge.validate_evidence_graph(fx["root"])
+
+
+def test_missing_required_manifest_field_is_rejected(tmp_path: Path) -> None:
+    fx = _fixture(tmp_path)
+    path = fx["gc"] / "manifest.json"
+    doc = json.loads(path.read_text())
+    del doc["promotions"][0]["attempt_id"]
+    _write(path, doc)
+    with pytest.raises(ge.EvidenceError, match="missing required field"):
+        ge.validate_evidence_graph(fx["root"])

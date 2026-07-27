@@ -259,27 +259,7 @@ def test_audit_rejects_each_missing_required_field(tmp_path: Path) -> None:
         second_review_triggers=["metric_at_or_beyond_midpoint"],
         caveats=list(packet.caveats),
     )
-    required = [
-        "fixed_question",
-        "verdict",
-        "frames",
-        "observed_feature",
-        "metric",
-        "budget",
-        "hard_fail_boundary",
-        "candidate_sha256",
-        "reference_hashes",
-        "caveats",
-        "second_review_triggers",
-        "rationale",
-        "reviewer_identity",
-        "model_identity",
-        "model_version",
-        "review_id",
-        "timestamp",
-        "packet_sha256",
-    ]
-    for field in required:
+    for field in gr.AUDIT_REQUIRED_FIELDS:
         bad = dict(base)
         bad.pop(field)
         with pytest.raises(gr.ReviewError, match=field):
@@ -505,3 +485,163 @@ def test_validate_cli_accepts_written_packet_and_audits(tmp_path: Path) -> None:
     assert report["ok"] is True
     assert report["reviews"] == ["review--01", "review--02"]
     assert report["packet_sha256"] == packet.packet_sha256
+
+
+@pytest.mark.parametrize(
+    ("gate", "panel_kind"),
+    [
+        ("silhouette_budget", "occupancy_difference"),
+        ("loop_closure_pass", "occupancy_difference"),
+        ("min_pair_cohort_pass", "occupancy_difference"),
+        ("palette_drift_pass", "quantized_palette_histogram"),
+        ("displacement_pass", "best_alignment_vectors"),
+    ],
+)
+def test_packet_construction_selects_panel_and_reference_set(
+    tmp_path: Path, gate: str, panel_kind: str
+) -> None:
+    fx = _evidence(tmp_path, separated=True)
+    measurement_path = fx["root"] / "gate-controls/reports" / fx["attempt_id"] / "m1.json"
+    measurement = json.loads(measurement_path.read_text())
+    measurement["target_gate"] = gate
+    measurement["gates"] = {
+        gate: {"outcome": "fail", "metric": 0.3, "budget": 0.17, "reason": None}
+    }
+    _write(measurement_path, measurement)
+
+    profiles_path = fx["gc"] / "acceptance-profiles.json"
+    profiles = json.loads(profiles_path.read_text())
+    profiles["profiles"]["idle"]["gates"] = {
+        gate: {
+            "status": "SEPARATED",
+            "budget": 0.17,
+            "hard_fail": 0.3,
+            "active_promotion": fx["promo_id"],
+            "control_attempt": fx["attempt_id"],
+        }
+    }
+    _write(profiles_path, profiles)
+
+    manifest_path = fx["gc"] / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["specifications"][0]["target_gate"] = gate
+    manifest["specifications"][0]["id"] = f"idle/{gate}"
+    manifest["promotions"][0]["specification_id"] = f"idle/{gate}"
+    _write(manifest_path, manifest)
+
+    attempt_path = fx["gc"] / "attempts.jsonl"
+    attempt = json.loads(attempt_path.read_text())
+    attempt["specification_id"] = f"idle/{gate}"
+    attempt_path.write_text(json.dumps(attempt, sort_keys=True) + "\n")
+
+    provenance_path = fx["root"] / "gate-controls/provenance" / f"{fx['attempt_id']}.json"
+    provenance = json.loads(provenance_path.read_text())
+    provenance["specification_id"] = f"idle/{gate}"
+    _write(provenance_path, provenance)
+
+    packet = gr.build_review_packet(
+        root=fx["root"],
+        attempt_id=fx["attempt_id"],
+        gate=gate,
+        budget_binding_good=fx["good_path"],
+        packet_kind="CANDIDATE_REVIEW",
+    )
+    assert packet.panel_kind == panel_kind
+    assert packet.candidate.role == "candidate"
+    assert packet.budget_binding_good.role == "budget_binding_good"
+    assert packet.gate_control is not None
+    assert packet.gate_control.role == "gate_control"
+    assert packet.no_autonomous_hard_fail is False
+
+
+def test_audit_rejects_empty_string_required_fields(tmp_path: Path) -> None:
+    fx = _evidence(tmp_path)
+    packet = gr.build_promotion_verification_packet(
+        root=fx["root"],
+        promotion_id=fx["promo_id"],
+        budget_binding_good=fx["good_path"],
+    )
+    base = gr.make_audit_record(
+        packet=packet,
+        review_id="review--01",
+        verdict="APPROVE",
+        frames=[0, 1],
+        observed_feature="pose",
+        rationale="ok",
+        reviewer_identity="reviewer-a",
+        model_identity="composer",
+        model_version="2.5",
+        timestamp="2026-07-27T00:00:00+00:00",
+        second_review_triggers=["metric_at_or_beyond_midpoint"],
+    )
+    bad = dict(base)
+    bad["rationale"] = ""
+    with pytest.raises(gr.ReviewError, match="rationale"):
+        gr.validate_audit_record(bad)
+
+
+def test_validate_review_dir_rejects_duplicate_review_ids(tmp_path: Path) -> None:
+    fx = _evidence(tmp_path)
+    packet = gr.build_promotion_verification_packet(
+        root=fx["root"],
+        promotion_id=fx["promo_id"],
+        budget_binding_good=fx["good_path"],
+    )
+    review_dir = fx["gc"] / "reviews" / fx["attempt_id"]
+    gr.write_packet_manifest(review_dir / "packet.json", packet)
+    for name, identity in (("review--01.json", "reviewer-a"), ("review--02.json", "reviewer-b")):
+        audit = gr.make_audit_record(
+            packet=packet,
+            review_id="review--01",
+            verdict="APPROVE",
+            frames=[0, 1],
+            observed_feature="pose",
+            rationale="ok",
+            reviewer_identity=identity,
+            model_identity="composer",
+            model_version="2.5",
+            timestamp="2026-07-27T00:00:00+00:00",
+            second_review_triggers=["metric_at_or_beyond_midpoint"],
+        )
+        gr.write_audit_record(review_dir / name, audit)
+    with pytest.raises(gr.ReviewError, match="distinct"):
+        gr.validate_review_dir(review_dir)
+
+
+def test_validate_cli_emits_machine_readable_failure(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    missing = tmp_path / "missing-review-dir"
+    code = gr.main(["validate", str(missing)])
+    assert code == 1
+    report = json.loads(capsys.readouterr().out.strip())
+    assert report["ok"] is False
+    assert "error" in report
+
+
+def test_written_review_packet_and_audits_validate_fail_closed(tmp_path: Path) -> None:
+    fx = _evidence(tmp_path)
+    packet = gr.build_promotion_verification_packet(
+        root=fx["root"],
+        promotion_id=fx["promo_id"],
+        budget_binding_good=fx["good_path"],
+    )
+    review_dir = fx["gc"] / "reviews" / fx["attempt_id"]
+    gr.write_packet_manifest(review_dir / "packet.json", packet)
+    for review_id, identity in (("review--01", "reviewer-a"), ("review--02", "reviewer-b")):
+        audit = gr.make_audit_record(
+            packet=packet,
+            review_id=review_id,
+            verdict="APPROVE",
+            frames=[0, 1],
+            observed_feature="pose transition",
+            rationale="ok",
+            reviewer_identity=identity,
+            model_identity="composer",
+            model_version="2.5",
+            timestamp="2026-07-27T00:00:00+00:00",
+            second_review_triggers=["metric_at_or_beyond_midpoint"],
+        )
+        gr.write_audit_record(review_dir / f"{review_id}.json", audit)
+    report = gr.validate_review_dir(review_dir)
+    assert report["ok"] is True

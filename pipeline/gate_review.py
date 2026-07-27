@@ -524,12 +524,38 @@ def make_audit_record(
     return record
 
 
+_NULLABLE_AUDIT_FIELDS = frozenset({"metric", "budget", "hard_fail_boundary"})
+_STRING_AUDIT_FIELDS = frozenset(
+    {
+        "schema",
+        "fixed_question",
+        "verdict",
+        "observed_feature",
+        "candidate_sha256",
+        "rationale",
+        "reviewer_identity",
+        "model_identity",
+        "model_version",
+        "review_id",
+        "timestamp",
+        "packet_sha256",
+    }
+)
+
+
 def validate_audit_record(record: Mapping[str, Any]) -> None:
     schema = record.get("schema")
     if schema not in ge.KNOWN_SCHEMAS["review"]:
         raise ReviewError(f"unknown schema {schema!r} for audit record")
     for field in AUDIT_REQUIRED_FIELDS:
         if field not in record:
+            raise ReviewError(f"missing audit field: {field}")
+        value = record[field]
+        if field in _NULLABLE_AUDIT_FIELDS:
+            continue
+        if field in _STRING_AUDIT_FIELDS and (value is None or value == ""):
+            raise ReviewError(f"missing audit field: {field}")
+        if value is None:
             raise ReviewError(f"missing audit field: {field}")
     verdict = record.get("verdict")
     if verdict not in {"APPROVE", "REJECT", "UNCERTAIN"}:
@@ -602,6 +628,7 @@ def validate_review_dir(review_dir: Path) -> dict[str, Any]:
 
     reviews: list[str] = []
     identities: set[str] = set()
+    review_ids: set[str] = set()
     for path in sorted(review_dir.glob("review--*.json")):
         record = ge.load_review(path)
         validate_audit_record(record.raw)
@@ -610,6 +637,9 @@ def validate_review_dir(review_dir: Path) -> dict[str, Any]:
                 f"SHA-256 mismatch: audit {path.name} packet hash "
                 f"{record.packet_sha256} != {expected_hash}"
             )
+        if record.review_id in review_ids:
+            raise ReviewError("second review identity must be distinct")
+        review_ids.add(record.review_id)
         reviews.append(record.review_id)
         identity = str(record.raw.get("reviewer_identity"))
         if identity in identities:
@@ -639,12 +669,19 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     if args.command == "validate":
-        reports = []
+        exit_code = 0
         for path in args.paths:
-            report = validate_review_dir(path)
-            reports.append(report)
+            try:
+                report = validate_review_dir(path)
+            except (ReviewError, ge.EvidenceError) as exc:
+                report = {
+                    "ok": False,
+                    "review_dir": str(path),
+                    "error": str(exc),
+                }
+                exit_code = 1
             print(json.dumps(report, sort_keys=True))
-        return 0 if all(r["ok"] for r in reports) else 1
+        return exit_code
     return 2
 
 
