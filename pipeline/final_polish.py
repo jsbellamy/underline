@@ -10,7 +10,7 @@ import json
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal, Sequence
+from typing import Any, Sequence
 
 from PIL import Image, UnidentifiedImageError
 
@@ -23,6 +23,7 @@ from pipeline.strip import (
     StripLayout,
     canonicalize_frame,
     coherence_split,
+    export_frames,
     ingest_strip_provider,
     load_provider_frames,
 )
@@ -30,7 +31,6 @@ from pipeline.strip import (
 BUNDLE_SCHEMA = "final-polish-bundle/0"
 REPORT_SCHEMA = "final-polish-report/0"
 
-FRAME_DIR_NAMES = ("draft", "polished", "release")
 EXPECTED_FRAME_NAMES = tuple(f"frame-{index}.png" for index in range(DEFAULT_LAYOUT.frame_count))
 
 
@@ -129,18 +129,14 @@ def _cleanup_partial(root: Path) -> None:
 
 
 def _save_logical_frame(cells: list[list[Cell]], path: Path) -> None:
-    height = len(cells)
-    width = len(cells[0]) if cells else 0
-    image = Image.new("RGBA", (width, height), (*MAGENTA, 0))
-    pixels = image.load()
-    assert pixels is not None
-    for y in range(height):
-        for x in range(width):
-            rgb = cells[y][x]
-            if rgb is not None:
-                pixels[x, y] = (*rgb, 255)
+    staging = path.parent / ".frame-staging"
+    if staging.exists():
+        shutil.rmtree(staging)
+    export_frames([cells], staging, path.stem, frame_w=len(cells[0]), frame_h=len(cells))
+    exported = staging / f"{path.stem}-f0.png"
     path.parent.mkdir(parents=True, exist_ok=True)
-    image.save(path)
+    shutil.move(str(exported), str(path))
+    shutil.rmtree(staging, ignore_errors=True)
 
 
 def _cells_from_rgba_image(image: Image.Image) -> list[list[Cell]]:
@@ -341,7 +337,7 @@ def _visible_cell_delta(
     polished_frames: list[list[list[Cell]]],
 ) -> VisibleCellDelta:
     edits: list[VisibleCellEdit] = []
-    per_frame_counts = [0, 0, 0, 0]
+    per_frame_counts = [0 for _ in draft_frames]
 
     for frame_index, (draft, polished) in enumerate(zip(draft_frames, polished_frames)):
         for y, (draft_row, polished_row) in enumerate(zip(draft, polished)):
@@ -425,8 +421,6 @@ def initialize_bundle(
     provider_path: Path,
     motion_class: str,
     bundle_root: Path,
-    *,
-    layout: StripLayout | None = None,
 ) -> None:
     """Create a hash-bound bundle when provider ingest PASSes; fail closed otherwise."""
     if bundle_root.exists():
@@ -435,7 +429,7 @@ def initialize_bundle(
             reason_code="bundle_exists",
         )
 
-    probe_layout = layout or _corpus_layout()
+    probe_layout = _corpus_layout()
     ingest = ingest_strip_provider(provider_path, probe_layout, motion_class=motion_class)
     if ingest.outcome != "PASS" or not ingest.pass_:
         raise InitializationRejectedError(
@@ -607,6 +601,11 @@ def _ensure_release_frames(bundle_root: Path, result: FinalPolishCheckResult) ->
     release_dir.mkdir(parents=True, exist_ok=True)
     for index, name in enumerate(EXPECTED_FRAME_NAMES):
         source = _frame_dir(bundle_root, "polished") / name
+        if sha256_file(source) != result.polished_hashes[index]:
+            raise InvalidBundleError(
+                f"polished frame hash mismatch: {name}",
+                reason_code="release_conflict",
+            )
         dest = release_dir / name
         if dest.exists():
             if sha256_file(dest) != result.polished_hashes[index]:
@@ -622,12 +621,9 @@ def _canonical_json(value: object) -> object:
     return json.loads(json.dumps(value, sort_keys=True))
 
 
-def finalize_bundle(
-    bundle_root: Path,
-    result: FinalPolishCheckResult | None = None,
-) -> Path:
+def finalize_bundle(bundle_root: Path) -> Path:
     """Write an immutable report; on PASS, copy polished Frames to release/."""
-    check = result or check_bundle(bundle_root)
+    check = check_bundle(bundle_root)
     report_path = _reports_dir(bundle_root) / f"{check.fingerprint}.json"
     payload = _report_payload(bundle_root, check)
 

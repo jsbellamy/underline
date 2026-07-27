@@ -16,14 +16,13 @@ from pipeline.final_polish import (
     BUNDLE_SCHEMA,
     REPORT_SCHEMA,
     BundleExistsError,
-    FinalPolishCheckResult,
     InitializationRejectedError,
     InvalidBundleError,
     check_bundle,
     finalize_bundle,
     initialize_bundle,
 )
-from pipeline.gate_evidence import sha256_bytes, sha256_file
+from pipeline.gate_evidence import sha256_file
 from pipeline.strip import DEFAULT_LAYOUT, IngestResult, StripLayout, ingest_strip_provider
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -214,10 +213,10 @@ def test_provider_currently_review_is_reportable_without_release(tmp_path: Path)
     )
     with patch("pipeline.final_polish.ingest_strip_provider", return_value=review):
         result = check_bundle(bundle)
-    assert result.provider_outcome == "REVIEW"
-    assert result.outcome == "REVIEW"
+        assert result.provider_outcome == "REVIEW"
+        assert result.outcome == "REVIEW"
 
-    finalize_bundle(bundle, result)
+        finalize_bundle(bundle)
     assert not (bundle / "release").exists()
     assert len(list((bundle / "reports").glob("*.json"))) == 1
 
@@ -385,7 +384,7 @@ def test_check_is_read_only(tmp_path: Path) -> None:
 def test_finalize_records_immutable_report_and_pass_release(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
     result = check_bundle(bundle)
-    report_path = finalize_bundle(bundle, result)
+    report_path = finalize_bundle(bundle)
 
     assert report_path.is_file()
     report = json.loads(report_path.read_text())
@@ -406,7 +405,7 @@ def test_finalize_fail_outcome_writes_report_without_release(tmp_path: Path) -> 
     polished = bundle / "polished" / "frame-1.png"
     _set_opaque_rgb(polished, 3, 5, (250, 1, 2))
     result = check_bundle(bundle)
-    report_path = finalize_bundle(bundle, result)
+    report_path = finalize_bundle(bundle)
 
     report = json.loads(report_path.read_text())
     assert report["outcome"] == "FAIL"
@@ -416,8 +415,8 @@ def test_finalize_fail_outcome_writes_report_without_release(tmp_path: Path) -> 
 def test_repeat_finalize_is_idempotent(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
     result = check_bundle(bundle)
-    first = finalize_bundle(bundle, result)
-    second = finalize_bundle(bundle, result)
+    first = finalize_bundle(bundle)
+    second = finalize_bundle(bundle)
     assert first == second
     assert json.loads(first.read_text()) == json.loads(second.read_text())
 
@@ -425,23 +424,23 @@ def test_repeat_finalize_is_idempotent(tmp_path: Path) -> None:
 def test_conflicting_report_fails_closed(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
     result = check_bundle(bundle)
-    report_path = finalize_bundle(bundle, result)
+    report_path = finalize_bundle(bundle)
     tampered = json.loads(report_path.read_text())
     tampered["outcome"] = "FAIL"
     report_path.write_text(json.dumps(tampered) + "\n", encoding="utf-8")
 
     with pytest.raises(InvalidBundleError) as exc:
-        finalize_bundle(bundle, result)
+        finalize_bundle(bundle)
     assert exc.value.reason_code == "report_conflict"
 
 
 def test_conflicting_release_fails_closed(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
     result = check_bundle(bundle)
-    finalize_bundle(bundle, result)
+    finalize_bundle(bundle)
     release = bundle / "release" / "frame-0.png"
     release.write_bytes(release.read_bytes() + b"x")
 
     with pytest.raises(InvalidBundleError) as exc:
-        finalize_bundle(bundle, result)
+        finalize_bundle(bundle)
     assert exc.value.reason_code == "release_conflict"
