@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import pathlib
 import subprocess
@@ -12,11 +13,7 @@ import pytest
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "prototype" / "strip-coherence"))
 
-from alpha_budgets import (  # noqa: E402
-    ALPHA,
-    _required_separated_promotion_ids,
-    derive_separated_budget,
-)
+from alpha_budgets import ALPHA, derive_separated_budget  # noqa: E402
 from numeric_policy import canonical_metric  # noqa: E402
 
 
@@ -42,11 +39,30 @@ def test_derive_separated_budget_matches_issue_28_tightest_pairs() -> None:
         assert result.budget < result.c
 
 
-def test_required_separated_promotion_ids_counts_seventeen_provider_controls() -> None:
-    required = _required_separated_promotion_ids()
-    assert len(required) == 17
-    assert "promo--walk--loop_closure_pass" in required
-    assert "promo--swing--silhouette_budget" in required
+def test_alpha_budgets_blocks_when_required_separated_promotion_not_active() -> None:
+    manifest_path = ROOT / "gate-controls" / "manifest.json"
+    original = manifest_path.read_text()
+    doc = json.loads(original)
+    for promo in doc["promotions"]:
+        if promo["id"] == "promo--walk--loop_closure_pass":
+            promo["status"] = "PENDING_VERIFICATION"
+            break
+    manifest_path.write_text(json.dumps(doc, indent=2) + "\n")
+    env = {**os.environ, "PYTHONPATH": str(ROOT)}
+    try:
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "prototype/strip-coherence/alpha_budgets.py")],
+            cwd=ROOT,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    finally:
+        manifest_path.write_text(original)
+    assert result.returncode != 0
+    assert "not ACTIVE" in result.stdout + result.stderr
+    assert "promo--walk--loop_closure_pass" in result.stdout + result.stderr
 
 
 @pytest.mark.slow
