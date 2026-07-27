@@ -1,0 +1,33 @@
+{
+  "attempt_id": "idle--silhouette_budget--001",
+  "budget": 0.2239,
+  "candidate_sha256": "9c839f154edeff04b3217c7a5ca8eeedc820d3dd9825bf04c53df594f1226186",
+  "caveats": [],
+  "fixed_question": "Intentional pose transition vs identity drift / framing / translation?",
+  "frames": [
+    0,
+    1,
+    2
+  ],
+  "gate": "silhouette_budget",
+  "hard_fail_boundary": 0.3,
+  "metric": 0.3,
+  "model_identity": "cursor-grok-4.5",
+  "model_version": "4.5",
+  "observed_feature": "Occupancy-difference panels 0\u21921 and 1\u21922 show dense arm/head change from a single arms-raised pose spike; 2\u21923 nearly empty; palette and identity costume stable vs binding-good miner-idle-strip subtle breath.",
+  "packet_sha256": "970b6cf734c0a748da4ba137b175402151cccf81155dbf02f6314866c9f7c7b9",
+  "promotion_id": "promo--idle--silhouette_budget",
+  "rationale": "Candidate occupancy panel marks a pose-driven silhouette spike on adjacent pairs; binding-good miner-idle-strip shows only subtle idle motion; proposed control is the same raw as candidate. Reads as deliberate pose change with preserved identity. Metric at inclusive C midpoint trigger. APPROVE promotion verification.",
+  "reference_hashes": {
+    "budget_binding_good": "cd82ac3201a964379f3bc951d9cfaf80e10c580d49d4633ad9bc0af605000da8",
+    "proposed_hard_fail_reference": "9c839f154edeff04b3217c7a5ca8eeedc820d3dd9825bf04c53df594f1226186"
+  },
+  "review_id": "review--02",
+  "reviewer_identity": "cursor-agent/issue-50/review-02",
+  "schema": "gate-review-audit/0",
+  "second_review_triggers": [
+    "metric_at_or_beyond_midpoint"
+  ],
+  "timestamp": "2026-07-27T10:25:00+00:00",
+  "verdict": "APPROVE"
+}

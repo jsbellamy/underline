@@ -1,0 +1,34 @@
+{
+  "attempt_id": "idle--palette_drift_pass--001",
+  "budget": 0.1974,
+  "candidate_sha256": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd",
+  "caveats": [],
+  "fixed_question": "Intentional subject/Motion-class change (e.g. emissive flicker) vs unintended recolour?",
+  "frames": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "gate": "palette_drift_pass",
+  "hard_fail_boundary": 0.2793,
+  "metric": 0.2793,
+  "model_identity": "cursor-grok-4.5",
+  "model_version": "4.5",
+  "observed_feature": "Quantized per-frame palette histograms diverge while miner pose and silhouette stay nearly fixed; tunic/helmet recolour across f0\u2013f3 with stable pickaxe/skin anchors vs binding-good 11-dwarf-idle stable palette.",
+  "packet_sha256": "daf58b999d4377b302c7fcd41a7998be227dfd935fc89b756f3f9c3cabb14f4f",
+  "promotion_id": "promo--idle--palette_drift_pass",
+  "rationale": "Packet roles confirmed: candidate Gate panel shows per-frame palette histogram drift; budget-binding good (11-dwarf-idle) keeps one palette; proposed hard-fail reference shares candidate bytes. Visual answer is unintended recolour of a held idle subject. Metric equals C with no caveats. APPROVE as hard-fail boundary specimen.",
+  "reference_hashes": {
+    "budget_binding_good": "21902812dea04a37cac1f6f8d39736e3178ea943add6b2a66e7ca7af79433180",
+    "proposed_hard_fail_reference": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd"
+  },
+  "review_id": "review--02",
+  "reviewer_identity": "cursor-agent/issue-50/review-02",
+  "schema": "gate-review-audit/0",
+  "second_review_triggers": [
+    "metric_at_or_beyond_midpoint"
+  ],
+  "timestamp": "2026-07-27T10:25:00+00:00",
+  "verdict": "APPROVE"
+}
