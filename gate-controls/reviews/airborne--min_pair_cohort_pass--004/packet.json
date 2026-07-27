@@ -1,0 +1,36 @@
+{
+  "attempt_id": "airborne--min_pair_cohort_pass--004",
+  "budget": 0.3013,
+  "budget_binding_good": {
+    "path": "prototype/strip-coherence/inbox/17-wisp-float.png",
+    "raw_sha256": "58fa2edbb6f70a80486f07c933f58c0abca842ba847751522f71703f4960a8db",
+    "role": "budget_binding_good"
+  },
+  "candidate": {
+    "path": "gate-controls/raw/airborne--min_pair_cohort_pass--004.png",
+    "raw_sha256": "fd464b8cf471e375311a47fae800a6e13a7e4a098512d394d337dd0fe9320060",
+    "role": "candidate"
+  },
+  "caveats": [
+    "displacement_pass is undecidable \u2014 this control does not evidence that dimension"
+  ],
+  "fixed_question": "Same subject, one coherent animation despite no sufficiently similar pair?",
+  "gate": "min_pair_cohort_pass",
+  "gate_control": null,
+  "hard_fail_boundary": 0.3333,
+  "metric": 0.3333,
+  "motion_class": "airborne",
+  "no_autonomous_hard_fail": false,
+  "no_autonomous_hard_fail_reason": null,
+  "packet_kind": "PROMOTION_VERIFICATION",
+  "packet_sha256": "9c3d014eefef2d5ca2ad5821b680660b1e6777facb20ebf3812e95aa3f45e599",
+  "panel_kind": "occupancy_difference",
+  "promotion_id": "promo--airborne--min_pair_cohort_pass",
+  "promotion_status": "PENDING_VERIFICATION",
+  "proposed_hard_fail_reference": {
+    "path": "gate-controls/raw/airborne--min_pair_cohort_pass--004.png",
+    "raw_sha256": "fd464b8cf471e375311a47fae800a6e13a7e4a098512d394d337dd0fe9320060",
+    "role": "proposed_hard_fail_reference"
+  },
+  "schema": "gate-review-packet/0"
+}

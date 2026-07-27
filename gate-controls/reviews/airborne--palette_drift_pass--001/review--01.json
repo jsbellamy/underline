@@ -1,0 +1,34 @@
+{
+  "attempt_id": "airborne--palette_drift_pass--001",
+  "budget": 0.2423,
+  "candidate_sha256": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd",
+  "caveats": [],
+  "fixed_question": "Intentional subject/Motion-class change (e.g. emissive flicker) vs unintended recolour?",
+  "frames": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "gate": "palette_drift_pass",
+  "hard_fail_boundary": 0.2793,
+  "metric": 0.2793,
+  "model_identity": "Cursor Grok 4.5",
+  "model_version": "cursor-grok-4.5",
+  "observed_feature": "Same figure silhouette wholesale-recoloured each frame with matching quantized palette shifts",
+  "packet_sha256": "d7537be8f0ac7a7e7ef97939ba31ebef34261c70988f443ab65f4e09d75ac0b3",
+  "promotion_id": "promo--airborne--palette_drift_pass",
+  "rationale": "Candidate and proposed_hard_fail_reference are the same strip. Across f0\u2013f3 the subject and pose stay a pickaxe-bearing figure; only global colours change frame-to-frame. The required quantized_palette_histogram panel under each frame tracks that: blues/greens in f0, yellows/reds in f1, whites/purples in f2, darks/oranges in f3. That is unintended recolour / palette drift, not airborne-appropriate emissive flicker or a subject/motion-class change. Budget-binding good (16-moth-flap) keeps a stable beige/brown palette under motion, underscoring the contrast. Metric equals C (0.2793) at the hard-fail boundary with no caveats\u2014valid hard-fail reference for palette_drift_pass.",
+  "reference_hashes": {
+    "budget_binding_good": "28b75b9a67b671d47ec5eedddc72095da559950ad2622e0d202a4eb03747e821",
+    "proposed_hard_fail_reference": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd"
+  },
+  "review_id": "review--01",
+  "reviewer_identity": "cursor-grok-4.5-review-01",
+  "schema": "gate-review-audit/0",
+  "second_review_triggers": [
+    "metric_at_or_beyond_midpoint"
+  ],
+  "timestamp": "2026-07-27T10:17:30+00:00",
+  "verdict": "APPROVE"
+}
