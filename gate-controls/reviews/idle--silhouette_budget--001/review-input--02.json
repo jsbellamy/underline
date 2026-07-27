@@ -1,0 +1,42 @@
+{
+  "blinded": true,
+  "packet": {
+    "attempt_id": "idle--silhouette_budget--001",
+    "budget": 0.2239,
+    "budget_binding_good": {
+      "path": "prototype/strip-coherence/inbox/miner-idle-strip.png",
+      "raw_sha256": "cd82ac3201a964379f3bc951d9cfaf80e10c580d49d4633ad9bc0af605000da8",
+      "role": "budget_binding_good"
+    },
+    "candidate": {
+      "path": "gate-controls/raw/idle--silhouette_budget--001.png",
+      "raw_sha256": "9c839f154edeff04b3217c7a5ca8eeedc820d3dd9825bf04c53df594f1226186",
+      "role": "candidate"
+    },
+    "caveats": [],
+    "fixed_question": "Intentional pose transition vs identity drift / framing / translation?",
+    "gate": "silhouette_budget",
+    "gate_control": null,
+    "hard_fail_boundary": 0.3,
+    "metric": 0.3,
+    "motion_class": "idle",
+    "no_autonomous_hard_fail": false,
+    "no_autonomous_hard_fail_reason": null,
+    "packet_kind": "PROMOTION_VERIFICATION",
+    "packet_sha256": "970b6cf734c0a748da4ba137b175402151cccf81155dbf02f6314866c9f7c7b9",
+    "panel_kind": "occupancy_difference",
+    "promotion_id": "promo--idle--silhouette_budget",
+    "promotion_status": "PENDING_VERIFICATION",
+    "proposed_hard_fail_reference": {
+      "path": "gate-controls/raw/idle--silhouette_budget--001.png",
+      "raw_sha256": "9c839f154edeff04b3217c7a5ca8eeedc820d3dd9825bf04c53df594f1226186",
+      "role": "proposed_hard_fail_reference"
+    },
+    "schema": "gate-review-packet/0"
+  },
+  "packet_sha256": "970b6cf734c0a748da4ba137b175402151cccf81155dbf02f6314866c9f7c7b9",
+  "prior_review_visible": false,
+  "review_id": "review--02",
+  "reviewer_identity": "cursor-agent/issue-50/review-02",
+  "schema": "gate-review-packet/0"
+}
