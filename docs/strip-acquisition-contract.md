@@ -411,10 +411,10 @@ evidence model, add Gates, or change Budgets.
 1. **`init`** accepts only a provider Strip that currently passes production
    ingest (`PASS`). It creates a retained provider copy, immutable Draft Frames,
    and seeded Polished Frames (one per logical Frame slot). `REVIEW` and `FAIL`
-   ingest outcomes create no bundle.
+   ingest outcomes create no Polish Bundle.
 2. The four Polished Frames remain exact `16×24` RGBA with binary alpha, exact
    per-Frame Draft alpha masks, and opaque RGB values drawn only from the
-   combined Draft palette.
+   combined Draft palette (only RGB may differ from Draft; alpha is locked).
 3. **`check`** is read-only: it reports every visible changed Cell (Draft vs
    Polished RGB at occupied coordinates) and runs the exact Polished Frames
    through the current Motion-class Acceptance profiles via `coherence_split`.

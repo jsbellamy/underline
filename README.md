@@ -53,12 +53,17 @@ Exit codes: `0` `PASS`, `1` `FAIL`, `2` invalid or structural error, `3`
 `REVIEW`. `polished/` is the editor-facing PNG sequence; `release/` is written
 only on automatic `PASS`.
 
-Aseprite is optional — direct PNG edits at Cell coordinates are supported.
-Automatic accent recognition, Aseprite automation, original raster generation,
-miner pixel edits, runtime playback, and game-asset integration are out of scope
-for this wave. Examples such as a one-Cell black eye, a one-Cell-high belt, or
-outline continuity are visual guidance only; the validator does not recognize
-those semantics.
+Aseprite is optional: an operator may edit Polished Frames in Aseprite or by
+direct Cell-coordinate changes to the `polished/` PNG sequence. Automatic accent
+recognition, Aseprite project generation or automation, original raster
+generation, actual miner pixel edits, runtime playback, and game-asset
+integration remain outside this wave. Visual examples such as a one-Cell black
+eye, a one-Cell-high belt, a stable buckle color, or intentional outline
+continuity illustrate the kind of edits an operator might make; the validator
+does not recognize those semantics.
+
+Authority: [`docs/strip-acquisition-contract.md`](docs/strip-acquisition-contract.md)
+Consumers — Final polish.
 
 ## Corpus analysis and proof tooling
 
