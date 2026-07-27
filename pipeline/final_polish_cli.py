@@ -123,12 +123,12 @@ def _init_rejection_json_payload(
 ) -> dict[str, Any]:
     gate_views = coherence_split_json_gates(ingest.coherence)
     return {
-        "outcome": ingest.outcome,
         "pass": ingest.pass_,
         "provider": str(provider_path.resolve()),
         "motion_class": motion_class,
         "coherence": ingest.coherence,
         **gate_views,
+        "outcome": ingest.outcome,
     }
 
 
