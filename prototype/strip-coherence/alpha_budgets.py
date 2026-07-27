@@ -231,7 +231,7 @@ def _runtime_gate_policy(motion_class: str, gate: str) -> S.GatePolicy:
 
 
 def _assert_runtime_equivalence(
-  *,
+    *,
     profiles: dict[tuple[str, str], dict],
     separated_rows: list[dict],
 ) -> None:
@@ -334,6 +334,11 @@ def main() -> int:
 
             sample_id, raw_g = worst[motion_class][metric_key]
             old = _runtime_budget(motion_class, gate)
+            if old is None and pair_status != "INAPPLICABLE":
+                raise SystemExit(
+                    f"α-Budget derivation blocked: runtime omits Budget for {pair} "
+                    f"but profile status is {pair_status}"
+                )
             assert old is not None
 
             if pair_status == "UNSEPARATED":

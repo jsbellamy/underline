@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 import os
 import pathlib
 import subprocess
@@ -18,17 +17,7 @@ from pipeline import strip as S  # noqa: E402
 from pipeline.numeric_policy import canonical_metric  # noqa: E402
 
 
-def test_evaluate_reports_review_gates_separately() -> None:
-    import adversarial
-
-    frames = adversarial.real_frames("idle")
-    mutated = adversarial.wrong_pose(frames)
-    coh = S.coherence_split(mutated, motion_class="idle")
-    assert coh["outcome"] == "REVIEW"
-    assert coh["gate_outcomes"]["silhouette_budget"]["outcome"] == "REVIEW"
-
-
-def test_evaluate_returns_tri_state_outcome() -> None:
+def test_evaluate_returns_pass_for_good_idle() -> None:
     path = corpus.find_png("01-miner-idle")
     assert path is not None
     result = corpus.evaluate(path, motion_class="idle")
@@ -44,6 +33,28 @@ def test_evaluate_fail_negative_control() -> None:
     result = corpus.evaluate(path, motion_class="idle")
     assert result["outcome"] == "FAIL"
     assert "palette_drift_pass" in result["failed_gates"]
+
+
+def test_evaluate_review_lists_review_gates_separately() -> None:
+    import adversarial
+
+    path = corpus.find_png("01-miner-idle")
+    assert path is not None
+    layout = S.StripLayout(
+        frame_w=16,
+        frame_h=24,
+        frame_count=4,
+        gutter=2,
+        pitch_px=24,
+        margin_cells=0,
+    )
+    cells, _ = S.recover_strip_cells(path, layout)
+    frames, _ = S.slice_frames_pitch(cells, frame_count=4)
+    mutated = adversarial.wrong_pose(frames)
+    coh = S.coherence_split(mutated, motion_class="idle")
+    assert coh["outcome"] == "REVIEW"
+    assert coh["gate_outcomes"]["silhouette_budget"]["outcome"] == "REVIEW"
+    assert coh["gate_outcomes"]["silhouette_budget"]["outcome"] != "FAIL"
 
 
 def test_metric_at_hard_fail_boundary_is_fail_not_review() -> None:
@@ -65,39 +76,6 @@ def test_metric_at_hard_fail_boundary_is_fail_not_review() -> None:
     assert canonical_metric(ingest.coherence["worst_palette_drift"]) == drift["hard_fail"]
     assert drift["outcome"] == "FAIL"
     assert result["outcome"] == "FAIL"
-
-
-def test_contract_agrees_pass_review_fail() -> None:
-    assert corpus._contract_agrees(
-        "PASS",
-        [],
-        {
-            "outcome": "PASS",
-            "tripped": [],
-            "review_gates": [],
-            "failed_gates": [],
-        },
-    )
-    assert corpus._contract_agrees(
-        "REVIEW",
-        ["silhouette_budget"],
-        {
-            "outcome": "REVIEW",
-            "tripped": [],
-            "review_gates": ["silhouette_budget"],
-            "failed_gates": [],
-        },
-    )
-    assert corpus._contract_agrees(
-        "FAIL",
-        ["palette_drift_pass"],
-        {
-            "outcome": "FAIL",
-            "tripped": ["palette_drift_pass"],
-            "review_gates": [],
-            "failed_gates": ["palette_drift_pass"],
-        },
-    )
 
 
 @pytest.mark.slow

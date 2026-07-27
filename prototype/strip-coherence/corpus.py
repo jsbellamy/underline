@@ -34,10 +34,7 @@ GATES = (
     "palette_drift_pass",
 )
 
-OUTCOMES = ("PASS", "REVIEW", "FAIL")
-
 GREEN, RED, YELLOW, DIM, RESET = "\033[32m", "\033[31m", "\033[33m", "\033[2m", "\033[0m"
-
 
 def find_png(sample_id: str) -> pathlib.Path | None:
     exact = INBOX / f"{sample_id}.png"

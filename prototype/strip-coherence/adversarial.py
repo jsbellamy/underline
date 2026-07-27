@@ -187,13 +187,12 @@ _MUTATORS = {
 
 def _tripped(result: dict) -> list[str]:
     gate_outcomes = result.get("gate_outcomes") or {}
-    failed = [g for g in GATES if result.get(g) is False]
-    review = [
-        gate
-        for gate, row in gate_outcomes.items()
-        if row.get("outcome") == "REVIEW"
-    ]
-    return failed + review
+    return [gate for gate, row in gate_outcomes.items() if row.get("outcome") == "FAIL"]
+
+
+def _review_gates(result: dict) -> list[str]:
+    gate_outcomes = result.get("gate_outcomes") or {}
+    return [gate for gate, row in gate_outcomes.items() if row.get("outcome") == "REVIEW"]
 
 
 def _outcome(result: dict) -> str:
@@ -212,6 +211,7 @@ def report(
     sil = max((row["frac"] for row in result["silhouette_adjacent"]), default=0.0)
     pairwise = result.get("silhouette_pairwise") or {}
     tripped = _tripped(result)
+    review_gates = _review_gates(result)
     outcome = _outcome(result)
     mutation_key = next((k for label, k in MUTATIONS if label == name), None)
     gap_reason = _gap_reason(motion_class, mutation_key)
@@ -250,11 +250,6 @@ def report(
             disp_note = "  disp=—"
         elif disp is not None:
             disp_note = f"  disp={'pass' if disp else 'FAIL'}"
-        review_gates = [
-            gate
-            for gate, row in (result.get("gate_outcomes") or {}).items()
-            if row.get("outcome") == "REVIEW"
-        ]
         review_note = f"  review={review_gates}" if review_gates else ""
         print(
             f"{status:<8}  {motion_class:<10} {name:<22} "
