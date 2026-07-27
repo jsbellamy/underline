@@ -89,6 +89,12 @@ def test_passing_strip_exports_logical_frame_pngs(tmp_path: Path) -> None:
             rgba = image.convert("RGBA")
             alpha = rgba.getchannel("A")
             assert min(alpha.get_flattened_data()) == 0
+            bottom_row = list(
+                alpha.crop(
+                    (0, LOGICAL_SIZE[1] - 1, LOGICAL_SIZE[0], LOGICAL_SIZE[1])
+                ).get_flattened_data()
+            )
+            assert max(bottom_row) == 255, "feet should land on the bottom logical row"
     assert len(set(sizes)) == 1
 
 

@@ -1361,6 +1361,35 @@ def baseline_row(frame: list[list[Cell]]) -> int | None:
     return None
 
 
+def canonicalize_frame(
+    frame: list[list[Cell]],
+    *,
+    frame_w: int,
+    frame_h: int,
+) -> list[list[Cell]]:
+    """Crop or pad a pitch-sliced frame to declared logical dimensions.
+
+    Provider recovery often yields grids taller than ``frame_h``. Bottom-align on
+    the lowest opaque row so grounded feet land on the last row.
+    """
+    if not frame:
+        return [[None for _ in range(frame_w)] for _ in range(frame_h)]
+
+    trimmed = [row[:frame_w] for row in frame]
+    fh = len(trimmed)
+    if fh == frame_h:
+        return trimmed
+
+    if fh < frame_h:
+        pad = [[None for _ in range(frame_w)] for _ in range(frame_h - fh)]
+        return pad + trimmed
+
+    anchor = baseline_row(trimmed)
+    y0 = 0 if anchor is None else anchor - frame_h + 1
+    y0 = max(0, min(y0, fh - frame_h))
+    return trimmed[y0 : y0 + frame_h]
+
+
 def palette_set(frame: list[list[Cell]]) -> frozenset[tuple[int, int, int]]:
     colors: set[tuple[int, int, int]] = set()
     for row in frame:
@@ -1803,7 +1832,7 @@ def export_frames(
     out_dir.mkdir(parents=True, exist_ok=True)
     paths: list[pathlib.Path] = []
     for index, frame in enumerate(frames):
-        logical = [row[:frame_w] for row in frame[:frame_h]]
+        logical = canonicalize_frame(frame, frame_w=frame_w, frame_h=frame_h)
         height = len(logical)
         width = len(logical[0]) if logical else 0
         image = Image.new("RGBA", (width, height), (*MAGENTA, 0))

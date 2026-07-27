@@ -107,3 +107,25 @@ def test_ungrounded_excludes_baseline_row_stable() -> None:
                     "min_pair_cohort_pass", "loop_closure_pass", "palette_drift_pass")
         if result.get(g) is False
     ]
+
+
+def test_canonicalize_frame_bottom_aligns_on_baseline() -> None:
+    rgb = (80, 80, 80)
+    tall = _grid(16, 42)
+    for x in range(6, 10):
+        _mark(tall, x, 28, rgb)
+    _mark(tall, 8, 11, rgb)
+
+    cropped = S.canonicalize_frame(tall, frame_w=16, frame_h=24)
+
+    assert len(cropped) == 24
+    assert len(cropped[0]) == 16
+    assert S.baseline_row(cropped) == 23
+    assert cropped[23][8] == rgb
+    assert cropped[6][8] == rgb
+
+
+def test_canonicalize_frame_noop_when_already_canonical() -> None:
+    frame = _grid(16, 24)
+    _mark(frame, 4, 23, (1, 2, 3))
+    assert S.canonicalize_frame(frame, frame_w=16, frame_h=24) == frame
