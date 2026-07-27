@@ -455,6 +455,28 @@ eye, a one-Cell-high belt, a stable buckle color, or intentional outline
 continuity illustrate the kind of edits an operator might make; the validator
 does not recognize those semantics.
 
+### Static assets (post-recovery)
+
+`python -m pipeline.static_asset_cli` (npm `asset:static`) is the production
+lifecycle for uniform static provider sheets. It does not assign a Motion class,
+run coherence Gates, or change Strip Budgets.
+
+1. **`init`** runs existing raw candidate gates, recovers one logical sheet with
+   vendored `pipeline.recovery` primitives, verifies declared sheet geometry from
+   a `static-sheet-spec/0` document, and pitch-slices each declared item. It
+   retains the provider PNG and provenance sidecar, embeds a hash-bound spec and
+   Master Palette, and seeds immutable Draft and Polished item PNGs. Invalid
+   input creates no bundle.
+2. Polished items remain exact declared dimensions in RGBA with binary alpha,
+   exact Draft alpha masks, and opaque RGB values drawn only from the bound
+   Master Palette.
+3. **`check`** is read-only: it reports every changed Cell and every structural
+   violation. Outcome is `PASS` or `FAIL` only — semantic art judgment is
+   outside this structural check.
+4. **`finalize`** repeats current validation, writes an immutable hash-bound
+   report for every valid check, and copies items to `release/` only on `PASS`.
+   Existing conflicting Release bytes fail rather than overwrite.
+
 `npm run prototype:strip:corpus` and `npm run prototype:strip:adversarial` consume the
 same production tri-state outcomes — they do not derive or own Budget numbers.
 `npm run prototype:strip:derive-budgets` remains the explicitly historical pre-α
