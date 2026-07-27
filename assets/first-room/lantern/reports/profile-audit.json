@@ -1,0 +1,80 @@
+{
+  "schema": "polish-profile-audit/0",
+  "profile_id": "lantern",
+  "profile_sha256": "d6f634ba92228ecafd982a827193f2727f6b2f76d018199bd73e540c1c85c487",
+  "bundle": "assets/first-room/lantern",
+  "motion_class": "emissive",
+  "audited_at": "2026-07-27T22:14:59+00:00",
+  "inspection": {
+    "native_scale": true,
+    "nearest_neighbor_enlargement": "12x",
+    "composite": "polished frames 0\u20133"
+  },
+  "original_sample": {
+    "path": "assets/first-room/lantern/provider/original-sample.png",
+    "role": "cursor-image-gen C1 prompt output (identity reference)"
+  },
+  "style_cohort": [
+    "docs/first-room-art-direction.md",
+    "polish-profiles/lantern.json",
+    "assets/palettes/first-room.json",
+    "prompts/production/animation-strip.md"
+  ],
+  "emissive_choices_preserved": [
+    "amber core flicker only",
+    "emission inside housing",
+    "no terrain-scale halo",
+    "blue-metal upper-left highlights",
+    "stable hook and housing silhouette",
+    "frame_durations_ms [160,160,160,160]"
+  ],
+  "questions": [
+    {
+      "id": "stable_housing_hang",
+      "question": "Do the metal housing and hanging point remain stable identity anchors across the loop?",
+      "verdict": "PASS",
+      "notes": "Metal housing, hook cells, and hanging point are identical across all four Frames; only amber glass Cells change."
+    },
+    {
+      "id": "intentional_amber_core",
+      "question": "Do amber core changes read as intentional flicker rather than accidental one-Frame noise?",
+      "verdict": "PASS",
+      "notes": "Amber core/mid Cells shift by a few Cells per Frame (hot spot moves within the pane); reads as deliberate flicker, not single-Frame noise."
+    },
+    {
+      "id": "flame_core_housing_separation",
+      "question": "At native scale, are flame, core, and housing separated rather than accidentally melding at same-value contacts?",
+      "verdict": "PASS",
+      "notes": "At native 16\u00d724 and 12\u00d7 nearest-neighbor, amber core stays inside the pane; dark metal posts separate housing from emission."
+    },
+    {
+      "id": "upper_left_metal_highlights",
+      "question": "Do upper-left metal highlights stay consistent with first-room local lighting?",
+      "verdict": "PASS",
+      "notes": "Blue-metal highlights remain on the upper-left cap and base, consistent with first-room local lighting."
+    },
+    {
+      "id": "closed_four_frame_loop",
+      "question": "Does the four-Frame sequence close as a readable loop without a visible seam break?",
+      "verdict": "PASS",
+      "notes": "Frame 3 returns near Frame 0; loop_closure_pass automatic PASS; no visible seam at native or enlarged scale."
+    },
+    {
+      "id": "emission_inside_lamp",
+      "question": "Do emission and glow changes stay inside the lamp housing without spilling onto unrelated Cells?",
+      "verdict": "PASS",
+      "notes": "All emission edits are confined to glass-mask Cells inside the housing; no spill onto unrelated metal or background."
+    },
+    {
+      "id": "no_terrain_halo",
+      "question": "Is there no baked terrain-scale halo outside the lamp silhouette?",
+      "verdict": "PASS",
+      "notes": "No baked terrain-scale halo; magenta/transparent surround has no glow bloom outside the lamp silhouette."
+    }
+  ],
+  "summary": {
+    "all_pass": true,
+    "uncertain_count": 0,
+    "edit_count": 0
+  }
+}

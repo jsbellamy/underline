@@ -1,0 +1,49 @@
+{
+  "draft_frames": [
+    {
+      "index": 0,
+      "relative_path": "draft/frame-0.png",
+      "sha256": "7dd0a29dbf12af6b8f90fe8e592ec0212dda8645e233b52c04b13af74a5e74e1"
+    },
+    {
+      "index": 1,
+      "relative_path": "draft/frame-1.png",
+      "sha256": "580d443d660339ec6055160805b66b0422842d588278a615fefcde14f6f143ae"
+    },
+    {
+      "index": 2,
+      "relative_path": "draft/frame-2.png",
+      "sha256": "fdb793adf166646d09fa033f6b194110a04ef507cb65a7c0d226ce9c4566e1ee"
+    },
+    {
+      "index": 3,
+      "relative_path": "draft/frame-3.png",
+      "sha256": "7dd0a29dbf12af6b8f90fe8e592ec0212dda8645e233b52c04b13af74a5e74e1"
+    }
+  ],
+  "layout": {
+    "frame_count": 4,
+    "frame_h": 24,
+    "frame_order": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "frame_w": 16,
+    "gutter": 2
+  },
+  "motion_class": "emissive",
+  "polish_profile": {
+    "id": "lantern",
+    "relative_path": "profile.json",
+    "schema": "polish-profile/0",
+    "sha256": "d6f634ba92228ecafd982a827193f2727f6b2f76d018199bd73e540c1c85c487"
+  },
+  "provider": {
+    "original_filename": "lantern-provider.png",
+    "relative_path": "provider/source.png",
+    "sha256": "b69c91df56a745834eebb23607ee4402968fe48d94b186757f4b903d7e888581"
+  },
+  "schema": "final-polish-bundle/1"
+}
