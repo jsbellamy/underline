@@ -642,10 +642,13 @@ def build_composite(
     path: pathlib.Path, run: Mapping[str, Any], out: pathlib.Path
 ) -> pathlib.Path:
     """Render one late, hash-bound Gate-review composite for a Measurement run."""
-    frames = _composite_frames(path)
-    if frames is None:
+    raw_frames = _composite_frames(path)
+    if raw_frames is None:
         raise ValueError("cannot composite a strip that did not slice")
     fw, fh = S.DEFAULT_LAYOUT.frame_w, S.DEFAULT_LAYOUT.frame_h
+    frames = [
+        S.canonicalize_frame(frame, frame_w=fw, frame_h=fh) for frame in raw_frames
+    ]
     n = len(frames)
     cell_w, cell_h = fw * _COMPOSITE_SCALE, fh * _COMPOSITE_SCALE
     band_lines = _composite_band_lines(run)
