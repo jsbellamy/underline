@@ -81,15 +81,6 @@ class VerificationError(ValueError):
     """Fail-closed Promotion verification failure."""
 
 
-def binding_promotion_ids(promotion_id: str) -> frozenset[str]:
-    """Return the manifest-binding promotion set for one verification slice."""
-    if promotion_id in ISSUE_59_PROMOTION_IDS:
-        return ISSUE_59_PROMOTION_IDS
-    if promotion_id in ISSUE_60_PROMOTION_IDS:
-        return ISSUE_60_PROMOTION_IDS
-    raise VerificationError(f"unknown promotion_id {promotion_id!r}")
-
-
 def _slice_index(promotion_id: str) -> int:
     for index, promotion_ids in enumerate(ACTIVATION_SLICES):
         if promotion_id in promotion_ids:
