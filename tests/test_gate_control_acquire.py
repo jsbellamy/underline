@@ -711,6 +711,61 @@ def test_prototype_forwarder_delegates_to_production() -> None:
     assert module.promote_isolated is gca.promote_isolated
 
 
+def test_isolated_non_review_attempt_has_no_composite(tmp_path: Path) -> None:
+    _seed_gate_controls(tmp_path)
+    png = tmp_path / "candidate.png"
+    shutil.copy2(IDLE_CONTROL, png)
+    with patch.dict("os.environ", {"UNDERLINE_GATE_CONTROLS_ROOT": str(tmp_path / "gate-controls")}):
+        with patch.object(
+            gc, "measure", return_value=_mock_run_for_png(png, _isolated_run)
+        ):
+            with patch.object(gc, "git_commit", return_value="deadbeef"):
+                row = gca.record_attempt(
+                    png,
+                    "idle",
+                    "silhouette_budget",
+                    repo_root=tmp_path,
+                    prompt_text="prompt",
+                    clock=lambda: "2026-07-27T12:00:00+00:00",
+                )
+    assert row["composite_path"] is None
+
+
+def test_discarded_attempt_unlinks_raw_png(tmp_path: Path) -> None:
+    _seed_gate_controls(tmp_path)
+    png = tmp_path / "candidate.png"
+    shutil.copy2(IDLE_CONTROL, png)
+    with patch.dict("os.environ", {"UNDERLINE_GATE_CONTROLS_ROOT": str(tmp_path / "gate-controls")}):
+        for ordinal in range(1, 4):
+            with patch.object(
+                gc, "measure", return_value=_mock_run_for_png(png, _not_isolated_run)
+            ):
+                with patch.object(gc, "git_commit", return_value="deadbeef"):
+                    row = gca.record_attempt(
+                        png,
+                        "idle",
+                        "silhouette_budget",
+                        repo_root=tmp_path,
+                        prompt_text="prompt",
+                        clock=lambda: f"2026-07-27T12:00:0{ordinal}+00:00",
+                    )
+        with patch.object(
+            gc, "measure", return_value=_mock_run_for_png(png, _not_isolated_run)
+        ):
+            with patch.object(gc, "git_commit", return_value="deadbeef"):
+                row = gca.record_attempt(
+                    png,
+                    "idle",
+                    "silhouette_budget",
+                    repo_root=tmp_path,
+                    prompt_text="prompt",
+                    clock=lambda: "2026-07-27T12:00:10+00:00",
+                )
+    assert row["artifact_state"] == "discarded"
+    raw_path = tmp_path / "gate-controls" / "raw" / f"{row['attempt_id']}.png"
+    assert not raw_path.is_file()
+
+
 def test_npm_script_invokes_production_module() -> None:
     env = {**dict(__import__("os").environ), "PYTHONPATH": str(ROOT)}
     result = subprocess.run(

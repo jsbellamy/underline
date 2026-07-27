@@ -10,7 +10,6 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import hashlib
-import importlib.util
 import json
 import os
 import pathlib
@@ -76,21 +75,6 @@ def _image_dimensions(path: pathlib.Path) -> list[int]:
 
     with Image.open(path) as image:
         return list(image.size)
-
-
-def _load_prototype_build_composite() -> Any:
-    path = REPO_ROOT / "prototype" / "strip-coherence" / "gate_control.py"
-    spec = importlib.util.spec_from_file_location(
-        "prototype_gate_control_composite", path
-    )
-    if spec is None or spec.loader is None:
-        raise AcquisitionError(f"cannot load review composite builder from {path}")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    builder = getattr(module, "build_composite", None)
-    if builder is None:
-        raise AcquisitionError("prototype gate_control missing build_composite")
-    return builder
 
 
 def allocate_attempt_identity(
@@ -286,8 +270,7 @@ def _maybe_build_review_composite(
         return None
     if not review_required(run, promotion_verification=promotion_verification):
         return None
-    build_composite = _load_prototype_build_composite()
-    build_composite(raw_path, dict(run), composite_path)
+    gc.build_composite(raw_path, run, composite_path)
     return composite_path
 
 
@@ -756,9 +739,9 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.command == "verify":
-            record = complete_promotion_verification(REPO_ROOT, args.promotion_id)
-            print(json.dumps(record, indent=2, sort_keys=True))
-            return 0 if record["status"] == gv.ACTIVE_STATUS else 1
+            verification = complete_promotion_verification(REPO_ROOT, args.promotion_id)
+            print(json.dumps(verification, indent=2, sort_keys=True))
+            return 0 if verification["status"] == gv.ACTIVE_STATUS else 1
     except (AcquisitionError, ge.EvidenceError, gr.ReviewError, gv.VerificationError) as exc:
         print(str(exc), file=sys.stderr)
         return 2

@@ -470,9 +470,6 @@ def repository_lock(lock_path: Path) -> Iterator[None]:
             fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
 
 
-_repository_lock = repository_lock
-
-
 def validate_attempt_record(doc: Mapping[str, Any], *, where: str = "attempt record") -> None:
     require_schema(doc, KNOWN_SCHEMAS["attempt"], where=where)
     require_str(doc, "attempt_id", where=where)
