@@ -103,6 +103,78 @@ def _coh_idle_silhouette_fail() -> dict:
     }
 
 
+def test_canonical_score_command_emits_equivalent_json() -> None:
+    assert IDLE_CONTROL.is_file()
+    env = {**dict(__import__("os").environ), "PYTHONPATH": str(ROOT)}
+    prod = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pipeline.gate_control",
+            str(IDLE_CONTROL),
+            "--motion-class",
+            "idle",
+            "--target-gate",
+            "silhouette_budget",
+            "--recorded-at",
+            "2026-07-27T12:00:00+00:00",
+            "--scorer-commit",
+            "testcommit",
+        ],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    npm = subprocess.run(
+        [
+            "npm",
+            "run",
+            "-s",
+            "gate-control:score",
+            "--",
+            str(IDLE_CONTROL),
+            "--motion-class",
+            "idle",
+            "--target-gate",
+            "silhouette_budget",
+            "--recorded-at",
+            "2026-07-27T12:00:00+00:00",
+            "--scorer-commit",
+            "testcommit",
+        ],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert json.loads(npm.stdout) == json.loads(prod.stdout)
+
+
+def test_canonical_score_command_help_exits_zero() -> None:
+    env = {**dict(__import__("os").environ), "PYTHONPATH": str(ROOT)}
+    result = subprocess.run(
+        ["npm", "run", "-s", "gate-control:score", "--", "--help"],
+        cwd=ROOT,
+        env=env,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert result.returncode == 0
+    assert "--motion-class" in result.stdout
+    assert "--target-gate" in result.stdout
+
+
+def test_prototype_scorer_shim_documents_production_replacement() -> None:
+    doc = (ROOT / "prototype/strip-coherence/gate_control.py").read_text()
+    assert "DEPRECATED" in doc
+    assert "pipeline.gate_control" in doc
+    assert "gate-control:score" in doc
+
+
 def test_production_and_compatibility_cli_emit_equivalent_json() -> None:
     assert IDLE_CONTROL.is_file()
     env = {**dict(__import__("os").environ), "PYTHONPATH": str(ROOT)}

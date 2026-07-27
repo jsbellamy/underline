@@ -1,4 +1,8 @@
-"""Compatibility forwarder — production ``pipeline.numeric_policy`` is canonical."""
+"""DEPRECATED compatibility shim — ``pipeline.numeric_policy`` is canonical.
+
+Re-exports the production numeric policy for legacy prototype imports. New code
+should import from ``pipeline.numeric_policy`` directly.
+"""
 
 from __future__ import annotations
 

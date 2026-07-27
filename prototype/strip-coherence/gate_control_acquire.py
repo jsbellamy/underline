@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""COMPATIBILITY — Gate-control acquisition forwards to pipeline.gate_control_acquire."""
+"""DEPRECATED compatibility shim — use ``pipeline.gate_control_acquire`` via ``npm run gate-control:acquire``.
+
+Forwards acquisition, promotion, and verification helpers to the production
+module. Existing callers may keep invoking this module path; new code should use
+the canonical production command.
+"""
 
 from __future__ import annotations
 
