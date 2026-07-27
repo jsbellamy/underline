@@ -1,0 +1,36 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "first-room/dwarf/swing",
+  "attempt_id": "dwarf-swing--001",
+  "generator": "cursor-image-gen",
+  "prompt_text": "TRUE chunky pixel art animation Strip only. Four PICKAXE SWING Frames of exactly the SAME right-facing DWARF MINER shown in the supplied identity reference, in one horizontal row.\n\nExact 16\u00d724 logical Frames rendered as crisp square Cells; four Frames; two magenta #FF00FF logical gutter Cells; flat magenta keyed background; no labels, margins, extra rows, anti-aliasing, blur, gradients, or dithering.\n\nCopy the reference identity: same short broad body, rust beard, oversized blue lamp helmet, centered amber lamp, black eye Cell without white sclera, green tunic, gloves, leather belt/buckle, broad boots, and the same heavy pickaxe proportions. Use only the first-room Master Palette.\n\nOne-shot mining action, not a loop:\nFrame 0 \u2014 strong anticipation, pickaxe raised behind and above helmet.\nFrame 1 \u2014 accelerated downswing at head height.\nFrame 2 \u2014 pickaxe crossing forward, torso and beard following the weight.\nFrame 3 \u2014 clear ground-level contact ahead of the boots.\n\nBoth boots remain planted on the bottom row. The hand stays visibly attached to the handle, face remains separate from the leading hand, and the pickaxe head traces one continuous arc. Frame 3 is the only contact Frame. Do not include rock, terrain, ore, debris, sparks, or a baked target in the character Strip.\n\nWarm rugged storybook pixel art, selective warm-dark outline, neutral upper-left local light. Intended read: heavy committed mining blow with dwarf weight transfer.\n",
+  "prompt": "TRUE chunky pixel art animation Strip only. Four PICKAXE SWING Frames of exactly the SAME right-facing DWARF MINER shown in the supplied identity reference, in one horizontal row.\n\nExact 16\u00d724 logical Frames rendered as crisp square Cells; four Frames; two magenta #FF00FF logical gutter Cells; flat magenta keyed background; no labels, margins, extra rows, anti-aliasing, blur, gradients, or dithering.\n\nCopy the reference identity: same short broad body, rust beard, oversized blue lamp helmet, centered amber lamp, black eye Cell without white sclera, green tunic, gloves, leather belt/buckle, broad boots, and the same heavy pickaxe proportions. Use only the first-room Master Palette.\n\nOne-shot mining action, not a loop:\nFrame 0 \u2014 strong anticipation, pickaxe raised behind and above helmet.\nFrame 1 \u2014 accelerated downswing at head height.\nFrame 2 \u2014 pickaxe crossing forward, torso and beard following the weight.\nFrame 3 \u2014 clear ground-level contact ahead of the boots.\n\nBoth boots remain planted on the bottom row. The hand stays visibly attached to the handle, face remains separate from the leading hand, and the pickaxe head traces one continuous arc. Frame 3 is the only contact Frame. Do not include rock, terrain, ore, debris, sparks, or a baked target in the character Strip.\n\nWarm rugged storybook pixel art, selective warm-dark outline, neutral upper-left local light. Intended read: heavy committed mining blow with dwarf weight transfer.\n",
+  "prompt_sha256": "a052fc59f65a14b50c88f50dd6cd46f728aa6dd22395b7a30e07da8ebafb59d0",
+  "reference_image_sha256": [
+    "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9"
+  ],
+  "generated_at": "2026-07-27T22:30:00+00:00",
+  "acquiring_agent": "cursor-agent-issue-111",
+  "repository_commit": "87d3df920ddeba61795f4d8bd7c5b2d7095e5d0f",
+  "raw_path": "assets/first-room/dwarf/swing/provider/source.png",
+  "raw_sha256": "73c8ddbc1e80c3dfe0803f9aa34c190bdd15011a77dd23b44121a7142fdcf1b1",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ],
+  "master_palette_id": "first-room",
+  "motion_class": "swing",
+  "polish_profile": "dwarf-miner",
+  "item_geometry": {
+    "frame_w": 16,
+    "frame_h": 24,
+    "frame_count": 4,
+    "gutter": 2
+  },
+  "asset_kind": "animation-strip",
+  "provider": {
+    "generator": "cursor-image-gen",
+    "model": "cursor-image-gen"
+  }
+}
