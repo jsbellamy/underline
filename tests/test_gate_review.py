@@ -721,6 +721,7 @@ def test_validate_review_dir_rehashes_packet_input_roles(tmp_path: Path) -> None
     )
     review_dir = fx["gc"] / "reviews" / fx["attempt_id"]
     gr.write_packet_manifest(review_dir / "packet.json", packet)
+    audits: dict[str, object] = {}
     for review_id, identity in (("review--01", "cursor-agent/issue-54/review-01"),
                                 ("review--02", "cursor-agent/issue-54/review-02")):
         audit = gr.make_audit_record(
@@ -737,12 +738,20 @@ def test_validate_review_dir_rehashes_packet_input_roles(tmp_path: Path) -> None
             second_review_triggers=["metric_at_or_beyond_midpoint"],
         )
         gr.write_audit_record(review_dir / f"{review_id}.json", audit)
+        audits[review_id] = audit
+    blinded = gr.blinded_packet_for_second_review(
+        packet,
+        first_review=audits["review--01"],
+        second_review_id="review--02",
+        second_reviewer_identity="cursor-agent/issue-54/review-02",
+    )
+    gr.write_second_review_input(review_dir / "review-input--02.json", blinded)
     report = gr.validate_review_dir(review_dir)
     assert report["ok"] is True
     assert report["roles"] == {
-        "candidate": packet.candidate.raw_sha256,
-        "budget_binding_good": packet.budget_binding_good.raw_sha256,
-        "proposed_hard_fail_reference": packet.proposed_hard_fail_reference.raw_sha256,
+        "candidate": "candidate",
+        "budget_binding_good": "budget_binding_good",
+        "proposed_hard_fail_reference": "proposed_hard_fail_reference",
     }
 
     # Tamper binding-good bytes without updating packet → fail closed.
@@ -787,8 +796,14 @@ def test_validate_review_dir_rejects_first_review_leak_into_second(tmp_path: Pat
         timestamp="2026-07-27T00:00:00+00:00",
         second_review_triggers=["metric_at_or_beyond_midpoint"],
     )
-    # Inject first-review leak into second record.
-    second["prior_rationale"] = first["rationale"]
     gr.write_audit_record(review_dir / "review--02.json", second)
+    blinded = gr.blinded_packet_for_second_review(
+        packet,
+        first_review=first,
+        second_review_id="review--02",
+        second_reviewer_identity="cursor-agent/issue-54/review-02",
+    )
+    blinded["packet"]["leak_probe"] = first["rationale"]
+    gr.write_second_review_input(review_dir / "review-input--02.json", blinded)
     with pytest.raises(gr.ReviewError, match="leaked prior review"):
         gr.validate_review_dir(review_dir)
