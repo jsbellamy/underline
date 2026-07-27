@@ -86,6 +86,29 @@ does not recognize those semantics.
 Final-polish authority: [`docs/strip-acquisition-contract.md`](docs/strip-acquisition-contract.md)
 (Consumers → Final polish).
 
+## Static-asset production path
+
+Uniform static provider sheets (Rendering Tiles, Mineable Blocks, props, UI
+glyphs) use a separate lifecycle from four-Frame animation Strips. Recovery and
+pitch-slicing reuse vendored grid primitives; structural checks bind opaque RGB
+to the embedded Master Palette. Static assets do not acquire a Motion class or
+coherence Gates.
+
+```bash
+npm run asset:static -- init <provider.png> --provenance <source.json> --spec <spec.json> --out <bundle> [--json]
+npm run asset:static -- check <bundle> [--json]
+npm run asset:static -- finalize <bundle> [--json]
+```
+
+Exit codes: `0` `PASS`, `1` `FAIL`, `2` invalid or structural error. `polished/`
+is the editor-facing PNG sequence; `release/` is written only on automatic
+`PASS`. Human and JSON modes expose manifest, spec, and palette hashes, changed
+Cells, violations, report path, and Release paths.
+
+Static-sheet prompt authority: [`prompts/production/static-sheet.md`](prompts/production/static-sheet.md).
+Static-asset authority: [`docs/strip-acquisition-contract.md`](docs/strip-acquisition-contract.md)
+(Consumers → Static assets).
+
 ## Corpus analysis and proof tooling
 
 Historical corpus scoring and budget derivation remain under `prototype:strip:*`.
