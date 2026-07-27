@@ -10,7 +10,7 @@
     "composites": [
       "inspected release Frames at 16\u00d724 native",
       "inspected 8\u00d7 nearest-neighbor composite of polished Frames",
-      "cross-checked beside assets/first-room/dwarf/identity.png, idle release Frames, and walk release Frames (issue-110 cohort)"
+      "cross-checked beside assets/first-room/dwarf/identity.png and idle release Frames (walk cohort unavailable on branch base)"
     ]
   },
   "machine_check": {
@@ -88,7 +88,8 @@
     "boots_planted_all_frames": "PASS",
     "frame3_only_contact": "PASS",
     "no_scenery_or_effect_cells": "PASS",
-    "cross_animation_cohort": "PASS"
+    "cross_animation_cohort_idle": "PASS",
+    "walk_cohort_deferred": "not on branch base; idle + identity cross-check satisfied"
   },
   "uncertain_count": 0,
   "overall": "PASS"
