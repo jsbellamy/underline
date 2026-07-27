@@ -186,7 +186,18 @@ _MUTATORS = {
 
 
 def _tripped(result: dict) -> list[str]:
-    return [g for g in GATES if result.get(g) is False]
+    gate_outcomes = result.get("gate_outcomes") or {}
+    failed = [g for g in GATES if result.get(g) is False]
+    review = [
+        gate
+        for gate, row in gate_outcomes.items()
+        if row.get("outcome") == "REVIEW"
+    ]
+    return failed + review
+
+
+def _outcome(result: dict) -> str:
+    return result.get("outcome", "PASS" if result.get("pass") else "FAIL")
 
 
 def report(
@@ -201,35 +212,35 @@ def report(
     sil = max((row["frac"] for row in result["silhouette_adjacent"]), default=0.0)
     pairwise = result.get("silhouette_pairwise") or {}
     tripped = _tripped(result)
-    passed = result["pass"]
+    outcome = _outcome(result)
     mutation_key = next((k for label, k in MUTATIONS if label == name), None)
     gap_reason = _gap_reason(motion_class, mutation_key)
 
     if name == "baseline (untouched)":
-        status = "ok" if passed else "MISMATCH"
+        status = "ok" if outcome == "PASS" else "MISMATCH"
         want = "PASS"
     elif mutation_key in MUST_FAIL.get(motion_class, set()):
-        status = "ok" if not passed else "MISMATCH"
-        want = "FAIL"
+        status = "ok" if outcome != "PASS" else "MISMATCH"
+        want = "not PASS"
     elif gap_reason:
         status = "GAP"
-        want = "FAIL (ungated)"
+        want = "not PASS (ungated)"
     elif (
         mutation_key in ("hop", "slide")
         and motion_class == "airborne"
         and result.get("displacement_pass") is False
     ):
-        status = "ok"
-        want = "FAIL"
+        status = "ok" if outcome != "PASS" else "MISMATCH"
+        want = "not PASS"
     elif (
         mutation_key in ("hop", "slide")
         and motion_class == "airborne"
         and result.get("displacement_pass") is None
     ):
         status = "GAP"
-        want = "FAIL (inapplicable)"
+        want = "not PASS (inapplicable)"
     else:
-        status = "ok" if passed else "MISMATCH"
+        status = "ok" if outcome == "PASS" else "MISMATCH"
         want = "PASS"
 
     if verbose:
@@ -239,12 +250,18 @@ def report(
             disp_note = "  disp=—"
         elif disp is not None:
             disp_note = f"  disp={'pass' if disp else 'FAIL'}"
+        review_gates = [
+            gate
+            for gate, row in (result.get("gate_outcomes") or {}).items()
+            if row.get("outcome") == "REVIEW"
+        ]
+        review_note = f"  review={review_gates}" if review_gates else ""
         print(
             f"{status:<8}  {motion_class:<10} {name:<22} "
-            f"{'PASS' if passed else 'FAIL'} (want {want})  "
+            f"{outcome} (want {want})  "
             f"sil_max={sil:.3f} min_pair={pairwise.get('min_pair', 0):.3f} "
-            f"drift_max={result['worst_palette_drift']:.3f}{disp_note}"
-            + (f"  tripped={tripped}" if tripped else "")
+            f"drift_max={result['worst_palette_drift']:.3f}{disp_note}{review_note}"
+            + (f"  failed={tripped}" if tripped else "")
         )
         if status == "GAP" and gap_reason:
             print(f"          {gap_reason}")

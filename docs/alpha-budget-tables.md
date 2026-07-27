@@ -23,9 +23,12 @@ From [Choose alpha for separated Gate controls](https://github.com/jsbellamy/und
 - **Unseparated** keeps the runtime `ceil₀.₀₁(worst-good)+0.02` Budget; Review is open above it; no hard-fail boundary
 - **Inapplicable** Gates are omitted
 
-Runtime `MOTION_CLASSES` still hold the pre-α ceil+0.02 Budgets. Landing production
-Budgets is deferred to the implementation wave after
-[Assemble the agent-ready implementation specification](https://github.com/jsbellamy/underline/issues/30).
+Runtime `MOTION_CLASSES` project these α-Budgets from
+`gate-controls/acceptance-profiles.json` (landed in
+[#62](https://github.com/jsbellamy/underline/issues/62), verified by
+`npm run prototype:strip:alpha-budgets`). The historical pre-α
+`ceil₀.₀₁(worst-good)+0.02` estimator remains available only via
+`npm run prototype:strip:derive-budgets`.
 
 Four-place ceiling uses Decimal quantization (`prototype/strip-coherence/numeric_policy.py`)
 so exact four-place values such as walk loop control `0.2795` are not pushed to `0.2796`
@@ -91,5 +94,5 @@ Thinnest Separated good-headroom / Review-width margins under α = 0.5:
 | `swing/silhouette_budget` | 0.5860 | 0.6067 | **0.0208** | **0.0207** |
 
 These replace the prior corpus-negative fragile-claim table (swing vs 23, airborne vs
-22/07) for AFK acceptance. Corpus negatives remain runtime separation references for
-the pre-α estimator until production Budgets land.
+22/07) for AFK acceptance. Corpus negatives remain separation references for the
+historical pre-α estimator (`npm run prototype:strip:derive-budgets`).

@@ -1,5 +1,5 @@
 {
-  "_comment": "Corpus sample registry and contract regression expectations. Drop <id>.png into inbox/ and run `npm run prototype:strip:corpus`. contract_expect is the verdict under current per-class budgets — update only when the contract changes. Pre-generation predictions are frozen in prediction-ledger.json.",
+  "_comment": "Corpus sample registry and contract regression expectations. Drop <id>.png into inbox/ and run `npm run prototype:strip:corpus`. contract_expect is PASS | REVIEW | FAIL under the production tri-state runtime — update only when the contract changes. contract_expect_gates names Review-band gates for REVIEW rows and hard-fail gates for FAIL rows. Pre-generation predictions are frozen in prediction-ledger.json.",
   "samples": [
     {
       "id": "01-miner-idle",
