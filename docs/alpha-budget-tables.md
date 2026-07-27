@@ -75,8 +75,10 @@ Gate's Budget; the caveat is recorded on the row and does not block α allocatio
 | `swing/min_pair_cohort_pass` | one-shot swing; `max_min_pair=None` |
 
 Structural `baseline_row_stable` remains Separated without a provider Gate control
-and is outside the α table. Airborne `displacement_pass` remains applicable at the
-strip level but has no promoted Gate control and no α-Budget row in this pass.
+and is outside the α table. Airborne `displacement_pass` is **Unseparated** (binary /
+often undecidable): no promoted Gate control and no α-Budget row; see
+[`docs/afk-acceptance-implementation-spec.md`](afk-acceptance-implementation-spec.md)
+§6.
 
 ## Fragile claims (rebuilt)
 

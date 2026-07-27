@@ -7,7 +7,9 @@ The pipeline is what exists today: it takes a provider-rendered animation
 it is settled.
 
 Authority for the numbers behind these terms is
-`docs/strip-acquisition-contract.md`.
+`docs/strip-acquisition-contract.md`. The agent-ready AFK acceptance
+implementation specification is
+`docs/afk-acceptance-implementation-spec.md`.
 
 ## Language
 
