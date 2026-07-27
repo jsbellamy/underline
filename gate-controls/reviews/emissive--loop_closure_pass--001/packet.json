@@ -1,0 +1,34 @@
+{
+  "attempt_id": "emissive--loop_closure_pass--001",
+  "budget": 0.1694,
+  "budget_binding_good": {
+    "path": "prototype/strip-coherence/inbox/15-campfire-flicker.png",
+    "raw_sha256": "4799f1ca09004dbd3edd76a2f6423256a0f9f27e97bf1d94b5fbe5ad8dcc5055",
+    "role": "budget_binding_good"
+  },
+  "candidate": {
+    "path": "gate-controls/raw/emissive--loop_closure_pass--001.png",
+    "raw_sha256": "474bfd95ab77f8dceb892ef0398b3daef99c9442c41e02ac7197d1dd3697a4b7",
+    "role": "candidate"
+  },
+  "caveats": [],
+  "fixed_question": "Final\u2192first reads as deliberate continuous loop vs pose jump / identity break?",
+  "gate": "loop_closure_pass",
+  "gate_control": null,
+  "hard_fail_boundary": 0.2067,
+  "metric": 0.2067,
+  "motion_class": "emissive",
+  "no_autonomous_hard_fail": false,
+  "no_autonomous_hard_fail_reason": null,
+  "packet_kind": "PROMOTION_VERIFICATION",
+  "packet_sha256": "2c56ef36dba8129cac61d2ce1fa02ab340addc9f6eb033f4b2a8a006d3779971",
+  "panel_kind": "occupancy_difference",
+  "promotion_id": "promo--emissive--loop_closure_pass",
+  "promotion_status": "PENDING_VERIFICATION",
+  "proposed_hard_fail_reference": {
+    "path": "gate-controls/raw/emissive--loop_closure_pass--001.png",
+    "raw_sha256": "474bfd95ab77f8dceb892ef0398b3daef99c9442c41e02ac7197d1dd3697a4b7",
+    "role": "proposed_hard_fail_reference"
+  },
+  "schema": "gate-review-packet/0"
+}

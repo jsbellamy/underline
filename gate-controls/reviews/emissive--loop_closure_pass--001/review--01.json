@@ -1,0 +1,32 @@
+{
+  "attempt_id": "emissive--loop_closure_pass--001",
+  "budget": 0.1694,
+  "candidate_sha256": "474bfd95ab77f8dceb892ef0398b3daef99c9442c41e02ac7197d1dd3697a4b7",
+  "caveats": [],
+  "fixed_question": "Final\u2192first reads as deliberate continuous loop vs pose jump / identity break?",
+  "frames": [
+    3,
+    0
+  ],
+  "gate": "loop_closure_pass",
+  "hard_fail_boundary": 0.2067,
+  "metric": 0.2067,
+  "model_identity": "cursor-grok-4.5",
+  "model_version": "4.5",
+  "observed_feature": "final\u2192first flame-height discontinuity on the same torch sconce; identity preserved, loop seam reads as a pose/occupancy jump rather than a continuous flicker",
+  "packet_sha256": "2c56ef36dba8129cac61d2ce1fa02ab340addc9f6eb033f4b2a8a006d3779971",
+  "promotion_id": "promo--emissive--loop_closure_pass",
+  "rationale": "Fixed question: final\u2192first loop continuity. Candidate torch frames keep one subject (brown sconce + yellow/orange flame) while f3 sits clearly lower than f0, producing a visible occupancy jump at the loop seam. Adjacent occupancy panels show localized flame motion without identity drift. Binding-good campfire (15) reads as continuous flicker. Metric equals hard-fail C (0.2067) with Isolation preserved (only loop_closure_pass fails). Approve as the proposed hard-fail reference for emissive/loop_closure_pass.",
+  "reference_hashes": {
+    "budget_binding_good": "4799f1ca09004dbd3edd76a2f6423256a0f9f27e97bf1d94b5fbe5ad8dcc5055",
+    "proposed_hard_fail_reference": "474bfd95ab77f8dceb892ef0398b3daef99c9442c41e02ac7197d1dd3697a4b7"
+  },
+  "review_id": "review--01",
+  "reviewer_identity": "cursor-agent/underline#53/review-pass-1",
+  "schema": "gate-review-audit/0",
+  "second_review_triggers": [
+    "metric_at_or_beyond_midpoint"
+  ],
+  "timestamp": "2026-07-27T10:20:00+00:00",
+  "verdict": "APPROVE"
+}

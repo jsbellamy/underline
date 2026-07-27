@@ -1,0 +1,34 @@
+{
+  "attempt_id": "emissive--palette_drift_pass--001",
+  "budget": 0.2123,
+  "candidate_sha256": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd",
+  "caveats": [],
+  "fixed_question": "Intentional subject/Motion-class change (e.g. emissive flicker) vs unintended recolour?",
+  "frames": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "gate": "palette_drift_pass",
+  "hard_fail_boundary": 0.2793,
+  "metric": 0.2793,
+  "model_identity": "cursor-grok-4.5",
+  "model_version": "4.5",
+  "observed_feature": "per-frame wholesale tunic/helmet recolour on a static miner silhouette; palette histograms change scheme every frame rather than emissive flicker",
+  "packet_sha256": "cc573883322f6afbc24270bc7eba8a106f052a674d0299e7a09d6178dcec7419",
+  "promotion_id": "promo--emissive--palette_drift_pass",
+  "rationale": "Fixed question: intentional emissive/Motion-class change vs unintended recolour. Candidate is a planted miner whose pose barely moves while each frame uses a different colour scheme (green/blue \u2192 red/yellow \u2192 purple/white \u2192 orange/black). Quantized palette histograms confirm scheme replacement, not flame flicker. Budget-binding good (03 torch) keeps one emissive subject with intentional within-flame variation. Only palette_drift_pass fails; metric equals C (0.2793). Approve as the proposed hard-fail reference for emissive/palette_drift_pass.",
+  "reference_hashes": {
+    "budget_binding_good": "5debe85607f86b7b03c7aea679979dce5d5b1a8dd238512b7688effd6610114b",
+    "proposed_hard_fail_reference": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd"
+  },
+  "review_id": "review--01",
+  "reviewer_identity": "cursor-agent/underline#53/review-pass-1",
+  "schema": "gate-review-audit/0",
+  "second_review_triggers": [
+    "metric_at_or_beyond_midpoint"
+  ],
+  "timestamp": "2026-07-27T10:20:00+00:00",
+  "verdict": "APPROVE"
+}

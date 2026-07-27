@@ -1,0 +1,32 @@
+{
+  "attempt_id": "emissive--loop_closure_pass--001",
+  "budget": 0.1694,
+  "candidate_sha256": "474bfd95ab77f8dceb892ef0398b3daef99c9442c41e02ac7197d1dd3697a4b7",
+  "caveats": [],
+  "fixed_question": "Final\u2192first reads as deliberate continuous loop vs pose jump / identity break?",
+  "frames": [
+    3,
+    0
+  ],
+  "gate": "loop_closure_pass",
+  "hard_fail_boundary": 0.2067,
+  "metric": 0.2067,
+  "model_identity": "cursor-grok-4.5",
+  "model_version": "4.5",
+  "observed_feature": "final\u2192first flame-height discontinuity on the same torch sconce; identity preserved, loop seam reads as a pose/occupancy jump rather than a continuous flicker",
+  "packet_sha256": "2c56ef36dba8129cac61d2ce1fa02ab340addc9f6eb033f4b2a8a006d3779971",
+  "promotion_id": "promo--emissive--loop_closure_pass",
+  "rationale": "Blinded second look at the same packet. Comparing f3 against f0, the flame crown is shorter and the occupancy-difference band for the loop seam is a clear discontinuity, not a deliberate closed flicker like the budget-binding campfire strip. No subject swap or framing translation. Isolated loop failure at C supports promoting this pending control. Verdict APPROVE.",
+  "reference_hashes": {
+    "budget_binding_good": "4799f1ca09004dbd3edd76a2f6423256a0f9f27e97bf1d94b5fbe5ad8dcc5055",
+    "proposed_hard_fail_reference": "474bfd95ab77f8dceb892ef0398b3daef99c9442c41e02ac7197d1dd3697a4b7"
+  },
+  "review_id": "review--02",
+  "reviewer_identity": "cursor-agent/underline#53/review-pass-2",
+  "schema": "gate-review-audit/0",
+  "second_review_triggers": [
+    "metric_at_or_beyond_midpoint"
+  ],
+  "timestamp": "2026-07-27T10:21:00+00:00",
+  "verdict": "APPROVE"
+}
