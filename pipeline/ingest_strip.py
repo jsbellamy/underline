@@ -11,6 +11,7 @@ from typing import Any
 from pipeline.strip import (
     DEFAULT_LAYOUT,
     IngestResult,
+    Outcome,
     StripLayout,
     coherence_split_json_gates,
     export_frames,
@@ -35,6 +36,7 @@ def _json_payload(result: IngestResult, exported: list[pathlib.Path] | None = No
     gate_views = coherence_split_json_gates(result.coherence)
     payload: dict[str, Any] = {
         "pass": result.pass_,
+        "outcome": result.outcome,
         "source": result.source,
         "layout": {
             "frame_w": result.layout.frame_w,
@@ -51,6 +53,16 @@ def _json_payload(result: IngestResult, exported: list[pathlib.Path] | None = No
     if exported is not None:
         payload["exported_frames"] = [str(path) for path in exported]
     return payload
+
+
+def _exit_code(outcome: Outcome) -> int:
+    if outcome == "PASS":
+        return 0
+    if outcome == "FAIL":
+        return 1
+    if outcome == "REVIEW":
+        return 3
+    raise ValueError(f"unknown outcome {outcome!r}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -74,7 +86,7 @@ def main(argv: list[str] | None = None) -> int:
         return 2
 
     exported: list[pathlib.Path] | None = None
-    if result.pass_ and args.out is not None:
+    if result.outcome == "PASS" and args.out is not None:
         frames = load_provider_frames(args.png, layout)
         if frames is not None:
             exported = export_frames(
@@ -95,7 +107,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print(format_ingest_report(result))
 
-    return 0 if result.pass_ else 1
+    return _exit_code(result.outcome)
 
 
 if __name__ == "__main__":

@@ -13,6 +13,8 @@ from typing import Any, Literal
 
 from PIL import Image
 
+from pipeline.gate_evidence import EvidenceError, load_acceptance_profiles, load_manifest
+from pipeline.numeric_policy import canonical_metric, metric_passes
 from pipeline.recovery import (
     MAGENTA,
     MIN_GRID_SCORE,
@@ -39,6 +41,26 @@ DISPLACEMENT_PAIR_TOLERANCE = 1
 MIN_ALIGNMENT_SHARPNESS_AIRBORNE = 0.015
 
 Facing = Literal["fixed", "free"]
+Outcome = Literal["PASS", "REVIEW", "FAIL"]
+
+_REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
+_DEFAULT_PROFILES_PATH = _REPO_ROOT / "gate-controls" / "acceptance-profiles.json"
+_DEFAULT_MANIFEST_PATH = _REPO_ROOT / "gate-controls" / "manifest.json"
+
+_GATE_BUDGET_ATTR = {
+    "silhouette_budget": "max_silhouette",
+    "loop_closure_pass": "max_loop",
+    "palette_drift_pass": "max_drift",
+    "min_pair_cohort_pass": "max_min_pair",
+}
+
+
+@dataclass(frozen=True)
+class GatePolicy:
+    status: str
+    budget: float | None
+    hard_fail: float | None
+    active_promotion: str | None = None
 
 
 @dataclass(frozen=True)
@@ -53,64 +75,182 @@ class ClassBudget:
     min_alignment_sharpness: float | None = None
 
 
-# Per-motion-class budgets — derived in docs/strip-acquisition-contract.md.
-MOTION_CLASSES: dict[str, ClassBudget] = {
-    "idle": ClassBudget(
-        max_silhouette=0.17,
-        max_loop=0.30,
-        max_drift=0.14,
-        max_min_pair=0.07,
-        grounded=True,
-        loops=True,
-        facing="free",
-    ),
-    "blob_idle": ClassBudget(
-        max_silhouette=0.36,
-        max_loop=0.35,
-        max_drift=0.22,
-        max_min_pair=0.13,
-        grounded=True,
-        loops=True,
-        facing="free",
-    ),
-    "walk": ClassBudget(
-        max_silhouette=0.42,
-        max_loop=0.17,
-        max_drift=0.19,
-        max_min_pair=0.17,
-        grounded=True,
-        loops=True,
-        facing="fixed",
-    ),
-    "swing": ClassBudget(
-        max_silhouette=0.59,
-        max_loop=None,
-        max_drift=0.20,
-        max_min_pair=None,
-        grounded=True,
-        loops=False,
-        facing="fixed",
-    ),
-    "airborne": ClassBudget(
-        max_silhouette=None,
-        max_loop=0.68,
-        max_drift=0.23,
-        max_min_pair=0.29,
-        grounded=False,
-        loops=True,
-        facing="free",
-        min_alignment_sharpness=MIN_ALIGNMENT_SHARPNESS_AIRBORNE,
-    ),
-    "emissive": ClassBudget(
-        max_silhouette=0.21,
-        max_loop=0.16,
-        max_drift=0.17,
-        max_min_pair=0.12,
-        grounded=True,
-        loops=True,
-        facing="free",
-    ),
+_CLASS_META: dict[str, dict[str, Any]] = {
+    "idle": {
+        "grounded": True,
+        "loops": True,
+        "facing": "free",
+        "min_alignment_sharpness": None,
+    },
+    "blob_idle": {
+        "grounded": True,
+        "loops": True,
+        "facing": "free",
+        "min_alignment_sharpness": None,
+    },
+    "walk": {
+        "grounded": True,
+        "loops": True,
+        "facing": "fixed",
+        "min_alignment_sharpness": None,
+    },
+    "swing": {
+        "grounded": True,
+        "loops": False,
+        "facing": "fixed",
+        "min_alignment_sharpness": None,
+    },
+    "airborne": {
+        "grounded": False,
+        "loops": True,
+        "facing": "free",
+        "min_alignment_sharpness": MIN_ALIGNMENT_SHARPNESS_AIRBORNE,
+    },
+    "emissive": {
+        "grounded": True,
+        "loops": True,
+        "facing": "free",
+        "min_alignment_sharpness": None,
+    },
 }
+
+
+def evaluate_continuous_gate_outcome(policy: GatePolicy, metric: float) -> Outcome:
+    """Tri-state outcome for a continuous Gate under its Acceptance profile."""
+    canonical = canonical_metric(metric)
+    budget = policy.budget
+    if budget is None:
+        raise ValueError("continuous gate policy requires a Budget")
+    if policy.status == "SEPARATED":
+        if canonical <= budget:
+            return "PASS"
+        if policy.hard_fail is not None and canonical >= policy.hard_fail:
+            return "FAIL"
+        return "REVIEW"
+    if policy.status == "UNSEPARATED":
+        return "PASS" if canonical <= budget else "REVIEW"
+    raise ValueError(f"unsupported gate policy status {policy.status!r}")
+
+
+def _gate_outcome_record(policy: GatePolicy, metric: float) -> dict[str, Any]:
+    canonical = canonical_metric(metric)
+    return {
+        "acceptance_status": policy.status,
+        "metric": canonical,
+        "budget": policy.budget,
+        "hard_fail": policy.hard_fail if policy.status == "SEPARATED" else None,
+        "outcome": evaluate_continuous_gate_outcome(policy, metric),
+    }
+
+
+def _aggregate_outcome(
+    *,
+    structural_fail: bool,
+    gate_outcomes: dict[str, dict[str, Any]],
+) -> Outcome:
+    if structural_fail:
+        return "FAIL"
+    outcomes = [row["outcome"] for row in gate_outcomes.values()]
+    if any(outcome == "FAIL" for outcome in outcomes):
+        return "FAIL"
+    if any(outcome == "REVIEW" for outcome in outcomes):
+        return "REVIEW"
+    return "PASS"
+
+
+def _validate_separated_promotions(
+    gate_policies: dict[str, dict[str, GatePolicy]],
+    *,
+    manifest_path: pathlib.Path,
+) -> None:
+    manifest = load_manifest(manifest_path)
+    promotions = {promo.id: promo for promo in manifest.promotions}
+    specifications = {
+        (spec.motion_class, spec.target_gate): spec for spec in manifest.specifications
+    }
+    for motion_class, gates in gate_policies.items():
+        for gate_name, policy in gates.items():
+            if policy.status != "SEPARATED" or policy.active_promotion is None:
+                continue
+            promo = promotions.get(policy.active_promotion)
+            if promo is None:
+                raise ValueError(
+                    f"missing Promotion {policy.active_promotion!r} for "
+                    f"{motion_class}/{gate_name}"
+                )
+            if promo.status != "ACTIVE":
+                raise ValueError(
+                    f"Promotion {policy.active_promotion!r} not ACTIVE "
+                    f"(status={promo.status!r}) for {motion_class}/{gate_name}"
+                )
+            spec = specifications.get((motion_class, gate_name))
+            if spec is None:
+                raise ValueError(
+                    f"missing specification for {motion_class}/{gate_name}"
+                )
+            if spec.active_promotion != policy.active_promotion:
+                raise ValueError(
+                    f"alternate Promotion for {motion_class}/{gate_name}: profile "
+                    f"references {policy.active_promotion!r} but manifest spec "
+                    f"has {spec.active_promotion!r}"
+                )
+
+
+def build_runtime_acceptance_policy(
+    *,
+    profiles_path: pathlib.Path | None = None,
+    manifest_path: pathlib.Path | None = None,
+) -> tuple[dict[str, ClassBudget], dict[str, dict[str, GatePolicy]]]:
+    """Load Acceptance profiles and project runtime Budgets and Gate policies."""
+    profiles_path = profiles_path or _DEFAULT_PROFILES_PATH
+    manifest_path = manifest_path or _DEFAULT_MANIFEST_PATH
+    try:
+        profiles = load_acceptance_profiles(profiles_path)
+    except EvidenceError as exc:
+        raise ValueError(str(exc)) from exc
+
+    gate_policies: dict[str, dict[str, GatePolicy]] = {}
+    motion_classes: dict[str, ClassBudget] = {}
+    for motion_class, meta in _CLASS_META.items():
+        profile_gates = profiles.profiles.get(motion_class)
+        if profile_gates is None:
+            raise ValueError(f"missing Acceptance profile for motion class {motion_class!r}")
+        class_policies: dict[str, GatePolicy] = {}
+        budget_kwargs: dict[str, float | None] = {
+            "max_silhouette": None,
+            "max_loop": None,
+            "max_drift": None,
+            "max_min_pair": None,
+        }
+        for gate_name, gate in profile_gates.items():
+            class_policies[gate_name] = GatePolicy(
+                status=gate.status,
+                budget=gate.budget,
+                hard_fail=gate.hard_fail,
+                active_promotion=gate.active_promotion,
+            )
+            attr = _GATE_BUDGET_ATTR.get(gate_name)
+            if attr is not None:
+                budget_kwargs[attr] = gate.budget if gate.status != "INAPPLICABLE" else None
+        if budget_kwargs["max_drift"] is None:
+            raise ValueError(f"{motion_class}: palette_drift_pass must be applicable")
+        gate_policies[motion_class] = class_policies
+        motion_classes[motion_class] = ClassBudget(
+            max_silhouette=budget_kwargs["max_silhouette"],
+            max_loop=budget_kwargs["max_loop"],
+            max_drift=budget_kwargs["max_drift"],
+            max_min_pair=budget_kwargs["max_min_pair"],
+            grounded=meta["grounded"],
+            loops=meta["loops"],
+            facing=meta["facing"],
+            min_alignment_sharpness=meta["min_alignment_sharpness"],
+        )
+
+    _validate_separated_promotions(gate_policies, manifest_path=manifest_path)
+    return motion_classes, gate_policies
+
+
+MOTION_CLASSES, ACCEPTANCE_GATES = build_runtime_acceptance_policy()
 
 
 @dataclass(frozen=True)
@@ -141,6 +281,7 @@ class IngestResult:
     slice_meta: dict[str, Any]
     coherence: dict[str, Any]
     pass_: bool
+    outcome: Outcome
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -156,6 +297,7 @@ class IngestResult:
             "slice": self.slice_meta,
             "coherence": self.coherence,
             "pass": self.pass_,
+            "outcome": self.outcome,
         }
 
 
@@ -836,7 +978,7 @@ def coherence_split(
             "frac": frac,
         }
         if budget.loops and max_loop_diff is not None:
-            loop_closure_pass = frac <= max_loop_diff
+            loop_closure_pass = metric_passes(frac, max_loop_diff)
             loop["pass"] = loop_closure_pass
 
     drift = palette_drift(q)
@@ -846,13 +988,81 @@ def coherence_split(
 
     silhouette_budget: bool | None = None
     if max_silhouette_diff is not None:
-        silhouette_budget = all(row["frac"] <= max_silhouette_diff for row in adjacent)
+        silhouette_budget = all(
+            metric_passes(row["frac"], max_silhouette_diff) for row in adjacent
+        )
 
     min_pair_cohort_pass: bool | None = None
     if budget.loops and max_min_pair is not None:
-        min_pair_cohort_pass = pairwise["min_pair"] <= max_min_pair
+        min_pair_cohort_pass = metric_passes(pairwise["min_pair"], max_min_pair)
 
     disp = displacement_gate_result(q, budget, anchor=sil_anchor)
+
+    gate_policies = ACCEPTANCE_GATES[motion_class]
+    gate_outcomes: dict[str, dict[str, Any]] = {}
+    caveats: list[str] = []
+
+    sil_policy = gate_policies.get("silhouette_budget")
+    if sil_policy is not None and sil_policy.status != "INAPPLICABLE":
+        gate_outcomes["silhouette_budget"] = _gate_outcome_record(
+            sil_policy, adjacent_max
+        )
+
+    loop_policy = gate_policies.get("loop_closure_pass")
+    if (
+        loop is not None
+        and loop_policy is not None
+        and loop_policy.status != "INAPPLICABLE"
+    ):
+        gate_outcomes["loop_closure_pass"] = _gate_outcome_record(
+            loop_policy, loop["frac"]
+        )
+
+    drift_policy = gate_policies.get("palette_drift_pass")
+    if drift_policy is not None and drift_policy.status != "INAPPLICABLE":
+        gate_outcomes["palette_drift_pass"] = _gate_outcome_record(
+            drift_policy, worst_drift
+        )
+
+    min_pair_policy = gate_policies.get("min_pair_cohort_pass")
+    if (
+        min_pair_policy is not None
+        and min_pair_policy.status != "INAPPLICABLE"
+    ):
+        gate_outcomes["min_pair_cohort_pass"] = _gate_outcome_record(
+            min_pair_policy, pairwise["min_pair"]
+        )
+
+    disp_policy = gate_policies.get("displacement_pass")
+    if disp_policy is not None and disp_policy.status != "INAPPLICABLE":
+        if disp["displacement_pass"] is None:
+            reason = disp.get("displacement_reason")
+            if reason:
+                caveats.append(reason)
+        elif disp["displacement_pass"] is True:
+            gate_outcomes["displacement_pass"] = {
+                "acceptance_status": disp_policy.status,
+                "metric": True,
+                "budget": disp_policy.budget,
+                "hard_fail": None,
+                "outcome": "PASS",
+            }
+        else:
+            gate_outcomes["displacement_pass"] = {
+                "acceptance_status": disp_policy.status,
+                "metric": False,
+                "budget": disp_policy.budget,
+                "hard_fail": None,
+                "outcome": "REVIEW",
+            }
+
+    structural_fail = not (len(dims) == 1) or (
+        grounded and baseline_stable is False
+    )
+    outcome = _aggregate_outcome(
+        structural_fail=structural_fail,
+        gate_outcomes=gate_outcomes,
+    )
 
     gates = {
         "quantize": {**stats, "mode": "quantize-shared", "merge_dist": merge_dist},
@@ -874,7 +1084,7 @@ def coherence_split(
         "loop_closure_pass": loop_closure_pass,
         "palette_drift": drift,
         "worst_palette_drift": worst_drift,
-        "palette_drift_pass": worst_drift <= max_palette_drift,
+        "palette_drift_pass": metric_passes(worst_drift, max_palette_drift),
         "alignment_sharpness": disp["alignment_sharpness"],
         "displacement_flags": disp["displacement_flags"],
         "displacement_pass": disp["displacement_pass"],
@@ -887,20 +1097,11 @@ def coherence_split(
             "min_pair": max_min_pair,
             "min_alignment_sharpness": budget.min_alignment_sharpness,
         },
+        "gate_outcomes": gate_outcomes,
+        "caveats": caveats,
+        "outcome": outcome,
     }
-    pass_parts: list[bool] = [gates["dimension_parity"]]
-    if gates["baseline_row_stable"] is not None:
-        pass_parts.append(gates["baseline_row_stable"])
-    if gates["silhouette_budget"] is not None:
-        pass_parts.append(gates["silhouette_budget"])
-    if gates["min_pair_cohort_pass"] is not None:
-        pass_parts.append(gates["min_pair_cohort_pass"])
-    if gates["loop_closure_pass"] is not None:
-        pass_parts.append(gates["loop_closure_pass"])
-    if gates["displacement_pass"] is not None:
-        pass_parts.append(gates["displacement_pass"])
-    pass_parts.append(gates["palette_drift_pass"])
-    gates["pass"] = all(pass_parts)
+    gates["pass"] = outcome == "PASS"
     return gates
 
 
@@ -1198,6 +1399,7 @@ def ingest_strip(
     if frames is None:
         coherence = {
             "pass": False,
+            "outcome": "FAIL",
             "reason": "grid shape mismatch",
             "expected": slice_meta["expected"],
             "got": slice_meta["grid"],
@@ -1209,7 +1411,8 @@ def ingest_strip(
         recovered["pitch_x"]["score"] >= MIN_GRID_SCORE
         and recovered["pitch_y"]["score"] >= MIN_GRID_SCORE
     )
-    pass_ = pitch_ok and coherence.get("pass", False)
+    outcome: Outcome = coherence.get("outcome", "FAIL")
+    pass_ = pitch_ok and outcome == "PASS"
 
     return IngestResult(
         layout=layout,
@@ -1218,6 +1421,7 @@ def ingest_strip(
         slice_meta=slice_meta,
         coherence=coherence,
         pass_=pass_,
+        outcome=outcome if pitch_ok else "FAIL",
     )
 
 
@@ -1252,6 +1456,17 @@ def coherence_gate_status(
     reason_key: str | None = None,
     budget_key: str | None = None,
 ) -> dict[str, Any]:
+    gate_outcomes = coherence.get("gate_outcomes", {})
+    if gate_key in gate_outcomes:
+        row = gate_outcomes[gate_key]
+        return {
+            "status": row["outcome"].lower(),
+            "value": row.get("metric"),
+            "budget": row.get("budget"),
+            "hard_fail": row.get("hard_fail"),
+            "acceptance_status": row.get("acceptance_status"),
+            "outcome": row["outcome"],
+        }
     value = coherence.get(gate_key)
     budgets = coherence.get("budgets", {})
     if inapplicable_key and coherence.get(inapplicable_key):
@@ -1277,6 +1492,8 @@ def format_coherence_gate_status(label: str, status: dict[str, Any]) -> str:
         reason = status.get("reason")
         detail = f"inapplicable — {reason}" if reason else "inapplicable"
         return f"  {label}: {detail}"
+    if state in {"pass", "review", "fail"}:
+        return f"  {label}: {state.upper()}"
     verdict = "pass" if state == "pass" else "FAIL"
     return f"  {label}: {verdict}"
 
@@ -1325,6 +1542,10 @@ def format_coherence_split_report(coherence: dict[str, Any]) -> list[str]:
         if key not in coherence:
             continue
         gate_value = coherence[key]
+        gate_outcomes = coherence.get("gate_outcomes", {})
+        if key in gate_outcomes:
+            lines.append(f"  {key}: {gate_outcomes[key]['outcome']}")
+            continue
         if gate_value is None:
             lines.append(f"  {key}: inapplicable")
         else:
@@ -1350,6 +1571,7 @@ def format_coherence_split_report(coherence: dict[str, Any]) -> list[str]:
 
 
 def coherence_split_json_gates(coherence: dict[str, Any]) -> dict[str, Any]:
+    gate_outcomes = coherence.get("gate_outcomes", {})
     return {
         "max_silhouette": coherence_gate_status(
             coherence, "silhouette_budget", budget_key="silhouette"
@@ -1366,6 +1588,9 @@ def coherence_split_json_gates(coherence: dict[str, Any]) -> dict[str, Any]:
             inapplicable_key="baseline_row_inapplicable",
             reason_key="baseline_row_reason",
         ),
+        "gate_outcomes": gate_outcomes,
+        "outcome": coherence.get("outcome"),
+        "caveats": coherence.get("caveats", []),
     }
 
 
@@ -1393,7 +1618,7 @@ def format_provider_ingest_report(result: IngestResult) -> str:
     lines.append("Coherence")
     lines.extend(format_coherence_split_report(result.coherence))
     lines.append("")
-    lines.append(f"Overall  {'PASS' if result.pass_ else 'FAIL'}")
+    lines.append(f"Overall  {result.outcome}")
     return "\n".join(lines)
 
 
@@ -1420,7 +1645,7 @@ def format_synthetic_ingest_report(result: IngestResult) -> str:
     lines.append("Coherence")
     lines.extend(format_coherence_split_report(result.coherence))
     lines.append("")
-    lines.append(f"Overall  {'PASS' if result.pass_ else 'FAIL'}")
+    lines.append(f"Overall  {result.outcome}")
     return "\n".join(lines)
 
 
@@ -1443,6 +1668,7 @@ def ingest_strip_provider(
     if frames is None:
         coherence = {
             "pass": False,
+            "outcome": "FAIL",
             "reason": slice_meta.get("reason", "auto-slice failed"),
             "slice": slice_meta,
         }
@@ -1453,7 +1679,8 @@ def ingest_strip_provider(
         recovered["pitch_x"]["score"] >= MIN_GRID_SCORE
         or recovered["pitch_y"]["score"] >= MIN_GRID_SCORE
     )
-    pass_ = pitch_ok and coherence.get("pass", False)
+    outcome: Outcome = coherence.get("outcome", "FAIL")
+    pass_ = pitch_ok and outcome == "PASS"
 
     return IngestResult(
         layout=layout,
@@ -1462,6 +1689,7 @@ def ingest_strip_provider(
         slice_meta=slice_meta,
         coherence=coherence,
         pass_=pass_,
+        outcome=outcome if pitch_ok else "FAIL",
     )
 
 
