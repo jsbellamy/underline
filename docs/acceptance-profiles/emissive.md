@@ -11,9 +11,9 @@ Machine-readable index: [`gate-controls/acceptance-profiles.json`](../../gate-co
 
 | Gate | Budget | Hard-fail C | Control | Promotion |
 |------|--------|-------------|---------|-----------|
-| `palette_drift_pass` | 0.2123 | 0.2793 | `emissive--palette_drift_pass--001` (corpus `07` cross-class) | `promo--emissive--palette_drift_pass` (`PENDING_VERIFICATION`) |
-| `silhouette_budget` | 0.3226 | 0.4633 | `emissive--silhouette_budget--001` | `promo--emissive--silhouette_budget` (`PENDING_VERIFICATION`) |
-| `loop_closure_pass` | 0.1694 | 0.2067 | `emissive--loop_closure_pass--001` | `promo--emissive--loop_closure_pass` (`PENDING_VERIFICATION`) |
+| `palette_drift_pass` | 0.2123 | 0.2793 | `emissive--palette_drift_pass--001` (corpus `07` cross-class) | `promo--emissive--palette_drift_pass` (`ACTIVE`) |
+| `silhouette_budget` | 0.3226 | 0.4633 | `emissive--silhouette_budget--001` | `promo--emissive--silhouette_budget` (`ACTIVE`) |
+| `loop_closure_pass` | 0.1694 | 0.2067 | `emissive--loop_closure_pass--001` | `promo--emissive--loop_closure_pass` (`ACTIVE`) |
 
 `baseline_row_stable` is structural and does not require a provider Gate control.
 

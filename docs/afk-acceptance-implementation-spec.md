@@ -3,9 +3,14 @@
 Resolved in [Assemble the agent-ready implementation specification](https://github.com/jsbellamy/underline/issues/30).
 Wayfinder map: [Wayfind a trustworthy AFK animation-Strip acceptance pipeline](https://github.com/jsbellamy/underline/issues/17).
 
-This document is the handoff. An implementation agent must execute against it
-without reopening Wayfinder decisions. Vocabulary is defined in `CONTEXT.md`.
-Measured numbers are reproduced by the proof commands below — never by memory.
+This document is the operational contract for AFK Gate-control work. Vocabulary
+is defined in `CONTEXT.md`. Measured numbers are reproduced by the proof commands
+below — never by memory.
+
+**Checked-in state:** all **17** Separated Promotions in `gate-controls/manifest.json`
+are `ACTIVE`. New manifest-backed candidates complete verification through the
+production score → acquire → review → verify loop (§12). Wave D estimator
+replacement remains out of scope (§11).
 
 ## 1. Destination this map locked
 
@@ -35,7 +40,8 @@ quantization, Acceptance profiles, or the evidence contract.
 | α-Budget tables and fragile claims | `docs/alpha-budget-tables.md` |
 | Machine-readable Acceptance profiles | `gate-controls/acceptance-profiles.json` |
 | Idle / emissive prose profiles | `docs/acceptance-profiles/*.md` |
-| Numeric policy | `prototype/strip-coherence/numeric_policy.py` |
+| Numeric policy | `pipeline/numeric_policy.py` |
+| Production Gate-control CLI | `npm run gate-control:score`, `gate-control:acquire`, `gate-control:review`, `gate-control:verify` |
 | Code / test seams | `docs/agents/code-style.md` |
 
 If prose and a machine-readable index disagree, fix the drift; do not invent a
@@ -148,8 +154,9 @@ Machine-readable index: `gate-controls/acceptance-profiles.json`.
 Structural Separated (no provider control): grounded `baseline_row_stable`, and
 `dimension_parity` as recovery precondition.
 
-All listed Promotions are currently `PENDING_VERIFICATION`. Activation requires
-the two-phase Promotion path in §8.
+All listed Promotions are **`ACTIVE`** in `gate-controls/manifest.json`. New
+candidates still follow the two-phase Promotion path in §8
+(`PENDING_VERIFICATION` → full verification → `ACTIVE` or `INVALIDATED`).
 
 ### Unseparated
 
@@ -352,16 +359,14 @@ Being Unseparated alone does not escalate.
 Do this work under ordinary implementation tickets (`agent-ready`), not by
 reopening the Wayfinder map. Preserve seams in `docs/agents/code-style.md`.
 
-### Wave A — Activate evidence
+### Wave A — Activate evidence (**complete**)
 
-1. Run the deferred late visual reviews for every `PENDING_VERIFICATION`
-   Promotion under the §10 rubric; write immutable review records.
-2. Run full-repo verification; transition Promotions `PENDING_VERIFICATION` →
-   `ACTIVE` or `INVALIDATED`.
-3. Fail closed if any Separated pair lacks an `ACTIVE` Promotion before Budget
-   landing.
+Wave A is complete for the checked-in cohort: all 17 Separated Promotions are
+`ACTIVE` with approved Gate reviews and full-repository verification records.
+Fail closed if any Separated pair lacks an `ACTIVE` Promotion before Budget
+landing.
 
-Proof:
+Proof (regression seam — re-run on every change):
 
 ```bash
 npm test
@@ -388,17 +393,23 @@ Proof: `npm test`, `npm run prototype:strip:corpus` (expect Review-band rows whe
 metrics sit between Budget and C), `npm run prototype:strip:alpha-budgets`
 (exit 0, tables match runtime).
 
-### Wave C — Production AFK loop
+### Wave C — Production AFK loop (**landed**)
 
-1. Promote `gate_control.py` / `gate_control_acquire.py` from prototype into
-   `pipeline/` (or a dedicated package) with schema versions, append-only
-   ledgers, and fail-closed validation.
-2. Implement Review-packet builder + Gate-review audit writer per §10.
-3. Wire acquisition CLI: generate → measure → primary failure → retry action →
-   optional Review → Promotion.
-4. Persist rejected Attempts as compact Manifest/report rows; discard redundant
-   PNGs per §8.
-5. Emit one late composite only when Review is required.
+Production modules live under `pipeline/` with canonical npm commands (§12):
+
+1. `pipeline/gate_control.py` — measurement-only scorer (`gate-control:score`).
+2. `pipeline/gate_control_acquire.py` — acquisition state machine
+   (`gate-control:acquire`: record, promote, retention).
+3. `pipeline/gate_review.py` — Review-packet builder + Gate-review audit writer
+   per §10 (`gate-control:review`).
+4. `pipeline/gate_verification.py` — manifest-backed full-repository verification
+   (`gate-control:verify`).
+
+Deprecated compatibility shims remain in `prototype/strip-coherence/` for this
+wave only (§12); they are not the operator path.
+
+Remaining polish (non-blocking for the checked-in cohort): tighter acquisition
+CLI ergonomics and end-to-end wiring in a future runtime/UI slice.
 
 ### Wave D — Estimator follow-on (optional, separate decision)
 
@@ -407,9 +418,43 @@ Unseparated as good strips accumulate. A later decision may replace it with a
 percentile or margin-fit estimator. That decision is **out of this map**; do not
 smuggle it into Wave B.
 
-## 12. Proof commands (evidence seam)
+## 12. Commands (production operator path and proof seam)
 
-Every claim cites a command and a row of its output:
+### Production Gate-control workflow
+
+Canonical operator commands (see `package.json`):
+
+```bash
+# 1. Score — isolation Measurement run (does not mutate Manifest)
+npm run gate-control:score -- <strip.png> --motion-class <class> --target-gate <gate>
+
+# 2. Acquire — record Attempts, provenance, Promotion candidates
+npm run gate-control:acquire -- record --help
+npm run gate-control:acquire -- promote --help
+
+# 3. Review — per-Gate agent judgment in the Review band
+npm run gate-control:review -- --help
+
+# 4. Verify — full-repository Promotion verification (manifest-backed)
+npm run gate-control:verify -- run --promotion-id <promo-id>
+```
+
+Numeric policy for Measurement runs: `pipeline/numeric_policy.py`.
+
+### Deprecated compatibility shims (this wave only)
+
+These prototype forwarders remain for legacy scripts. They are **deprecated**;
+there is no announced removal date. Use the production commands above instead:
+
+| Shim (this directory) | Replacement |
+|------|-------------|
+| `gate_control.py` | `npm run gate-control:score` → `pipeline/gate_control.py` |
+| `gate_control_acquire.py` | `npm run gate-control:acquire` → `pipeline/gate_control_acquire.py` |
+| `numeric_policy.py` | `pipeline/numeric_policy.py` |
+
+### Historical / proof commands
+
+Every measured claim cites a command and a row of its output:
 
 ```bash
 npm test                              # pytest suite
@@ -421,19 +466,21 @@ npm run prototype:strip:displacement
 npm run prototype:strip:sharpness
 ```
 
-Gate-control scoring prototype:
-
-```bash
-PYTHONPATH=. python3 prototype/strip-coherence/gate_control.py \
-  <strip.png> --motion-class <class> --target-gate <gate> --composite <out.png>
-```
-
-Rescoring under the numeric policy:
+Rescoring an existing Measurement run under the numeric policy:
 
 ```bash
 PYTHONPATH=. python3 prototype/strip-coherence/rescore_measurement.py \
   gate-controls/reports/<attempt>/<measurement>.json
 ```
+
+### Adversarial suite — retained gaps
+
+`npm run prototype:strip:adversarial` must reject every required mutation.
+Exactly **two** documented strip gaps remain, both on corpus baseline
+`04-bat-flap`: **hop** and **slide**, caused by `displacement_pass: None`
+(degenerate alignment minimum). The strengthened `blob_idle` slide and
+`emissive` mirror cases are required rejection checks, not known gaps. See
+`docs/strip-acquisition-contract.md` § Adversarial suite and strip gaps.
 
 ## 13. Decision index (do not restate — zoom the ticket)
 

@@ -12,6 +12,22 @@ are proved by adversarial mutations and negative controls 07–09.
 Production gate code lives in `pipeline/strip.py`. CLI ingest is
 `pipeline/ingest_strip.py` (`npm run strip:ingest`).
 
+## Production vs this directory
+
+| Role | Location | npm commands |
+|------|----------|--------------|
+| **Production operator path** | `pipeline/gate_control*.py`, `pipeline/gate_review.py`, `pipeline/gate_verification.py` | `gate-control:score`, `gate-control:acquire`, `gate-control:review`, `gate-control:verify` |
+| **Historical / proof tooling** | Runners in this directory (`corpus.py`, `adversarial.py`, `derive_budgets.py`, …) | `prototype:strip:*` |
+| **Deprecated compatibility shims** | `gate_control.py`, `gate_control_acquire.py`, `numeric_policy.py` in this directory | none — use the production commands above |
+
+The three shims re-export or forward to their `pipeline/` replacements. They are
+**deprecated** and retained for this wave only; there is no announced removal
+date. New code and documentation must reference `pipeline/` and the
+`gate-control:*` scripts.
+
+Numeric policy for four-place ceiling quantization lives at
+`pipeline/numeric_policy.py` (not the shim).
+
 ## Adding a sample
 
 1. Write a prompt in `prompts/<id>.txt` (follow existing samples).
@@ -27,7 +43,7 @@ After the corpus changes, run `npm run prototype:strip:derive-budgets` and
 update the contract's measured tables per
 `docs/strip-acquisition-contract.md`.
 
-## Runners
+## Proof runners
 
 From repo root:
 
