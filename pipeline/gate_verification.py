@@ -41,6 +41,26 @@ ISSUE_59_PROMOTION_IDS: frozenset[str] = frozenset(
     }
 )
 
+ISSUE_60_PROMOTION_IDS: frozenset[str] = frozenset(
+    {
+        "promo--emissive--loop_closure_pass",
+        "promo--emissive--palette_drift_pass",
+        "promo--emissive--silhouette_budget",
+        "promo--airborne--loop_closure_pass",
+        "promo--airborne--min_pair_cohort_pass",
+        "promo--airborne--palette_drift_pass",
+    }
+)
+
+VERIFICATION_PROMOTION_IDS: frozenset[str] = (
+    ISSUE_59_PROMOTION_IDS | ISSUE_60_PROMOTION_IDS
+)
+
+ACTIVATION_SLICES: tuple[frozenset[str], ...] = (
+    ISSUE_59_PROMOTION_IDS,
+    ISSUE_60_PROMOTION_IDS,
+)
+
 PROMOTION_REVIEW_DIRS: dict[str, str] = {
     "promo--idle--palette_drift_pass": "idle--palette_drift_pass--001",
     "promo--idle--silhouette_budget": "idle--silhouette_budget--001",
@@ -48,11 +68,45 @@ PROMOTION_REVIEW_DIRS: dict[str, str] = {
     "promo--blob_idle--min_pair_cohort_pass": "blob_idle--min_pair_cohort_pass--005",
     "promo--blob_idle--palette_drift_pass": "blob_idle--palette_drift_pass--001",
     "promo--blob_idle--silhouette_budget": "blob_idle--silhouette_budget--004",
+    "promo--emissive--loop_closure_pass": "emissive--loop_closure_pass--001",
+    "promo--emissive--palette_drift_pass": "emissive--palette_drift_pass--001",
+    "promo--emissive--silhouette_budget": "emissive--silhouette_budget--001",
+    "promo--airborne--loop_closure_pass": "airborne--loop_closure_pass--002",
+    "promo--airborne--min_pair_cohort_pass": "airborne--min_pair_cohort_pass--004",
+    "promo--airborne--palette_drift_pass": "airborne--palette_drift_pass--001",
 }
 
 
 class VerificationError(ValueError):
     """Fail-closed Promotion verification failure."""
+
+
+def _slice_index(promotion_id: str) -> int:
+    for index, promotion_ids in enumerate(ACTIVATION_SLICES):
+        if promotion_id in promotion_ids:
+            return index
+    raise VerificationError(f"unknown promotion_id {promotion_id!r}")
+
+
+def _manifest_doc_at_slice_binding(
+    manifest_path: Path,
+    *,
+    promotion_id: str,
+    status: str = PENDING_STATUS,
+) -> dict[str, Any]:
+    doc = json.loads(manifest_path.read_text())
+    slice_index = _slice_index(promotion_id)
+    later_slices = frozenset().union(*ACTIVATION_SLICES[slice_index + 1 :])
+    current_slice = ACTIVATION_SLICES[slice_index]
+    for promo in doc.get("promotions", []):
+        pid = promo.get("id")
+        if not isinstance(pid, str):
+            continue
+        if pid in later_slices:
+            promo["status"] = PENDING_STATUS
+        elif pid in current_slice:
+            promo["status"] = status
+    return doc
 
 
 @dataclass(frozen=True)
@@ -146,15 +200,33 @@ def _manifest_doc_at_binding(
 def manifest_sha256_at_binding(
     manifest_path: Path,
     *,
-    promotion_ids: frozenset[str],
+    promotion_ids: frozenset[str] | None = None,
+    promotion_id: str | None = None,
     status: str = PENDING_STATUS,
 ) -> str:
-    """Hash the manifest as bound at verification time (named promotions at ``status``)."""
-    doc = _manifest_doc_at_binding(
-        manifest_path,
-        promotion_ids=promotion_ids,
-        status=status,
-    )
+    """Hash the manifest as bound at verification time.
+
+    For verification records, pass ``promotion_id`` so later activation slices
+    are reset to ``PENDING_VERIFICATION`` and the hash stays stable across
+    serialized Wave A activations.
+    """
+    if (promotion_ids is None) == (promotion_id is None):
+        raise VerificationError(
+            "provide exactly one of promotion_ids or promotion_id"
+        )
+    if promotion_id is not None:
+        doc = _manifest_doc_at_slice_binding(
+            manifest_path,
+            promotion_id=promotion_id,
+            status=status,
+        )
+    else:
+        assert promotion_ids is not None
+        doc = _manifest_doc_at_binding(
+            manifest_path,
+            promotion_ids=promotion_ids,
+            status=status,
+        )
     canonical = json.dumps(doc, indent=2) + "\n"
     return ge.sha256_bytes(canonical.encode())
 
@@ -277,7 +349,7 @@ def build_verification_record(
         "reviews": reviews,
         "manifest_sha256": manifest_sha256_at_binding(
             gc / "manifest.json",
-            promotion_ids=ISSUE_59_PROMOTION_IDS,
+            promotion_id=promotion_id,
             status=PENDING_STATUS,
         ),
         "repository_commit": _git_commit(root),
@@ -308,9 +380,9 @@ def validate_verification_record(root: Path, path: Path) -> None:
     ge.require_schema(doc, ge.KNOWN_SCHEMAS["verification"], where=str(path))
 
     promotion_id = str(doc["promotion_id"])
-    if promotion_id not in ISSUE_59_PROMOTION_IDS:
+    if promotion_id not in VERIFICATION_PROMOTION_IDS:
         raise VerificationError(
-            f"verification record promotion_id {promotion_id!r} outside issue #59 scope"
+            f"verification record promotion_id {promotion_id!r} outside verification scope"
         )
 
     promo = ge.load_manifest(gc / "manifest.json")
@@ -331,7 +403,7 @@ def validate_verification_record(root: Path, path: Path) -> None:
 
     bound_manifest = manifest_sha256_at_binding(
         gc / "manifest.json",
-        promotion_ids=ISSUE_59_PROMOTION_IDS,
+        promotion_id=promotion_id,
         status=PENDING_STATUS,
     )
     if doc.get("manifest_sha256") != bound_manifest:
@@ -408,8 +480,8 @@ def verify_promotion(
     commands: Sequence[CommandResult] | None = None,
 ) -> dict[str, Any]:
     """Validate reviews and assemble a verification record for one Promotion."""
-    if promotion_id not in ISSUE_59_PROMOTION_IDS:
-        raise VerificationError(f"promotion {promotion_id!r} is outside issue #59")
+    if promotion_id not in VERIFICATION_PROMOTION_IDS:
+        raise VerificationError(f"promotion {promotion_id!r} is outside verification scope")
     ge.validate_evidence_graph(root, promotion_ids=[promotion_id])
     review_report = validate_promotion_reviews(root, promotion_id)
     command_results = list(commands) if commands is not None else run_required_commands(root)
@@ -447,10 +519,10 @@ def main(argv: list[str] | None = None) -> int:
     sub = parser.add_subparsers(dest="command", required=True)
 
     run = sub.add_parser("run", help="Verify one Promotion and print its record")
-    run.add_argument("promotion_id", choices=sorted(ISSUE_59_PROMOTION_IDS))
+    run.add_argument("promotion_id", choices=sorted(VERIFICATION_PROMOTION_IDS))
 
     write = sub.add_parser("write", help="Write verification JSON for one Promotion")
-    write.add_argument("promotion_id", choices=sorted(ISSUE_59_PROMOTION_IDS))
+    write.add_argument("promotion_id", choices=sorted(VERIFICATION_PROMOTION_IDS))
     write.add_argument(
         "--root",
         type=Path,
@@ -501,7 +573,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "ensure-review-input":
         root = Path(".").resolve()
-        for promotion_id in sorted(ISSUE_59_PROMOTION_IDS):
+        for promotion_id in sorted(VERIFICATION_PROMOTION_IDS):
             attempt_id = review_dir_for_promotion(promotion_id)
             review_dir = root / "gate-controls" / "reviews" / attempt_id
             ensure_blinded_second_review_input(review_dir)

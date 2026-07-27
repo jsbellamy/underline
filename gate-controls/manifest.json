@@ -164,7 +164,7 @@
       "specification_id": "emissive/loop_closure_pass",
       "attempt_id": "emissive--loop_closure_pass--001",
       "measurement_path": "gate-controls/reports/emissive--loop_closure_pass--001/2026-07-26T17-59-09+00-00.json",
-      "status": "PENDING_VERIFICATION",
+      "status": "ACTIVE",
       "recorded_at": "2026-07-26T17:59:09+00:00",
       "note": "visual review deferred to #27; full verification deferred to #30"
     },
@@ -173,7 +173,7 @@
       "specification_id": "emissive/palette_drift_pass",
       "attempt_id": "emissive--palette_drift_pass--001",
       "measurement_path": "gate-controls/reports/emissive--palette_drift_pass--001/2026-07-26T17-59-07+00-00.json",
-      "status": "PENDING_VERIFICATION",
+      "status": "ACTIVE",
       "recorded_at": "2026-07-26T17:59:07+00:00",
       "note": "visual review deferred to #27; full verification deferred to #30"
     },
@@ -182,7 +182,7 @@
       "specification_id": "emissive/silhouette_budget",
       "attempt_id": "emissive--silhouette_budget--001",
       "measurement_path": "gate-controls/reports/emissive--silhouette_budget--001/2026-07-26T17-59-08+00-00.json",
-      "status": "PENDING_VERIFICATION",
+      "status": "ACTIVE",
       "recorded_at": "2026-07-26T17:59:08+00:00",
       "note": "visual review deferred to #27; full verification deferred to #30"
     },
@@ -191,7 +191,7 @@
       "specification_id": "airborne/loop_closure_pass",
       "attempt_id": "airborne--loop_closure_pass--002",
       "measurement_path": "gate-controls/reports/airborne--loop_closure_pass--002/2026-07-26T17-21-43+00-00.json",
-      "status": "PENDING_VERIFICATION",
+      "status": "ACTIVE",
       "recorded_at": "2026-07-26T17:21:44+00:00",
       "note": "visual review deferred to #27; full verification deferred to #30"
     },
@@ -200,7 +200,7 @@
       "specification_id": "airborne/min_pair_cohort_pass",
       "attempt_id": "airborne--min_pair_cohort_pass--004",
       "measurement_path": "gate-controls/reports/airborne--min_pair_cohort_pass--004/2026-07-26T17-23-28+00-00.json",
-      "status": "PENDING_VERIFICATION",
+      "status": "ACTIVE",
       "recorded_at": "2026-07-26T17:23:28+00:00",
       "note": "visual review deferred to #27; full verification deferred to #30"
     },
@@ -209,7 +209,7 @@
       "specification_id": "airborne/palette_drift_pass",
       "attempt_id": "airborne--palette_drift_pass--001",
       "measurement_path": "gate-controls/reports/airborne--palette_drift_pass--001/2026-07-26T17-20-32+00-00.json",
-      "status": "PENDING_VERIFICATION",
+      "status": "ACTIVE",
       "recorded_at": "2026-07-26T17:20:32+00:00",
       "note": "visual review deferred to #27; full verification deferred to #30"
     },
