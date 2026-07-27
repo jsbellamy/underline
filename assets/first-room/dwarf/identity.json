@@ -1,0 +1,39 @@
+{
+  "schema": "dwarf-identity/0",
+  "subject_read": "iconic working dwarf, compact and sturdy rather than tall human; immediately readable at native 16\u00d724 scale",
+  "canonical_description": {
+    "proportions": "very short and broad",
+    "beard": "large rust-brown beard",
+    "helmet": "oversized rounded BLUE metal helmet with a centered amber lamp",
+    "eye": "one black eye Cell when exposed, no white sclera",
+    "tunic": "GREEN work tunic",
+    "belt": "dark leather belt with small amber buckle",
+    "gloves": "thick gloves",
+    "boots": "broad brown boots",
+    "pickaxe": "compact heavy pickaxe resting behind the right shoulder",
+    "facing": "right",
+    "frame_size": [
+      16,
+      24
+    ]
+  },
+  "identity_png": {
+    "relative_path": "assets/first-room/dwarf/identity.png",
+    "sha256": "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9",
+    "source": "assets/first-room/dwarf/idle/release/frame-0.png"
+  },
+  "idle_bundle": {
+    "relative_path": "assets/first-room/dwarf/idle",
+    "motion_class": "idle",
+    "polish_profile": "dwarf-miner",
+    "report_relative_path": "assets/first-room/dwarf/idle/reports/b6e797e22a179c7ae0028fa1fb3eaf4cdafb161e8baf829cbbb1b2546e600cf7.json",
+    "report_sha256": "5644750b6c39f25912713dcd075988c3380674ded89d241c48267ba5deb023c2",
+    "report_fingerprint": "b6e797e22a179c7ae0028fa1fb3eaf4cdafb161e8baf829cbbb1b2546e600cf7",
+    "release_frame_0_sha256": "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9"
+  },
+  "visual_reference_for": [
+    "walk",
+    "swing"
+  ],
+  "notes": "This image is the required visual reference for walk and swing generation."
+}

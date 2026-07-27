@@ -1,0 +1,34 @@
+{
+  "schema": "gate-control-provenance/0",
+  "specification_id": "first-room/dwarf/idle",
+  "attempt_id": "dwarf-idle--001",
+  "generator": "cursor-image-gen",
+  "prompt_text": "TRUE chunky pixel art animation Strip only. Four idle Frames of the SAME stout fantasy DWARF MINER, facing RIGHT, in one horizontal row.\n\nEach Frame is an exact 16\u00d724 logical grid rendered large as crisp square Cells. Four Frames, two full magenta #FF00FF logical gutter Cells between Frames, flat magenta keyed background, no labels, margins, extra rows, anti-aliasing, blur, gradients, or dithering.\n\nCanonical dwarf: very short and broad; large rust-brown beard; oversized rounded BLUE metal helmet with a centered amber lamp; one black eye Cell when exposed, no white sclera; GREEN work tunic; dark leather belt with small amber buckle; thick gloves; broad brown boots; compact heavy pickaxe resting behind the right shoulder. Strong head/torso/boot mass and readable beard silhouette. The character must remain the same proportions and construction in every Frame.\n\nWarm rugged storybook pixel art. Selective warm-dark outline. Neutral upper-left local highlight. Use only colors from assets/palettes/first-room.json and never use transport magenta on the subject.\n\nMotion: subtle beard and torso breathing only. Boots remain planted on the bottom row. Frame 3 closes naturally into Frame 0. Preserve eye, helmet/lamp, beard, tunic, belt/buckle, gloves, boots, and pickaxe identity in every exposed pose.\n\nIntended read: iconic working dwarf, compact and sturdy rather than tall human; immediately readable at native 16\u00d724 scale.\n",
+  "prompt": "TRUE chunky pixel art animation Strip only. Four idle Frames of the SAME stout fantasy DWARF MINER, facing RIGHT, in one horizontal row.\n\nEach Frame is an exact 16\u00d724 logical grid rendered large as crisp square Cells. Four Frames, two full magenta #FF00FF logical gutter Cells between Frames, flat magenta keyed background, no labels, margins, extra rows, anti-aliasing, blur, gradients, or dithering.\n\nCanonical dwarf: very short and broad; large rust-brown beard; oversized rounded BLUE metal helmet with a centered amber lamp; one black eye Cell when exposed, no white sclera; GREEN work tunic; dark leather belt with small amber buckle; thick gloves; broad brown boots; compact heavy pickaxe resting behind the right shoulder. Strong head/torso/boot mass and readable beard silhouette. The character must remain the same proportions and construction in every Frame.\n\nWarm rugged storybook pixel art. Selective warm-dark outline. Neutral upper-left local highlight. Use only colors from assets/palettes/first-room.json and never use transport magenta on the subject.\n\nMotion: subtle beard and torso breathing only. Boots remain planted on the bottom row. Frame 3 closes naturally into Frame 0. Preserve eye, helmet/lamp, beard, tunic, belt/buckle, gloves, boots, and pickaxe identity in every exposed pose.\n\nIntended read: iconic working dwarf, compact and sturdy rather than tall human; immediately readable at native 16\u00d724 scale.\n",
+  "prompt_sha256": "f5e2b719a95b7916185ca0cc676bd48c3d538eb9a89d03cfabf8d329d610c665",
+  "reference_image_sha256": [],
+  "generated_at": "2026-07-27T22:07:43+00:00",
+  "acquiring_agent": "cursor-agent-issue-107",
+  "repository_commit": "aa7c49dc0237b09f152ad2472e9084ae3b23c12d",
+  "raw_path": "assets/first-room/dwarf/idle/provider/source.png",
+  "raw_sha256": "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3",
+  "media_type": "image/png",
+  "dimensions": [
+    1536,
+    1024
+  ],
+  "master_palette_id": "first-room",
+  "motion_class": "idle",
+  "polish_profile": "dwarf-miner",
+  "item_geometry": {
+    "frame_w": 16,
+    "frame_h": 24,
+    "frame_count": 4,
+    "gutter": 2
+  },
+  "asset_kind": "animation-strip",
+  "provider": {
+    "generator": "cursor-image-gen",
+    "model": "cursor-image-gen"
+  }
+}
