@@ -62,8 +62,8 @@ eye, a one-Cell-high belt, a stable buckle color, or intentional outline
 continuity illustrate the kind of edits an operator might make; the validator
 does not recognize those semantics.
 
-Authority: [`docs/strip-acquisition-contract.md`](docs/strip-acquisition-contract.md)
-Consumers — Final polish.
+Final-polish authority: [`docs/strip-acquisition-contract.md`](docs/strip-acquisition-contract.md)
+(Consumers → Final polish).
 
 ## Corpus analysis and proof tooling
 
