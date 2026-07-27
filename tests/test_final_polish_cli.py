@@ -149,6 +149,83 @@ def test_init_fail_strip_exit_1(tmp_path: Path) -> None:
     )
     assert result.returncode == 1
     assert not bundle.exists()
+    assert "FAIL" in result.stdout
+    assert "palette_drift_pass" in result.stdout or "silhouette" in result.stdout
+
+
+def test_init_fail_strip_json_exit_1(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    result = _run_module(
+        [
+            "init",
+            str(FAIL_STRIP),
+            "--motion-class",
+            "idle",
+            "--out",
+            str(bundle),
+            "--json",
+        ]
+    )
+    assert result.returncode == 1
+    assert not bundle.exists()
+    data = json.loads(result.stdout)
+    assert data["outcome"] == "FAIL"
+    assert data["pass"] is False
+    assert "coherence" in data
+    assert "gate_outcomes" in data
+
+
+def test_init_pass_json_exit_0(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    result = _run_module(
+        [
+            "init",
+            str(PASS_STRIP),
+            "--motion-class",
+            "idle",
+            "--out",
+            str(bundle),
+            "--json",
+        ]
+    )
+    assert result.returncode == 0, result.stderr
+    data = json.loads(result.stdout)
+    assert data["outcome"] == "PASS"
+    assert "fingerprint" in data
+    assert "structural" in data
+
+
+def test_init_review_strip_json_exit_3(tmp_path: Path, capsys) -> None:
+    bundle = tmp_path / "bundle"
+    base = ingest_strip_provider(PASS_STRIP, _corpus_layout(), motion_class="idle")
+    review = IngestResult(
+        layout=base.layout,
+        source=base.source,
+        recovered=base.recovered,
+        slice_meta=base.slice_meta,
+        coherence={**base.coherence, "outcome": "REVIEW", "pass": False},
+        pass_=False,
+        outcome="REVIEW",
+    )
+    with (
+        patch("pipeline.final_polish.ingest_strip_provider", return_value=review),
+        patch("pipeline.final_polish_cli.ingest_strip_provider", return_value=review),
+    ):
+        code = main(
+            [
+                "init",
+                str(PASS_STRIP),
+                "--motion-class",
+                "idle",
+                "--out",
+                str(bundle),
+                "--json",
+            ]
+        )
+    assert code == 3
+    data = json.loads(capsys.readouterr().out)
+    assert data["outcome"] == "REVIEW"
+    assert data["pass"] is False
 
 
 def test_init_review_strip_exit_3(tmp_path: Path, capsys) -> None:
@@ -243,11 +320,24 @@ def test_check_fail_exit_1(tmp_path: Path) -> None:
     bundle = _init_bundle(tmp_path)
     polished = bundle / "polished" / "frame-0.png"
     x, y = _first_opaque_xy(polished)
-    _set_opaque_rgb(polished, x, y, (9, 9, 9))
+    _set_opaque_rgb(polished, x, y, (3, 99, 200))
 
     result = _run_module(["check", str(bundle)])
     assert result.returncode == 1
     assert "FAIL" in result.stdout
+
+
+def test_check_fail_json_exit_1(tmp_path: Path) -> None:
+    bundle = _init_bundle(tmp_path)
+    polished = bundle / "polished" / "frame-0.png"
+    x, y = _first_opaque_xy(polished)
+    _set_opaque_rgb(polished, x, y, (3, 99, 200))
+
+    result = _run_module(["check", str(bundle), "--json"])
+    assert result.returncode == 1
+    data = json.loads(result.stdout)
+    assert data["outcome"] == "FAIL"
+    assert data["structural"]["pass"] is False
 
 
 def test_check_review_exit_3(tmp_path: Path, capsys) -> None:
@@ -282,6 +372,39 @@ def test_check_review_exit_3(tmp_path: Path, capsys) -> None:
     assert "Overall  REVIEW" in capsys.readouterr().out
 
 
+def test_check_review_json_exit_3(tmp_path: Path, capsys) -> None:
+    bundle = _init_bundle(tmp_path)
+    base = ingest_strip_provider(bundle / "provider" / "source.png", _corpus_layout(), motion_class="idle")
+    review = IngestResult(
+        layout=base.layout,
+        source=base.source,
+        recovered=base.recovered,
+        slice_meta=base.slice_meta,
+        coherence={**base.coherence, "outcome": "REVIEW", "pass": False},
+        pass_=False,
+        outcome="REVIEW",
+    )
+    with patch("pipeline.final_polish_cli.check_bundle") as mock_check:
+        from pipeline.final_polish import FinalPolishCheckResult, StructuralCheckResult, VisibleCellDelta
+
+        mock_check.return_value = FinalPolishCheckResult(
+            outcome="REVIEW",
+            provider_outcome="REVIEW",
+            structural=StructuralCheckResult(pass_=True, outcome="PASS", violations=()),
+            delta=VisibleCellDelta(edits=(), per_frame_counts=(0, 0, 0, 0), total_edits=0),
+            coherence=review.coherence,
+            manifest_sha256="abc",
+            provider_sha256="def",
+            draft_hashes=("d0", "d1", "d2", "d3"),
+            polished_hashes=("p0", "p1", "p2", "p3"),
+            fingerprint="fp",
+        )
+        code = main(["check", str(bundle), "--json"])
+    assert code == 3
+    data = json.loads(capsys.readouterr().out)
+    assert data["outcome"] == "REVIEW"
+
+
 def test_check_invalid_bundle_exit_2(tmp_path: Path) -> None:
     bundle = _init_bundle(tmp_path)
     (bundle / "manifest.json").unlink()
@@ -298,6 +421,74 @@ def test_finalize_pass_exit_0_and_creates_release(tmp_path: Path) -> None:
     assert "Report" in result.stdout
     assert "Release" in result.stdout
     assert (bundle / "release" / "frame-0.png").is_file()
+
+
+def test_finalize_pass_json_exit_0(tmp_path: Path) -> None:
+    bundle = _init_bundle(tmp_path)
+    result = _run_module(["finalize", str(bundle), "--json"])
+    assert result.returncode == 0, result.stderr
+    data = json.loads(result.stdout)
+    assert data["outcome"] == "PASS"
+    assert "report_path" in data
+    assert "release_frames" in data
+    assert len(data["release_frames"]) == FRAME_COUNT
+
+
+def test_finalize_fail_json_exit_1(tmp_path: Path) -> None:
+    bundle = _init_bundle(tmp_path)
+    polished = bundle / "polished" / "frame-1.png"
+    x, y = _first_opaque_xy(polished)
+    _set_opaque_rgb(polished, x, y, (250, 1, 2))
+
+    result = _run_module(["finalize", str(bundle), "--json"])
+    assert result.returncode == 1
+    data = json.loads(result.stdout)
+    assert data["outcome"] == "FAIL"
+    assert "report_path" in data
+    assert "release_frames" not in data
+
+
+def test_finalize_review_exit_3_records_report(tmp_path: Path, capsys) -> None:
+    bundle = _init_bundle(tmp_path)
+    base = ingest_strip_provider(bundle / "provider" / "source.png", _corpus_layout(), motion_class="idle")
+    review = IngestResult(
+        layout=base.layout,
+        source=base.source,
+        recovered=base.recovered,
+        slice_meta=base.slice_meta,
+        coherence={**base.coherence, "outcome": "REVIEW", "pass": False},
+        pass_=False,
+        outcome="REVIEW",
+    )
+    with patch("pipeline.final_polish.ingest_strip_provider", return_value=review):
+        code = main(["finalize", str(bundle)])
+    assert code == 3
+    captured = capsys.readouterr().out
+    assert "Overall  REVIEW" in captured
+    assert "Report" in captured
+    assert len(list((bundle / "reports").glob("*.json"))) == 1
+    assert not (bundle / "release").exists()
+
+
+def test_finalize_review_json_exit_3(tmp_path: Path, capsys) -> None:
+    bundle = _init_bundle(tmp_path)
+    base = ingest_strip_provider(bundle / "provider" / "source.png", _corpus_layout(), motion_class="idle")
+    review = IngestResult(
+        layout=base.layout,
+        source=base.source,
+        recovered=base.recovered,
+        slice_meta=base.slice_meta,
+        coherence={**base.coherence, "outcome": "REVIEW", "pass": False},
+        pass_=False,
+        outcome="REVIEW",
+    )
+    with patch("pipeline.final_polish.ingest_strip_provider", return_value=review):
+        code = main(["finalize", str(bundle), "--json"])
+    assert code == 3
+    data = json.loads(capsys.readouterr().out)
+    assert data["outcome"] == "REVIEW"
+    assert "report_path" in data
+    assert "release_frames" not in data
 
 
 def test_finalize_fail_exit_1_records_report_without_release(tmp_path: Path) -> None:

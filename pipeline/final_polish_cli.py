@@ -92,8 +92,8 @@ def _check_json_payload(
     release_paths: list[pathlib.Path] | None = None,
 ) -> dict[str, Any]:
     manifest = json.loads((bundle_root / "manifest.json").read_text())
+    gate_views = coherence_split_json_gates(result.coherence)
     payload: dict[str, Any] = {
-        "outcome": result.outcome,
         "provider_outcome": result.provider_outcome,
         "bundle": str(bundle_root.resolve()),
         "provider": str((bundle_root / manifest["provider"]["relative_path"]).resolve()),
@@ -101,12 +101,13 @@ def _check_json_payload(
         "structural": _structural_payload(result),
         "visible_cell_delta": _delta_payload(result),
         "coherence": result.coherence,
-        **coherence_split_json_gates(result.coherence),
+        **gate_views,
         "manifest_sha256": result.manifest_sha256,
         "provider_sha256": result.provider_sha256,
         "draft_hashes": list(result.draft_hashes),
         "polished_hashes": list(result.polished_hashes),
         "fingerprint": result.fingerprint,
+        "outcome": result.outcome,
     }
     if report_path is not None:
         payload["report_path"] = str(report_path.resolve())
