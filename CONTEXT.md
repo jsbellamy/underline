@@ -168,3 +168,22 @@ _Avoid_: overlapping, inconclusive
 A Motion-class/Gate pair whose failure mode is not meaningful for that kind of
 animation, so the Acceptance profile omits the Gate entirely.
 _Avoid_: Unseparated, disabled
+
+**Polish Bundle**:
+The self-contained provenance and working context connecting one accepted
+provider Strip to its Draft, Polished, and Release Frames.
+_Avoid_: polish workspace, edit session
+
+**Draft Frame**:
+An immutable-by-hash canonical Frame exported from the accepted provider Strip
+before art edits.
+_Avoid_: source frame, baseline frame
+
+**Polished Frame**:
+The editable RGB-only derivative of a Draft Frame; its occupancy and available
+palette remain locked to the Draft sequence.
+_Avoid_: work-in-progress frame, edited frame
+
+**Release Frame**:
+A Polished Frame made releasable only by automatic current-policy `PASS`.
+_Avoid_: shipped frame, final frame

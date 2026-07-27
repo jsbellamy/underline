@@ -402,6 +402,42 @@ declared motion class via `coherence_split`, and on automatic pass exports one
 logical-resolution RGBA frame per slice. Review-band and hard-fail strips write no
 frames; inapplicable gates are reported explicitly in human and JSON output.
 
+### Final polish (post-ingest)
+
+`python -m pipeline.final_polish_cli` (npm `strip:polish`) consumes the current
+production contract after ingest. It does not supersede the AFK acquisition
+evidence model, add Gates, or change Budgets.
+
+1. **`init`** accepts only a provider Strip that currently passes production
+   ingest (`PASS`). It creates a retained provider copy, immutable Draft Frames,
+   and seeded Polished Frames (one per logical Frame slot). `REVIEW` and `FAIL`
+   ingest outcomes create no bundle.
+2. The four Polished Frames remain exact `16×24` RGBA with binary alpha, exact
+   per-Frame Draft alpha masks, and opaque RGB values drawn only from the
+   combined Draft palette.
+3. **`check`** is read-only: it reports every visible changed Cell (Draft vs
+   Polished RGB at occupied coordinates) and runs the exact Polished Frames
+   through the current Motion-class Acceptance profiles via `coherence_split`.
+4. **`finalize`** repeats current-policy validation, records a hash-bound
+   immutable report for every valid outcome, and produces Release Frames only on
+   automatic `PASS`; `REVIEW` and `FAIL` have no override.
+5. The provider Strip remains bundled provenance; Draft, Polished, Release, and
+   report hashes preserve the derivation chain.
+
+**Structural polish invariants** (alpha mask, palette membership, provenance
+reproduction) are enforced before coherence Gates run. Failures on these
+invariants are structural hard failures — they do not become new Gates and do
+not change any Budget.
+
+Aseprite is optional: an operator may edit Polished Frames in Aseprite or by
+direct Cell-coordinate changes to the `polished/` PNG sequence. Automatic accent
+recognition, Aseprite project generation or automation, original raster
+generation, actual miner pixel edits, runtime playback, and game-asset
+integration remain outside this wave. Visual examples such as a one-Cell black
+eye, a one-Cell-high belt, a stable buckle color, or intentional outline
+continuity illustrate the kind of edits an operator might make; the validator
+does not recognize those semantics.
+
 `npm run prototype:strip:corpus` and `npm run prototype:strip:adversarial` consume the
 same production tri-state outcomes — they do not derive or own Budget numbers.
 `npm run prototype:strip:derive-budgets` remains the explicitly historical pre-α

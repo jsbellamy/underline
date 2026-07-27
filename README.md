@@ -37,6 +37,29 @@ npm run gate-control:verify -- run --promotion-id <promo-id>
 
 AFK acceptance authority: [`docs/afk-acceptance-implementation-spec.md`](docs/afk-acceptance-implementation-spec.md).
 
+## Final-polish production path
+
+After a provider Strip passes production ingest, final polish turns accepted art
+into releasable Frames. Edit the `polished/` PNG sequence (in Aseprite or by
+direct Cell-coordinate changes), then validate and release.
+
+```bash
+npm run strip:polish -- init <provider.png> --motion-class <class> --out <bundle> [--json]
+npm run strip:polish -- check <bundle> [--json]
+npm run strip:polish -- finalize <bundle> [--json]
+```
+
+Exit codes: `0` `PASS`, `1` `FAIL`, `2` invalid or structural error, `3`
+`REVIEW`. `polished/` is the editor-facing PNG sequence; `release/` is written
+only on automatic `PASS`.
+
+Aseprite is optional — direct PNG edits at Cell coordinates are supported.
+Automatic accent recognition, Aseprite automation, original raster generation,
+miner pixel edits, runtime playback, and game-asset integration are out of scope
+for this wave. Examples such as a one-Cell black eye, a one-Cell-high belt, or
+outline continuity are visual guidance only; the validator does not recognize
+those semantics.
+
 ## Corpus analysis and proof tooling
 
 Historical corpus scoring and budget derivation remain under `prototype:strip:*`.
