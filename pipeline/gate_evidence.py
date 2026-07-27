@@ -661,8 +661,8 @@ def validate_evidence_graph(
     reviews: dict[str, ReviewRecord] = {}
     reviews_root = gc / "reviews"
     if reviews_root.is_dir():
-        # Only immutable Gate-review audits. Packet manifests (packet.json) and
-        # other sidecar JSON in the same directory are not review records.
+        # Packet manifests (packet.json) share the review directory; only audit
+        # records use the review--*.json naming from the §10 / Wave A layout.
         for path in sorted(reviews_root.rglob("review--*.json")):
             record = load_review(path)
             key = str(path.relative_to(gc))

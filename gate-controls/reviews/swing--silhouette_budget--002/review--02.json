@@ -1,0 +1,32 @@
+{
+  "attempt_id": "swing--silhouette_budget--002",
+  "budget": 0.586,
+  "candidate_sha256": "6c6d2450c1c91e26e4b3bba2b07657ce04a514cea4e3ee2017532b45a7cdb96a",
+  "caveats": [],
+  "fixed_question": "Intentional pose transition vs identity drift / framing / translation?",
+  "frames": [
+    1,
+    2
+  ],
+  "gate": "silhouette_budget",
+  "hard_fail_boundary": 0.6067,
+  "metric": 0.6067,
+  "model_identity": "cursor-grok-4.5",
+  "model_version": "2026-07-27",
+  "observed_feature": "Silhouette occupancy panel: Frame 2 body/tool mass is shifted horizontally versus the binding-good strip; 1\u21922 difference reads as whole-subject translation/framing, not an intentional intermediate swing pose. Subject identity otherwise matches the Manifest-good miner swing.",
+  "packet_sha256": "90aa38543dc83cddb62bde2b3ed7033f1521c01244201fe64d4627f87dbe8c3c",
+  "promotion_id": "promo--swing--silhouette_budget",
+  "rationale": "Blinded PROMOTION_VERIFICATION review of the same packet (no prior verdict). Question: intentional pose transition vs identity drift / framing / translation. The candidate and proposed_hard_fail_reference share raw sha256 6c6d2450c1c9\u2026; vs budget_binding_good the defect is a clear lateral framing shift concentrated around Frame 2, matching an isolated silhouette_budget fail at metric=0.6067 with Budget=0.586 and hard-fail boundary C=0.6067. Collateral Gates in the packet band remain non-failing. Approve as the proposed hard-fail reference; do not treat PENDING_VERIFICATION as ACTIVE.",
+  "reference_hashes": {
+    "budget_binding_good": "fba96b27a7ff13568aba6c04b01adacca65b49a3ef010acec0360738972ee7bb",
+    "proposed_hard_fail_reference": "6c6d2450c1c91e26e4b3bba2b07657ce04a514cea4e3ee2017532b45a7cdb96a"
+  },
+  "review_id": "review--02",
+  "reviewer_identity": "cursor-agent-review-02",
+  "schema": "gate-review-audit/0",
+  "second_review_triggers": [
+    "metric_at_or_beyond_midpoint"
+  ],
+  "timestamp": "2026-07-27T10:10:42+00:00",
+  "verdict": "APPROVE"
+}

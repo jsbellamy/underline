@@ -55,25 +55,44 @@ runtime supports worktrees.
    If a claim is falsified by what you found while implementing, flag it for
    editorial disposition, do not mark it `met`, and do not stop.
 6. Commit only the issue's changes. Let any commit hooks run; never bypass them.
-7. Review your own work before publishing: run `/code-review` with `main` as the
+7. When the issue requires Promotion-verification gate audits, **before**
+   `/code-review`:
+   - Build `packet.png` and `packet.json` mechanically for each promotion review
+     directory; do not write `review--*.json` yet.
+   - **Cursor:** invoke the `gate-blind-review` subagent once per promotion for
+     review 1 (pass only `packet.png` and the §10 question/panel/metric/Budget/C
+     from the issue or spec). Write `review--01.json` from its output via
+     `write_audit_record`.
+   - Build `review-input--02.json` mechanically with
+     `blinded_packet_for_second_review` / `write_second_review_input` (not
+     delegated to the review subagent).
+   - **Cursor:** invoke `gate-blind-review` again in a **fresh** session for
+     review 2 (only `review-input--02.json` and `packet.png`). Write
+     `review--02.json` and run `validate_review_dir` until `"ok": true`.
+   - **Non-Cursor:** spawn an equivalent isolated visual reviewer per audit at
+     the pin in `.claude/CLAUDE.md`; same blindness rules.
+   Never author both audits in one subagent session.
+8. Review your own work before publishing: run `/code-review` with `main` as the
    fixed point (`git diff main...HEAD`) and the live issue body as the Spec
    source, passing the completion matrix in so the Spec reviewer returns a
    per-claim `met` / `unmet` / `needs manual` verdict with an evidence pointer
    satisfying the Proof mapping. If the runtime does not expose `/code-review`,
-   run the equivalent Standards and Spec reviews as parallel sub-agents.
+   run the equivalent Standards and Spec reviews as parallel sub-agents. On
+   Cursor, use `code-review-standards` and `code-review-spec` (not
+   `generalPurpose`).
    Rework every Spec finding, every `unmet` row, and every hard Standards
    violation (a documented repo-standard breach), then commit and re-run the
    review until those are clear. Judgement-call Standards smells need no rework —
    carry them into the verdict table for the merge decision.
-8. Push with `git push -u origin <branch>`, then create a pull request whose body
+9. Push with `git push -u origin <branch>`, then create a pull request whose body
    includes a summary, verification details, the completion matrix, and
    `Closes #<N>`.
-9. Post the review to the PR with `gh pr comment <N> --body-file <path>`: the
+10. Post the review to the PR with `gh pr comment <N> --body-file <path>`: the
    **verbatim** Standards and Spec sub-agent output under separate headings, plus
    the reworked findings and the commits that resolved them. Paste what the
    reviewers wrote — never a summary of your own review, and never a report
    rewritten to read better than the one you received.
-10. Report the PR URL, what was built, test results, and the review **verdict
+11. Report the PR URL, what was built, test results, and the review **verdict
     table** derived mechanically from that comment: one row per Contract claim ID
     with its `met` / `unmet` / `needs manual` verdict and evidence pointer
     satisfying the Proof mapping, the count of blocking findings before and after
@@ -103,6 +122,7 @@ runtime supports worktrees.
   and leave the replacement to the named later issue.
 - Do not modify another issue's scope, work directly on `main`, or merge the pull
   request yourself.
-- Do not require a specific AI provider, model, or reasoning/effort setting.
-  Select any capable coding agent available in the current runtime, or complete
-  the work directly when delegation is unavailable.
+- Do not require a specific AI provider, model, or reasoning/effort setting for
+  implementation. On **Cursor**, blind gate reviews use the `gate-blind-review`
+  subagent (`.cursor/agents/gate-blind-review.md`, model pinned in frontmatter).
+  On other runtimes, follow `.claude/CLAUDE.md` for the blind-review pin.

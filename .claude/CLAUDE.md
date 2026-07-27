@@ -19,6 +19,12 @@ workflow), edit `AGENTS.md` or the docs it routes to, not this file.
   it above high effort. The provider-neutral file is the single source of truth
   for the workflow; the model pin exists only in this Claude-only instruction
   layer so other runtimes cannot discover a Sonnet-pinned agent definition.
+- **Blinded gate reviews** (issue-implementer step 7): each Promotion-verification
+  audit spawn is a **fresh** general-purpose subagent at **Sonnet, reasoning ≤
+  high** — same bar as `/code-review` Spec reviewers, not the implementer's model
+  pin. Match the blindness rules in `.cursor/agents/gate-blind-review.md` (that
+  file is the prompt spec; Claude does not use its Cursor `model` frontmatter).
+
 
 ## Toolchain notes
 

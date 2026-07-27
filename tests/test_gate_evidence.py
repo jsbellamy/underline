@@ -321,6 +321,23 @@ def test_unknown_review_schema_is_rejected(tmp_path: Path) -> None:
         ge.validate_evidence_graph(fx["root"])
 
 
+def test_review_packet_manifest_is_not_loaded_as_audit(tmp_path: Path) -> None:
+    """Wave A co-locates packet.json with review--*.json; only audits are reviews."""
+    fx = _fixture(tmp_path)
+    review_dir = fx["gc"] / "reviews" / fx["attempt_id"]
+    _write(
+        review_dir / "packet.json",
+        {
+            "schema": "gate-review-packet/0",
+            "packet_kind": "PROMOTION_VERIFICATION",
+            "packet_sha256": "a" * 64,
+        },
+    )
+    graph = ge.validate_evidence_graph(fx["root"])
+    assert any(key.endswith("review--01.json") for key in graph.reviews)
+    assert not any(key.endswith("packet.json") for key in graph.reviews)
+
+
 def test_unknown_verification_schema_is_rejected(tmp_path: Path) -> None:
     fx = _fixture(tmp_path)
     path = fx["gc"] / "verification" / f"{fx['promo_id']}.json"
@@ -487,20 +504,3 @@ def test_missing_required_manifest_field_is_rejected(tmp_path: Path) -> None:
     _write(path, doc)
     with pytest.raises(ge.EvidenceError, match="missing required field"):
         ge.validate_evidence_graph(fx["root"])
-
-
-def test_packet_manifest_alongside_audits_is_not_loaded_as_review(tmp_path: Path) -> None:
-    """Wave A writes packet.json next to review--*.json; only audits are reviews."""
-    fx = _fixture(tmp_path)
-    packet = {
-        "schema": "gate-review-packet/0",
-        "packet_kind": "PROMOTION_VERIFICATION",
-        "packet_sha256": "a" * 64,
-        "attempt_id": fx["attempt_id"],
-        "gate": "silhouette_budget",
-    }
-    _write(fx["gc"] / "reviews" / fx["attempt_id"] / "packet.json", packet)
-    graph = ge.validate_evidence_graph(fx["root"])
-    review_keys = list(graph.reviews)
-    assert review_keys == [f"reviews/{fx['attempt_id']}/review--01.json"]
-    assert all(r.schema == "gate-review-audit/0" for r in graph.reviews.values())

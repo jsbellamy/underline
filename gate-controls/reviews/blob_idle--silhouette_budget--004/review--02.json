@@ -1,0 +1,33 @@
+{
+  "attempt_id": "blob_idle--silhouette_budget--004",
+  "budget": 0.3951,
+  "candidate_sha256": "b24c8aa9eae9e49f93c5cfbf6dc311d3d313f6cb79bbbac8ca4dfad27e2f2cb7",
+  "caveats": [],
+  "fixed_question": "Intentional pose transition vs identity drift / framing / translation?",
+  "frames": [
+    1,
+    2,
+    3
+  ],
+  "gate": "silhouette_budget",
+  "hard_fail_boundary": 0.4531,
+  "metric": 0.4531,
+  "model_identity": "cursor-grok-4.5",
+  "model_version": "4.5",
+  "observed_feature": "intentional squat\u2192tall stretch occupancy spike on transition 1\u21922 with reverse on 2\u21923; identity and palette held",
+  "packet_sha256": "6a99a6f2962182f2a18b922b0ff1bc0c22adebc9fcc1def8fda8867e0d87a034",
+  "promotion_id": "promo--blob_idle--silhouette_budget",
+  "rationale": "Fixed question: intentional pose transition vs identity drift / framing / translation? Occupancy panel shows a large deliberate silhouette change on one transition (f1 squat dome \u2192 f2 tall stretch) and back, while f0/f1/f3 share the squat identity and palette_drift passes. Not a whole-frame translate or subject swap. Metric 0.4531 equals hard-fail boundary C (budget 0.3951). Binding good 02-slime-idle shows smaller breathing occupancy. Independent second review: approve as the proposed silhouette_budget hard-fail reference; Promotion remains PENDING_VERIFICATION.",
+  "reference_hashes": {
+    "budget_binding_good": "2ed2fad5410131b71b0ed36cd12a902378d3130938e0522f568a70037d73f7fb",
+    "proposed_hard_fail_reference": "b24c8aa9eae9e49f93c5cfbf6dc311d3d313f6cb79bbbac8ca4dfad27e2f2cb7"
+  },
+  "review_id": "review--02",
+  "reviewer_identity": "cursor-agent/issue-52/review-02",
+  "schema": "gate-review-audit/0",
+  "second_review_triggers": [
+    "metric_at_or_beyond_midpoint"
+  ],
+  "timestamp": "2026-07-27T10:12:00+00:00",
+  "verdict": "APPROVE"
+}
