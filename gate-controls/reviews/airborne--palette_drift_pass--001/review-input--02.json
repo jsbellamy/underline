@@ -1,0 +1,42 @@
+{
+  "blinded": true,
+  "packet": {
+    "attempt_id": "airborne--palette_drift_pass--001",
+    "budget": 0.2423,
+    "budget_binding_good": {
+      "path": "prototype/strip-coherence/inbox/16-moth-flap.png",
+      "raw_sha256": "28b75b9a67b671d47ec5eedddc72095da559950ad2622e0d202a4eb03747e821",
+      "role": "budget_binding_good"
+    },
+    "candidate": {
+      "path": "gate-controls/raw/airborne--palette_drift_pass--001.png",
+      "raw_sha256": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd",
+      "role": "candidate"
+    },
+    "caveats": [],
+    "fixed_question": "Intentional subject/Motion-class change (e.g. emissive flicker) vs unintended recolour?",
+    "gate": "palette_drift_pass",
+    "gate_control": null,
+    "hard_fail_boundary": 0.2793,
+    "metric": 0.2793,
+    "motion_class": "airborne",
+    "no_autonomous_hard_fail": false,
+    "no_autonomous_hard_fail_reason": null,
+    "packet_kind": "PROMOTION_VERIFICATION",
+    "packet_sha256": "d7537be8f0ac7a7e7ef97939ba31ebef34261c70988f443ab65f4e09d75ac0b3",
+    "panel_kind": "quantized_palette_histogram",
+    "promotion_id": "promo--airborne--palette_drift_pass",
+    "promotion_status": "PENDING_VERIFICATION",
+    "proposed_hard_fail_reference": {
+      "path": "gate-controls/raw/airborne--palette_drift_pass--001.png",
+      "raw_sha256": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd",
+      "role": "proposed_hard_fail_reference"
+    },
+    "schema": "gate-review-packet/0"
+  },
+  "packet_sha256": "d7537be8f0ac7a7e7ef97939ba31ebef34261c70988f443ab65f4e09d75ac0b3",
+  "prior_review_visible": false,
+  "review_id": "review--02",
+  "reviewer_identity": "cursor-agent/issue-55/review-02",
+  "schema": "gate-review-packet/0"
+}

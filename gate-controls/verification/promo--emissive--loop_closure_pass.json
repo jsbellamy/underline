@@ -1,0 +1,62 @@
+{
+  "attempt_id": "emissive--loop_closure_pass--001",
+  "commands": [
+    {
+      "command": "npm test",
+      "evidence_row": "157 passed, 2 skipped in 20.82s",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run prototype:strip:corpus",
+      "evidence_row": "scored 23/23   pending 0   regressions 0",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run prototype:strip:adversarial",
+      "evidence_row": "2 GAPS (documented, not green)",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run prototype:strip:alpha-budgets",
+      "evidence_row": "Separated=17  Unseparated=4  Inapplicable=3",
+      "exit_code": 0
+    }
+  ],
+  "failure_reason": null,
+  "manifest_sha256": "90a99f5e44f1f1ecd56df76bf62b9ea0b955f7b37b2dd141d92f620b79664512",
+  "measurement_path": "gate-controls/reports/emissive--loop_closure_pass--001/2026-07-26T17-59-09+00-00.json",
+  "measurement_sha256": "a1bc0e811090392c9637be5bf17e041dd413a04c957b14f5a00a13f93f6a22ec",
+  "packet_path": "reviews/emissive--loop_closure_pass--001/packet.json",
+  "packet_sha256": "2c56ef36dba8129cac61d2ce1fa02ab340addc9f6eb033f4b2a8a006d3779971",
+  "promotion_id": "promo--emissive--loop_closure_pass",
+  "provenance_path": "gate-controls/provenance/emissive--loop_closure_pass--001.json",
+  "provenance_sha256": "8f87bf345747c8f869176bf3ab8c9f7dba170a1874c41ee68c17e813faa8106f",
+  "raw_sha256": "474bfd95ab77f8dceb892ef0398b3daef99c9442c41e02ac7197d1dd3697a4b7",
+  "recorded_at": "2026-07-27T11:58:46+00:00",
+  "repository_commit": "3cebf28b56896ab0efe0db199c6cadcb40579ad4",
+  "review_report": {
+    "ok": true,
+    "packet_sha256": "2c56ef36dba8129cac61d2ce1fa02ab340addc9f6eb033f4b2a8a006d3779971",
+    "reviews": [
+      "review--01",
+      "review--02"
+    ]
+  },
+  "reviews": [
+    {
+      "path": "reviews/emissive--loop_closure_pass--001/review--01.json",
+      "review_id": "review--01",
+      "sha256": "f813f24b97a8f58d335aa1cd777494c9845716e6fcc8320ffa4ae71f6fbe0a06",
+      "verdict": "APPROVE"
+    },
+    {
+      "path": "reviews/emissive--loop_closure_pass--001/review--02.json",
+      "review_id": "review--02",
+      "sha256": "848606f22bddcc7013ae7a5e600765c3487d08c957420ec185ed9db415ee4247",
+      "verdict": "APPROVE"
+    }
+  ],
+  "schema": "gate-control-verification/0",
+  "specification_id": "emissive/loop_closure_pass",
+  "status": "ACTIVE"
+}

@@ -1,0 +1,62 @@
+{
+  "attempt_id": "airborne--palette_drift_pass--001",
+  "commands": [
+    {
+      "command": "npm test",
+      "evidence_row": "157 passed, 2 skipped in 20.82s",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run prototype:strip:corpus",
+      "evidence_row": "scored 23/23   pending 0   regressions 0",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run prototype:strip:adversarial",
+      "evidence_row": "2 GAPS (documented, not green)",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run prototype:strip:alpha-budgets",
+      "evidence_row": "Separated=17  Unseparated=4  Inapplicable=3",
+      "exit_code": 0
+    }
+  ],
+  "failure_reason": null,
+  "manifest_sha256": "90a99f5e44f1f1ecd56df76bf62b9ea0b955f7b37b2dd141d92f620b79664512",
+  "measurement_path": "gate-controls/reports/airborne--palette_drift_pass--001/2026-07-26T17-20-32+00-00.json",
+  "measurement_sha256": "6bbbcbeef568a806c4c8e1c8330ed4942c18b5f789ba93f5eb43d78d330b0774",
+  "packet_path": "reviews/airborne--palette_drift_pass--001/packet.json",
+  "packet_sha256": "d7537be8f0ac7a7e7ef97939ba31ebef34261c70988f443ab65f4e09d75ac0b3",
+  "promotion_id": "promo--airborne--palette_drift_pass",
+  "provenance_path": "gate-controls/provenance/airborne--palette_drift_pass--001.json",
+  "provenance_sha256": "93ff947ad19d99b1597c3f2e271bfea76aa42a7d086fbb0bfb4152b9a09d990d",
+  "raw_sha256": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd",
+  "recorded_at": "2026-07-27T11:58:46+00:00",
+  "repository_commit": "3cebf28b56896ab0efe0db199c6cadcb40579ad4",
+  "review_report": {
+    "ok": true,
+    "packet_sha256": "d7537be8f0ac7a7e7ef97939ba31ebef34261c70988f443ab65f4e09d75ac0b3",
+    "reviews": [
+      "review--01",
+      "review--02"
+    ]
+  },
+  "reviews": [
+    {
+      "path": "reviews/airborne--palette_drift_pass--001/review--01.json",
+      "review_id": "review--01",
+      "sha256": "9c4b89c0d4f7da40ed95eee3a77b3fadb684cc824b6ffd2e2f9b8708dcd71bea",
+      "verdict": "APPROVE"
+    },
+    {
+      "path": "reviews/airborne--palette_drift_pass--001/review--02.json",
+      "review_id": "review--02",
+      "sha256": "7a96d078b6c2cc518027cef78657344b5e5ac6869c4675bcaf6615c888ee61b5",
+      "verdict": "APPROVE"
+    }
+  ],
+  "schema": "gate-control-verification/0",
+  "specification_id": "airborne/palette_drift_pass",
+  "status": "ACTIVE"
+}
