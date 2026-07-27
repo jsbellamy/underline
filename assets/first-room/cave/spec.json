@@ -1,0 +1,255 @@
+{
+  "cell_h": 32,
+  "cell_w": 32,
+  "columns": 8,
+  "gutter": 2,
+  "id": "first-room-cave-autotile",
+  "items": [
+    {
+      "id": "a-mask-00",
+      "index": 0,
+      "release_path": "blocks/a/mask-00.png"
+    },
+    {
+      "id": "a-mask-01",
+      "index": 1,
+      "release_path": "blocks/a/mask-01.png"
+    },
+    {
+      "id": "a-mask-02",
+      "index": 2,
+      "release_path": "blocks/a/mask-02.png"
+    },
+    {
+      "id": "a-mask-03",
+      "index": 3,
+      "release_path": "blocks/a/mask-03.png"
+    },
+    {
+      "id": "a-mask-04",
+      "index": 4,
+      "release_path": "blocks/a/mask-04.png"
+    },
+    {
+      "id": "a-mask-05",
+      "index": 5,
+      "release_path": "blocks/a/mask-05.png"
+    },
+    {
+      "id": "a-mask-06",
+      "index": 6,
+      "release_path": "blocks/a/mask-06.png"
+    },
+    {
+      "id": "a-mask-07",
+      "index": 7,
+      "release_path": "blocks/a/mask-07.png"
+    },
+    {
+      "id": "a-mask-08",
+      "index": 8,
+      "release_path": "blocks/a/mask-08.png"
+    },
+    {
+      "id": "a-mask-09",
+      "index": 9,
+      "release_path": "blocks/a/mask-09.png"
+    },
+    {
+      "id": "a-mask-10",
+      "index": 10,
+      "release_path": "blocks/a/mask-10.png"
+    },
+    {
+      "id": "a-mask-11",
+      "index": 11,
+      "release_path": "blocks/a/mask-11.png"
+    },
+    {
+      "id": "a-mask-12",
+      "index": 12,
+      "release_path": "blocks/a/mask-12.png"
+    },
+    {
+      "id": "a-mask-13",
+      "index": 13,
+      "release_path": "blocks/a/mask-13.png"
+    },
+    {
+      "id": "a-mask-14",
+      "index": 14,
+      "release_path": "blocks/a/mask-14.png"
+    },
+    {
+      "id": "a-mask-15",
+      "index": 15,
+      "release_path": "blocks/a/mask-15.png"
+    },
+    {
+      "id": "b-mask-00",
+      "index": 16,
+      "release_path": "blocks/b/mask-00.png"
+    },
+    {
+      "id": "b-mask-01",
+      "index": 17,
+      "release_path": "blocks/b/mask-01.png"
+    },
+    {
+      "id": "b-mask-02",
+      "index": 18,
+      "release_path": "blocks/b/mask-02.png"
+    },
+    {
+      "id": "b-mask-03",
+      "index": 19,
+      "release_path": "blocks/b/mask-03.png"
+    },
+    {
+      "id": "b-mask-04",
+      "index": 20,
+      "release_path": "blocks/b/mask-04.png"
+    },
+    {
+      "id": "b-mask-05",
+      "index": 21,
+      "release_path": "blocks/b/mask-05.png"
+    },
+    {
+      "id": "b-mask-06",
+      "index": 22,
+      "release_path": "blocks/b/mask-06.png"
+    },
+    {
+      "id": "b-mask-07",
+      "index": 23,
+      "release_path": "blocks/b/mask-07.png"
+    },
+    {
+      "id": "b-mask-08",
+      "index": 24,
+      "release_path": "blocks/b/mask-08.png"
+    },
+    {
+      "id": "b-mask-09",
+      "index": 25,
+      "release_path": "blocks/b/mask-09.png"
+    },
+    {
+      "id": "b-mask-10",
+      "index": 26,
+      "release_path": "blocks/b/mask-10.png"
+    },
+    {
+      "id": "b-mask-11",
+      "index": 27,
+      "release_path": "blocks/b/mask-11.png"
+    },
+    {
+      "id": "b-mask-12",
+      "index": 28,
+      "release_path": "blocks/b/mask-12.png"
+    },
+    {
+      "id": "b-mask-13",
+      "index": 29,
+      "release_path": "blocks/b/mask-13.png"
+    },
+    {
+      "id": "b-mask-14",
+      "index": 30,
+      "release_path": "blocks/b/mask-14.png"
+    },
+    {
+      "id": "b-mask-15",
+      "index": 31,
+      "release_path": "blocks/b/mask-15.png"
+    },
+    {
+      "id": "c-mask-00",
+      "index": 32,
+      "release_path": "blocks/c/mask-00.png"
+    },
+    {
+      "id": "c-mask-01",
+      "index": 33,
+      "release_path": "blocks/c/mask-01.png"
+    },
+    {
+      "id": "c-mask-02",
+      "index": 34,
+      "release_path": "blocks/c/mask-02.png"
+    },
+    {
+      "id": "c-mask-03",
+      "index": 35,
+      "release_path": "blocks/c/mask-03.png"
+    },
+    {
+      "id": "c-mask-04",
+      "index": 36,
+      "release_path": "blocks/c/mask-04.png"
+    },
+    {
+      "id": "c-mask-05",
+      "index": 37,
+      "release_path": "blocks/c/mask-05.png"
+    },
+    {
+      "id": "c-mask-06",
+      "index": 38,
+      "release_path": "blocks/c/mask-06.png"
+    },
+    {
+      "id": "c-mask-07",
+      "index": 39,
+      "release_path": "blocks/c/mask-07.png"
+    },
+    {
+      "id": "c-mask-08",
+      "index": 40,
+      "release_path": "blocks/c/mask-08.png"
+    },
+    {
+      "id": "c-mask-09",
+      "index": 41,
+      "release_path": "blocks/c/mask-09.png"
+    },
+    {
+      "id": "c-mask-10",
+      "index": 42,
+      "release_path": "blocks/c/mask-10.png"
+    },
+    {
+      "id": "c-mask-11",
+      "index": 43,
+      "release_path": "blocks/c/mask-11.png"
+    },
+    {
+      "id": "c-mask-12",
+      "index": 44,
+      "release_path": "blocks/c/mask-12.png"
+    },
+    {
+      "id": "c-mask-13",
+      "index": 45,
+      "release_path": "blocks/c/mask-13.png"
+    },
+    {
+      "id": "c-mask-14",
+      "index": 46,
+      "release_path": "blocks/c/mask-14.png"
+    },
+    {
+      "id": "c-mask-15",
+      "index": 47,
+      "release_path": "blocks/c/mask-15.png"
+    }
+  ],
+  "master_palette": {
+    "path": "assets/palettes/first-room.json",
+    "sha256": "b21e2a2a85cf8e25c1cbdc69f8f0ffc4cfda7dc7f1f0a451ef7ed9d1fa7d6041"
+  },
+  "rows": 6,
+  "schema": "static-sheet-spec/0"
+}

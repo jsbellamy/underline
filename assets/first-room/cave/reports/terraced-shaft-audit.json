@@ -1,0 +1,360 @@
+{
+  "composition": "Variant B \u2014 Terraced Shaft",
+  "dimensions": [
+    320,
+    160
+  ],
+  "image": {
+    "height": 160,
+    "relative_path": "assets/first-room/cave/reports/terraced-shaft-preview.png",
+    "sha256": "c58f720dfeab9a518d562511176ea2d0b7cfa89a4392388b980bfd2b6a7daf5b",
+    "width": 320
+  },
+  "inspection": {
+    "block_boundaries_legible": "PASS",
+    "native_scale": true,
+    "no_semantic_uncertainty": true,
+    "vertical_mining_space_legible": "PASS",
+    "walking_terraces_legible": "PASS"
+  },
+  "overall": "PASS",
+  "placements": [
+    {
+      "mask": 6,
+      "release_path": "blocks/a/mask-06.png",
+      "sha256": "c6cbe6fc7049093ebe40615a12f62983255484e3688a36963573d09f721ab7da",
+      "variant": "a",
+      "x": 0,
+      "y": 0
+    },
+    {
+      "mask": 14,
+      "release_path": "blocks/b/mask-14.png",
+      "sha256": "ac1c8a147f94cc6134b776e2fcfa35e2ecb98e2fa78b08c60f7c85267c6e8c0f",
+      "variant": "b",
+      "x": 1,
+      "y": 0
+    },
+    {
+      "mask": 10,
+      "release_path": "blocks/c/mask-10.png",
+      "sha256": "4e82b95ac4526f863a497a62d1f2b5d8991ed68a407ff5122b35d84e252f7a86",
+      "variant": "c",
+      "x": 2,
+      "y": 0
+    },
+    {
+      "mask": 10,
+      "release_path": "blocks/a/mask-10.png",
+      "sha256": "35e6b031a45e867fe7a3f73e87a12fa3a4d3df8ccc7f3dc1dac98f2528318cba",
+      "variant": "a",
+      "x": 3,
+      "y": 0
+    },
+    {
+      "mask": 10,
+      "release_path": "blocks/b/mask-10.png",
+      "sha256": "bbff0dd046c2ca0f9dc76e2ae82842582a1a91217e63cdd8934fb0c07c3112fe",
+      "variant": "b",
+      "x": 4,
+      "y": 0
+    },
+    {
+      "mask": 10,
+      "release_path": "blocks/c/mask-10.png",
+      "sha256": "4e82b95ac4526f863a497a62d1f2b5d8991ed68a407ff5122b35d84e252f7a86",
+      "variant": "c",
+      "x": 5,
+      "y": 0
+    },
+    {
+      "mask": 10,
+      "release_path": "blocks/a/mask-10.png",
+      "sha256": "35e6b031a45e867fe7a3f73e87a12fa3a4d3df8ccc7f3dc1dac98f2528318cba",
+      "variant": "a",
+      "x": 6,
+      "y": 0
+    },
+    {
+      "mask": 10,
+      "release_path": "blocks/b/mask-10.png",
+      "sha256": "bbff0dd046c2ca0f9dc76e2ae82842582a1a91217e63cdd8934fb0c07c3112fe",
+      "variant": "b",
+      "x": 7,
+      "y": 0
+    },
+    {
+      "mask": 14,
+      "release_path": "blocks/c/mask-14.png",
+      "sha256": "1dc1b989422a629508cb496522a293b287ef74e25d6023477165d50b8e6bba1d",
+      "variant": "c",
+      "x": 8,
+      "y": 0
+    },
+    {
+      "mask": 12,
+      "release_path": "blocks/a/mask-12.png",
+      "sha256": "2617700d72997c2040fbe9e6874cb66032f0f2845247656cffd565cd4671f435",
+      "variant": "a",
+      "x": 9,
+      "y": 0
+    },
+    {
+      "mask": 7,
+      "release_path": "blocks/a/mask-07.png",
+      "sha256": "a48e3a14ce0029f060383bec41d4565c2e482879ad40555165874791d73ecb03",
+      "variant": "a",
+      "x": 0,
+      "y": 1
+    },
+    {
+      "mask": 13,
+      "release_path": "blocks/b/mask-13.png",
+      "sha256": "fd0777f93736f72df83978e427c401aa36dfee95280c21621c620b08b72a56a5",
+      "variant": "b",
+      "x": 1,
+      "y": 1
+    },
+    {
+      "mask": 7,
+      "release_path": "blocks/c/mask-07.png",
+      "sha256": "df1a9f03bde7fc65eca3c96dde692f2bc0773365a9119d911c1b16e2dfdb9a2f",
+      "variant": "c",
+      "x": 8,
+      "y": 1
+    },
+    {
+      "mask": 13,
+      "release_path": "blocks/a/mask-13.png",
+      "sha256": "78eca85c864d800d1122d3fadd4f0aa8b4fff2cedee2e2ac9935ecc774b0bc9e",
+      "variant": "a",
+      "x": 9,
+      "y": 1
+    },
+    {
+      "mask": 7,
+      "release_path": "blocks/a/mask-07.png",
+      "sha256": "a48e3a14ce0029f060383bec41d4565c2e482879ad40555165874791d73ecb03",
+      "variant": "a",
+      "x": 0,
+      "y": 2
+    },
+    {
+      "mask": 13,
+      "release_path": "blocks/b/mask-13.png",
+      "sha256": "fd0777f93736f72df83978e427c401aa36dfee95280c21621c620b08b72a56a5",
+      "variant": "b",
+      "x": 1,
+      "y": 2
+    },
+    {
+      "mask": 2,
+      "release_path": "blocks/a/mask-02.png",
+      "sha256": "a3c20dfe626c820fee680da3d394088e87fb9d120a08916f1b459dd5423fa74c",
+      "variant": "a",
+      "x": 3,
+      "y": 2
+    },
+    {
+      "mask": 10,
+      "release_path": "blocks/b/mask-10.png",
+      "sha256": "bbff0dd046c2ca0f9dc76e2ae82842582a1a91217e63cdd8934fb0c07c3112fe",
+      "variant": "b",
+      "x": 4,
+      "y": 2
+    },
+    {
+      "mask": 10,
+      "release_path": "blocks/c/mask-10.png",
+      "sha256": "4e82b95ac4526f863a497a62d1f2b5d8991ed68a407ff5122b35d84e252f7a86",
+      "variant": "c",
+      "x": 5,
+      "y": 2
+    },
+    {
+      "mask": 8,
+      "release_path": "blocks/a/mask-08.png",
+      "sha256": "493ab754c909c01dbd29b3abdf2a104c9138568d5284d3362ce46a912676d756",
+      "variant": "a",
+      "x": 6,
+      "y": 2
+    },
+    {
+      "mask": 7,
+      "release_path": "blocks/c/mask-07.png",
+      "sha256": "df1a9f03bde7fc65eca3c96dde692f2bc0773365a9119d911c1b16e2dfdb9a2f",
+      "variant": "c",
+      "x": 8,
+      "y": 2
+    },
+    {
+      "mask": 13,
+      "release_path": "blocks/a/mask-13.png",
+      "sha256": "78eca85c864d800d1122d3fadd4f0aa8b4fff2cedee2e2ac9935ecc774b0bc9e",
+      "variant": "a",
+      "x": 9,
+      "y": 2
+    },
+    {
+      "mask": 7,
+      "release_path": "blocks/a/mask-07.png",
+      "sha256": "a48e3a14ce0029f060383bec41d4565c2e482879ad40555165874791d73ecb03",
+      "variant": "a",
+      "x": 0,
+      "y": 3
+    },
+    {
+      "mask": 13,
+      "release_path": "blocks/b/mask-13.png",
+      "sha256": "fd0777f93736f72df83978e427c401aa36dfee95280c21621c620b08b72a56a5",
+      "variant": "b",
+      "x": 1,
+      "y": 3
+    },
+    {
+      "mask": 7,
+      "release_path": "blocks/c/mask-07.png",
+      "sha256": "df1a9f03bde7fc65eca3c96dde692f2bc0773365a9119d911c1b16e2dfdb9a2f",
+      "variant": "c",
+      "x": 8,
+      "y": 3
+    },
+    {
+      "mask": 13,
+      "release_path": "blocks/a/mask-13.png",
+      "sha256": "78eca85c864d800d1122d3fadd4f0aa8b4fff2cedee2e2ac9935ecc774b0bc9e",
+      "variant": "a",
+      "x": 9,
+      "y": 3
+    },
+    {
+      "mask": 3,
+      "release_path": "blocks/a/mask-03.png",
+      "sha256": "74c308766c4de2eaf9c7cf318c533f406ac2df14befa9d895d907684f96451e0",
+      "variant": "a",
+      "x": 0,
+      "y": 4
+    },
+    {
+      "mask": 11,
+      "release_path": "blocks/b/mask-11.png",
+      "sha256": "60dc6c8ede8979e334e06b6085273bccf19e332c1cdc954c7d5bc520b15c06fb",
+      "variant": "b",
+      "x": 1,
+      "y": 4
+    },
+    {
+      "mask": 10,
+      "release_path": "blocks/c/mask-10.png",
+      "sha256": "4e82b95ac4526f863a497a62d1f2b5d8991ed68a407ff5122b35d84e252f7a86",
+      "variant": "c",
+      "x": 2,
+      "y": 4
+    },
+    {
+      "mask": 8,
+      "release_path": "blocks/a/mask-08.png",
+      "sha256": "493ab754c909c01dbd29b3abdf2a104c9138568d5284d3362ce46a912676d756",
+      "variant": "a",
+      "x": 3,
+      "y": 4
+    },
+    {
+      "mask": 2,
+      "release_path": "blocks/a/mask-02.png",
+      "sha256": "a3c20dfe626c820fee680da3d394088e87fb9d120a08916f1b459dd5423fa74c",
+      "variant": "a",
+      "x": 6,
+      "y": 4
+    },
+    {
+      "mask": 10,
+      "release_path": "blocks/b/mask-10.png",
+      "sha256": "bbff0dd046c2ca0f9dc76e2ae82842582a1a91217e63cdd8934fb0c07c3112fe",
+      "variant": "b",
+      "x": 7,
+      "y": 4
+    },
+    {
+      "mask": 11,
+      "release_path": "blocks/c/mask-11.png",
+      "sha256": "760b9d5a89ccb2a867bb81a211094ee160beb7daf0ada2032780e60a3d18bd9c",
+      "variant": "c",
+      "x": 8,
+      "y": 4
+    },
+    {
+      "mask": 9,
+      "release_path": "blocks/a/mask-09.png",
+      "sha256": "74daca4514e69664489ba4f352cd8d93dd082b92bea9cd391244836df286763f",
+      "variant": "a",
+      "x": 9,
+      "y": 4
+    }
+  ],
+  "schema": "terraced-shaft-audit/0",
+  "solid_grid": [
+    [
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1,
+      1
+    ],
+    [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1
+    ],
+    [
+      1,
+      1,
+      0,
+      1,
+      1,
+      1,
+      1,
+      0,
+      1,
+      1
+    ],
+    [
+      1,
+      1,
+      0,
+      0,
+      0,
+      0,
+      0,
+      0,
+      1,
+      1
+    ],
+    [
+      1,
+      1,
+      1,
+      1,
+      0,
+      0,
+      1,
+      1,
+      1,
+      1
+    ]
+  ],
+  "variant_rule": "(x + 3*y) % 3 \u2192 a/b/c",
+  "viewport_note": "native Mineable Block composite 320\u00d7160 (10\u00d75 blocks); art-direction viewport is 320\u00d7180"
+}

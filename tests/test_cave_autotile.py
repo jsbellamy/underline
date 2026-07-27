@@ -1,0 +1,95 @@
+"""Proof for cave Autotile edge-compat and Terraced Shaft audit (issue #108)."""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+
+from pipeline.cave_autotile_audit import (
+    TERRACED_SHAFT_SOLID,
+    build_edge_compat_report,
+    neighbor_mask,
+    variant_for_cell,
+)
+from pipeline.gate_evidence import sha256_file
+from pipeline.static_asset import check_static_bundle
+
+ROOT = Path(__file__).resolve().parents[1]
+BUNDLE = ROOT / "assets" / "first-room" / "cave"
+
+
+def test_cave_bundle_exists_with_48_release_items() -> None:
+    assert BUNDLE.is_dir()
+    release = list((BUNDLE / "release" / "blocks").glob("*/*.png"))
+    assert len(release) == 48
+    for variant in ("a", "b", "c"):
+        for mask in range(16):
+            path = BUNDLE / "release" / "blocks" / variant / f"mask-{mask:02d}.png"
+            assert path.is_file(), path
+
+
+def test_cave_static_check_pass() -> None:
+    result = check_static_bundle(BUNDLE)
+    assert result.outcome == "PASS"
+    assert result.structural.pass_
+    assert len(result.draft_hashes) == 48
+    assert len(result.polished_hashes) == 48
+
+
+def test_embedded_spec_ordering_and_palette() -> None:
+    spec = json.loads((BUNDLE / "spec.json").read_text(encoding="utf-8"))
+    assert spec["schema"] == "static-sheet-spec/0"
+    assert spec["id"] == "first-room-cave-autotile"
+    assert spec["cell_w"] == 32 and spec["cell_h"] == 32
+    assert spec["columns"] == 8 and spec["rows"] == 6 and spec["gutter"] == 2
+    assert len(spec["items"]) == 48
+    assert spec["items"][0]["release_path"] == "blocks/a/mask-00.png"
+    assert spec["items"][15]["release_path"] == "blocks/a/mask-15.png"
+    assert spec["items"][16]["release_path"] == "blocks/b/mask-00.png"
+    assert spec["items"][47]["release_path"] == "blocks/c/mask-15.png"
+    palette_path = ROOT / spec["master_palette"]["path"]
+    assert sha256_file(palette_path) == spec["master_palette"]["sha256"]
+
+
+def test_provenance_contains_prompt_and_provider_hash() -> None:
+    provenance = json.loads(
+        (BUNDLE / "provider" / "source.source.json").read_text(encoding="utf-8")
+    )
+    provider = BUNDLE / "provider" / "source.png"
+    assert provenance["raw_sha256"] == sha256_file(provider)
+    assert "MINEABLE ROCK BLOCKS" in provenance["prompt"]
+    assert provenance["master_palette_id"] == "first-room"
+    assert provenance["item_geometry"]["item_count"] == 48
+    assert provenance["prompt_sha256"]
+
+
+def test_edge_compat_report_green() -> None:
+    report = build_edge_compat_report(BUNDLE)
+    assert report.outcome == "PASS"
+    assert report.pair_failures == 0
+    assert report.geometry_failures == 0
+    assert report.exposed_distinct_pass
+    checked = json.loads((BUNDLE / "reports" / "edge-compat.json").read_text())
+    assert checked["outcome"] == "PASS"
+    assert checked["pair_failures"] == 0
+
+
+def test_terraced_shaft_audit_pass() -> None:
+    audit = json.loads((BUNDLE / "reports" / "terraced-shaft-audit.json").read_text())
+    assert audit["overall"] == "PASS"
+    assert audit["dimensions"] == [320, 160]
+    image = BUNDLE / "reports" / "terraced-shaft-preview.png"
+    assert image.is_file()
+    assert audit["image"]["sha256"] == sha256_file(image)
+    assert audit["inspection"]["walking_terraces_legible"] == "PASS"
+    assert audit["inspection"]["vertical_mining_space_legible"] == "PASS"
+    assert audit["inspection"]["block_boundaries_legible"] == "PASS"
+
+
+def test_neighbor_mask_and_variant_rule() -> None:
+    # Ceiling center of Terraced Shaft: solid with N absent, S/E/W present depending on pos.
+    assert neighbor_mask(TERRACED_SHAFT_SOLID, 0, 0) == 0b0110  # E|S
+    assert neighbor_mask(TERRACED_SHAFT_SOLID, 4, 2) == 0b1010  # E|W mid-terrace interior ends differ
+    assert variant_for_cell(0, 0) == "a"
+    assert variant_for_cell(1, 0) == "b"
+    assert variant_for_cell(2, 0) == "c"
