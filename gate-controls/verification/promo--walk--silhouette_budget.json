@@ -1,0 +1,62 @@
+{
+  "attempt_id": "walk--silhouette_budget--002",
+  "commands": [
+    {
+      "command": "npm test",
+      "evidence_row": "160 passed, 2 skipped in 19.73s",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run prototype:strip:corpus",
+      "evidence_row": "scored 23/23   pending 0   regressions 0",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run prototype:strip:adversarial",
+      "evidence_row": "2 GAPS (documented, not green)",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run prototype:strip:alpha-budgets",
+      "evidence_row": "Separated=17  Unseparated=4  Inapplicable=3",
+      "exit_code": 0
+    }
+  ],
+  "failure_reason": null,
+  "manifest_sha256": "5e530454c43940c64a51ca9b1ff9be3ed4ad88176f3c1d4b1b3694dc04c4bdff",
+  "measurement_path": "gate-controls/reports/walk--silhouette_budget--002/2026-07-26T17-24-46+00-00.json",
+  "measurement_sha256": "11fc687a4593d0add84e12476a0f7142fbcbdf6cde249a8ca413b2ac70225bba",
+  "packet_path": "reviews/walk--silhouette_budget--002/packet.json",
+  "packet_sha256": "24f3a475edac8d6248e1aeb9a013f9b8426711b6fb979db0a835289034bca1e1",
+  "promotion_id": "promo--walk--silhouette_budget",
+  "provenance_path": "gate-controls/provenance/walk--silhouette_budget--002.json",
+  "provenance_sha256": "807dc4981a8a23501ef09dc965e9dd04d16377c5ffcff2ea51f37c36d1ddde46",
+  "raw_sha256": "c11d13de833ccfa34fc89b929288ff07c975238560370f54de0e92ad3d277257",
+  "recorded_at": "2026-07-27T12:09:19+00:00",
+  "repository_commit": "57829732f364aa5f1c8a78d20f9591baa423ba43",
+  "review_report": {
+    "ok": true,
+    "packet_sha256": "24f3a475edac8d6248e1aeb9a013f9b8426711b6fb979db0a835289034bca1e1",
+    "reviews": [
+      "review--01",
+      "review--02"
+    ]
+  },
+  "reviews": [
+    {
+      "path": "reviews/walk--silhouette_budget--002/review--01.json",
+      "review_id": "review--01",
+      "sha256": "b010f0c75d7eb7543975d1e011c4aa3b0d5f96dabd1b804344e11137401f07ee",
+      "verdict": "APPROVE"
+    },
+    {
+      "path": "reviews/walk--silhouette_budget--002/review--02.json",
+      "review_id": "review--02",
+      "sha256": "566822908252659136a7deb5bdd6349c1a59fdee531cd8925decb90779470b0f",
+      "verdict": "APPROVE"
+    }
+  ],
+  "schema": "gate-control-verification/0",
+  "specification_id": "walk/silhouette_budget",
+  "status": "ACTIVE"
+}

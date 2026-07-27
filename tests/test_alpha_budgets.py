@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import pathlib
 import subprocess
@@ -36,6 +37,32 @@ def test_derive_separated_budget_matches_issue_28_tightest_pairs() -> None:
         assert result.good_headroom == round(expected - g, 4)
         assert result.review_width == round(c - expected, 4)
         assert result.budget < result.c
+
+
+def test_alpha_budgets_blocks_when_required_separated_promotion_not_active() -> None:
+    manifest_path = ROOT / "gate-controls" / "manifest.json"
+    original = manifest_path.read_text()
+    doc = json.loads(original)
+    for promo in doc["promotions"]:
+        if promo["id"] == "promo--walk--loop_closure_pass":
+            promo["status"] = "PENDING_VERIFICATION"
+            break
+    manifest_path.write_text(json.dumps(doc, indent=2) + "\n")
+    env = {**os.environ, "PYTHONPATH": str(ROOT)}
+    try:
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "prototype/strip-coherence/alpha_budgets.py")],
+            cwd=ROOT,
+            env=env,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    finally:
+        manifest_path.write_text(original)
+    assert result.returncode != 0
+    assert "not ACTIVE" in result.stdout + result.stderr
+    assert "promo--walk--loop_closure_pass" in result.stdout + result.stderr
 
 
 @pytest.mark.slow

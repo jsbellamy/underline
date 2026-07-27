@@ -1,0 +1,62 @@
+{
+  "attempt_id": "swing--palette_drift_pass--001",
+  "commands": [
+    {
+      "command": "npm test",
+      "evidence_row": "160 passed, 2 skipped in 19.73s",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run prototype:strip:corpus",
+      "evidence_row": "scored 23/23   pending 0   regressions 0",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run prototype:strip:adversarial",
+      "evidence_row": "2 GAPS (documented, not green)",
+      "exit_code": 0
+    },
+    {
+      "command": "npm run prototype:strip:alpha-budgets",
+      "evidence_row": "Separated=17  Unseparated=4  Inapplicable=3",
+      "exit_code": 0
+    }
+  ],
+  "failure_reason": null,
+  "manifest_sha256": "5e530454c43940c64a51ca9b1ff9be3ed4ad88176f3c1d4b1b3694dc04c4bdff",
+  "measurement_path": "gate-controls/reports/swing--palette_drift_pass--001/2026-07-26T17-29-11+00-00.json",
+  "measurement_sha256": "079e71962789e66f5aa60eb4b7e8e4e53bb94a933574044eb38ce74951a1499a",
+  "packet_path": "reviews/swing--palette_drift_pass--001/packet.json",
+  "packet_sha256": "1788cc65a48adf43a4f7f73c69babeb9bd8765f76cacc5ea14d653c3a337cc31",
+  "promotion_id": "promo--swing--palette_drift_pass",
+  "provenance_path": "gate-controls/provenance/swing--palette_drift_pass--001.json",
+  "provenance_sha256": "5c1cc4e18475dddba56407ac36f49c41a77721d91a77ec4c2f41304b646604fc",
+  "raw_sha256": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd",
+  "recorded_at": "2026-07-27T12:09:19+00:00",
+  "repository_commit": "57829732f364aa5f1c8a78d20f9591baa423ba43",
+  "review_report": {
+    "ok": true,
+    "packet_sha256": "1788cc65a48adf43a4f7f73c69babeb9bd8765f76cacc5ea14d653c3a337cc31",
+    "reviews": [
+      "review--01",
+      "review--02"
+    ]
+  },
+  "reviews": [
+    {
+      "path": "reviews/swing--palette_drift_pass--001/review--01.json",
+      "review_id": "review--01",
+      "sha256": "b18dcce387a8cfe755b4e3bc672b2fbde49b052bdea7103dce22b7c998d9c2a7",
+      "verdict": "APPROVE"
+    },
+    {
+      "path": "reviews/swing--palette_drift_pass--001/review--02.json",
+      "review_id": "review--02",
+      "sha256": "253eada45020a5bd19cb0e536ec5fad767c74762f744d50de12ce1d70b62bc03",
+      "verdict": "APPROVE"
+    }
+  ],
+  "schema": "gate-control-verification/0",
+  "specification_id": "swing/palette_drift_pass",
+  "status": "ACTIVE"
+}

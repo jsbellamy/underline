@@ -1,4 +1,4 @@
-"""Promotion verification records for Wave A activation (issues #59, #60)."""
+"""Promotion verification records for Wave A activation (issues #59–#61)."""
 
 from __future__ import annotations
 
@@ -27,6 +27,14 @@ def _issue_60_records_present() -> bool:
     return any(
         (verification_root / f"{promotion_id}.json").is_file()
         for promotion_id in gv.ISSUE_60_PROMOTION_IDS
+    )
+
+
+def _issue_61_records_present() -> bool:
+    verification_root = ROOT / "gate-controls" / "verification"
+    return any(
+        (verification_root / f"{promotion_id}.json").is_file()
+        for promotion_id in gv.ISSUE_61_PROMOTION_IDS
     )
 
 
@@ -165,7 +173,11 @@ def test_active_promotion_verification_records_validate_against_repository() -> 
 
 
 def test_active_promotion_manifest_matches_verification_record() -> None:
-    if not (_issue_59_records_present() or _issue_60_records_present()):
+    if not (
+        _issue_59_records_present()
+        or _issue_60_records_present()
+        or _issue_61_records_present()
+    ):
         pytest.skip("verification records not written yet")
     manifest = ge.load_manifest(ROOT / "gate-controls" / "manifest.json")
     verification_root = ROOT / "gate-controls" / "verification"
@@ -274,6 +286,58 @@ def test_issue_60_manifest_matches_verification_records() -> None:
     manifest = ge.load_manifest(ROOT / "gate-controls" / "manifest.json")
     verification_root = ROOT / "gate-controls" / "verification"
     for promotion_id in gv.ISSUE_60_PROMOTION_IDS:
+        promotion = next(p for p in manifest.promotions if p.id == promotion_id)
+        record_path = verification_root / f"{promotion_id}.json"
+        record = json.loads(record_path.read_text())
+        if record["status"] == "ACTIVE":
+            assert promotion.status == "ACTIVE"
+        else:
+            assert promotion.status == "INVALIDATED"
+
+
+def test_issue_61_pre_transition_manifest_hash_resets_named_promotion_status(
+    tmp_path: Path,
+) -> None:
+    manifest = {
+        "schema": "gate-control-manifest/0",
+        "specifications": [],
+        "promotions": [
+            {"id": "promo--walk--loop_closure_pass", "status": "ACTIVE"},
+            {"id": "promo--swing--silhouette_budget", "status": "ACTIVE"},
+        ],
+    }
+    path = tmp_path / "manifest.json"
+    path.write_text(json.dumps(manifest, indent=2) + "\n")
+    digest = gv.manifest_sha256_at_binding(
+        path,
+        promotion_id="promo--walk--loop_closure_pass",
+    )
+    expected_doc = dict(manifest)
+    for promo in expected_doc["promotions"]:
+        if promo["id"] in gv.ISSUE_61_PROMOTION_IDS:
+            promo["status"] = "PENDING_VERIFICATION"
+    expected = ge.sha256_bytes(
+        (json.dumps(expected_doc, indent=2) + "\n").encode()
+    )
+    assert digest == expected
+
+
+def test_issue_61_verification_records_validate_against_repository() -> None:
+    if not _issue_61_records_present():
+        pytest.skip("issue #61 verification records not written yet")
+    verification_root = ROOT / "gate-controls" / "verification"
+    for promotion_id in gv.ISSUE_61_PROMOTION_IDS:
+        path = verification_root / f"{promotion_id}.json"
+        assert path.is_file(), f"missing verification for {promotion_id}"
+        gv.validate_verification_record(ROOT, path)
+
+
+def test_issue_61_manifest_matches_verification_records() -> None:
+    if not _issue_61_records_present():
+        pytest.skip("issue #61 verification records not written yet")
+    manifest = ge.load_manifest(ROOT / "gate-controls" / "manifest.json")
+    verification_root = ROOT / "gate-controls" / "verification"
+    for promotion_id in gv.ISSUE_61_PROMOTION_IDS:
         promotion = next(p for p in manifest.promotions if p.id == promotion_id)
         record_path = verification_root / f"{promotion_id}.json"
         record = json.loads(record_path.read_text())
