@@ -57,7 +57,7 @@
       "id": "closed_four_frame_loop",
       "question": "Does the four-Frame sequence close as a readable loop without a visible seam break?",
       "verdict": "PASS",
-      "notes": "Frame 3 returns near Frame 0; loop_closure_pass automatic PASS; no visible seam at native or enlarged scale."
+      "notes": "Frame 3 matches Frame 0 at all amber glass Cells (pixel closure after polish); loop_closure_pass automatic PASS; no visible seam at native or enlarged scale."
     },
     {
       "id": "emission_inside_lamp",
