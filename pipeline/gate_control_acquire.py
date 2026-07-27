@@ -554,12 +554,7 @@ def complete_promotion_verification(
     """Run full verification and transition Promotion to ACTIVE or INVALIDATED."""
     root = root.resolve()
     gc_root = gate_controls_root(root)
-    record = gv.build_verification_record(
-        root=root,
-        promotion_id=promotion_id,
-        commands=list(commands) if commands is not None else gv.run_required_commands(root),
-        review_report=gv.validate_promotion_reviews(root, promotion_id),
-    )
+    record = gv.verify_promotion(root, promotion_id, commands=commands)
     out = gc_root / "verification" / f"{promotion_id}.json"
     gv.write_verification_record(out, record)
     ge.mutate_manifest_document(

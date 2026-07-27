@@ -3,15 +3,20 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
+from pipeline import gate_control as gc
 from pipeline import gate_evidence as ge
 from pipeline import gate_review as gr
 from pipeline import gate_verification as gv
 
 ROOT = Path(__file__).resolve().parents[1]
+IDLE_CONTROL = ROOT / "gate-controls/raw/idle--silhouette_budget--001.png"
+BINDING_GOOD = ROOT / "prototype/strip-coherence/inbox/07-NEG-palette-drift.png"
 
 
 def _issue_59_records_present() -> bool:
@@ -233,7 +238,7 @@ def test_apply_manifest_statuses_transitions_named_promotions_only(tmp_path: Pat
 
 def test_repository_review_dirs_validate_after_second_review_input() -> None:
     for promotion_id in gv.VERIFICATION_PROMOTION_IDS:
-        attempt_id = gv.review_dir_for_promotion(promotion_id)
+        attempt_id = gv.review_dir_for_promotion(ROOT, promotion_id)
         review_dir = ROOT / "gate-controls" / "reviews" / attempt_id
         if not (review_dir / "packet.json").is_file():
             pytest.skip(f"missing review packet for {promotion_id}")
@@ -345,3 +350,257 @@ def test_issue_61_manifest_matches_verification_records() -> None:
             assert promotion.status == "ACTIVE"
         else:
             assert promotion.status == "INVALIDATED"
+
+
+def _seed_manifest_promotion_candidate(
+    tmp_path: Path,
+    *,
+    spec_id: str = "idle/silhouette_budget",
+    motion_class: str = "idle",
+    target_gate: str = "silhouette_budget",
+    attempt_id: str = "idle--silhouette_budget--099",
+    promotion_id: str = "promo--idle--silhouette_budget",
+) -> Path:
+    """Minimal graph-valid PENDING_VERIFICATION candidate outside Wave A slices."""
+    gc_root = tmp_path / "gate-controls"
+    gc_root.mkdir(parents=True)
+    shutil.copy2(
+        ROOT / "gate-controls/acceptance-profiles.json",
+        gc_root / "acceptance-profiles.json",
+    )
+    (gc_root / "attempts.jsonl").write_text("")
+    for name in ("raw", "provenance", "reports", "reviews", "verification"):
+        (gc_root / name).mkdir(exist_ok=True)
+
+    raw_rel = f"gate-controls/raw/{attempt_id}.png"
+    shutil.copy2(IDLE_CONTROL, tmp_path / raw_rel)
+    raw_sha = ge.sha256_file(tmp_path / raw_rel)
+    measurement_rel = f"gate-controls/reports/{attempt_id}/2026-07-27T12-00-00+00-00.json"
+    measurement = {
+        "schema": gc.MEASUREMENT_SCHEMA,
+        "raw_sha256": raw_sha,
+        "motion_class": motion_class,
+        "target_gate": target_gate,
+        "applicable_gates": [target_gate],
+        "structural": {"recovered": True},
+        "gates": {
+            target_gate: {
+                "outcome": "fail",
+                "acceptance_outcome": "FAIL",
+                "metric": 0.3,
+                "budget": 0.2239,
+                "hard_fail": 0.3,
+            }
+        },
+        "isolation": "ISOLATED",
+        "blockers": [],
+        "caveats": [],
+        "primary_failure": None,
+    }
+    provenance_rel = f"gate-controls/provenance/{attempt_id}.json"
+    provenance = {
+        "schema": "gate-control-provenance/0",
+        "specification_id": spec_id,
+        "attempt_id": attempt_id,
+        "generator": "cursor-image-gen",
+        "prompt_text": "prompt",
+        "prompt_sha256": ge.sha256_bytes(b"prompt"),
+        "reference_image_sha256": [],
+        "generated_at": "2026-07-27T12:00:00+00:00",
+        "acquiring_agent": "test",
+        "repository_commit": "deadbeef",
+        "raw_path": raw_rel,
+        "raw_sha256": raw_sha,
+        "media_type": "image/png",
+        "dimensions": [16, 24],
+    }
+    attempt = {
+        "schema": "gate-control-acquisition/0",
+        "attempt_id": attempt_id,
+        "specification_id": spec_id,
+        "ordinal": 99,
+        "artifact_state": "retained",
+        "isolation": "ISOLATED",
+        "recorded_at": "2026-07-27T12:00:00+00:00",
+        "measurement_path": measurement_rel,
+        "provenance_path": provenance_rel,
+        "raw_sha256": raw_sha,
+        "promotion_blockers": [],
+        "primary_failure": None,
+    }
+    manifest = {
+        "schema": "gate-control-manifest/0",
+        "specifications": [
+            {
+                "id": spec_id,
+                "motion_class": motion_class,
+                "target_gate": target_gate,
+                "active_promotion": promotion_id,
+            }
+        ],
+        "promotions": [
+            {
+                "id": promotion_id,
+                "specification_id": spec_id,
+                "attempt_id": attempt_id,
+                "measurement_path": measurement_rel,
+                "status": gv.PENDING_STATUS,
+                "recorded_at": "2026-07-27T12:00:00+00:00",
+            }
+        ],
+    }
+    (tmp_path / measurement_rel).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / measurement_rel).write_text(json.dumps(measurement, indent=2) + "\n")
+    (tmp_path / provenance_rel).parent.mkdir(parents=True, exist_ok=True)
+    (tmp_path / provenance_rel).write_text(json.dumps(provenance, indent=2) + "\n")
+    (gc_root / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    ge.append_attempt_record(gc_root / "attempts.jsonl", attempt)
+
+    review_dir = gc_root / "reviews" / attempt_id
+    review_dir.mkdir(parents=True, exist_ok=True)
+    packet = gr.build_review_packet(
+        root=tmp_path,
+        attempt_id=attempt_id,
+        gate=target_gate,
+        budget_binding_good=BINDING_GOOD,
+        packet_kind="PROMOTION_VERIFICATION",
+        promotion_id=promotion_id,
+    )
+    gr.write_packet_manifest(review_dir / "packet.json", packet)
+    for index, review_id in enumerate(("review--01", "review--02"), start=1):
+        record = gr.make_audit_record(
+            packet=packet,
+            review_id=review_id,
+            verdict="APPROVE",
+            frames=[0, 1],
+            observed_feature="fixture",
+            rationale="fixture",
+            reviewer_identity=f"reviewer-{index}",
+            model_identity="fixture-model",
+            model_version="1",
+            timestamp="2026-07-27T12:00:00+00:00",
+        )
+        gr.write_audit_record(review_dir / f"review--0{index}.json", record)
+    gv.ensure_blinded_second_review_input(review_dir)
+    return gc_root
+
+
+def test_verify_promotion_rejects_absent_manifest_id(tmp_path: Path) -> None:
+    _seed_manifest_promotion_candidate(tmp_path)
+    with pytest.raises(ge.EvidenceError, match="unknown promotion_id"):
+        gv.verify_promotion(tmp_path, "promo--missing--silhouette_budget")
+
+
+def test_verify_promotion_accepts_manifest_backed_promotion(tmp_path: Path) -> None:
+    promotion_id = "promo--idle--silhouette_budget"
+    _seed_manifest_promotion_candidate(tmp_path, promotion_id=promotion_id)
+    commands = [
+        gv.CommandResult(command="npm test", exit_code=0, evidence_row="1 passed"),
+        gv.CommandResult(
+            command="npm run prototype:strip:corpus",
+            exit_code=0,
+            evidence_row="scored 1/1",
+        ),
+        gv.CommandResult(
+            command="npm run prototype:strip:adversarial",
+            exit_code=0,
+            evidence_row="Separated=17",
+        ),
+        gv.CommandResult(
+            command="npm run prototype:strip:alpha-budgets",
+            exit_code=0,
+            evidence_row="Separated=17",
+        ),
+    ]
+    record = gv.verify_promotion(tmp_path, promotion_id, commands=commands)
+    assert record["status"] == gv.ACTIVE_STATUS
+    assert record["promotion_id"] == promotion_id
+    assert record["attempt_id"] == "idle--silhouette_budget--099"
+
+
+def test_review_dir_derived_from_manifest_attempt_not_promotion_id(
+    tmp_path: Path,
+) -> None:
+    attempt_id = "synthetic--displacement_pass--007"
+    promotion_id = "promo--synthetic--displacement_pass"
+    _seed_manifest_promotion_candidate(
+        tmp_path,
+        spec_id="synthetic/displacement_pass",
+        motion_class="airborne",
+        target_gate="displacement_pass",
+        attempt_id=attempt_id,
+        promotion_id=promotion_id,
+    )
+    assert gv.review_dir_for_promotion(tmp_path, promotion_id) == attempt_id
+    review_dir = tmp_path / "gate-controls" / "reviews" / attempt_id
+    assert (review_dir / "packet.json").is_file()
+
+
+def test_cli_run_accepts_manifest_promotion_id(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    promotion_id = "promo--idle--silhouette_budget"
+    _seed_manifest_promotion_candidate(tmp_path, promotion_id=promotion_id)
+    monkeypatch.chdir(tmp_path)
+    with patch.object(gv, "run_required_commands") as run_commands:
+        run_commands.return_value = [
+            gv.CommandResult(command="npm test", exit_code=0, evidence_row="1 passed"),
+            gv.CommandResult(
+                command="npm run prototype:strip:corpus",
+                exit_code=0,
+                evidence_row="scored 1/1",
+            ),
+            gv.CommandResult(
+                command="npm run prototype:strip:adversarial",
+                exit_code=0,
+                evidence_row="Separated=17",
+            ),
+            gv.CommandResult(
+                command="npm run prototype:strip:alpha-budgets",
+                exit_code=0,
+                evidence_row="Separated=17",
+            ),
+        ]
+        exit_code = gv.main(["run", promotion_id])
+    assert exit_code == 0
+
+
+def test_cli_run_rejects_absent_manifest_promotion_id(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _seed_manifest_promotion_candidate(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    assert gv.main(["run", "promo--missing--silhouette_budget"]) != 0
+
+
+def test_checked_in_gate_controls_unchanged_after_temp_verification(
+    tmp_path: Path,
+) -> None:
+    from pipeline import gate_control_acquire as gca
+
+    before = ge.fingerprint_tree(ROOT / "gate-controls")
+    promotion_id = "promo--idle--silhouette_budget"
+    gc_root = _seed_manifest_promotion_candidate(tmp_path, promotion_id=promotion_id)
+    with patch.dict("os.environ", {"UNDERLINE_GATE_CONTROLS_ROOT": str(gc_root)}):
+        gca.complete_promotion_verification(
+            tmp_path,
+            promotion_id,
+            commands=[
+                gv.CommandResult(command="npm test", exit_code=0, evidence_row="1 passed"),
+                gv.CommandResult(
+                    command="npm run prototype:strip:corpus",
+                    exit_code=0,
+                    evidence_row="scored 1/1",
+                ),
+                gv.CommandResult(
+                    command="npm run prototype:strip:adversarial",
+                    exit_code=0,
+                    evidence_row="Separated=17",
+                ),
+                gv.CommandResult(
+                    command="npm run prototype:strip:alpha-budgets",
+                    exit_code=0,
+                    evidence_row="Separated=17",
+                ),
+            ],
+        )
+    after = ge.fingerprint_tree(ROOT / "gate-controls")
+    assert after == before
