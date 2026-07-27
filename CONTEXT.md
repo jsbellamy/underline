@@ -193,3 +193,25 @@ _Avoid_: work-in-progress frame, edited frame
 **Release Frame**:
 A Polished Frame made releasable only by automatic current-policy `PASS`.
 _Avoid_: shipped frame, final frame
+
+**Master Palette**:
+The fixed cross-asset set of opaque RGB colors available to one Art Cohort.
+_Avoid_: shared palette, color set
+
+**Art Cohort**:
+Assets approved together for one playable visual slice under one Master Palette,
+scale, lighting, and shape language.
+_Avoid_: asset batch, content pack
+
+**Rendering Tile**:
+One 16×16 world-rendering unit used to assemble cave edges and backgrounds.
+_Avoid_: tile (ambiguous with Mineable Block), background cell
+
+**Mineable Block**:
+One atomic 32×32 mining target occupying a 2×2 area of Rendering Tiles.
+_Avoid_: tile, ore tile, destructible tile
+
+**Autotile mask**:
+The four-bit north/east/south/west neighbor signature selecting a Mineable Block
+edge treatment. Bit values: north=1, east=2, south=4, west=8.
+_Avoid_: bitmask, neighbor mask

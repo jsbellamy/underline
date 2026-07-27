@@ -1,0 +1,47 @@
+{
+  "schema": "master-palette/0",
+  "id": "first-room",
+  "description": "Master Palette for the first-room Art Cohort — the fixed cross-asset opaque RGB set for one playable visual slice.",
+  "role_groups": [
+    {
+      "id": "dark-outline",
+      "label": "dark/outline",
+      "colors": ["#111018", "#1D1720", "#2B2230", "#3B2F3A"]
+    },
+    {
+      "id": "stone",
+      "label": "stone",
+      "colors": ["#4A3B48", "#62515D", "#806A73", "#A58C91"]
+    },
+    {
+      "id": "earth-leather-beard",
+      "label": "earth/leather/beard",
+      "colors": ["#3B221B", "#623722", "#935631", "#C87B43"]
+    },
+    {
+      "id": "skin",
+      "label": "skin",
+      "colors": ["#6C3D31", "#A45F46", "#DA8A63", "#F3BC82"]
+    },
+    {
+      "id": "green-cloth",
+      "label": "green cloth",
+      "colors": ["#193A32", "#285B43", "#42805A", "#78A663"]
+    },
+    {
+      "id": "blue-metal",
+      "label": "blue metal",
+      "colors": ["#1D3B50", "#2F6075", "#4E8DA0", "#8FC4C5"]
+    },
+    {
+      "id": "amber-emission",
+      "label": "amber emission",
+      "colors": ["#783A18", "#BE6222", "#F0A33A", "#FFD66B"]
+    },
+    {
+      "id": "cyan-crystal",
+      "label": "cyan crystal",
+      "colors": ["#123A47", "#176873", "#27A6A3", "#72E2D2"]
+    }
+  ]
+}

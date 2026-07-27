@@ -12,7 +12,10 @@ Consequences. If an ADR needs scrolling, the content belongs in a design doc
 instead. When a decision changes, add a new ADR that supersedes the old one; do
 not delete history.
 
-No ADRs have been written yet. Decisions settled so far live in
-`docs/strip-acquisition-contract.md` and in the session log at
-`prototype/strip-coherence/NOTES.md`; promote one to an ADR when it starts being
-re-argued.
+| ADR | Title |
+|-----|-------|
+| [0001](0001-two-scale-mining-grid.md) | Two-scale mining grid (16×16 Rendering Tile + 32×32 Mineable Block) |
+
+Earlier decisions settled only in `docs/strip-acquisition-contract.md` or
+`prototype/strip-coherence/NOTES.md` should be promoted here when they start
+being re-argued.
