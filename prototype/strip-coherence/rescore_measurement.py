@@ -11,24 +11,14 @@ import argparse
 import copy
 import datetime as dt
 import json
-import math
 import pathlib
+import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 GC_ROOT = ROOT / "gate-controls"
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 
-NUMERIC_POLICY = {
-    "schema": "gate-numeric-policy/0",
-    "precision_decimal_places": 4,
-    "rounding": "ceiling",
-    "comparison": "metric <= budget",
-    "comparison_epsilon": 0,
-    "decided_in": "https://github.com/jsbellamy/underline/issues/38",
-}
-
-
-def canonical_metric(value: float) -> float:
-    return math.ceil(value * 10_000) / 10_000
+from numeric_policy import NUMERIC_POLICY, canonical_metric  # noqa: E402
 
 
 def gate_outcome(metric: float | None, budget: float | None) -> str | None:

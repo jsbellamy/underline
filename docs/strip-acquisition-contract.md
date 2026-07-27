@@ -31,6 +31,8 @@ Negative controls 07, 08, and 09 declare `idle`.
 
 ## Budget derivation (C5)
 
+### Runtime estimator (current `MOTION_CLASSES`)
+
 For each class and each applicable gate:
 
 `budget = ceil_to_0.01(worst measured value across that class's good strips) + 0.02`
@@ -52,6 +54,20 @@ including samples 13, 15, 16, 18 in their class cohorts. The `idle` cohort also 
 
 Run `npm run prototype:strip:derive-budgets` to reproduce worst-good figures from the
 current inbox.
+
+### AFK acceptance Budgets (α = 0.5)
+
+Separated Motion-class/Gate pairs use the Gap allocation factor decided in
+[Choose alpha for separated Gate controls](https://github.com/jsbellamy/underline/issues/28):
+
+`Budget = ceil₄(G + 0.5 × (C − G))`
+
+where `G` is the four-place upward-quantized worst Manifest-good metric and `C` is the
+quantized isolated Gate-control metric. Unseparated pairs keep the runtime Budget above
+and Review open with no hard-fail boundary. Full tables, deltas, and headroom live in
+[`docs/alpha-budget-tables.md`](alpha-budget-tables.md); reproduce with
+`npm run prototype:strip:alpha-budgets`. Landing these numbers into runtime
+`MOTION_CLASSES` is deferred to the post-map implementation wave.
 
 ### Monotonicity and separation expiry
 
@@ -106,14 +122,25 @@ negative control on the same gate.
 
 ### Separation headroom (fragile claims)
 
+**AFK acceptance (α = 0.5 Gate controls)** — thinnest Separated good-headroom /
+Review-width margins. Reproduce with `npm run prototype:strip:alpha-budgets`; full
+table in [`docs/alpha-budget-tables.md`](alpha-budget-tables.md).
+
+| Pair | Budget | Gate control C | Good headroom | Review width |
+|------|--------|----------------|---------------|--------------|
+| `walk/silhouette_budget` | **0.4136** | 0.4294 | **0.0159** | **0.0158** |
+| `blob_idle/min_pair_cohort_pass` | **0.1199** | 0.1371 | **0.0173** | **0.0172** |
+| `swing/silhouette_budget` | **0.5860** | 0.6067 | **0.0208** | **0.0207** |
+
+**Runtime corpus negatives (pre-α estimator)** — retained until production Budgets land:
+
 | Class | Binding gate | Budget | Control | Margin | Notes |
 |-------|--------------|--------|---------|--------|-------|
-| `swing` | silhouette | **0.59** | 23 @ **0.624** | **0.034** | Was 0.012 vs idle 08; subject-matched negative confirms separation |
-| `airborne` | min-pair cohort | **0.29** | 22 @ **0.383** | **0.093** | Was 0.054 vs idle 08; four flying creatures score well above budget |
-| `airborne` | palette drift | **0.23** | 07 @ 0.279 | 0.049 | 22 also tripped drift (0.636) — palette not tight; cohort gate is the clean catch |
+| `swing` | silhouette | **0.59** | 23 @ **0.624** | **0.034** | Subject-matched negative vs runtime Budget |
+| `airborne` | min-pair cohort | **0.29** | 22 @ **0.383** | **0.093** | Subject-matched negative vs runtime Budget |
+| `airborne` | palette drift | **0.23** | 07 @ 0.279 | 0.049 | 22 also tripped drift (0.636) |
 
-`swing` n=3 adjacent silhouette: 0.565 / 0.492 / 0.359 (06 still worst-good). A fourth
-good swing with adjacent sil **> 0.582** still breaks separation against idle 08.
+`swing` n=3 adjacent silhouette: 0.565 / 0.492 / 0.359 (06 still worst-good).
 
 ## Class budgets
 
