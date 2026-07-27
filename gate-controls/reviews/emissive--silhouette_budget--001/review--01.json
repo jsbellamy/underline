@@ -23,7 +23,7 @@
     "proposed_hard_fail_reference": "f854b74d3a1a3812161f468e0efec39e80183f22cf6aca2b69f16e66bc6ab693"
   },
   "review_id": "review--01",
-  "reviewer_identity": "cursor-grok-4.5-review-session-01",
+  "reviewer_identity": "cursor-agent/issue-54/review-01",
   "schema": "gate-review-audit/0",
   "second_review_triggers": [
     "metric_at_or_beyond_midpoint"

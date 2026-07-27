@@ -710,3 +710,85 @@ def test_written_review_packet_and_audits_validate_fail_closed(tmp_path: Path) -
     _write_two_audits(review_dir, packet)
     report = gr.validate_review_dir(review_dir)
     assert report["ok"] is True
+
+
+def test_validate_review_dir_rehashes_packet_input_roles(tmp_path: Path) -> None:
+    fx = _evidence(tmp_path)
+    packet = gr.build_promotion_verification_packet(
+        root=fx["root"],
+        promotion_id=fx["promo_id"],
+        budget_binding_good=fx["good_path"],
+    )
+    review_dir = fx["gc"] / "reviews" / fx["attempt_id"]
+    gr.write_packet_manifest(review_dir / "packet.json", packet)
+    for review_id, identity in (("review--01", "cursor-agent/issue-54/review-01"),
+                                ("review--02", "cursor-agent/issue-54/review-02")):
+        audit = gr.make_audit_record(
+            packet=packet,
+            review_id=review_id,
+            verdict="APPROVE",
+            frames=[0, 1],
+            observed_feature="pose transition",
+            rationale=f"rationale for {review_id}",
+            reviewer_identity=identity,
+            model_identity="cursor-grok-4.5",
+            model_version="grok-4.5",
+            timestamp="2026-07-27T00:00:00+00:00",
+            second_review_triggers=["metric_at_or_beyond_midpoint"],
+        )
+        gr.write_audit_record(review_dir / f"{review_id}.json", audit)
+    report = gr.validate_review_dir(review_dir)
+    assert report["ok"] is True
+    assert report["roles"] == {
+        "candidate": packet.candidate.raw_sha256,
+        "budget_binding_good": packet.budget_binding_good.raw_sha256,
+        "proposed_hard_fail_reference": packet.proposed_hard_fail_reference.raw_sha256,
+    }
+
+    # Tamper binding-good bytes without updating packet → fail closed.
+    fx["good_path"].write_bytes(_png(b"tampered-good"))
+    with pytest.raises(gr.ReviewError, match="SHA-256 mismatch"):
+        gr.validate_review_dir(review_dir)
+
+
+def test_validate_review_dir_rejects_first_review_leak_into_second(tmp_path: Path) -> None:
+    fx = _evidence(tmp_path)
+    packet = gr.build_promotion_verification_packet(
+        root=fx["root"],
+        promotion_id=fx["promo_id"],
+        budget_binding_good=fx["good_path"],
+    )
+    review_dir = fx["gc"] / "reviews" / fx["attempt_id"]
+    gr.write_packet_manifest(review_dir / "packet.json", packet)
+    first = gr.make_audit_record(
+        packet=packet,
+        review_id="review--01",
+        verdict="APPROVE",
+        frames=[0, 1],
+        observed_feature="pose transition",
+        rationale="secret first rationale must not appear in second",
+        reviewer_identity="cursor-agent/issue-54/review-01",
+        model_identity="cursor-grok-4.5",
+        model_version="grok-4.5",
+        timestamp="2026-07-27T00:00:00+00:00",
+        second_review_triggers=["metric_at_or_beyond_midpoint"],
+    )
+    gr.write_audit_record(review_dir / "review--01.json", first)
+    second = gr.make_audit_record(
+        packet=packet,
+        review_id="review--02",
+        verdict="APPROVE",
+        frames=[0, 1],
+        observed_feature="pose transition",
+        rationale="independent second rationale",
+        reviewer_identity="cursor-agent/issue-54/review-02",
+        model_identity="cursor-grok-4.5",
+        model_version="grok-4.5",
+        timestamp="2026-07-27T00:00:00+00:00",
+        second_review_triggers=["metric_at_or_beyond_midpoint"],
+    )
+    # Inject first-review leak into second record.
+    second["prior_rationale"] = first["rationale"]
+    gr.write_audit_record(review_dir / "review--02.json", second)
+    with pytest.raises(gr.ReviewError, match="leaked prior review"):
+        gr.validate_review_dir(review_dir)
