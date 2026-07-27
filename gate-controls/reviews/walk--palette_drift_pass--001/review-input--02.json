@@ -1,0 +1,42 @@
+{
+  "blinded": true,
+  "packet": {
+    "attempt_id": "walk--palette_drift_pass--001",
+    "budget": 0.2217,
+    "budget_binding_good": {
+      "path": "prototype/strip-coherence/inbox/18-guard-walk.png",
+      "raw_sha256": "1444860d423e323cca0feb180d41470d583186b9f4754b72da76992e1e51f400",
+      "role": "budget_binding_good"
+    },
+    "candidate": {
+      "path": "gate-controls/raw/walk--palette_drift_pass--001.png",
+      "raw_sha256": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd",
+      "role": "candidate"
+    },
+    "caveats": [],
+    "fixed_question": "Intentional subject/Motion-class change (e.g. emissive flicker) vs unintended recolour?",
+    "gate": "palette_drift_pass",
+    "gate_control": null,
+    "hard_fail_boundary": 0.2793,
+    "metric": 0.2793,
+    "motion_class": "walk",
+    "no_autonomous_hard_fail": false,
+    "no_autonomous_hard_fail_reason": null,
+    "packet_kind": "PROMOTION_VERIFICATION",
+    "packet_sha256": "0e3392de3c217d737e1c4e8245b8223aef973968bc39a59ff48afe72e682fc48",
+    "panel_kind": "quantized_palette_histogram",
+    "promotion_id": "promo--walk--palette_drift_pass",
+    "promotion_status": "PENDING_VERIFICATION",
+    "proposed_hard_fail_reference": {
+      "path": "gate-controls/raw/walk--palette_drift_pass--001.png",
+      "raw_sha256": "ef37c18cc26293bf47d0c0a8b51d119d7ceb38f8d16e2483c2cd36a038e1ccdd",
+      "role": "proposed_hard_fail_reference"
+    },
+    "schema": "gate-review-packet/0"
+  },
+  "packet_sha256": "0e3392de3c217d737e1c4e8245b8223aef973968bc39a59ff48afe72e682fc48",
+  "prior_review_visible": false,
+  "review_id": "review--02",
+  "reviewer_identity": "cursor-agent/issue-56/review-02",
+  "schema": "gate-review-packet/0"
+}
