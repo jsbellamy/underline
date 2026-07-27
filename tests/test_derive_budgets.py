@@ -8,6 +8,8 @@ import pathlib
 import subprocess
 import sys
 
+import pytest
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 DERIVE_BUDGETS = ROOT / "prototype" / "strip-coherence" / "derive_budgets.py"
 sys.path.insert(0, str(ROOT / "prototype" / "strip-coherence"))
@@ -35,6 +37,7 @@ def test_pre_alpha_estimator_matches_independently_worked_values() -> None:
         assert _derive(worst) == expected
 
 
+@pytest.mark.slow
 def test_derive_budgets_emits_historical_pre_alpha_baseline() -> None:
     env = {**os.environ, "PYTHONPATH": str(ROOT)}
     result = subprocess.run(

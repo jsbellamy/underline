@@ -87,6 +87,7 @@ a command whose output is text:
 
 ```bash
 npm test                                # test suites (pytest today; TS tests as they land)
+npm run test:fast                       # same, minus the slow budget-CLI tests — inner loop only
 npm run prototype:strip:corpus          # score inbox/ against prompts/manifest.json
 npm run prototype:strip:adversarial     # per-class mutations — gates must reject
 npm run prototype:strip:derive-budgets  # historical pre-α Budget baseline (worst-good)

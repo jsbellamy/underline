@@ -7,6 +7,8 @@ import pathlib
 import subprocess
 import sys
 
+import pytest
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "prototype" / "strip-coherence"))
 
@@ -36,6 +38,7 @@ def test_derive_separated_budget_matches_issue_28_tightest_pairs() -> None:
         assert result.budget < result.c
 
 
+@pytest.mark.slow
 def test_alpha_budgets_command_emits_fragile_claims() -> None:
     env = {**os.environ, "PYTHONPATH": str(ROOT)}
     result = subprocess.run(
