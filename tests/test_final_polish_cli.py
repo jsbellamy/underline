@@ -588,6 +588,7 @@ def test_check_review_exit_3(tmp_path: Path, capsys) -> None:
         mock_check.return_value = FinalPolishCheckResult(
             outcome="REVIEW",
             provider_outcome="REVIEW",
+            identity_lock=None,
             structural=StructuralCheckResult(pass_=True, outcome="PASS", violations=()),
             delta=VisibleCellDelta(edits=(), per_frame_counts=(0, 0, 0, 0), total_edits=0),
             coherence=review.coherence,
@@ -620,6 +621,7 @@ def test_check_review_json_exit_3(tmp_path: Path, capsys) -> None:
         mock_check.return_value = FinalPolishCheckResult(
             outcome="REVIEW",
             provider_outcome="REVIEW",
+            identity_lock=None,
             structural=StructuralCheckResult(pass_=True, outcome="PASS", violations=()),
             delta=VisibleCellDelta(edits=(), per_frame_counts=(0, 0, 0, 0), total_edits=0),
             coherence=review.coherence,
@@ -750,6 +752,35 @@ def test_no_override_flags_in_parser() -> None:
     assert "override" not in flags
 
 
+def test_seed_cli_emits_json_and_is_byte_identical_on_rerun(tmp_path: Path) -> None:
+    out_a = tmp_path / "seed-a.png"
+    out_b = tmp_path / "seed-b.png"
+    result = _run_module(
+        ["seed", "--identity", str(IDENTITY_PNG), "--out", str(out_a), "--json"]
+    )
+    assert result.returncode == 0, result.stderr
+    data = json.loads(result.stdout)
+    assert data["dimensions"] == [1120, 384]
+    assert data["sha256"] == sha256_file(out_a)
+    rerun = _run_module(
+        ["seed", "--identity", str(IDENTITY_PNG), "--out", str(out_b), "--json"]
+    )
+    assert rerun.returncode == 0
+    assert out_a.read_bytes() == out_b.read_bytes()
+
+
+def test_dwarf_miner_profile_and_prompt_require_image_edit_workflow() -> None:
+    profile = json.loads((ROOT / "polish-profiles" / "dwarf-miner.json").read_text())
+    workflow = profile["audit_workflow"]
+    assert any("Identity Lock" in step for step in workflow)
+    assert any("image-edit" in step.lower() for step in workflow)
+    assert any("sequential" in step.lower() or "Attempt" in step for step in workflow)
+    prompt = (ROOT / "prompts" / "production" / "animation-strip.md").read_text()
+    assert "image-edit" in prompt.lower()
+    assert "identity seed" in prompt.lower() or "strip:polish seed" in prompt
+    assert "text-to-image" in prompt.lower()
+
+
 def test_human_report_includes_required_fields(tmp_path: Path) -> None:
     bundle = _init_bundle(tmp_path)
     result = _run_module(["check", str(bundle)])
@@ -757,6 +788,11 @@ def test_human_report_includes_required_fields(tmp_path: Path) -> None:
     stdout = result.stdout
     assert "Bundle" in stdout
     assert "Provider" in stdout
+    assert "Motion" in stdout
+    assert "Structural" in stdout
+    assert "Edits" in stdout
+    assert "palette_drift_pass" in stdout
+    assert "Overall  PASS" in stdout
     assert "Motion" in stdout
     assert "Structural" in stdout
     assert "Edits" in stdout

@@ -1,0 +1,49 @@
+{
+  "schema": "identity-lock/0",
+  "identity_sha256": "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9",
+  "frame_size": [16, 24],
+  "comparison": "exact-rgba",
+  "motion_classes": {
+    "walk": {
+      "locks": [
+        {
+          "id": "upper_body",
+          "rectangle": { "x0": 0, "x1": 15, "y0": 1, "y1": 18 },
+          "permitted_offsets": [[0, -1], [0, 0], [0, 1]]
+        }
+      ]
+    },
+    "swing": {
+      "locks": [
+        {
+          "id": "helmet_face",
+          "rectangle": { "x0": 5, "x1": 12, "y0": 1, "y1": 10 },
+          "permitted_offsets": {
+            "dx": [-1, 0, 1],
+            "dy": [-1, 0, 1]
+          }
+        },
+        {
+          "id": "belt_core",
+          "rectangle": { "x0": 4, "x1": 12, "y0": 15, "y1": 18 },
+          "permitted_offsets": {
+            "dx": [-1, 0, 1],
+            "dy": [0, 1]
+          }
+        },
+        {
+          "id": "boots",
+          "rectangle": { "x0": 3, "x1": 14, "y0": 21, "y1": 23 },
+          "permitted_offsets": [[0, 0]]
+        }
+      ],
+      "relational_constraints": [
+        {
+          "anchors": ["helmet_face", "belt_core"],
+          "max_dx_delta": 1,
+          "max_vertical_separation_delta": 1
+        }
+      ]
+    }
+  }
+}

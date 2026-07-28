@@ -56,6 +56,31 @@ Init a Polish Bundle with:
 npm run strip:polish -- init <accepted-strip.png> --polish-profile <id>
 ```
 
+## Dwarf-miner walk and swing — image-edit lifecycle
+
+`dwarf-miner` **walk** and **swing** Strips must be acquired by **image-edit**
+from a deterministic identity seed, not by fresh text-to-image redraw.
+
+1. Build the seed canvas from the canonical identity:
+
+```bash
+npm run strip:polish -- seed --identity assets/first-room/dwarf/identity.png \
+  --out <seed.png> [--json]
+```
+
+2. Submit `<seed.png>` as the **image-edit base** (edit source), with
+   `assets/first-room/dwarf/identity.png` bound as the visual identity reference.
+3. **Forbid** fresh text-to-image generation for these Motion classes.
+4. Generate **sequential immutable Attempts** until one passes provenance,
+   automatic Identity Lock, coherence Gates, polish, and visual audit.
+5. Record every rejection and predecessor edge in the attempt ledger; never cap
+   Attempt count with a fixed quota.
+6. Visual audit judges motion readability and exposed identity **outside** the
+   locked regions, but must cite the automatic Identity Lock PASS in the check
+   report.
+
+Identity Lock rules live in `assets/first-room/dwarf/identity-locks.json`.
+
 ## Provenance
 
 Bundle the provider PNG with a complete provenance sidecar before ingest.
