@@ -180,6 +180,13 @@ Motion-class overrides that tells an agent what finished art must preserve.
 It supplies art-direction judgment; it is not a deterministic Gate.
 _Avoid_: polish prompt, automatic accent detector
 
+**Identity Lock**:
+A subject-specific, Motion-class rule that compares declared canonical Cell
+rectangles against an Attempt after bounded registration. It is distinct from
+temporal coherence Gates: coherence compares Frames within one Strip; an
+Identity Lock compares every Frame to an external canonical identity.
+_Avoid_: identity anchor audit, canonical redraw check
+
 **Draft Frame**:
 An immutable-by-hash canonical Frame exported from the accepted provider Strip
 before art edits.

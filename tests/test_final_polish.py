@@ -28,6 +28,7 @@ from pipeline.final_polish import (
     load_polish_brief,
 )
 from pipeline.gate_evidence import sha256_bytes, sha256_file
+from pipeline.identity_lock import load_canonical_cells
 from pipeline.strip import DEFAULT_LAYOUT, IngestResult, StripLayout, ingest_strip_provider
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -276,6 +277,7 @@ def test_miner_profile_declares_fixed_questions_and_motion_overrides(
 
 DWARF_MINER_FIXED_IDS = [
     "identity_anchors",
+    "identity_lock_pass",
     "black_eye_no_sclera",
     "native_scale_separation",
     "palette_lighting_outline",
@@ -1198,3 +1200,57 @@ def test_invalid_attempt_ledger_fails_closed(
     with pytest.raises(InvalidBundleError) as exc:
         check_bundle(bundle)
     assert exc.value.reason_code == reason_code
+
+
+def test_dwarf_walk_check_exposes_identity_lock_report(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    _init_bundle(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="dwarf-miner")
+    result = check_bundle(bundle)
+    assert result.identity_lock is not None
+    assert result.identity_lock.outcome in {"PASS", "FAIL"}
+    assert result.identity_lock.motion_class == "walk"
+    assert len(result.identity_lock.per_frame) == FRAME_COUNT
+
+
+def test_identity_lock_fail_blocks_release_despite_passing_structural_and_coherence(
+    tmp_path: Path,
+) -> None:
+    bundle = tmp_path / "bundle"
+    _init_bundle(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="dwarf-miner")
+    allowed_palette: set[tuple[int, int, int]] = set()
+    for index in range(FRAME_COUNT):
+        with Image.open(bundle / "draft" / f"frame-{index}.png") as image:
+            rgba = image.convert("RGBA")
+            pixels = rgba.load()
+            assert pixels is not None
+            for y in range(LOGICAL_SIZE[1]):
+                for x in range(LOGICAL_SIZE[0]):
+                    r, g, b, a = pixels[x, y]
+                    if a == 255:
+                        allowed_palette.add((int(r), int(g), int(b)))
+    canonical = load_canonical_cells(IDENTITY_PNG, LOGICAL_SIZE)
+    locked_x, locked_y = 8, 10
+    canonical_rgb = canonical[locked_y][locked_x]
+    replacement = next(
+        rgb for rgb in allowed_palette if rgb != canonical_rgb
+    )
+    polished = bundle / "polished" / "frame-0.png"
+    _set_opaque_rgb(polished, locked_x, locked_y, replacement)
+    result = check_bundle(bundle)
+    assert result.identity_lock is not None
+    assert result.identity_lock.outcome == "FAIL"
+    assert result.structural.pass_
+    assert result.coherence.get("outcome") == "PASS"
+    assert result.outcome == "FAIL"
+    report_path = finalize_bundle(bundle)
+    report = json.loads(report_path.read_text())
+    assert report["identity_lock"]["outcome"] == "FAIL"
+    assert report["outcome"] == "FAIL"
+    assert "release_frames" not in report
+    assert not (bundle / "release").exists()
+
+
+def test_idle_bundle_has_no_identity_lock(tmp_path: Path) -> None:
+    bundle = _init_passing_bundle(tmp_path)
+    result = check_bundle(bundle)
+    assert result.identity_lock is None

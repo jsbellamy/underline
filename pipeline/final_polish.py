@@ -15,6 +15,12 @@ from typing import Any, Mapping, Sequence
 from PIL import Image, UnidentifiedImageError
 
 from pipeline.gate_evidence import EvidenceError, sha256_bytes, sha256_file, write_json_immutable
+from pipeline.identity_lock import (
+    IdentityLockResult,
+    evaluate_identity_lock,
+    identity_lock_applies,
+    identity_lock_report_payload,
+)
 from pipeline.recovery import MAGENTA
 from pipeline.strip import (
     DEFAULT_LAYOUT,
@@ -131,6 +137,7 @@ class VisibleCellDelta:
 class FinalPolishCheckResult:
     outcome: Outcome
     provider_outcome: Outcome
+    identity_lock: IdentityLockResult | None
     structural: StructuralCheckResult
     delta: VisibleCellDelta
     coherence: dict[str, Any]
@@ -1192,11 +1199,14 @@ def _verify_evidence_bindings(bundle_root: Path, manifest: Mapping[str, Any]) ->
 def _aggregate_outcome(
     *,
     provider_outcome: Outcome,
+    identity_lock: IdentityLockResult | None,
     structural: StructuralCheckResult,
     coherence: dict[str, Any],
 ) -> Outcome:
     if provider_outcome != "PASS":
         return provider_outcome
+    if identity_lock is not None and identity_lock.outcome != "PASS":
+        return "FAIL"
     if not structural.pass_:
         return structural.outcome
     return coherence.get("outcome", "FAIL")
@@ -1419,8 +1429,19 @@ def check_bundle(bundle_root: Path) -> FinalPolishCheckResult:
     structural = _structural_check(draft_frames, polished_frames)
     delta = _visible_cell_delta(draft_frames, polished_frames)
     coherence = coherence_split(polished_frames, motion_class=manifest["motion_class"])
+    profile_id = None if profile is None else str(profile["id"])
+    identity_lock: IdentityLockResult | None = None
+    if (
+        manifest.get("schema") == BUNDLE_SCHEMA
+        and identity_lock_applies(profile_id, str(manifest["motion_class"]))
+    ):
+        identity_lock = evaluate_identity_lock(
+            polished_frames,
+            str(manifest["motion_class"]),
+        )
     outcome = _aggregate_outcome(
         provider_outcome=provider_outcome,
+        identity_lock=identity_lock,
         structural=structural,
         coherence=coherence,
     )
@@ -1429,6 +1450,7 @@ def check_bundle(bundle_root: Path) -> FinalPolishCheckResult:
     return FinalPolishCheckResult(
         outcome=outcome,
         provider_outcome=provider_outcome,
+        identity_lock=identity_lock,
         structural=structural,
         delta=delta,
         coherence=coherence,
@@ -1437,7 +1459,7 @@ def check_bundle(bundle_root: Path) -> FinalPolishCheckResult:
         draft_hashes=draft_hashes,
         polished_hashes=polished_hashes,
         fingerprint=fingerprint,
-        profile_id=None if profile is None else str(profile["id"]),
+        profile_id=profile_id,
         profile_sha256=(
             None
             if profile is None
@@ -1467,6 +1489,11 @@ def _report_payload(bundle_root: Path, result: FinalPolishCheckResult) -> dict[s
             for index, digest in enumerate(result.polished_hashes)
         ],
         "provider_acceptance": {"outcome": result.provider_outcome},
+        "identity_lock": (
+            None
+            if result.identity_lock is None
+            else identity_lock_report_payload(result.identity_lock)
+        ),
         "polish_profile": (
             None
             if result.profile_id is None
