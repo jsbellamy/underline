@@ -26,6 +26,7 @@ from pipeline.recovery import (
     raw_gates,
     sample_cells,
 )
+from pipeline.verdicts import GateOutcome
 
 Cell = tuple[int, int, int] | None
 MIN_LONG_AXIS = 20
@@ -43,7 +44,7 @@ DISPLACEMENT_PAIR_TOLERANCE = 1
 MIN_ALIGNMENT_SHARPNESS_AIRBORNE = 0.015
 
 Facing = Literal["fixed", "free"]
-Outcome = Literal["PASS", "REVIEW", "FAIL"]
+Outcome = GateOutcome
 
 _REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
