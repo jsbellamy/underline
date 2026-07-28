@@ -1,0 +1,638 @@
+{
+  "coherence": {
+    "alignment_sharpness": null,
+    "anchor_row": 23,
+    "baseline_row_inapplicable": false,
+    "baseline_row_reason": null,
+    "baseline_row_stable": true,
+    "baseline_rows": [
+      23,
+      23,
+      23,
+      23
+    ],
+    "budgets": {
+      "loop": 0.2112,
+      "min_alignment_sharpness": null,
+      "min_pair": 0.17,
+      "palette_drift": 0.2217,
+      "silhouette": 0.4136
+    },
+    "caveats": [],
+    "dimension_parity": true,
+    "dimensions": [
+      [
+        16,
+        24
+      ]
+    ],
+    "displacement_flags": [],
+    "displacement_inapplicable": false,
+    "displacement_pass": null,
+    "displacement_reason": null,
+    "gate_outcomes": {
+      "loop_closure_pass": {
+        "acceptance_status": "SEPARATED",
+        "budget": 0.2112,
+        "hard_fail": 0.2795,
+        "metric": 0.1558,
+        "outcome": "PASS"
+      },
+      "min_pair_cohort_pass": {
+        "acceptance_status": "UNSEPARATED",
+        "budget": 0.17,
+        "hard_fail": null,
+        "metric": 0.1152,
+        "outcome": "PASS"
+      },
+      "palette_drift_pass": {
+        "acceptance_status": "SEPARATED",
+        "budget": 0.2217,
+        "hard_fail": 0.2793,
+        "metric": 0.0582,
+        "outcome": "PASS"
+      },
+      "silhouette_budget": {
+        "acceptance_status": "SEPARATED",
+        "budget": 0.4136,
+        "hard_fail": 0.4294,
+        "metric": 0.1765,
+        "outcome": "PASS"
+      }
+    },
+    "grounded": true,
+    "loop_closure": {
+      "changed_cells": 43,
+      "frac": 0.1558,
+      "pair": [
+        3,
+        0
+      ],
+      "pass": true,
+      "union_opaque": 276
+    },
+    "loop_closure_pass": true,
+    "min_pair_cohort_pass": true,
+    "motion_class": "walk",
+    "outcome": "PASS",
+    "palette_drift": [
+      {
+        "pair": [
+          0,
+          1
+        ],
+        "tv": 0.0497
+      },
+      {
+        "pair": [
+          1,
+          2
+        ],
+        "tv": 0.0258
+      },
+      {
+        "pair": [
+          2,
+          3
+        ],
+        "tv": 0.0548
+      },
+      {
+        "pair": [
+          3,
+          0
+        ],
+        "tv": 0.0582
+      }
+    ],
+    "palette_drift_pass": true,
+    "pass": true,
+    "quantize": {
+      "clusters": 10,
+      "input_unique": 591,
+      "merge_dist": 64,
+      "mode": "quantize-shared",
+      "palette": [
+        [
+          17,
+          18,
+          16
+        ],
+        [
+          91,
+          37,
+          13
+        ],
+        [
+          32,
+          73,
+          83
+        ],
+        [
+          75,
+          122,
+          132
+        ],
+        [
+          172,
+          76,
+          25
+        ],
+        [
+          75,
+          121,
+          67
+        ],
+        [
+          241,
+          153,
+          25
+        ],
+        [
+          137,
+          153,
+          148
+        ],
+        [
+          250,
+          220,
+          135
+        ],
+        [
+          239,
+          161,
+          90
+        ]
+      ],
+      "palette_size": 10
+    },
+    "silhouette_adjacent": [
+      {
+        "changed_cells": 48,
+        "frac": 0.1765,
+        "pair": [
+          0,
+          1
+        ],
+        "union_opaque": 272
+      },
+      {
+        "changed_cells": 31,
+        "frac": 0.1152,
+        "pair": [
+          1,
+          2
+        ],
+        "union_opaque": 269
+      },
+      {
+        "changed_cells": 32,
+        "frac": 0.1159,
+        "pair": [
+          2,
+          3
+        ],
+        "union_opaque": 276
+      }
+    ],
+    "silhouette_adjacent_max": 0.1765,
+    "silhouette_budget": true,
+    "silhouette_pairwise": {
+      "max_pair": 0.1765,
+      "min_pair": 0.1152,
+      "orphan_max": 0.1481,
+      "pairs": [
+        {
+          "frac": 0.1765,
+          "pair": [
+            0,
+            1
+          ]
+        },
+        {
+          "frac": 0.1481,
+          "pair": [
+            0,
+            2
+          ]
+        },
+        {
+          "frac": 0.1558,
+          "pair": [
+            0,
+            3
+          ]
+        },
+        {
+          "frac": 0.1152,
+          "pair": [
+            1,
+            2
+          ]
+        },
+        {
+          "frac": 0.1738,
+          "pair": [
+            1,
+            3
+          ]
+        },
+        {
+          "frac": 0.1159,
+          "pair": [
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    "worst_palette_drift": 0.0582
+  },
+  "draft_frames": [
+    {
+      "index": 0,
+      "sha256": "b4af10fbae49b892bac09673683bd452e339727e005f465d994f78deb2ddfe41"
+    },
+    {
+      "index": 1,
+      "sha256": "d7b1496a3addcee08c5b15fe432e202201415902ce1be090dbb22610d170df21"
+    },
+    {
+      "index": 2,
+      "sha256": "97b8260bf0b37b76c9b91bc0b88ff5e42c5ec34fe4a8622e5313b052362cc492"
+    },
+    {
+      "index": 3,
+      "sha256": "e81313d55f9d71c2ac4266fdc8b3bd55f89df7c7e3642de04eb3d27299a2b3f6"
+    }
+  ],
+  "fingerprint": "961e53b1a5cdce3024cc054ec65b0de27604311a0e4cdead1d4adade187fdddc",
+  "identity_lock": {
+    "first_failure": null,
+    "first_mismatch": null,
+    "identity_sha256": "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9",
+    "lock_spec_sha256": "6fa967247d1582641a0da6534a228dee2b5fe27c58c17824703b7e42e729db0b",
+    "motion_class": "walk",
+    "outcome": "PASS",
+    "per_frame": [
+      {
+        "anchor_results": {
+          "upper_body": "PASS"
+        },
+        "check_results": {
+          "upper_body": {
+            "comparison": "registered-structure",
+            "max_occupancy_difference": 0.2,
+            "max_palette_role_distance": 0.2,
+            "occupancy_difference": 0.028169014084507043,
+            "outcome": "PASS",
+            "palette_role_distance": 0.01861720220413163
+          }
+        },
+        "first_failure": null,
+        "first_mismatch": null,
+        "landmark_results": {
+          "buckle": {
+            "actual_position": [
+              11,
+              16
+            ],
+            "actual_role": "amber-emission",
+            "anchor": "upper_body",
+            "expected_position": [
+              11,
+              16
+            ],
+            "expected_role": "amber-emission",
+            "max_distance": 2,
+            "outcome": "PASS"
+          },
+          "eye": {
+            "actual_position": [
+              10,
+              7
+            ],
+            "actual_role": "dark-outline",
+            "anchor": "upper_body",
+            "expected_position": [
+              10,
+              7
+            ],
+            "expected_role": "dark-outline",
+            "max_distance": 1,
+            "outcome": "PASS"
+          },
+          "lamp": {
+            "actual_position": [
+              12,
+              4
+            ],
+            "actual_role": "amber-emission",
+            "anchor": "upper_body",
+            "expected_position": [
+              12,
+              4
+            ],
+            "expected_role": "amber-emission",
+            "max_distance": 2,
+            "outcome": "PASS"
+          }
+        },
+        "selected_offsets": {
+          "upper_body": [
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "anchor_results": {
+          "upper_body": "PASS"
+        },
+        "check_results": {
+          "upper_body": {
+            "comparison": "registered-structure",
+            "max_occupancy_difference": 0.2,
+            "max_palette_role_distance": 0.2,
+            "occupancy_difference": 0.1581196581196581,
+            "outcome": "PASS",
+            "palette_role_distance": 0.023179663937957767
+          }
+        },
+        "first_failure": null,
+        "first_mismatch": null,
+        "landmark_results": {
+          "buckle": {
+            "actual_position": [
+              12,
+              17
+            ],
+            "actual_role": "amber-emission",
+            "anchor": "upper_body",
+            "expected_position": [
+              11,
+              17
+            ],
+            "expected_role": "amber-emission",
+            "max_distance": 2,
+            "outcome": "PASS"
+          },
+          "eye": {
+            "actual_position": [
+              9,
+              7
+            ],
+            "actual_role": "dark-outline",
+            "anchor": "upper_body",
+            "expected_position": [
+              10,
+              8
+            ],
+            "expected_role": "dark-outline",
+            "max_distance": 1,
+            "outcome": "PASS"
+          },
+          "lamp": {
+            "actual_position": [
+              13,
+              4
+            ],
+            "actual_role": "amber-emission",
+            "anchor": "upper_body",
+            "expected_position": [
+              12,
+              5
+            ],
+            "expected_role": "amber-emission",
+            "max_distance": 2,
+            "outcome": "PASS"
+          }
+        },
+        "selected_offsets": {
+          "upper_body": [
+            0,
+            1
+          ]
+        }
+      },
+      {
+        "anchor_results": {
+          "upper_body": "PASS"
+        },
+        "check_results": {
+          "upper_body": {
+            "comparison": "registered-structure",
+            "max_occupancy_difference": 0.2,
+            "max_palette_role_distance": 0.2,
+            "occupancy_difference": 0.13793103448275862,
+            "outcome": "PASS",
+            "palette_role_distance": 0.0323818918745041
+          }
+        },
+        "first_failure": null,
+        "first_mismatch": null,
+        "landmark_results": {
+          "buckle": {
+            "actual_position": [
+              12,
+              16
+            ],
+            "actual_role": "amber-emission",
+            "anchor": "upper_body",
+            "expected_position": [
+              11,
+              16
+            ],
+            "expected_role": "amber-emission",
+            "max_distance": 2,
+            "outcome": "PASS"
+          },
+          "eye": {
+            "actual_position": [
+              10,
+              7
+            ],
+            "actual_role": "dark-outline",
+            "anchor": "upper_body",
+            "expected_position": [
+              10,
+              7
+            ],
+            "expected_role": "dark-outline",
+            "max_distance": 1,
+            "outcome": "PASS"
+          },
+          "lamp": {
+            "actual_position": [
+              13,
+              3
+            ],
+            "actual_role": "amber-emission",
+            "anchor": "upper_body",
+            "expected_position": [
+              12,
+              4
+            ],
+            "expected_role": "amber-emission",
+            "max_distance": 2,
+            "outcome": "PASS"
+          }
+        },
+        "selected_offsets": {
+          "upper_body": [
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "anchor_results": {
+          "upper_body": "PASS"
+        },
+        "check_results": {
+          "upper_body": {
+            "comparison": "registered-structure",
+            "max_occupancy_difference": 0.2,
+            "max_palette_role_distance": 0.2,
+            "occupancy_difference": 0.18025751072961374,
+            "outcome": "PASS",
+            "palette_role_distance": 0.014640767194001276
+          }
+        },
+        "first_failure": null,
+        "first_mismatch": null,
+        "landmark_results": {
+          "buckle": {
+            "actual_position": [
+              12,
+              15
+            ],
+            "actual_role": "amber-emission",
+            "anchor": "upper_body",
+            "expected_position": [
+              11,
+              15
+            ],
+            "expected_role": "amber-emission",
+            "max_distance": 2,
+            "outcome": "PASS"
+          },
+          "eye": {
+            "actual_position": [
+              9,
+              5
+            ],
+            "actual_role": "dark-outline",
+            "anchor": "upper_body",
+            "expected_position": [
+              10,
+              6
+            ],
+            "expected_role": "dark-outline",
+            "max_distance": 1,
+            "outcome": "PASS"
+          },
+          "lamp": {
+            "actual_position": [
+              13,
+              2
+            ],
+            "actual_role": "amber-emission",
+            "anchor": "upper_body",
+            "expected_position": [
+              12,
+              3
+            ],
+            "expected_role": "amber-emission",
+            "max_distance": 2,
+            "outcome": "PASS"
+          }
+        },
+        "selected_offsets": {
+          "upper_body": [
+            0,
+            -1
+          ]
+        }
+      }
+    ]
+  },
+  "layout": {
+    "frame_count": 4,
+    "frame_h": 24,
+    "frame_order": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "frame_w": 16,
+    "gutter": 2
+  },
+  "manifest_sha256": "290693deef113c56cf3af9c011fee8c90e1af53b58880b9e381db7a8e603b3a0",
+  "motion_class": "walk",
+  "outcome": "PASS",
+  "polish_profile": {
+    "id": "dwarf-miner",
+    "sha256": "0254f0464e9980770415a928876c9214fa35c3ee3fa23d37970581d065425ef3"
+  },
+  "polished_frames": [
+    {
+      "index": 0,
+      "sha256": "b4af10fbae49b892bac09673683bd452e339727e005f465d994f78deb2ddfe41"
+    },
+    {
+      "index": 1,
+      "sha256": "d7b1496a3addcee08c5b15fe432e202201415902ce1be090dbb22610d170df21"
+    },
+    {
+      "index": 2,
+      "sha256": "97b8260bf0b37b76c9b91bc0b88ff5e42c5ec34fe4a8622e5313b052362cc492"
+    },
+    {
+      "index": 3,
+      "sha256": "e81313d55f9d71c2ac4266fdc8b3bd55f89df7c7e3642de04eb3d27299a2b3f6"
+    }
+  ],
+  "provider": {
+    "relative_path": "provider/source.png",
+    "sha256": "562b9de2bf2b8af9af484ede5d83e5e978b7d451daef7083f2b7ae73c18f0580"
+  },
+  "provider_acceptance": {
+    "outcome": "PASS"
+  },
+  "release_frames": [
+    {
+      "index": 0,
+      "sha256": "b4af10fbae49b892bac09673683bd452e339727e005f465d994f78deb2ddfe41"
+    },
+    {
+      "index": 1,
+      "sha256": "d7b1496a3addcee08c5b15fe432e202201415902ce1be090dbb22610d170df21"
+    },
+    {
+      "index": 2,
+      "sha256": "97b8260bf0b37b76c9b91bc0b88ff5e42c5ec34fe4a8622e5313b052362cc492"
+    },
+    {
+      "index": 3,
+      "sha256": "e81313d55f9d71c2ac4266fdc8b3bd55f89df7c7e3642de04eb3d27299a2b3f6"
+    }
+  ],
+  "schema": "final-polish-report/0",
+  "structural": {
+    "outcome": "PASS",
+    "pass": true,
+    "violations": []
+  },
+  "visible_cell_delta": {
+    "edits": [],
+    "per_frame_counts": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "total_edits": 0
+  }
+}

@@ -7,11 +7,15 @@
     "EDIT",
     "UNCERTAIN"
   ],
-  "occlusion_rule": "An identity anchor may disappear only when the pose clearly occludes it; do not add a feature through an arm, hand, tool, or turned-away surface.",
+  "occlusion_rule": "An identity feature may disappear only when the pose clearly occludes it; do not add a feature through an arm, hand, tool, or turned-away surface.",
   "fixed_questions": [
     {
       "id": "identity_anchors",
       "question": "Are short/broad proportions, beard mass, the oversized blue lamp helmet, green clothing, belt and buckle, gloves, boots, and pickaxe legible and temporally consistent whenever the pose exposes them?"
+    },
+    {
+      "id": "identity_lock_pass",
+      "question": "Does the machine-readable check report show automatic Identity Lock PASS for every Frame before you judge exposed identity outside the locked regions?"
     },
     {
       "id": "black_eye_no_sclera",
@@ -68,11 +72,19 @@
     "Use the fewest changed Cells that resolves the observed defect.",
     "Use only colors already allowed by the combined Draft palette.",
     "Never change alpha, baseline, dimensions, Frame order, or silhouette.",
-    "Prefer restoring an identity anchor or separating forms over adding decorative detail.",
+    "Prefer restoring an identity feature or separating forms over adding decorative detail.",
+    "Never override an automatic Identity Lock FAIL with a visual PASS.",
     "Return UNCERTAIN instead of inventing intent when the profile and pose do not settle the edit."
   ],
   "audit_workflow": [
-    "Read the machine-readable check report before opening art.",
+    "For walk and swing, run strip:polish seed with the dwarf identity declaration; it copies the original idle provider Strip byte-for-byte for the first Attempt.",
+    "Submit that detailed provider seed as the image-edit base (edit source), not merely as auxiliary guidance.",
+    "Bind identity.png separately as the post-ingest identity anchor used by automatic Identity Lock; never upscale it into a generation canvas.",
+    "Record the declared generation_source hash as edit_source_sha256 in each image-edit Attempt.",
+    "Do not use fresh text-to-image generation for walk or swing.",
+    "Generate sequential immutable Attempts until provenance, automatic Identity Lock, coherence, and polish pass.",
+    "Record every rejection and predecessor edge in provider/attempts.json; do not cap Attempt count with a fixed quota.",
+    "Run Identity Lock only after provider recovery produces logical Frames; read that machine-readable check report before opening art and confirm automatic PASS.",
     "Inspect one composite or animation preview at native scale and enlarged with nearest-neighbor scaling.",
     "Answer every fixed question and every applicable Motion-class override.",
     "Apply the fewest permitted Cell edits for EDIT verdicts.",

@@ -1,135 +1,160 @@
 {
-  "schema": "polish-visual-audit/0",
-  "bundle": "assets/first-room/dwarf/walk",
-  "profile_id": "dwarf-miner",
-  "profile_sha256": "0e60aee8d4a630bad6fdabc8d2525c8ae9e2cda8ceab92e37a1dd972a4fcedcf",
-  "motion_class": "walk",
-  "inspection": {
-    "native_scale": true,
-    "nearest_neighbor_enlargement": true,
-    "composites": [
-      "inspected release Frames at 16\u00d724 native beside identity.png and idle release Frames",
-      "inspected 8\u00d7 nearest-neighbor composite of polished Frames"
-    ]
-  },
-  "machine_check": {
-    "command": "npm run strip:polish -- check assets/first-room/dwarf/walk --json",
-    "outcome": "PASS",
-    "fingerprint": "3d6cd808a6912bb003aef3186d4ceb406bfa03de5aae69e81006fc92b8b1791a",
-    "visible_cell_edits": 0,
-    "edit_summary": "No Cell edits required; provider ingest and structural checks passed on first attempt."
-  },
   "answers": [
     {
       "id": "identity_anchors",
       "question": "Are short/broad proportions, beard mass, the oversized blue lamp helmet, green clothing, belt and buckle, gloves, boots, and pickaxe legible and temporally consistent whenever the pose exposes them?",
-      "verdict": "PASS",
-      "rationale": "Short/broad dwarf proportions, large rust beard mass, oversized blue lamp helmet with centered amber lamp, green tunic, leather belt with amber buckle, gloves, broad boots, and shoulder pickaxe remain legible and consistent across all four walk Frames whenever exposed."
+      "rationale": "Short/broad dwarf proportions, large rust beard mass, oversized blue lamp helmet with centered amber lamp, green tunic, leather belt with amber buckle, gloves, broad boots, and shoulder pickaxe remain legible and consistent across all four walk Frames whenever exposed.",
+      "verdict": "PASS"
     },
     {
       "id": "black_eye_no_sclera",
       "question": "When the eye is exposed, is it a single black Cell with no white sclera?",
-      "verdict": "PASS",
-      "rationale": "Each exposed eye reads as a single near-black Cell with no white sclera Cells in any Frame."
+      "rationale": "Each exposed eye reads as a single near-black Cell with no white sclera Cells in any Frame.",
+      "verdict": "PASS"
     },
     {
       "id": "native_scale_separation",
       "question": "At native scale, are face/beard, beard/torso, hands/handle, legs/torso, and boots/ground separated rather than accidentally melding at same-value contacts?",
-      "verdict": "PASS",
-      "rationale": "At native 16\u00d724, face/beard, beard/torso, legs/torso, and boots/ground read as separated masses; buckle and lamp remain distinct accents throughout the stride."
+      "rationale": "At native 16\u00d724, face/beard, beard/torso, legs/torso, and boots/ground read as separated masses; buckle and lamp remain distinct accents throughout the stride.",
+      "verdict": "PASS"
     },
     {
       "id": "palette_lighting_outline",
       "question": "Do Master Palette roles, upper-left local light, and selective warm-dark outline remain stable across Frames?",
-      "verdict": "PASS",
-      "rationale": "Warm-dark selective outline, upper-left local highlights on helmet/beard, and role hues (blue metal, green cloth, earth/beard, amber accents) stay stable across the loop within the draft palette."
+      "rationale": "Warm-dark selective outline, upper-left local highlights on helmet/beard, and role hues (blue metal, green cloth, earth/beard, amber accents) stay stable across the loop within the draft palette.",
+      "verdict": "PASS"
     },
     {
       "id": "temporal_consistency",
       "question": "Do identity accents and intentional outlines remain stable across Frames without one-Frame decorative flicker?",
-      "verdict": "PASS",
-      "rationale": "Identity accents (lamp, buckle, eye, pickaxe) do not one-Frame flicker; walk motion is leg alternation with planted boots and tight f3\u2192f0 loop closure (metric 0.0676)."
+      "rationale": "Identity accents (lamp, buckle, eye, pickaxe) do not one-Frame flicker; walk motion is leg alternation with planted boots and tight f3\u2192f0 loop closure (metric 0.1558).",
+      "verdict": "PASS"
     },
     {
       "id": "alternating_legs",
       "question": "Do the alternating legs remain separable from each other and from the torso throughout the loop?",
-      "verdict": "PASS",
-      "rationale": "Front and rear legs alternate with distinct boot masses separable from the green tunic torso in every Frame."
+      "rationale": "Front and rear legs alternate with distinct boot masses separable from the green tunic torso in every Frame.",
+      "verdict": "PASS"
     },
     {
       "id": "stable_torso",
       "question": "Does the torso keep a stable silhouette and readable upper-body mass throughout the loop?",
-      "verdict": "PASS",
-      "rationale": "Helmet, beard, and upper torso mass remain stable with only a one-Cell vertical bob; no horizontal translation across Frames."
+      "rationale": "Helmet, beard, and upper torso mass remain stable with only a one-Cell vertical bob; no horizontal translation across Frames.",
+      "verdict": "PASS"
     }
   ],
+  "bundle": "assets/first-room/dwarf/walk",
   "cross_animation_identity": {
-    "reference_identity_sha256": "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9",
-    "idle_bundle": "assets/first-room/dwarf/idle",
-    "idle_release_frame_0_sha256": "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9",
     "anchors": [
       {
         "id": "helmet_width_rim_lamp",
         "question": "Do helmet width, rim, and centered amber lamp match the canonical identity beside idle?",
-        "verdict": "PASS",
-        "rationale": "Oversized blue helmet width, rim treatment, and centered amber lamp match identity.png and idle release Frames across all walk Frames."
+        "rationale": "Oversized blue helmet width, rim treatment, and centered amber lamp match identity.png and idle release Frames across all walk Frames.",
+        "verdict": "PASS"
       },
       {
         "id": "beard_mass",
         "question": "Does beard mass and rust-brown shape remain the same character?",
-        "verdict": "PASS",
-        "rationale": "Large rust-brown beard mass and silhouette match identity and idle; pose-driven occlusion only."
+        "rationale": "Large rust-brown beard mass and silhouette match identity and idle; pose-driven occlusion only.",
+        "verdict": "PASS"
       },
       {
         "id": "torso_width",
         "question": "Does torso width remain consistent with identity and idle?",
-        "verdict": "PASS",
-        "rationale": "Short broad torso width matches canonical dwarf proportions in identity and idle cohort."
+        "rationale": "Short broad torso width matches canonical dwarf proportions in identity and idle cohort.",
+        "verdict": "PASS"
       },
       {
         "id": "belt_height",
         "question": "Does belt height remain consistent?",
-        "verdict": "PASS",
-        "rationale": "Dark leather belt sits at the same waist height as identity and idle across all walk Frames."
+        "rationale": "Dark leather belt sits at the same waist height as identity and idle across all walk Frames.",
+        "verdict": "PASS"
       },
       {
         "id": "buckle_role",
         "question": "Does the amber buckle retain the same accent role?",
-        "verdict": "PASS",
-        "rationale": "Small amber buckle remains a centered waist accent matching idle and identity palette roles."
+        "rationale": "Small amber buckle remains a centered waist accent matching idle and identity palette roles.",
+        "verdict": "PASS"
       },
       {
         "id": "boot_construction",
         "question": "Do broad brown boots retain the same construction?",
-        "verdict": "PASS",
-        "rationale": "Broad brown boot construction and sole mass match identity/idle; stride alternation does not change boot design."
+        "rationale": "Broad brown boot construction and sole mass match identity/idle; stride alternation does not change boot design.",
+        "verdict": "PASS"
       },
       {
         "id": "pickaxe_scale",
         "question": "Does compact pickaxe scale behind the shoulder match identity?",
-        "verdict": "PASS",
-        "rationale": "Compact heavy pickaxe behind the right shoulder matches identity scale and placement whenever exposed."
+        "rationale": "Compact heavy pickaxe behind the right shoulder matches identity scale and placement whenever exposed.",
+        "verdict": "PASS"
       },
       {
         "id": "eye_treatment",
         "question": "Does eye treatment (single black Cell, no sclera) match identity?",
-        "verdict": "PASS",
-        "rationale": "Exposed eye is a single black Cell without white sclera, matching identity and idle treatment."
+        "rationale": "Exposed eye is a single black Cell without white sclera, matching identity and idle treatment.",
+        "verdict": "PASS"
       },
       {
         "id": "palette_roles",
         "question": "Do Master Palette roles remain the same character?",
-        "verdict": "PASS",
-        "rationale": "Blue metal, green cloth, rust beard, amber accents, and earth boot roles match identity.png and idle release Frames."
+        "rationale": "Blue metal, green cloth, rust beard, amber accents, and earth boot roles match identity.png and idle release Frames.",
+        "verdict": "PASS"
       }
-    ]
+    ],
+    "idle_bundle": "assets/first-room/dwarf/idle",
+    "idle_release_frame_0_sha256": "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9",
+    "reference_identity_sha256": "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9"
   },
   "explicit_confirmations": {
-    "heavy_deliberate_stride": "PASS",
-    "in_place_horizontal_registration": "PASS",
+    "automatic_identity_lock_pass_all_frames": "PASS",
+    "boot_construction_same_dwarf": "PASS",
+    "canonical_upper_body_unchanged": "PASS",
     "closed_walk_loop": "PASS",
+    "heavy_deliberate_stride": "PASS",
+    "heavy_stride": "PASS",
+    "horizontal_registration": "PASS",
+    "in_place_horizontal_registration": "PASS",
+    "legs_alternate_separate_from_torso": "PASS",
+    "loop_closure": "PASS",
+    "one_cell_bob": "PASS",
     "same_character_as_identity_and_idle": "PASS"
   },
-  "uncertain_count": 0,
-  "overall": "PASS"
+  "hash_bindings": {
+    "check_report_fingerprint": "961e53b1a5cdce3024cc054ec65b0de27604311a0e4cdead1d4adade187fdddc",
+    "check_report_sha256": "f887b479c4d81b1915398bd8294ea5aeb40a6d3286a75fa8fab97c27b529766f",
+    "identity_sha256": "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9",
+    "idle_release_frame_hashes": [
+      "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9",
+      "aa1ab855e4c26a35e2a7302dc9ac9b0df4870c360eaf2f28279030185f261dcc",
+      "545e4b1b227fdabe223ebc456593d8d743eff9a2ecff7a0e14e05ee7c17c12f1",
+      "7602f5d0c79f9fbd8b6d05203b990382b33a3981c1db63e9b61d91a8cb6b9a7c"
+    ],
+    "release_frame_hashes": [
+      "b4af10fbae49b892bac09673683bd452e339727e005f465d994f78deb2ddfe41",
+      "d7b1496a3addcee08c5b15fe432e202201415902ce1be090dbb22610d170df21",
+      "97b8260bf0b37b76c9b91bc0b88ff5e42c5ec34fe4a8622e5313b052362cc492",
+      "e81313d55f9d71c2ac4266fdc8b3bd55f89df7c7e3642de04eb3d27299a2b3f6"
+    ]
+  },
+  "inspection": {
+    "composites": [
+      "inspected release Frames at 16\u00d724 native beside identity.png and idle release Frames",
+      "inspected 8\u00d7 nearest-neighbor composite of polished Frames"
+    ],
+    "native_scale": true,
+    "nearest_neighbor_enlargement": true
+  },
+  "machine_check": {
+    "command": "npm run strip:polish -- check assets/first-room/dwarf/walk --json",
+    "edit_summary": "Provider image-edit from idle seed with identity-locked upper body and walk leg poses; no additional polish Cell edits required.",
+    "fingerprint": "961e53b1a5cdce3024cc054ec65b0de27604311a0e4cdead1d4adade187fdddc",
+    "outcome": "PASS",
+    "visible_cell_edits": 0
+  },
+  "motion_class": "walk",
+  "overall": "PASS",
+  "profile_id": "dwarf-miner",
+  "profile_sha256": "0254f0464e9980770415a928876c9214fa35c3ee3fa23d37970581d065425ef3",
+  "schema": "polish-visual-audit/0",
+  "uncertain_count": 0
 }
