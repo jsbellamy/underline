@@ -181,11 +181,31 @@ It supplies art-direction judgment; it is not a deterministic Gate.
 _Avoid_: polish prompt, automatic accent detector
 
 **Identity Lock**:
-A subject-specific, Motion-class rule that compares declared canonical Cell
-rectangles against an Attempt after bounded registration. It is distinct from
-temporal coherence Gates: coherence compares Frames within one Strip; an
-Identity Lock compares every Frame to an external canonical identity.
+A subject-specific, Motion-class rule that compares declared canonical
+structure, palette roles, and landmarks against an Attempt after bounded
+registration. It is distinct from temporal coherence Gates: coherence compares
+Frames within one Strip. Identity Lock compares every Frame to an external canonical identity.
+The post-ingest identity anchor is validation evidence, not a generation canvas.
 _Avoid_: identity anchor audit, canonical redraw check
+
+**Generation source**:
+The detailed, hash-bound provider artwork used as the image-edit base for a new
+Motion-class Attempt. For dwarf walk and swing this is the original idle
+provider Strip. It is distinct from the post-ingest identity anchor and must not
+be reconstructed by upscaling a Release Frame.
+_Avoid_: identity anchor, Release Frame, visual reference
+
+**Post-ingest identity anchor**:
+The post-ingest Release Frame used by Identity Lock as external canonical
+validation evidence. It is deliberately logical-resolution and must never be
+upscaled or submitted as the generation source.
+_Avoid_: generation source, edit source, seed canvas
+
+**Identity feature**:
+A visually defining subject detail such as the dwarf's lamp, eye, beard, belt,
+or buckle. A pose may occlude an identity feature; this does not change the
+post-ingest identity anchor used as external validation evidence.
+_Avoid_: post-ingest identity anchor, generation source
 
 **Draft Frame**:
 An immutable-by-hash canonical Frame exported from the accepted provider Strip

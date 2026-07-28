@@ -1,15 +1,41 @@
 {
-  "schema": "identity-lock/0",
+  "schema": "identity-lock/1",
   "identity_sha256": "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9",
   "frame_size": [16, 24],
-  "comparison": "exact-rgba",
+  "master_palette": {
+    "relative_path": "assets/palettes/first-room.json",
+    "sha256": "b21e2a2a85cf8e25c1cbdc69f8f0ffc4cfda7dc7f1f0a451ef7ed9d1fa7d6041"
+  },
   "motion_classes": {
     "walk": {
       "locks": [
         {
           "id": "upper_body",
           "rectangle": { "x0": 0, "x1": 15, "y0": 1, "y1": 18 },
-          "permitted_offsets": [[0, -1], [0, 0], [0, 1]]
+          "permitted_offsets": [[0, -1], [0, 0], [0, 1]],
+          "comparison": "registered-structure",
+          "max_occupancy_difference": 0.20,
+          "max_palette_role_distance": 0.20
+        }
+      ],
+      "landmarks": [
+        {
+          "id": "lamp",
+          "canonical": [12, 4],
+          "palette_role": "amber-emission",
+          "max_distance": 2
+        },
+        {
+          "id": "eye",
+          "canonical": [10, 7],
+          "palette_role": "dark-outline",
+          "max_distance": 1
+        },
+        {
+          "id": "buckle",
+          "canonical": [11, 16],
+          "palette_role": "amber-emission",
+          "max_distance": 2
         }
       ]
     },
@@ -21,7 +47,10 @@
           "permitted_offsets": {
             "dx": [-1, 0, 1],
             "dy": [-1, 0, 1]
-          }
+          },
+          "comparison": "registered-structure",
+          "max_occupancy_difference": 0.25,
+          "max_palette_role_distance": 0.25
         },
         {
           "id": "belt_core",
@@ -29,12 +58,36 @@
           "permitted_offsets": {
             "dx": [-1, 0, 1],
             "dy": [0, 1]
-          }
+          },
+          "comparison": "registered-structure",
+          "max_occupancy_difference": 0.25,
+          "max_palette_role_distance": 0.30
         },
         {
           "id": "boots",
           "rectangle": { "x0": 3, "x1": 14, "y0": 21, "y1": 23 },
-          "permitted_offsets": [[0, 0]]
+          "permitted_offsets": [[0, 0]],
+          "comparison": "exact-occupancy"
+        }
+      ],
+      "landmarks": [
+        {
+          "id": "lamp",
+          "canonical": [12, 4],
+          "palette_role": "amber-emission",
+          "max_distance": 2
+        },
+        {
+          "id": "eye",
+          "canonical": [10, 7],
+          "palette_role": "dark-outline",
+          "max_distance": 1
+        },
+        {
+          "id": "buckle",
+          "canonical": [11, 16],
+          "palette_role": "amber-emission",
+          "max_distance": 2
         }
       ],
       "relational_constraints": [

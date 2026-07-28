@@ -28,6 +28,7 @@ WALK_STRIP = INBOX / "05-miner-walk.png"
 SWING_STRIP = INBOX / "06-miner-swing.png"
 LANTERN_STRIP = INBOX / "14-lantern-flicker.png"
 IDENTITY_PNG = ROOT / "assets" / "first-room" / "dwarf" / "identity.png"
+IDENTITY_JSON = ROOT / "assets" / "first-room" / "dwarf" / "identity.json"
 IDLE_SEED_STRIP = ROOT / "assets" / "first-room" / "dwarf" / "idle" / "provider" / "source.png"
 CANONICAL_IDENTITY_SHA = "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9"
 LOGICAL_SIZE = (DEFAULT_LAYOUT.frame_w, DEFAULT_LAYOUT.frame_h)
@@ -757,24 +758,60 @@ def test_seed_cli_emits_json_and_is_byte_identical_on_rerun(tmp_path: Path) -> N
     out_a = tmp_path / "seed-a.png"
     out_b = tmp_path / "seed-b.png"
     result = _run_module(
-        ["seed", "--identity", str(IDENTITY_PNG), "--out", str(out_a), "--json"]
+        [
+            "seed",
+            "--identity-declaration",
+            str(IDENTITY_JSON),
+            "--out",
+            str(out_a),
+            "--json",
+        ]
     )
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
-    assert data["dimensions"] == [1120, 384]
+    assert data["dimensions"] == [1536, 1024]
     assert data["sha256"] == sha256_file(out_a)
+    assert data["generation_source_sha256"] == sha256_file(IDLE_SEED_STRIP)
+    assert data["identity_anchor_sha256"] == CANONICAL_IDENTITY_SHA
+    assert out_a.read_bytes() == IDLE_SEED_STRIP.read_bytes()
     rerun = _run_module(
-        ["seed", "--identity", str(IDENTITY_PNG), "--out", str(out_b), "--json"]
+        [
+            "seed",
+            "--identity-declaration",
+            str(IDENTITY_JSON),
+            "--out",
+            str(out_b),
+            "--json",
+        ]
     )
     assert rerun.returncode == 0
     assert out_a.read_bytes() == out_b.read_bytes()
+
+
+def test_seed_cli_rejects_release_identity_as_generation_source(tmp_path: Path) -> None:
+    result = _run_module(
+        [
+            "seed",
+            "--identity-declaration",
+            str(IDENTITY_PNG),
+            "--out",
+            str(tmp_path / "seed.png"),
+            "--json",
+        ]
+    )
+    assert result.returncode == 2
+    assert "identity declaration" in result.stderr
 
 
 def test_dwarf_miner_profile_and_prompt_require_image_edit_workflow() -> None:
     profile = json.loads((ROOT / "polish-profiles" / "dwarf-miner.json").read_text())
     workflow = " ".join(profile["audit_workflow"]).lower()
     assert "strip:polish seed" in workflow
-    assert "edit source" in workflow
+    assert "original idle provider strip" in workflow
+    assert "post-ingest identity anchor" in workflow
+    assert "never upscale" in workflow
+    assert "edit_source_sha256" in workflow
+    assert "after provider recovery" in workflow
     assert "text-to-image" in workflow
     assert "sequential" in workflow
     assert "predecessor" in workflow
@@ -782,7 +819,11 @@ def test_dwarf_miner_profile_and_prompt_require_image_edit_workflow() -> None:
     assert "identity lock" in workflow
     prompt = (ROOT / "prompts" / "production" / "animation-strip.md").read_text()
     assert "image-edit" in prompt.lower()
-    assert "identity seed" in prompt.lower() or "strip:polish seed" in prompt
+    assert "original idle provider strip" in prompt.lower()
+    assert "post-ingest identity anchor" in prompt.lower()
+    assert "never upscale" in prompt.lower()
+    assert "edit_source_sha256" in prompt
+    assert "after provider recovery" in prompt.lower()
     assert "text-to-image" in prompt.lower()
 
 
@@ -802,11 +843,25 @@ def test_v2_walk_check_json_binds_sequential_attempt_evidence(tmp_path: Path) ->
     assert selected[0]["raw_sha256"] == provenance["raw_sha256"]
 
     result = _run_module(["check", str(bundle), "--json"])
-    assert result.returncode in {0, 1}, result.stderr
+    assert result.returncode == 1, result.stderr
     data = json.loads(result.stdout)
     assert data["identity_lock"] is not None
     assert data["identity_lock"]["motion_class"] == "walk"
-    assert data["outcome"] in {"PASS", "FAIL", "REVIEW"}
+    assert data["identity_lock"]["outcome"] == "FAIL"
+    identity_lock = data["identity_lock"]
+    assert "first_failure" in identity_lock
+    assert len(identity_lock["per_frame"]) == 4
+    for frame in identity_lock["per_frame"]:
+        assert "upper_body" in frame["selected_offsets"]
+        assert frame["check_results"]["upper_body"]["comparison"] == "registered-structure"
+        assert {
+            "occupancy_difference",
+            "palette_role_distance",
+            "outcome",
+        } <= frame["check_results"]["upper_body"].keys()
+        assert {"lamp", "eye", "buckle"} <= frame["landmark_results"].keys()
+        assert "first_failure" in frame
+    assert data["outcome"] == "FAIL"
 
 
 def test_human_report_includes_required_fields(tmp_path: Path) -> None:

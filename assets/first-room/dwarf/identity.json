@@ -22,6 +22,11 @@
     "sha256": "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9",
     "source": "assets/first-room/dwarf/idle/release/frame-0.png"
   },
+  "generation_source": {
+    "relative_path": "assets/first-room/dwarf/idle/provider/source.png",
+    "sha256": "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3",
+    "purpose": "detailed image-edit generation base for walk and swing"
+  },
   "idle_bundle": {
     "relative_path": "assets/first-room/dwarf/idle",
     "motion_class": "idle",
@@ -35,5 +40,5 @@
     "walk",
     "swing"
   ],
-  "notes": "This image is the required visual reference for walk and swing generation."
+  "notes": "Use generation_source for provider image editing. identity_png is the post-ingest Release identity anchor, never a generation canvas."
 }

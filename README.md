@@ -62,7 +62,19 @@ Provenance evidence cannot convert ingest `FAIL` or `REVIEW` into `PASS`.
 
 For `dwarf-miner` with Motion class `walk` or `swing`, `init` additionally
 requires `--identity-reference` (canonical `assets/first-room/dwarf/identity.png`)
-and `--edit-source` (idle seed strip PNG). Those bytes are copied to
+and `--edit-source` (the original idle provider Strip). Create the edit source
+from its hash-bound declaration:
+
+```bash
+npm run strip:polish -- seed \
+  --identity-declaration assets/first-room/dwarf/identity.json \
+  --out <seed.png>
+```
+
+The source and anchor serve different stages. Use the detailed original idle
+provider Strip as the image-edit generation base. Use `identity.png` only as the
+post-ingest identity anchor for Identity Lock; never upscale the 16×24 anchor
+into a generation canvas. Those bytes are copied to
 `reference/identity.png` and `provider/edit-source.png`, bound in the manifest,
 and must match `generation_mode=image-edit` with the canonical identity hash in
 `reference_image_sha256` and the seed hash in `edit_source_sha256`. First-room

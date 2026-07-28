@@ -59,23 +59,39 @@ npm run strip:polish -- init <accepted-strip.png> --polish-profile <id>
 ## Dwarf-miner walk and swing — image-edit lifecycle
 
 `dwarf-miner` **walk** and **swing** Strips must be acquired by **image-edit**
-from a deterministic identity seed, not by fresh text-to-image redraw.
+from the original idle provider Strip, not by fresh text-to-image redraw.
 
-1. Build the seed canvas from the canonical identity:
+There are two deliberately different identity inputs:
+
+| Input | Use |
+|-------|-----|
+| `identity.json` → `generation_source` | The original idle provider Strip. Use this detailed provider artwork as the image-edit generation base. |
+| `identity.json` → `identity_png` | The post-ingest identity anchor. Use this 16×24 Release Frame only for deterministic Identity Lock evaluation after ingest. |
+
+Never upscale `identity.png` into a generation canvas: its ingest-reduced Cells
+have already discarded the provider artwork’s detail.
+
+1. Copy the hash-bound generation source declared by the dwarf identity:
 
 ```bash
-npm run strip:polish -- seed --identity assets/first-room/dwarf/identity.png \
+npm run strip:polish -- seed \
+  --identity-declaration assets/first-room/dwarf/identity.json \
   --out <seed.png> [--json]
 ```
 
-2. Submit `<seed.png>` as the **image-edit base** (edit source), with
-   `assets/first-room/dwarf/identity.png` bound as the visual identity reference.
-3. **Forbid** fresh text-to-image generation for these Motion classes.
-4. Generate **sequential immutable Attempts** until one passes provenance,
+2. Submit `<seed.png>` as the **image-edit base** (edit source). The command
+   copies the original idle provider Strip byte-for-byte.
+3. Bind `assets/first-room/dwarf/identity.png` separately as the post-ingest
+   identity anchor (`--identity-reference`) for validation.
+4. **Forbid** fresh text-to-image generation for these Motion classes.
+5. Record the declared provider-source hash as `edit_source_sha256` in every
+   image-edit Attempt’s provenance.
+6. Run Identity Lock only after provider recovery has produced logical Frames.
+7. Generate **sequential immutable Attempts** until one passes provenance,
    automatic Identity Lock, coherence Gates, polish, and visual audit.
-5. Record every rejection and predecessor edge in the attempt ledger; never cap
+8. Record every rejection and predecessor edge in the attempt ledger; never cap
    Attempt count with a fixed quota.
-6. Visual audit judges motion readability and exposed identity **outside** the
+9. Visual audit judges motion readability and exposed identity **outside** the
    locked regions, but must cite the automatic Identity Lock PASS in the check
    report.
 

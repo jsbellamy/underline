@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from dataclasses import dataclass
 from itertools import product
 from pathlib import Path
@@ -10,22 +11,15 @@ from typing import Any, Literal, Mapping, Sequence
 
 from PIL import Image, UnidentifiedImageError
 
-from pipeline.gate_evidence import sha256_bytes, sha256_file
-from pipeline.recovery import MAGENTA
+from pipeline.gate_evidence import sha256_file
 from pipeline.strip import Cell
 
-IDENTITY_LOCK_SCHEMA = "identity-lock/0"
+IDENTITY_LOCK_SCHEMA = "identity-lock/1"
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_IDENTITY_LOCKS_PATH = (
     _REPO_ROOT / "assets" / "first-room" / "dwarf" / "identity-locks.json"
 )
 DEFAULT_IDENTITY_PATH = _REPO_ROOT / "assets" / "first-room" / "dwarf" / "identity.png"
-
-SEED_SCALE = 16
-SEED_FRAME_COUNT = 4
-SEED_GUTTER_LOGICAL_CELLS = 2
-SEED_WIDTH = 1120
-SEED_HEIGHT = 384
 
 
 class IdentityLockError(ValueError):
@@ -48,6 +42,9 @@ class IdentityLockMismatch:
 class FrameIdentityLockResult:
     selected_offsets: dict[str, tuple[int, int]]
     anchor_results: dict[str, Outcome]
+    check_results: dict[str, dict[str, Any]]
+    landmark_results: dict[str, dict[str, Any]]
+    first_failure: dict[str, Any] | None
     first_mismatch: IdentityLockMismatch | None
 
 
@@ -58,6 +55,7 @@ class IdentityLockResult:
     lock_spec_sha256: str
     motion_class: str
     per_frame: tuple[FrameIdentityLockResult, ...]
+    first_failure: dict[str, Any] | None
     first_mismatch: IdentityLockMismatch | None
 
 
@@ -149,11 +147,87 @@ def _validate_lock_row(row: Mapping[str, Any], *, where: str) -> dict[str, Any]:
     offsets = row.get("permitted_offsets")
     if offsets is None:
         raise IdentityLockError(f"{where} lock missing permitted_offsets")
-    return {
+    comparison = row.get("comparison")
+    if comparison not in {"registered-structure", "exact-occupancy"}:
+        raise IdentityLockError(
+            f"{where} lock {lock_id} comparison must be registered-structure "
+            "or exact-occupancy"
+        )
+    parsed = {
         "id": lock_id,
         "rectangle": _validate_rectangle(rectangle, where=f"{where} lock {lock_id}"),
         "offsets": _expand_offsets(offsets),
+        "comparison": comparison,
     }
+    if comparison == "registered-structure":
+        for key in ("max_occupancy_difference", "max_palette_role_distance"):
+            value = row.get(key)
+            if not isinstance(value, (int, float)) or not 0 <= float(value) <= 1:
+                raise IdentityLockError(
+                    f"{where} lock {lock_id} {key} must be between 0 and 1"
+                )
+            parsed[key] = float(value)
+    return parsed
+
+
+def _resolve_bound_repo_file(binding: object, *, label: str) -> Path:
+    if not isinstance(binding, dict):
+        raise IdentityLockError(f"{label} must be a path/hash binding")
+    relative_path = binding.get("relative_path")
+    expected_sha = binding.get("sha256")
+    if not isinstance(relative_path, str) or not relative_path:
+        raise IdentityLockError(f"{label}.relative_path must be a non-empty string")
+    if not isinstance(expected_sha, str) or len(expected_sha) != 64:
+        raise IdentityLockError(f"{label}.sha256 must be a 64-char hex digest")
+    resolved = (_REPO_ROOT / relative_path).resolve()
+    try:
+        resolved.relative_to(_REPO_ROOT.resolve())
+    except ValueError as exc:
+        raise IdentityLockError(f"{label} path escapes repository") from exc
+    if not resolved.is_file():
+        raise IdentityLockError(f"missing {label}: {resolved}")
+    if sha256_file(resolved) != expected_sha:
+        raise IdentityLockError(f"{label} hash does not match binding")
+    return resolved
+
+
+def _load_palette_roles(path: Path) -> tuple[list[str], list[tuple[str, tuple[int, int, int]]]]:
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise IdentityLockError(f"invalid master palette JSON: {path}") from exc
+    groups = doc.get("role_groups") if isinstance(doc, dict) else None
+    if not isinstance(groups, list) or not groups:
+        raise IdentityLockError("master palette requires non-empty role_groups")
+    role_ids: list[str] = []
+    entries: list[tuple[str, tuple[int, int, int]]] = []
+    for group in groups:
+        if not isinstance(group, dict):
+            raise IdentityLockError("master palette role group must be an object")
+        role_id = group.get("id")
+        colors = group.get("colors")
+        if not isinstance(role_id, str) or not role_id:
+            raise IdentityLockError("master palette role group requires id")
+        if role_id in role_ids:
+            raise IdentityLockError(f"duplicate master palette role {role_id!r}")
+        if not isinstance(colors, list) or not colors:
+            raise IdentityLockError(f"master palette role {role_id!r} requires colors")
+        role_ids.append(role_id)
+        for color in colors:
+            if (
+                not isinstance(color, str)
+                or len(color) != 7
+                or not color.startswith("#")
+            ):
+                raise IdentityLockError(f"invalid color in master palette role {role_id!r}")
+            try:
+                rgb = tuple(int(color[index : index + 2], 16) for index in (1, 3, 5))
+            except ValueError as exc:
+                raise IdentityLockError(
+                    f"invalid color in master palette role {role_id!r}"
+                ) from exc
+            entries.append((role_id, rgb))
+    return role_ids, entries
 
 
 def validate_identity_lock_spec(doc: Mapping[str, Any], *, spec_path: Path | None = None) -> None:
@@ -169,8 +243,12 @@ def validate_identity_lock_spec(doc: Mapping[str, Any], *, spec_path: Path | Non
         or not all(isinstance(axis, int) and axis > 0 for axis in frame_size)
     ):
         raise IdentityLockError("frame_size must be a two-element positive integer array")
-    if doc.get("comparison") != "exact-rgba":
-        raise IdentityLockError("comparison must be exact-rgba")
+    frame_w, frame_h = int(frame_size[0]), int(frame_size[1])
+    palette_path = _resolve_bound_repo_file(
+        doc.get("master_palette"),
+        label="master_palette",
+    )
+    palette_roles, _ = _load_palette_roles(palette_path)
     motion_classes = doc.get("motion_classes")
     if not isinstance(motion_classes, dict) or not motion_classes:
         raise IdentityLockError("motion_classes must be a non-empty object")
@@ -181,12 +259,57 @@ def validate_identity_lock_spec(doc: Mapping[str, Any], *, spec_path: Path | Non
             raise IdentityLockError(f"motion_classes.{motion_class} must be an object")
         locks = motion_doc.get("locks")
         if not isinstance(locks, list) or not locks:
-            raise IdentityLockError(f"motion_classes.{motion_class}.locks must be a non-empty array")
+            raise IdentityLockError(
+                f"motion_classes.{motion_class}.locks must be a non-empty array"
+            )
         parsed_locks = [
             _validate_lock_row(lock, where=f"motion_classes.{motion_class}")
             for lock in locks
         ]
+        for lock in parsed_locks:
+            rectangle = lock["rectangle"]
+            if (
+                rectangle["x0"] < 0
+                or rectangle["y0"] < 0
+                or rectangle["x1"] >= frame_w
+                or rectangle["y1"] >= frame_h
+            ):
+                raise IdentityLockError(
+                    f"motion_classes.{motion_class} lock {lock['id']} "
+                    "rectangle exceeds frame_size"
+                )
         lock_ids = {lock["id"] for lock in parsed_locks}
+        landmarks = motion_doc.get("landmarks", [])
+        if not isinstance(landmarks, list):
+            raise IdentityLockError(
+                f"motion_classes.{motion_class}.landmarks must be an array"
+            )
+        landmark_ids: set[str] = set()
+        for index, landmark in enumerate(landmarks):
+            where = f"motion_classes.{motion_class}.landmarks[{index}]"
+            if not isinstance(landmark, dict):
+                raise IdentityLockError(f"{where} must be an object")
+            landmark_id = landmark.get("id")
+            canonical = landmark.get("canonical")
+            palette_role = landmark.get("palette_role")
+            max_distance = landmark.get("max_distance")
+            if not isinstance(landmark_id, str) or not landmark_id:
+                raise IdentityLockError(f"{where}.id must be a non-empty string")
+            if landmark_id in landmark_ids:
+                raise IdentityLockError(f"duplicate landmark {landmark_id!r}")
+            landmark_ids.add(landmark_id)
+            if (
+                not isinstance(canonical, list)
+                or len(canonical) != 2
+                or not all(isinstance(axis, int) for axis in canonical)
+                or not 0 <= canonical[0] < frame_w
+                or not 0 <= canonical[1] < frame_h
+            ):
+                raise IdentityLockError(f"{where}.canonical must be within frame_size")
+            if palette_role not in palette_roles:
+                raise IdentityLockError(f"{where} references unknown palette role")
+            if not isinstance(max_distance, int) or max_distance < 0:
+                raise IdentityLockError(f"{where}.max_distance must be non-negative")
         constraints = motion_doc.get("relational_constraints", [])
         if constraints is None:
             constraints = []
@@ -201,7 +324,9 @@ def validate_identity_lock_spec(doc: Mapping[str, Any], *, spec_path: Path | Non
                 )
             anchors = constraint.get("anchors")
             if not isinstance(anchors, list) or len(anchors) != 2:
-                raise IdentityLockError("relational_constraints anchors must be a two-element array")
+                raise IdentityLockError(
+                    "relational_constraints anchors must be a two-element array"
+                )
             for anchor in anchors:
                 if anchor not in lock_ids:
                     raise IdentityLockError(
@@ -238,11 +363,44 @@ def _cell_to_rgba(cell: Cell) -> tuple[int, int, int, int]:
     return (cell[0], cell[1], cell[2], 255)
 
 
-def _cells_match(canonical: Cell, attempt: Cell) -> bool:
-    return _cell_to_rgba(canonical) == _cell_to_rgba(attempt)
+def nearest_palette_role(
+    cell: Cell,
+    palette_entries: Sequence[tuple[str, tuple[int, int, int]]],
+) -> str | None:
+    if cell is None:
+        return None
+    return min(
+        palette_entries,
+        key=lambda entry: sum(
+            (cell[channel] - entry[1][channel]) ** 2 for channel in range(3)
+        ),
+    )[0]
 
 
-def _compare_shifted_rectangle(
+def _registered_cells(
+    canonical: list[list[Cell]],
+    attempt: list[list[Cell]],
+    rectangle: Mapping[str, int],
+    dx: int,
+    dy: int,
+) -> Sequence[tuple[int, int, Cell, Cell]]:
+    frame_h = len(canonical)
+    frame_w = len(canonical[0])
+    pairs: list[tuple[int, int, Cell, Cell]] = []
+    for y in range(rectangle["y0"], rectangle["y1"] + 1):
+        for x in range(rectangle["x0"], rectangle["x1"] + 1):
+            attempt_x = x + dx
+            attempt_y = y + dy
+            attempt_cell = (
+                attempt[attempt_y][attempt_x]
+                if 0 <= attempt_x < frame_w and 0 <= attempt_y < frame_h
+                else None
+            )
+            pairs.append((x, y, canonical[y][x], attempt_cell))
+    return pairs
+
+
+def _first_occupancy_mismatch(
     canonical: list[list[Cell]],
     attempt: list[list[Cell]],
     rectangle: Mapping[str, int],
@@ -251,29 +409,207 @@ def _compare_shifted_rectangle(
     *,
     anchor_id: str,
 ) -> IdentityLockMismatch | None:
-    frame_h = len(canonical)
-    frame_w = len(canonical[0])
-    for y in range(rectangle["y0"], rectangle["y1"] + 1):
-        for x in range(rectangle["x0"], rectangle["x1"] + 1):
-            attempt_x = x + dx
-            attempt_y = y + dy
-            if not (0 <= attempt_x < frame_w and 0 <= attempt_y < frame_h):
-                expected = _cell_to_rgba(canonical[y][x])
-                return IdentityLockMismatch(
-                    anchor=anchor_id,
-                    x=x,
-                    y=y,
-                    expected_rgba=expected,
-                    actual_rgba=(0, 0, 0, 0),
+    for x, y, canonical_cell, attempt_cell in _registered_cells(
+        canonical,
+        attempt,
+        rectangle,
+        dx,
+        dy,
+    ):
+        if (canonical_cell is None) != (attempt_cell is None):
+            return IdentityLockMismatch(
+                anchor=anchor_id,
+                x=x,
+                y=y,
+                expected_rgba=_cell_to_rgba(canonical_cell),
+                actual_rgba=_cell_to_rgba(attempt_cell),
+            )
+    return None
+
+
+def _compare_structural_lock(
+    canonical: list[list[Cell]],
+    attempt: list[list[Cell]],
+    lock: Mapping[str, Any],
+    offset: tuple[int, int],
+    palette_entries: Sequence[tuple[str, tuple[int, int, int]]],
+    palette_roles: Sequence[str],
+) -> tuple[dict[str, Any], IdentityLockMismatch | None]:
+    rectangle = lock["rectangle"]
+    dx, dy = offset
+    occupancy_changes = 0
+    occupancy_union = 0
+    canonical_counts = {role: 0 for role in palette_roles}
+    attempt_counts = {role: 0 for role in palette_roles}
+    canonical_opaque = 0
+    attempt_opaque = 0
+
+    for _, _, canonical_cell, attempt_cell in _registered_cells(
+        canonical,
+        attempt,
+        rectangle,
+        dx,
+        dy,
+    ):
+        canonical_present = canonical_cell is not None
+        attempt_present = attempt_cell is not None
+        occupancy_union += int(canonical_present or attempt_present)
+        occupancy_changes += int(canonical_present != attempt_present)
+        canonical_role = nearest_palette_role(canonical_cell, palette_entries)
+        attempt_role = nearest_palette_role(attempt_cell, palette_entries)
+        if canonical_role is not None:
+            canonical_counts[canonical_role] += 1
+            canonical_opaque += 1
+        if attempt_role is not None:
+            attempt_counts[attempt_role] += 1
+            attempt_opaque += 1
+
+    occupancy_difference = (
+        occupancy_changes / occupancy_union if occupancy_union else 0.0
+    )
+    comparison = str(lock["comparison"])
+    palette_role_distance = 0.0
+    if comparison == "registered-structure":
+        palette_role_distance = 0.5 * sum(
+            abs(
+                (
+                    canonical_counts[role] / canonical_opaque
+                    if canonical_opaque
+                    else 0.0
                 )
-            if not _cells_match(canonical[y][x], attempt[attempt_y][attempt_x]):
-                return IdentityLockMismatch(
-                    anchor=anchor_id,
-                    x=x,
-                    y=y,
-                    expected_rgba=_cell_to_rgba(canonical[y][x]),
-                    actual_rgba=_cell_to_rgba(attempt[attempt_y][attempt_x]),
+                - (
+                    attempt_counts[role] / attempt_opaque
+                    if attempt_opaque
+                    else 0.0
                 )
+            )
+            for role in palette_roles
+        )
+        passed = (
+            occupancy_difference <= float(lock["max_occupancy_difference"])
+            and palette_role_distance <= float(lock["max_palette_role_distance"])
+        )
+    else:
+        passed = occupancy_difference == 0.0
+
+    result: dict[str, Any] = {
+        "outcome": "PASS" if passed else "FAIL",
+        "comparison": comparison,
+        "occupancy_difference": occupancy_difference,
+        "palette_role_distance": (
+            palette_role_distance if comparison == "registered-structure" else None
+        ),
+    }
+    if comparison == "registered-structure":
+        result.update(
+            {
+                "max_occupancy_difference": lock["max_occupancy_difference"],
+                "max_palette_role_distance": lock["max_palette_role_distance"],
+            }
+        )
+    mismatch = None
+    if not passed:
+        mismatch = _first_occupancy_mismatch(
+            canonical,
+            attempt,
+            rectangle,
+            dx,
+            dy,
+            anchor_id=str(lock["id"]),
+        )
+    return result, mismatch
+
+
+def _landmark_anchor(
+    landmark: Mapping[str, Any],
+    locks: Sequence[Mapping[str, Any]],
+) -> str:
+    x, y = landmark["canonical"]
+    for lock in locks:
+        rectangle = lock["rectangle"]
+        if (
+            rectangle["x0"] <= x <= rectangle["x1"]
+            and rectangle["y0"] <= y <= rectangle["y1"]
+        ):
+            return str(lock["id"])
+    return str(locks[0]["id"])
+
+
+def _evaluate_landmarks(
+    canonical: list[list[Cell]],
+    attempt: list[list[Cell]],
+    landmarks: Sequence[Mapping[str, Any]],
+    locks: Sequence[Mapping[str, Any]],
+    offsets: Mapping[str, tuple[int, int]],
+    palette_entries: Sequence[tuple[str, tuple[int, int, int]]],
+) -> tuple[dict[str, dict[str, Any]], IdentityLockMismatch | None]:
+    frame_h = len(attempt)
+    frame_w = len(attempt[0])
+    results: dict[str, dict[str, Any]] = {}
+    first_mismatch: IdentityLockMismatch | None = None
+    for landmark in landmarks:
+        landmark_id = str(landmark["id"])
+        anchor_id = _landmark_anchor(landmark, locks)
+        dx, dy = offsets[anchor_id]
+        canonical_x, canonical_y = landmark["canonical"]
+        expected_x, expected_y = canonical_x + dx, canonical_y + dy
+        max_distance = int(landmark["max_distance"])
+        expected_role = str(landmark["palette_role"])
+        candidates: list[tuple[int, int, int]] = []
+        for y in range(expected_y - max_distance, expected_y + max_distance + 1):
+            for x in range(expected_x - max_distance, expected_x + max_distance + 1):
+                if not 0 <= x < frame_w or not 0 <= y < frame_h:
+                    continue
+                if nearest_palette_role(attempt[y][x], palette_entries) == expected_role:
+                    distance = max(abs(x - expected_x), abs(y - expected_y))
+                    candidates.append((distance, y, x))
+        actual_position: list[int] | None = None
+        actual_role: str | None = None
+        if candidates:
+            _, actual_y, actual_x = min(candidates)
+            actual_position = [actual_x, actual_y]
+            actual_role = expected_role
+        elif 0 <= expected_x < frame_w and 0 <= expected_y < frame_h:
+            actual_role = nearest_palette_role(
+                attempt[expected_y][expected_x],
+                palette_entries,
+            )
+        outcome: Outcome = "PASS" if actual_position is not None else "FAIL"
+        results[landmark_id] = {
+            "outcome": outcome,
+            "expected_role": expected_role,
+            "actual_role": actual_role,
+            "expected_position": [expected_x, expected_y],
+            "actual_position": actual_position,
+            "max_distance": max_distance,
+            "anchor": anchor_id,
+        }
+        if outcome == "FAIL" and first_mismatch is None:
+            actual = (
+                attempt[expected_y][expected_x]
+                if 0 <= expected_x < frame_w and 0 <= expected_y < frame_h
+                else None
+            )
+            first_mismatch = IdentityLockMismatch(
+                anchor=f"landmark:{landmark_id}",
+                x=canonical_x,
+                y=canonical_y,
+                expected_rgba=_cell_to_rgba(canonical[canonical_y][canonical_x]),
+                actual_rgba=_cell_to_rgba(actual),
+            )
+    return results, first_mismatch
+
+
+def _first_failure(
+    check_results: Mapping[str, Mapping[str, Any]],
+    landmark_results: Mapping[str, Mapping[str, Any]],
+) -> dict[str, Any] | None:
+    for check_id, check in check_results.items():
+        if check["outcome"] == "FAIL":
+            return {"kind": "check", "id": check_id, **dict(check)}
+    for landmark_id, landmark in landmark_results.items():
+        if landmark["outcome"] == "FAIL":
+            return {"kind": "landmark", "id": landmark_id, **dict(landmark)}
     return None
 
 
@@ -319,13 +655,34 @@ def _find_frame_offsets(
     attempt: list[list[Cell]],
     locks: Sequence[Mapping[str, Any]],
     constraints: Sequence[Mapping[str, Any]],
-) -> tuple[dict[str, tuple[int, int]], dict[str, Outcome], IdentityLockMismatch | None]:
+    landmarks: Sequence[Mapping[str, Any]],
+    palette_entries: Sequence[tuple[str, tuple[int, int, int]]],
+    palette_roles: Sequence[str],
+) -> tuple[
+    dict[str, tuple[int, int]],
+    dict[str, Outcome],
+    dict[str, dict[str, Any]],
+    dict[str, dict[str, Any]],
+    IdentityLockMismatch | None,
+]:
     canonical_offsets = {lock["id"]: (0, 0) for lock in locks}
     offset_lists = [lock["offsets"] for lock in locks]
     lock_ids = [lock["id"] for lock in locks]
 
-    best_failure: tuple[dict[str, tuple[int, int]], dict[str, Outcome], IdentityLockMismatch] | None = None
+    best_failure: tuple[
+        dict[str, tuple[int, int]],
+        dict[str, Outcome],
+        dict[str, dict[str, Any]],
+        IdentityLockMismatch | None,
+    ] | None = None
+    best_success: tuple[
+        dict[str, tuple[int, int]],
+        dict[str, Outcome],
+        dict[str, dict[str, Any]],
+    ] | None = None
     best_pass_count = -1
+    best_success_score = float("inf")
+    best_failure_score = float("inf")
 
     for offset_combo in product(*offset_lists):
         offsets = dict(zip(lock_ids, offset_combo, strict=True))
@@ -337,49 +694,119 @@ def _find_frame_offsets(
         ):
             continue
         anchor_results: dict[str, Outcome] = {}
+        check_results: dict[str, dict[str, Any]] = {}
         first_mismatch: IdentityLockMismatch | None = None
         for lock in locks:
-            mismatch = _compare_shifted_rectangle(
+            check, mismatch = _compare_structural_lock(
                 canonical,
                 attempt,
-                lock["rectangle"],
-                offsets[lock["id"]][0],
-                offsets[lock["id"]][1],
-                anchor_id=lock["id"],
+                lock,
+                offsets[lock["id"]],
+                palette_entries,
+                palette_roles,
             )
-            if mismatch is not None:
+            check_results[lock["id"]] = check
+            if check["outcome"] == "FAIL":
                 anchor_results[lock["id"]] = "FAIL"
-                if first_mismatch is None:
+                if mismatch is not None and first_mismatch is None:
                     first_mismatch = mismatch
             else:
                 anchor_results[lock["id"]] = "PASS"
-        if first_mismatch is None:
-            return offsets, anchor_results, None
-        pass_count = sum(1 for outcome in anchor_results.values() if outcome == "PASS")
-        if pass_count > best_pass_count:
+        structural_score = sum(
+            float(check["occupancy_difference"])
+            + float(check.get("palette_role_distance") or 0.0)
+            for check in check_results.values()
+        )
+        structural_score += 0.000001 * sum(
+            abs(dx) + abs(dy) for dx, dy in offsets.values()
+        )
+        if all(outcome == "PASS" for outcome in anchor_results.values()):
+            if structural_score < best_success_score:
+                best_success_score = structural_score
+                best_success = (offsets, anchor_results, check_results)
+            continue
+        pass_count = sum(
+            1 for outcome in anchor_results.values() if outcome == "PASS"
+        )
+        if pass_count > best_pass_count or (
+            pass_count == best_pass_count and structural_score < best_failure_score
+        ):
             best_pass_count = pass_count
-            best_failure = (offsets, anchor_results, first_mismatch)
+            best_failure_score = structural_score
+            best_failure = (
+                offsets,
+                anchor_results,
+                check_results,
+                first_mismatch,
+            )
+
+    if best_success is not None:
+        offsets, anchor_results, check_results = best_success
+        landmark_results, landmark_mismatch = _evaluate_landmarks(
+            canonical,
+            attempt,
+            landmarks,
+            locks,
+            offsets,
+            palette_entries,
+        )
+        return (
+            offsets,
+            anchor_results,
+            check_results,
+            landmark_results,
+            landmark_mismatch,
+        )
 
     if best_failure is not None:
-        offsets, anchor_results, first_mismatch = best_failure
-        return offsets, anchor_results, first_mismatch
+        offsets, anchor_results, check_results, first_mismatch = best_failure
+        landmark_results, landmark_mismatch = _evaluate_landmarks(
+            canonical,
+            attempt,
+            landmarks,
+            locks,
+            offsets,
+            palette_entries,
+        )
+        return (
+            offsets,
+            anchor_results,
+            check_results,
+            landmark_results,
+            first_mismatch or landmark_mismatch,
+        )
 
     offsets = {lock["id"]: lock["offsets"][0] for lock in locks}
     anchor_results = {lock["id"]: "FAIL" for lock in locks}
-    first_mismatch = None
+    check_results: dict[str, dict[str, Any]] = {}
+    first_mismatch: IdentityLockMismatch | None = None
     for lock in locks:
-        mismatch = _compare_shifted_rectangle(
+        check, mismatch = _compare_structural_lock(
             canonical,
             attempt,
-            lock["rectangle"],
-            offsets[lock["id"]][0],
-            offsets[lock["id"]][1],
-            anchor_id=lock["id"],
+            lock,
+            offsets[lock["id"]],
+            palette_entries,
+            palette_roles,
         )
-        if mismatch is not None:
+        check_results[lock["id"]] = check
+        if mismatch is not None and first_mismatch is None:
             first_mismatch = mismatch
-            break
-    return offsets, anchor_results, first_mismatch
+    landmark_results, landmark_mismatch = _evaluate_landmarks(
+        canonical,
+        attempt,
+        landmarks,
+        locks,
+        offsets,
+        palette_entries,
+    )
+    return (
+        offsets,
+        anchor_results,
+        check_results,
+        landmark_results,
+        first_mismatch or landmark_mismatch,
+    )
 
 
 def evaluate_identity_lock(
@@ -392,42 +819,78 @@ def evaluate_identity_lock(
     spec = load_identity_lock_spec(spec_path)
     motion_doc = spec["motion_classes"].get(motion_class)
     if motion_doc is None:
-        raise IdentityLockError(f"motion class {motion_class!r} has no Identity Lock rules")
+        raise IdentityLockError(
+            f"motion class {motion_class!r} has no Identity Lock rules"
+        )
 
     frame_size = (int(spec["frame_size"][0]), int(spec["frame_size"][1]))
     canonical = load_canonical_cells(identity_path, frame_size)
-    locks = [_validate_lock_row(lock, where=f"motion_classes.{motion_class}") for lock in motion_doc["locks"]]
+    if sha256_file(identity_path) != spec["identity_sha256"]:
+        raise IdentityLockError(
+            "evaluated identity image does not match bound identity_sha256"
+        )
+    locks = [
+        _validate_lock_row(lock, where=f"motion_classes.{motion_class}")
+        for lock in motion_doc["locks"]
+    ]
     constraints = motion_doc.get("relational_constraints", []) or []
+    landmarks = motion_doc.get("landmarks", []) or []
+    palette_path = _resolve_bound_repo_file(
+        spec["master_palette"],
+        label="master_palette",
+    )
+    palette_roles, palette_entries = _load_palette_roles(palette_path)
 
     per_frame: list[FrameIdentityLockResult] = []
+    overall_failure: dict[str, Any] | None = None
     overall_mismatch: IdentityLockMismatch | None = None
 
-    for attempt in frames:
-        if len(attempt) != frame_size[1] or any(len(row) != frame_size[0] for row in attempt):
-            raise IdentityLockError("attempt frame size does not match Identity Lock frame_size")
-        offsets, anchor_results, mismatch = _find_frame_offsets(
+    for frame_index, attempt in enumerate(frames):
+        if len(attempt) != frame_size[1] or any(
+            len(row) != frame_size[0] for row in attempt
+        ):
+            raise IdentityLockError(
+                "attempt frame size does not match Identity Lock frame_size"
+            )
+        (
+            offsets,
+            anchor_results,
+            check_results,
+            landmark_results,
+            mismatch,
+        ) = _find_frame_offsets(
             canonical,
             list(attempt),
             locks,
             constraints,
+            landmarks,
+            palette_entries,
+            palette_roles,
         )
+        failure = _first_failure(check_results, landmark_results)
         per_frame.append(
             FrameIdentityLockResult(
                 selected_offsets=offsets,
                 anchor_results=anchor_results,
+                check_results=check_results,
+                landmark_results=landmark_results,
+                first_failure=failure,
                 first_mismatch=mismatch,
             )
         )
+        if failure is not None and overall_failure is None:
+            overall_failure = {"frame_index": frame_index, **failure}
         if mismatch is not None and overall_mismatch is None:
             overall_mismatch = mismatch
 
-    outcome: Outcome = "PASS" if overall_mismatch is None else "FAIL"
+    outcome: Outcome = "PASS" if overall_failure is None else "FAIL"
     return IdentityLockResult(
         outcome=outcome,
         identity_sha256=str(spec["identity_sha256"]),
         lock_spec_sha256=sha256_file(spec_path),
         motion_class=motion_class,
         per_frame=tuple(per_frame),
+        first_failure=overall_failure,
         first_mismatch=overall_mismatch,
     )
 
@@ -457,48 +920,66 @@ def identity_lock_report_payload(result: IdentityLockResult) -> dict[str, Any]:
                     for anchor, offsets in frame.selected_offsets.items()
                 },
                 "anchor_results": dict(frame.anchor_results),
+                "check_results": dict(frame.check_results),
+                "landmark_results": dict(frame.landmark_results),
+                "first_failure": frame.first_failure,
                 "first_mismatch": _mismatch_payload(frame.first_mismatch),
             }
             for frame in result.per_frame
         ],
+        "first_failure": result.first_failure,
         "first_mismatch": _mismatch_payload(result.first_mismatch),
     }
 
 
 def build_identity_seed(
-    identity_path: Path,
+    identity_declaration_path: Path,
     out_path: Path,
 ) -> dict[str, Any]:
-    if not identity_path.is_file():
-        raise IdentityLockError(f"missing identity image: {identity_path}")
+    if not identity_declaration_path.is_file():
+        raise IdentityLockError(
+            f"missing identity declaration: {identity_declaration_path}"
+        )
+    try:
+        declaration = json.loads(identity_declaration_path.read_text(encoding="utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise IdentityLockError("identity declaration must be valid JSON") from exc
+    if not isinstance(declaration, dict) or declaration.get("schema") != "dwarf-identity/0":
+        raise IdentityLockError("identity declaration must use schema dwarf-identity/0")
 
-    with Image.open(identity_path) as source:
-        if source.size != (16, 24):
-            raise IdentityLockError("identity seed requires a 16×24 identity frame")
-        frame_rgba = source.convert("RGBA")
+    identity_binding = declaration.get("identity_png")
+    generation_binding = declaration.get("generation_source")
+    if not isinstance(identity_binding, dict) or not isinstance(generation_binding, dict):
+        raise IdentityLockError(
+            "identity declaration requires identity_png and generation_source bindings"
+        )
 
-    scaled_w = 16 * SEED_SCALE
-    scaled_h = 24 * SEED_SCALE
-    gutter_px = SEED_GUTTER_LOGICAL_CELLS * SEED_SCALE
-    canvas = Image.new("RGBA", (SEED_WIDTH, SEED_HEIGHT), MAGENTA)
-
-    scaled_frame = frame_rgba.resize((scaled_w, scaled_h), Image.Resampling.NEAREST)
-    x = 0
-    for index in range(SEED_FRAME_COUNT):
-        canvas.paste(scaled_frame, (x, 0))
-        x += scaled_w
-        if index < SEED_FRAME_COUNT - 1:
-            x += gutter_px
+    identity_path = _resolve_bound_repo_file(
+        identity_binding,
+        label="identity anchor",
+    )
+    generation_source_path = _resolve_bound_repo_file(
+        generation_binding,
+        label="generation source",
+    )
+    identity_sha = str(identity_binding["sha256"])
+    generation_source_sha = str(generation_binding["sha256"])
+    with Image.open(identity_path) as identity:
+        if identity.size != (16, 24):
+            raise IdentityLockError("identity anchor must be a 16×24 Release Frame")
+    with Image.open(generation_source_path) as generation_source:
+        dimensions = [generation_source.width, generation_source.height]
 
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    canvas.save(out_path)
+    shutil.copyfile(generation_source_path, out_path)
 
     return {
-        "identity_path": str(identity_path.resolve()),
+        "identity_declaration_path": str(identity_declaration_path.resolve()),
+        "generation_source_path": str(generation_source_path),
+        "generation_source_sha256": generation_source_sha,
+        "identity_anchor_path": str(identity_path),
+        "identity_anchor_sha256": identity_sha,
         "out_path": str(out_path.resolve()),
-        "dimensions": [SEED_WIDTH, SEED_HEIGHT],
+        "dimensions": dimensions,
         "sha256": sha256_file(out_path),
-        "frame_count": SEED_FRAME_COUNT,
-        "scale": SEED_SCALE,
-        "gutter_logical_cells": SEED_GUTTER_LOGICAL_CELLS,
     }
