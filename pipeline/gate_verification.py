@@ -19,11 +19,14 @@ from typing import Any, Mapping, Sequence
 from pipeline import canonical
 from pipeline import gate_evidence as ge
 from pipeline import gate_review as gr
+from pipeline.verdicts import GATE_REVIEW_VERDICTS, GateReviewVerdict, IsolationVerdict
 
 VERIFICATION_SCHEMA = "gate-control-verification/0"
 PENDING_STATUS = "PENDING_VERIFICATION"
 ACTIVE_STATUS = "ACTIVE"
 INVALIDATED_STATUS = "INVALIDATED"
+_APPROVED_GATE_REVIEW_VERDICT: GateReviewVerdict = "APPROVE"
+assert _APPROVED_GATE_REVIEW_VERDICT in GATE_REVIEW_VERDICTS
 
 REQUIRED_COMMANDS: tuple[tuple[str, ...], ...] = (
     ("npm", "test"),
@@ -275,8 +278,11 @@ def validate_promotion_reviews(root: Path, promotion_id: str) -> dict[str, Any]:
         ge.load_review(review_dir / name)
         for name in ("review--01.json", "review--02.json")
     ]
-    verdicts = [record.verdict for record in records]
-    if verdicts != ["APPROVE", "APPROVE"]:
+    verdicts: list[GateReviewVerdict] = [
+        record.verdict  # type: ignore[misc]
+        for record in records
+    ]
+    if verdicts != [_APPROVED_GATE_REVIEW_VERDICT, _APPROVED_GATE_REVIEW_VERDICT]:
         raise VerificationError(
             f"review disagreement for {promotion_id}: verdicts {verdicts!r}"
         )
@@ -302,6 +308,8 @@ def build_verification_record(
     promo = graph.promotions[promotion_id]
     attempt = graph.attempts[promo.attempt_id]
     measurement = graph.measurements[promo.attempt_id]
+    _isolation_verdict: IsolationVerdict = measurement.isolation  # type: ignore[assignment]
+    del _isolation_verdict
     provenance = graph.provenances[promo.attempt_id]
 
     attempt_id = promo.attempt_id
@@ -323,7 +331,9 @@ def build_verification_record(
             }
         )
 
-    reviews_ok = all(item["verdict"] == "APPROVE" for item in reviews)
+    reviews_ok = all(
+        item["verdict"] == _APPROVED_GATE_REVIEW_VERDICT for item in reviews
+    )
     commands_ok = all(item.exit_code == 0 for item in commands)
     if failure_reason is None and reviews_ok and commands_ok:
         status = ACTIVE_STATUS
@@ -440,7 +450,8 @@ def validate_verification_record(root: Path, path: Path) -> None:
 
     status = doc.get("status")
     reviews_ok = all(
-        item.get("verdict") == "APPROVE" for item in doc.get("reviews", [])
+        item.get("verdict") == _APPROVED_GATE_REVIEW_VERDICT
+        for item in doc.get("reviews", [])
     )
     commands_ok = all(
         item.get("exit_code") == 0 for item in doc.get("commands", [])

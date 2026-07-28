@@ -15,6 +15,7 @@ from typing import Any, Mapping, Sequence
 
 from pipeline import canonical
 from pipeline import gate_evidence as ge
+from pipeline.verdicts import GATE_REVIEW_VERDICTS, GateReviewVerdict
 
 FIXED_QUESTIONS: dict[str, str] = {
     "silhouette_budget": (
@@ -486,7 +487,7 @@ def compute_second_review_triggers(
     budget: float | None,
     hard_fail_boundary: float | None,
     gates_in_review: int,
-    first_verdict: str | None,
+    first_verdict: GateReviewVerdict | None,
     relies_on_caveated_dimension: bool,
 ) -> list[str]:
     """Locked §10 second-review triggers (deterministic, ordered)."""
@@ -526,7 +527,7 @@ def make_audit_record(
     *,
     packet: ReviewPacket,
     review_id: str,
-    verdict: str,
+    verdict: GateReviewVerdict,
     frames: Sequence[int],
     observed_feature: str,
     rationale: str,
@@ -624,7 +625,7 @@ def validate_audit_record(record: Mapping[str, Any]) -> None:
         if value is None:
             raise ReviewError(f"missing audit field: {field}")
     verdict = record.get("verdict")
-    if verdict not in {"APPROVE", "REJECT", "UNCERTAIN"}:
+    if verdict not in GATE_REVIEW_VERDICTS:
         raise ReviewError(f"invalid verdict {verdict!r}")
     if verdict == "REJECT":
         for field in REJECT_REQUIRED_FIELDS:
