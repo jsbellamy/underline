@@ -9,7 +9,13 @@ import pytest
 
 from pipeline import strip as S
 from pipeline.numeric_policy import canonical_metric
-from pipeline.strip import GatePolicy, build_runtime_acceptance_policy, evaluate_continuous_gate_outcome
+from pipeline.strip import (
+    ALPHA,
+    GatePolicy,
+    build_runtime_acceptance_policy,
+    derive_separated_budget,
+    evaluate_continuous_gate_outcome,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 PROFILES = ROOT / "gate-controls" / "acceptance-profiles.json"
@@ -73,7 +79,7 @@ def test_unseparated_gate_never_autonomous_fail(metric: float, expected: str) ->
 
 
 def test_runtime_policy_projects_every_profile_budget() -> None:
-    motion_classes, gate_policies = build_runtime_acceptance_policy(
+    policy = build_runtime_acceptance_policy(
         profiles_path=PROFILES,
         manifest_path=MANIFEST,
     )
@@ -85,7 +91,7 @@ def test_runtime_policy_projects_every_profile_budget() -> None:
         "min_pair_cohort_pass": "max_min_pair",
     }
     for motion_class, profile in profiles.items():
-        budget = motion_classes[motion_class]
+        budget = policy.motion_classes[motion_class]
         for gate_name, row in profile["gates"].items():
             if gate_name not in gate_attr:
                 continue
@@ -94,10 +100,10 @@ def test_runtime_policy_projects_every_profile_budget() -> None:
                 assert getattr(budget, gate_attr[gate_name]) is None
             else:
                 assert getattr(budget, gate_attr[gate_name]) == expected
-            policy = gate_policies[motion_class][gate_name]
-            assert policy.status == row["status"]
-            assert policy.budget == expected
-            assert policy.hard_fail == row.get("hard_fail")
+            gate_policy = policy.acceptance_gates[motion_class][gate_name]
+            assert gate_policy.status == row["status"]
+            assert gate_policy.budget == expected
+            assert gate_policy.hard_fail == row.get("hard_fail")
 
 
 def test_runtime_policy_rejects_non_active_separated_promotion(tmp_path: Path) -> None:

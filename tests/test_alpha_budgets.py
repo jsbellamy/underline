@@ -14,7 +14,7 @@ import pytest
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "prototype" / "strip-coherence"))
 
-from alpha_budgets import ALPHA, derive_separated_budget  # noqa: E402
+from pipeline.strip import ALPHA, derive_separated_budget  # noqa: E402
 from numeric_policy import canonical_metric  # noqa: E402
 
 
@@ -138,7 +138,7 @@ def test_alpha_budgets_blocks_mismatched_promotion_reference(
     profiles_path.write_text(json.dumps(doc, indent=2) + "\n")
     result = _run_alpha_budgets(gate_controls)
     assert result.returncode != 0
-    assert "mismatched Promotion" in result.stdout + result.stderr
+    assert "alternate Promotion" in result.stdout + result.stderr
 
 
 def test_alpha_budgets_blocks_invalid_measurement_evidence(
@@ -183,10 +183,10 @@ def test_alpha_budgets_blocks_invalid_measurement_evidence(
             "runtime projection mismatch",
         ),
         (
-            lambda doc: doc["profiles"]["airborne"]["gates"]["silhouette_budget"].update(
-                {"status": "SEPARATED", "budget": 0.5, "hard_fail": 0.6}
+            lambda doc: doc["profiles"]["walk"]["gates"]["silhouette_budget"].update(
+                {"budget": 9.9998}
             ),
-            "runtime omits Budget for airborne/silhouette_budget",
+            "runtime projection mismatch",
         ),
         (
             lambda doc: doc["profiles"]["walk"]["gates"].pop("silhouette_budget"),
