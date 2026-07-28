@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import json
 import shutil
 from pathlib import Path
@@ -1262,3 +1263,21 @@ def test_idle_bundle_has_no_identity_lock(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
     result = check_bundle(bundle)
     assert result.identity_lock is None
+
+
+def test_initialize_bundle_leaves_no_frame_staging_directory(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    _init_bundle(PASS_STRIP, "idle", bundle, tmp_path)
+    staging_dirs = [
+        path
+        for path in bundle.rglob("*")
+        if path.is_dir() and path.name == ".frame-staging"
+    ]
+    assert staging_dirs == []
+
+
+def test_final_polish_has_no_pil_dependency() -> None:
+    from pipeline import final_polish
+
+    source = inspect.getsource(final_polish)
+    assert "PIL" not in source

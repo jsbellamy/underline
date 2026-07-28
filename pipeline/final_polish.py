@@ -12,8 +12,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from PIL import Image, UnidentifiedImageError
-
+from pipeline.cell_raster import RasterError, write_cells
+from pipeline.cell_raster import read_cells as _read_cells
 from pipeline.gate_evidence import EvidenceError, sha256_bytes, sha256_file, write_json_immutable
 from pipeline.identity_lock import (
     IdentityLockResult,
@@ -21,7 +21,6 @@ from pipeline.identity_lock import (
     identity_lock_applies,
     identity_lock_report_payload,
 )
-from pipeline.recovery import MAGENTA
 from pipeline.strip import (
     DEFAULT_LAYOUT,
     Cell,
@@ -29,7 +28,6 @@ from pipeline.strip import (
     StripLayout,
     canonicalize_frame,
     coherence_split,
-    export_frames,
     ingest_strip_provider,
     load_provider_frames,
 )
@@ -178,72 +176,16 @@ def _cleanup_partial(root: Path) -> None:
         shutil.rmtree(root)
 
 
-def _save_logical_frame(cells: list[list[Cell]], path: Path) -> None:
-    staging = path.parent / ".frame-staging"
-    if staging.exists():
-        shutil.rmtree(staging)
-    export_frames([cells], staging, path.stem, frame_w=len(cells[0]), frame_h=len(cells))
-    exported = staging / f"{path.stem}-f0.png"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    shutil.move(str(exported), str(path))
-    shutil.rmtree(staging, ignore_errors=True)
-
-
-def _cells_from_rgba_image(image: Image.Image) -> list[list[Cell]]:
-    rgba = image.convert("RGBA")
-    width, height = rgba.size
-    pixels = rgba.load()
-    assert pixels is not None
-    cells: list[list[Cell]] = []
-    for y in range(height):
-        row: list[Cell] = []
-        for x in range(width):
-            r, g, b, a = pixels[x, y]
-            if a == 0:
-                row.append(None)
-            else:
-                row.append((int(r), int(g), int(b)))
-        cells.append(row)
-    return cells
-
-
 def _load_logical_frame_png(
     path: Path,
     *,
     frame_w: int,
     frame_h: int,
 ) -> list[list[Cell]]:
-    if not path.is_file():
-        raise InvalidBundleError(
-            f"missing logical frame: {path.name}",
-            reason_code="missing_frame",
-        )
     try:
-        with Image.open(path) as image:
-            if image.mode != "RGBA":
-                raise InvalidBundleError(
-                    f"frame must be RGBA: {path.name}",
-                    reason_code="wrong_mode",
-                )
-            if image.size != (frame_w, frame_h):
-                raise InvalidBundleError(
-                    f"frame must be {frame_w}x{frame_h}: {path.name}",
-                    reason_code="wrong_size",
-                )
-            rgba = image.convert("RGBA")
-            alpha = rgba.getchannel("A")
-            for value in alpha.get_flattened_data():
-                if value not in (0, 255):
-                    raise InvalidBundleError(
-                        f"non-binary alpha in {path.name}",
-                        reason_code="non_binary_alpha",
-                    )
-            return _cells_from_rgba_image(rgba)
-    except UnidentifiedImageError as exc:
-        raise InvalidBundleError(
-            f"unreadable frame: {path.name}",
-            reason_code="unreadable_frame",
-        ) from exc
+        return _read_cells(path, size=(frame_w, frame_h), label="frame")
+    except RasterError as exc:
+        raise InvalidBundleError(str(exc), reason_code=exc.reason_code) from exc
 
 
 def _load_frame_sequence(bundle_root: Path, layer: str) -> list[list[list[Cell]]]:
@@ -1359,7 +1301,7 @@ def initialize_bundle(
         for index, cells in enumerate(canonical_frames):
             rel = f"draft/frame-{index}.png"
             draft_path = temp_root / rel
-            _save_logical_frame(cells, draft_path)
+            write_cells(draft_path, cells)
             polished_path = temp_root / "polished" / f"frame-{index}.png"
             polished_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(draft_path, polished_path)
