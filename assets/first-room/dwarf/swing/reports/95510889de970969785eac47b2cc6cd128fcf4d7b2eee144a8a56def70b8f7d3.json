@@ -1,0 +1,460 @@
+{
+  "coherence": {
+    "alignment_sharpness": null,
+    "anchor_row": 23,
+    "baseline_row_inapplicable": false,
+    "baseline_row_reason": null,
+    "baseline_row_stable": true,
+    "baseline_rows": [
+      23,
+      23,
+      23,
+      23
+    ],
+    "budgets": {
+      "loop": null,
+      "min_alignment_sharpness": null,
+      "min_pair": null,
+      "palette_drift": 0.2294,
+      "silhouette": 0.586
+    },
+    "caveats": [],
+    "dimension_parity": true,
+    "dimensions": [
+      [
+        16,
+        24
+      ]
+    ],
+    "displacement_flags": [],
+    "displacement_inapplicable": false,
+    "displacement_pass": null,
+    "displacement_reason": null,
+    "gate_outcomes": {
+      "palette_drift_pass": {
+        "acceptance_status": "SEPARATED",
+        "budget": 0.2294,
+        "hard_fail": 0.2793,
+        "metric": 0.1123,
+        "outcome": "PASS"
+      },
+      "silhouette_budget": {
+        "acceptance_status": "SEPARATED",
+        "budget": 0.586,
+        "hard_fail": 0.6067,
+        "metric": 0.3165,
+        "outcome": "PASS"
+      }
+    },
+    "grounded": true,
+    "loop_closure": {
+      "changed_cells": 89,
+      "frac": 0.3371,
+      "pair": [
+        3,
+        0
+      ],
+      "union_opaque": 264
+    },
+    "loop_closure_pass": null,
+    "min_pair_cohort_pass": null,
+    "motion_class": "swing",
+    "outcome": "PASS",
+    "palette_drift": [
+      {
+        "pair": [
+          0,
+          1
+        ],
+        "tv": 0.0647
+      },
+      {
+        "pair": [
+          1,
+          2
+        ],
+        "tv": 0.0486
+      },
+      {
+        "pair": [
+          2,
+          3
+        ],
+        "tv": 0.0774
+      },
+      {
+        "pair": [
+          3,
+          0
+        ],
+        "tv": 0.1123
+      }
+    ],
+    "palette_drift_pass": true,
+    "pass": true,
+    "quantize": {
+      "clusters": 16,
+      "input_unique": 466,
+      "merge_dist": 64,
+      "mode": "quantize-shared",
+      "palette": [
+        [
+          17,
+          19,
+          15
+        ],
+        [
+          137,
+          58,
+          24
+        ],
+        [
+          59,
+          104,
+          114
+        ],
+        [
+          77,
+          177,
+          12
+        ],
+        [
+          167,
+          133,
+          18
+        ],
+        [
+          241,
+          153,
+          25
+        ],
+        [
+          39,
+          79,
+          46
+        ],
+        [
+          250,
+          220,
+          135
+        ],
+        [
+          124,
+          167,
+          172
+        ],
+        [
+          38,
+          105,
+          177
+        ],
+        [
+          238,
+          162,
+          90
+        ],
+        [
+          193,
+          190,
+          185
+        ],
+        [
+          78,
+          41,
+          2
+        ],
+        [
+          31,
+          33,
+          92
+        ],
+        [
+          160,
+          142,
+          84
+        ],
+        [
+          251,
+          227,
+          4
+        ]
+      ],
+      "palette_size": 16
+    },
+    "silhouette_adjacent": [
+      {
+        "changed_cells": 88,
+        "frac": 0.3165,
+        "pair": [
+          0,
+          1
+        ],
+        "union_opaque": 278
+      },
+      {
+        "changed_cells": 33,
+        "frac": 0.1486,
+        "pair": [
+          1,
+          2
+        ],
+        "union_opaque": 222
+      },
+      {
+        "changed_cells": 66,
+        "frac": 0.2946,
+        "pair": [
+          2,
+          3
+        ],
+        "union_opaque": 224
+      }
+    ],
+    "silhouette_adjacent_max": 0.3165,
+    "silhouette_budget": true,
+    "silhouette_pairwise": {
+      "max_pair": 0.3371,
+      "min_pair": 0.1486,
+      "orphan_max": 0.3165,
+      "pairs": [
+        {
+          "frac": 0.3165,
+          "pair": [
+            0,
+            1
+          ]
+        },
+        {
+          "frac": 0.3179,
+          "pair": [
+            0,
+            2
+          ]
+        },
+        {
+          "frac": 0.3371,
+          "pair": [
+            0,
+            3
+          ]
+        },
+        {
+          "frac": 0.1486,
+          "pair": [
+            1,
+            2
+          ]
+        },
+        {
+          "frac": 0.2694,
+          "pair": [
+            1,
+            3
+          ]
+        },
+        {
+          "frac": 0.2946,
+          "pair": [
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    "worst_palette_drift": 0.1123
+  },
+  "draft_frames": [
+    {
+      "index": 0,
+      "sha256": "cec70cb991edd8d5fef8d8c223a48272f6a2ca2bf3150927bea9e656cc69d4b6"
+    },
+    {
+      "index": 1,
+      "sha256": "a067b8e821583219ed11ef057d473e58d52b1a46cfbc329cb59c9abe54a12eb3"
+    },
+    {
+      "index": 2,
+      "sha256": "cd93e135257df285ca0fb0d4fb7cd6e98cd2c919e020efea847c48f5078d4358"
+    },
+    {
+      "index": 3,
+      "sha256": "5feaf7c74b4af5e61a496360d37a2bf8896f9b86dc5ac6ba23774c0ed9e79fd6"
+    }
+  ],
+  "fingerprint": "95510889de970969785eac47b2cc6cd128fcf4d7b2eee144a8a56def70b8f7d3",
+  "identity_lock": {
+    "first_mismatch": null,
+    "identity_sha256": "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9",
+    "lock_spec_sha256": "21e6abfd2dd28175b911246edee75b98d4d343e5e20801e48ca310d615d542fc",
+    "motion_class": "swing",
+    "outcome": "PASS",
+    "per_frame": [
+      {
+        "anchor_results": {
+          "belt_core": "PASS",
+          "boots": "PASS",
+          "helmet_face": "PASS"
+        },
+        "first_mismatch": null,
+        "selected_offsets": {
+          "belt_core": [
+            0,
+            0
+          ],
+          "boots": [
+            0,
+            0
+          ],
+          "helmet_face": [
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "anchor_results": {
+          "belt_core": "PASS",
+          "boots": "PASS",
+          "helmet_face": "PASS"
+        },
+        "first_mismatch": null,
+        "selected_offsets": {
+          "belt_core": [
+            0,
+            0
+          ],
+          "boots": [
+            0,
+            0
+          ],
+          "helmet_face": [
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "anchor_results": {
+          "belt_core": "PASS",
+          "boots": "PASS",
+          "helmet_face": "PASS"
+        },
+        "first_mismatch": null,
+        "selected_offsets": {
+          "belt_core": [
+            0,
+            0
+          ],
+          "boots": [
+            0,
+            0
+          ],
+          "helmet_face": [
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "anchor_results": {
+          "belt_core": "PASS",
+          "boots": "PASS",
+          "helmet_face": "PASS"
+        },
+        "first_mismatch": null,
+        "selected_offsets": {
+          "belt_core": [
+            0,
+            0
+          ],
+          "boots": [
+            0,
+            0
+          ],
+          "helmet_face": [
+            0,
+            0
+          ]
+        }
+      }
+    ]
+  },
+  "layout": {
+    "frame_count": 4,
+    "frame_h": 24,
+    "frame_order": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "frame_w": 16,
+    "gutter": 2
+  },
+  "manifest_sha256": "f597c6e405ce919a41746432ec194680ef409ab79801d0ba249217d6a25144a2",
+  "motion_class": "swing",
+  "outcome": "PASS",
+  "polish_profile": {
+    "id": "dwarf-miner",
+    "sha256": "30534c42a253ff29b07778db26de584ce6c667248825f08b8c62d49a1169e85c"
+  },
+  "polished_frames": [
+    {
+      "index": 0,
+      "sha256": "cec70cb991edd8d5fef8d8c223a48272f6a2ca2bf3150927bea9e656cc69d4b6"
+    },
+    {
+      "index": 1,
+      "sha256": "a067b8e821583219ed11ef057d473e58d52b1a46cfbc329cb59c9abe54a12eb3"
+    },
+    {
+      "index": 2,
+      "sha256": "cd93e135257df285ca0fb0d4fb7cd6e98cd2c919e020efea847c48f5078d4358"
+    },
+    {
+      "index": 3,
+      "sha256": "5feaf7c74b4af5e61a496360d37a2bf8896f9b86dc5ac6ba23774c0ed9e79fd6"
+    }
+  ],
+  "provider": {
+    "relative_path": "provider/source.png",
+    "sha256": "b0d774e4995acf8275dbb5467a911266b73779502e834cde2d8969a497d54430"
+  },
+  "provider_acceptance": {
+    "outcome": "PASS"
+  },
+  "release_frames": [
+    {
+      "index": 0,
+      "sha256": "cec70cb991edd8d5fef8d8c223a48272f6a2ca2bf3150927bea9e656cc69d4b6"
+    },
+    {
+      "index": 1,
+      "sha256": "a067b8e821583219ed11ef057d473e58d52b1a46cfbc329cb59c9abe54a12eb3"
+    },
+    {
+      "index": 2,
+      "sha256": "cd93e135257df285ca0fb0d4fb7cd6e98cd2c919e020efea847c48f5078d4358"
+    },
+    {
+      "index": 3,
+      "sha256": "5feaf7c74b4af5e61a496360d37a2bf8896f9b86dc5ac6ba23774c0ed9e79fd6"
+    }
+  ],
+  "schema": "final-polish-report/0",
+  "structural": {
+    "outcome": "PASS",
+    "pass": true,
+    "violations": []
+  },
+  "visible_cell_delta": {
+    "edits": [],
+    "per_frame_counts": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "total_edits": 0
+  }
+}

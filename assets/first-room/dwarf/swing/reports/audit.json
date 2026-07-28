@@ -2,23 +2,36 @@
   "schema": "polish-visual-audit/0",
   "bundle": "assets/first-room/dwarf/swing",
   "profile_id": "dwarf-miner",
-  "profile_sha256": "0e60aee8d4a630bad6fdabc8d2525c8ae9e2cda8ceab92e37a1dd972a4fcedcf",
+  "profile_sha256": "30534c42a253ff29b07778db26de584ce6c667248825f08b8c62d49a1169e85c",
   "motion_class": "swing",
   "inspection": {
     "native_scale": true,
     "nearest_neighbor_enlargement": true,
     "composites": [
-      "inspected release Frames at 16\u00d724 native",
-      "inspected 8\u00d7 nearest-neighbor composite of polished Frames",
-      "cross-checked beside assets/first-room/dwarf/identity.png and idle release Frames (walk cohort unavailable on branch base)"
+      "inspected release Frames at 16×24 native beside assets/first-room/dwarf/identity.png",
+      "inspected release Frames beside idle release Frames",
+      "inspected 8× nearest-neighbor composite of polished Frames"
     ]
   },
   "machine_check": {
     "command": "npm run strip:polish -- check assets/first-room/dwarf/swing --json",
     "outcome": "PASS",
-    "fingerprint": "7bb07da1f38037da8ad1cbe3301271f4cefeec53bbf11250ded6df44345abc2b",
+    "fingerprint": "95510889de970969785eac47b2cc6cd128fcf4d7b2eee144a8a56def70b8f7d3",
+    "identity_lock_outcome": "PASS",
     "visible_cell_edits": 0,
-    "edit_summary": "No Cell edits required; provider ingest and draft Frames passed all gates and profile questions at native scale."
+    "edit_summary": "No Cell edits required; image-edit provider ingest, automatic Identity Lock, coherence Gates, and profile questions passed on first attempt."
+  },
+  "hash_bindings": {
+    "identity_reference_sha256": "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9",
+    "edit_source_sha256": "d02514c8e4eb9a32505e4144becb5563b77d858b4aa8da81e365ad3dce90c2c0",
+    "idle_release_frame_0_sha256": "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9",
+    "check_report_sha256": "95510889de970969785eac47b2cc6cd128fcf4d7b2eee144a8a56def70b8f7d3",
+    "release_frame_sha256": [
+      "cec70cb991edd8d5fef8d8c223a48272f6a2ca2bf3150927bea9e656cc69d4b6",
+      "a067b8e821583219ed11ef057d473e58d52b1a46cfbc329cb59c9abe54a12eb3",
+      "cd93e135257df285ca0fb0d4fb7cd6e98cd2c919e020efea847c48f5078d4358",
+      "5feaf7c74b4af5e61a496360d37a2bf8896f9b86dc5ac6ba23774c0ed9e79fd6"
+    ]
   },
   "answers": [
     {
@@ -28,16 +41,22 @@
       "rationale": "Short/broad dwarf proportions, rust beard mass, oversized blue lamp helmet with centered amber lamp, green tunic, leather belt with amber buckle, gloves, broad boots, and the same compact heavy pickaxe remain legible and consistent with identity.png across all four swing Frames whenever exposed."
     },
     {
+      "id": "identity_lock_pass",
+      "question": "Does the machine-readable check report show automatic Identity Lock PASS for every Frame before you judge exposed identity outside the locked regions?",
+      "verdict": "PASS",
+      "rationale": "npm run strip:polish -- check assets/first-room/dwarf/swing --json reports identity_lock.outcome PASS for all four Frames; helmet/face, belt-core, and boots anchors pass exact-RGBA evaluation."
+    },
+    {
       "id": "black_eye_no_sclera",
       "question": "When the eye is exposed, is it a single black Cell with no white sclera?",
       "verdict": "PASS",
-      "rationale": "Frames 0\u20132 expose a single near-black eye Cell under the helmet rim with no white sclera; Frame 3 occludes the eye during the forward contact lean."
+      "rationale": "Frames 0–2 expose a single near-black eye Cell under the helmet rim with no white sclera; Frame 3 occludes the eye during the forward contact lean."
     },
     {
       "id": "native_scale_separation",
       "question": "At native scale, are face/beard, beard/torso, hands/handle, legs/torso, and boots/ground separated rather than accidentally melding at same-value contacts?",
       "verdict": "PASS",
-      "rationale": "At native 16\u00d724, face/beard, beard/torso, gripping hand/handle, legs/torso, and boots/ground read as separated masses without same-value melding."
+      "rationale": "At native 16×24, face/beard, beard/torso, gripping hand/handle, legs/torso, and boots/ground read as separated masses without same-value melding."
     },
     {
       "id": "palette_lighting_outline",
@@ -84,12 +103,12 @@
   ],
   "explicit_confirmations": {
     "identity_stable_vs_identity_png": "PASS",
+    "automatic_helmet_face_belt_boots_identity_lock": "PASS",
     "same_pickaxe_tool_as_idle": "PASS",
     "boots_planted_all_frames": "PASS",
     "frame3_only_contact": "PASS",
     "no_scenery_or_effect_cells": "PASS",
-    "cross_animation_cohort_idle": "PASS",
-    "walk_cohort_deferred": "not on branch base; idle + identity cross-check satisfied"
+    "cross_animation_cohort_idle": "PASS"
   },
   "uncertain_count": 0,
   "overall": "PASS"

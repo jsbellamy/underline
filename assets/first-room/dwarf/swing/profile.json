@@ -14,6 +14,10 @@
       "question": "Are short/broad proportions, beard mass, the oversized blue lamp helmet, green clothing, belt and buckle, gloves, boots, and pickaxe legible and temporally consistent whenever the pose exposes them?"
     },
     {
+      "id": "identity_lock_pass",
+      "question": "Does the machine-readable check report show automatic Identity Lock PASS for every Frame before you judge exposed identity outside the locked regions?"
+    },
+    {
       "id": "black_eye_no_sclera",
       "question": "When the eye is exposed, is it a single black Cell with no white sclera?"
     },
@@ -69,10 +73,16 @@
     "Use only colors already allowed by the combined Draft palette.",
     "Never change alpha, baseline, dimensions, Frame order, or silhouette.",
     "Prefer restoring an identity anchor or separating forms over adding decorative detail.",
+    "Never override an automatic Identity Lock FAIL with a visual PASS.",
     "Return UNCERTAIN instead of inventing intent when the profile and pose do not settle the edit."
   ],
   "audit_workflow": [
-    "Read the machine-readable check report before opening art.",
+    "For walk and swing, create the deterministic identity seed with strip:polish seed before the first Attempt.",
+    "Submit the seed PNG as the image-edit base (edit source), not merely as a visual reference; bind identity.png as the reference image.",
+    "Do not use fresh text-to-image generation for walk or swing.",
+    "Generate sequential immutable Attempts until provenance, automatic Identity Lock, coherence, and polish pass.",
+    "Record every rejection and predecessor edge in provider/attempts.json; do not cap Attempt count with a fixed quota.",
+    "Read the machine-readable check report before opening art; confirm automatic Identity Lock PASS when walk or swing applies.",
     "Inspect one composite or animation preview at native scale and enlarged with nearest-neighbor scaling.",
     "Answer every fixed question and every applicable Motion-class override.",
     "Apply the fewest permitted Cell edits for EDIT verdicts.",

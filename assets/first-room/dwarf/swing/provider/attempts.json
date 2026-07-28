@@ -1,0 +1,14 @@
+{
+  "attempts": [
+    {
+      "attempt_id": "dwarf-swing--001",
+      "outcome": "accepted",
+      "predecessor_attempt_id": null,
+      "prompt_sha256": "984587d1be30732ae41341b5f61bd28a1548a61e99ebc42c02eaac20e366488d",
+      "raw_sha256": "b0d774e4995acf8275dbb5467a911266b73779502e834cde2d8969a497d54430",
+      "rejection_reason": null,
+      "selected": true
+    }
+  ],
+  "schema": "animation-attempt-ledger/0"
+}
