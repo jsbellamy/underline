@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from pipeline import canonical
 from pipeline import gate_evidence as ge
 
 FIXED_QUESTIONS: dict[str, str] = {
@@ -158,10 +159,9 @@ class ReviewPacket:
             "caveats": list(self.caveats),
         }
         # Hash excludes the digest field itself.
-        digest = ge.sha256_bytes(
-            json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
+        payload["packet_sha256"] = canonical.self_excluding_digest(
+            payload, field="packet_sha256"
         )
-        payload["packet_sha256"] = digest
         return payload
 
 
@@ -784,11 +784,7 @@ def validate_review_dir(review_dir: Path, *, root: Path | None = None) -> dict[s
     packet_doc = ge.load_json(packet_path)
     ge.require_schema(packet_doc, ge.KNOWN_SCHEMAS["packet"], where=str(packet_path))
     expected_hash = packet_doc.get("packet_sha256")
-    recomputed = dict(packet_doc)
-    recomputed.pop("packet_sha256", None)
-    digest = ge.sha256_bytes(
-        json.dumps(recomputed, sort_keys=True, separators=(",", ":")).encode()
-    )
+    digest = canonical.self_excluding_digest(packet_doc, field="packet_sha256")
     if expected_hash != digest:
         raise ReviewError(
             f"SHA-256 mismatch: packet manifest hash {expected_hash} != {digest}"

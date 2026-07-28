@@ -485,6 +485,27 @@ def _write_two_audits(review_dir: Path, packet: gr.ReviewPacket) -> dict[str, ob
     return audits
 
 
+def test_packet_to_manifest_and_validate_review_dir_round_trip(tmp_path: Path) -> None:
+    """C3: write path (to_manifest) and read path (validate_review_dir) share one digest expression."""
+    fx = _evidence(tmp_path)
+    packet = gr.build_promotion_verification_packet(
+        root=fx["root"],
+        promotion_id=fx["promo_id"],
+        budget_binding_good=fx["good_path"],
+    )
+    review_dir = fx["gc"] / "reviews" / fx["attempt_id"]
+    manifest_path = review_dir / "packet.json"
+    gr.write_packet_manifest(manifest_path, packet)
+    report = gr.validate_review_dir(review_dir)
+    assert report["ok"] is True
+
+    doc = json.loads(manifest_path.read_text())
+    doc["metric"] = 0.99
+    manifest_path.write_text(json.dumps(doc, indent=2) + "\n")
+    with pytest.raises(gr.ReviewError, match="SHA-256 mismatch"):
+        gr.validate_review_dir(review_dir)
+
+
 def test_review_packet_from_manifest_rehydrates_stored_packet(tmp_path: Path) -> None:
     fx = _evidence(tmp_path)
     packet = gr.build_promotion_verification_packet(
