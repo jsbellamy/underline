@@ -85,7 +85,7 @@ breach is a documented-standard violation, not a judgement call.
 
 Promotion-verification issues that write `gate-controls/reviews/*/review--*.json`
 need two **blinded** visual audits before `/code-review` — see
-`.agents/issue-implementer.md` step 7. On Cursor, delegate each audit to the
+`docs/agents/issue-implementer.md` step 7. On Cursor, delegate each audit to the
 `gate-blind-review` subagent (`.cursor/agents/gate-blind-review.md`).
 
 ### Code review (Cursor)
@@ -123,7 +123,10 @@ citing the command output that satisfies its Proof mapping.
 ## Delegating work
 
 These instructions are model-neutral: do not require a particular provider,
-model, or effort setting to delegate work. A reusable issue-implementation
-subagent is defined in `.agents/issue-implementer.md`. The orchestrator
-independently owns the acceptance gate — green tests and a scope-matching file
-list are necessary but never sufficient.
+model, or effort setting to delegate work. Shared implementer process lives in `docs/agents/issue-implementer.md`. On
+Cursor, the orchestrator spawns `issue-implementer-code` or
+`issue-implementer-asset` (`.cursor/agents/issue-implementer-code.md`,
+`.cursor/agents/issue-implementer-asset.md`) by slice type — model and slice
+rules are preloaded there. The orchestrator independently owns the acceptance
+gate — green tests and a scope-matching file list are necessary but never
+sufficient.

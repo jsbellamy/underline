@@ -18,7 +18,7 @@ runtime supports worktrees.
    `## Touches` `read:` lines are the bounded context set: read each named anchor
    before editing, treating `authority` as normative, `seam` as the interface to
    join, and `pattern` as an example rather than a specification. Expand beyond an
-   anchor only when the task requires it. The manifest is expected scope, not a
+   anchor only when required. The manifest is expected scope, not a
    straitjacket: justify each out-of-manifest file in the PR body.
 3. Create `issue-<N>-<slug>` from `main`.
 4. Implement. Invoke `/tdd` explicitly, then work test-first at the seams in
@@ -122,7 +122,6 @@ runtime supports worktrees.
   and leave the replacement to the named later issue.
 - Do not modify another issue's scope, work directly on `main`, or merge the pull
   request yourself.
-- Do not require a specific AI provider, model, or reasoning/effort setting for
-  implementation. On **Cursor**, blind gate reviews use the `gate-blind-review`
-  subagent (`.cursor/agents/gate-blind-review.md`, model pinned in frontmatter).
-  On other runtimes, follow `.claude/CLAUDE.md` for the blind-review pin.
+- On **Cursor**, blind gate reviews use the `gate-blind-review` subagent (model
+  pinned in `.cursor/agents/gate-blind-review.md`). On other runtimes, follow
+  `.claude/CLAUDE.md` for the blind-review pin.
