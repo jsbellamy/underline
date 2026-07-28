@@ -423,11 +423,18 @@ evidence model, add Gates, or change Budgets.
    additionally requires `--identity-reference` and `--edit-source`, copies
    those bytes to `reference/identity.png` and `provider/edit-source.png`,
    requires `generation_mode=image-edit`, and binds the canonical identity hash
-   and seed-strip hash in provenance. The edit source is the detailed original
-   idle provider Strip bound by `identity.json` → `generation_source`; the
-   identity reference is the separate post-ingest 16×24 Release Frame bound by
-   `identity.json` → `identity_png`. The Release Frame is an Identity Lock
-   anchor, never a generation canvas and never an input to upscale. Existing
+   and seed-strip hash in provenance. These are **two different files**:
+   `--edit-source` must be the idle provider Strip at
+   `assets/first-room/dwarf/idle/provider/source.png`, obtained via
+   `npm run strip:polish -- seed --identity-declaration
+   assets/first-room/dwarf/identity.json` (byte-for-byte copy of
+   `identity.json` → `generation_source`; already four identical idle Frames).
+   `--identity-reference` must be `assets/first-room/dwarf/identity.png`
+   (16×24 post-ingest Release Frame from `identity.json` → `identity_png`).
+   The seed command does **not** take `identity.png` as input. Never upscale
+   the identity anchor into a generation canvas. Corpus inbox Strips and
+   text-to-image redraws are not valid edit sources. See
+   `prompts/production/animation-strip.md` § Dwarf-miner walk and swing. Existing
    unprofiled `/0` and profiled
    `/1` bundles remain valid for `check` and `finalize` under legacy rules.
 2. The four Polished Frames remain exact `16×24` RGBA with binary alpha, exact

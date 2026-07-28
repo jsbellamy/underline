@@ -61,9 +61,15 @@ malformed, or hash-mismatched provenance rejects `init` without creating a bundl
 Provenance evidence cannot convert ingest `FAIL` or `REVIEW` into `PASS`.
 
 For `dwarf-miner` with Motion class `walk` or `swing`, `init` additionally
-requires `--identity-reference` (canonical `assets/first-room/dwarf/identity.png`)
-and `--edit-source` (the original idle provider Strip). Create the edit source
-from its hash-bound declaration:
+requires two **different** inputs:
+
+| Flag | File | Role |
+|------|------|------|
+| `--edit-source` | `assets/first-room/dwarf/idle/provider/source.png` (via seed below) | Image-edit **generation canvas** — four identical idle Frames on magenta |
+| `--identity-reference` | `assets/first-room/dwarf/identity.png` | Post-ingest **Identity Lock anchor** only (16×24; never the edit canvas) |
+
+Create the edit source from its hash-bound declaration — **not** from
+`identity.png`:
 
 ```bash
 npm run strip:polish -- seed \
@@ -71,15 +77,16 @@ npm run strip:polish -- seed \
   --out <seed.png>
 ```
 
-The source and anchor serve different stages. Use the detailed original idle
-provider Strip as the image-edit generation base. Use `identity.png` only as the
-post-ingest identity anchor for Identity Lock; never upscale the 16×24 anchor
-into a generation canvas. Those bytes are copied to
-`reference/identity.png` and `provider/edit-source.png`, bound in the manifest,
-and must match `generation_mode=image-edit` with the canonical identity hash in
-`reference_image_sha256` and the seed hash in `edit_source_sha256`. First-room
-dwarf `walk` and `swing` generation is image-edit evidence, not an unbound
-reference claim.
+`seed` copies `identity.json` → `generation_source`
+(`idle/provider/source.png`) byte-for-byte. It does not read or upscale
+`identity.png`. Submit `<seed.png>` to the provider as the image-edit base.
+
+Those bytes are copied to `provider/edit-source.png` and
+`reference/identity.png`, bound in the manifest, and must match
+`generation_mode=image-edit` with the canonical identity hash in
+`reference_image_sha256` and the idle-provider hash in `edit_source_sha256`.
+Full acquisition rules: `prompts/production/animation-strip.md` § Dwarf-miner
+walk and swing.
 
 Existing `final-polish-bundle/0` and `/1` bundles (including the checked-in
 dwarf `idle` bundle) remain readable under their legacy rules; `check` and

@@ -77,10 +77,11 @@
     "Return UNCERTAIN instead of inventing intent when the profile and pose do not settle the edit."
   ],
   "audit_workflow": [
-    "For walk and swing, run strip:polish seed with the dwarf identity declaration; it copies the original idle provider Strip byte-for-byte for the first Attempt.",
-    "Submit that detailed provider seed as the image-edit base (edit source), not merely as auxiliary guidance.",
-    "Bind identity.png separately as the post-ingest identity anchor used by automatic Identity Lock; never upscale it into a generation canvas.",
-    "Record the declared generation_source hash as edit_source_sha256 in each image-edit Attempt.",
+    "Walk and swing use two different PNGs: edit source = assets/first-room/dwarf/idle/provider/source.png (generation canvas); identity anchor = assets/first-room/dwarf/identity.png (16x24 lock evidence only).",
+    "Run strip:polish seed: npm run strip:polish -- seed --identity-declaration assets/first-room/dwarf/identity.json --out <seed.png>. This copies idle/provider/source.png byte-for-byte; it does NOT read or upscale identity.png.",
+    "Submit <seed.png> to the provider as the image-edit base (edit source), not identity.png and not a fresh text-to-image canvas.",
+    "On strip:polish init, pass --edit-source <seed.png> and --identity-reference assets/first-room/dwarf/identity.png.",
+    "Record identity.json generation_source.sha256 as edit_source_sha256 in each image-edit Attempt provenance.",
     "Do not use fresh text-to-image generation for walk or swing.",
     "Generate sequential immutable Attempts until provenance, automatic Identity Lock, coherence, and polish pass.",
     "Record every rejection and predecessor edge in provider/attempts.json; do not cap Attempt count with a fixed quota.",

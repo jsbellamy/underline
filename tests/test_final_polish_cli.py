@@ -807,9 +807,10 @@ def test_dwarf_miner_profile_and_prompt_require_image_edit_workflow() -> None:
     profile = json.loads((ROOT / "polish-profiles" / "dwarf-miner.json").read_text())
     workflow = " ".join(profile["audit_workflow"]).lower()
     assert "strip:polish seed" in workflow
-    assert "original idle provider strip" in workflow
-    assert "post-ingest identity anchor" in workflow
-    assert "never upscale" in workflow
+    assert "idle/provider/source.png" in workflow
+    assert "identity.png" in workflow
+    assert "16x24" in workflow
+    assert "does not read or upscale identity.png" in workflow
     assert "edit_source_sha256" in workflow
     assert "after provider recovery" in workflow
     assert "text-to-image" in workflow
@@ -818,13 +819,17 @@ def test_dwarf_miner_profile_and_prompt_require_image_edit_workflow() -> None:
     assert "quota" in workflow
     assert "identity lock" in workflow
     prompt = (ROOT / "prompts" / "production" / "animation-strip.md").read_text()
-    assert "image-edit" in prompt.lower()
-    assert "original idle provider strip" in prompt.lower()
-    assert "post-ingest identity anchor" in prompt.lower()
-    assert "never upscale" in prompt.lower()
+    prompt_lower = prompt.lower()
+    assert "image-edit" in prompt_lower
+    assert "idle/provider/source.png" in prompt_lower
+    assert "identity.png" in prompt_lower
+    assert "post-ingest identity anchor" in prompt_lower
+    assert "is not the seed command" in prompt_lower
+    assert "construct a four-copy strip from `identity.png`" in prompt_lower
     assert "edit_source_sha256" in prompt
-    assert "after provider recovery" in prompt.lower()
-    assert "text-to-image" in prompt.lower()
+    assert "after provider recovery" in prompt_lower
+    assert "text-to-image" in prompt_lower
+    assert "explicitly forbidden substitutes" in prompt_lower
 
 
 def test_v2_walk_check_json_binds_sequential_attempt_evidence(tmp_path: Path) -> None:

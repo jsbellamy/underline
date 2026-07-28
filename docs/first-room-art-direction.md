@@ -87,13 +87,28 @@ Frame durations are milliseconds per Frame slot in order:
 Swing is a one-shot: Frame 3 is the strike pose; the game returns to idle after
 the final hold rather than looping swing→swing.
 
+## Dwarf walk and swing — edit source vs identity anchor
+
+Production dwarf **walk** and **swing** are acquired by **image-edit** from the
+idle provider Strip, not by redrawing from `identity.png`. Two files serve
+different roles:
+
+| File | Role |
+|------|------|
+| `assets/first-room/dwarf/idle/provider/source.png` | Edit source — provider generation canvas (four identical idle Frames) |
+| `assets/first-room/dwarf/identity.png` | Post-ingest identity anchor — Identity Lock evidence only (16×24) |
+
+Copy the edit source with `strip:polish seed` against
+`assets/first-room/dwarf/identity.json`. Full rules:
+`prompts/production/animation-strip.md` § Dwarf-miner walk and swing.
+
 ## Corpus miner Strips — motion evidence, not identity
 
 The provisional corpus miner Strips in `prototype/strip-coherence/prompts/`
 (`01-miner-idle`, `05-miner-walk`, `06-miner-swing`, `14-lantern-flicker`) are
 **motion and pipeline evidence** — they exercise ingest gates, budgets, and
 Polish profiles. They are **not** the production art identity for the first-room
-miner.
+miner and are **not** valid edit sources for walk or swing acquisition.
 
 Production miner art must match this document's miner description, Master
 Palette membership, and the production prompt kits under `prompts/production/`.

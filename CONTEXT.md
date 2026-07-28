@@ -190,10 +190,13 @@ _Avoid_: identity anchor audit, canonical redraw check
 
 **Generation source**:
 The detailed, hash-bound provider artwork used as the image-edit base for a new
-Motion-class Attempt. For dwarf walk and swing this is the original idle
-provider Strip. It is distinct from the post-ingest identity anchor and must not
+Motion-class Attempt. For dwarf walk and swing this is explicitly
+`assets/first-room/dwarf/idle/provider/source.png`, declared in
+`identity.json` → `generation_source` and copied by
+`strip:polish seed --identity-declaration identity.json`. It is **not**
+`identity.png`. It is distinct from the post-ingest identity anchor and must not
 be reconstructed by upscaling a Release Frame.
-_Avoid_: identity anchor, Release Frame, visual reference
+_Avoid_: identity anchor, Release Frame, visual reference, identity.png as edit canvas
 
 **Post-ingest identity anchor**:
 The post-ingest Release Frame used by Identity Lock as external canonical

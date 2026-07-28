@@ -936,6 +936,13 @@ def build_identity_seed(
     identity_declaration_path: Path,
     out_path: Path,
 ) -> dict[str, Any]:
+    """Copy ``identity.json`` → ``generation_source`` byte-for-byte.
+
+    For dwarf walk/swing this is ``idle/provider/source.png`` (four identical
+    idle Frames on magenta). ``identity_png`` (``identity.png``, 16×24) is
+    validated but **not** copied — it is the post-ingest Identity Lock anchor,
+    never the image-edit canvas.
+    """
     if not identity_declaration_path.is_file():
         raise IdentityLockError(
             f"missing identity declaration: {identity_declaration_path}"

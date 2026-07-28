@@ -61,17 +61,29 @@ npm run strip:polish -- init <accepted-strip.png> --polish-profile <id>
 `dwarf-miner` **walk** and **swing** Strips must be acquired by **image-edit**
 from the original idle provider Strip, not by fresh text-to-image redraw.
 
-There are two deliberately different identity inputs:
+### Two inputs — do not conflate them
 
-| Input | Use |
-|-------|-----|
-| `identity.json` → `generation_source` | The original idle provider Strip. Use this detailed provider artwork as the image-edit generation base. |
-| `identity.json` → `identity_png` | The post-ingest identity anchor. Use this 16×24 Release Frame only for deterministic Identity Lock evaluation after ingest. |
+Walk and swing use **two different PNGs** with **two different jobs**. Confusing
+them is the most common acquisition failure.
 
-Never upscale `identity.png` into a generation canvas: its ingest-reduced Cells
-have already discarded the provider artwork’s detail.
+| Role | Canonical path | Typical size | When it is used |
+|------|----------------|--------------|-----------------|
+| **Edit source** (generation canvas) | `assets/first-room/dwarf/idle/provider/source.png` | Provider transport raster (e.g. 1536×1024) | Submitted to the image provider as the **image-edit base**. Already contains four identical idle Frames on magenta — this *is* the “four-copy seed.” |
+| **Post-ingest identity anchor** (lock evidence) | `assets/first-room/dwarf/identity.png` | 16×24 logical Cells | Bound as `--identity-reference` for Identity Lock **after** ingest only. Never submitted as the edit canvas. |
 
-1. Copy the hash-bound generation source declared by the dwarf identity:
+Both paths are declared and hash-bound in `assets/first-room/dwarf/identity.json`:
+
+| `identity.json` key | Points at | Purpose |
+|-----------------------|-----------|---------|
+| `generation_source` | `idle/provider/source.png` | Edit source — detailed provider artwork |
+| `identity_png` | `identity.png` | Post-ingest lock anchor — ingest-reduced Release Frame |
+
+**`identity.png` is not the seed command’s input file.** The seed command reads
+`identity.json` and copies `generation_source` byte-for-byte. It does **not**
+read `identity.png`, does **not** upscale `identity.png`, and does **not**
+construct a four-copy strip from `identity.png`.
+
+### Seed command — exact behavior
 
 ```bash
 npm run strip:polish -- seed \
@@ -79,13 +91,31 @@ npm run strip:polish -- seed \
   --out <seed.png> [--json]
 ```
 
-2. Submit `<seed.png>` as the **image-edit base** (edit source). The command
-   copies the original idle provider Strip byte-for-byte.
-3. Bind `assets/first-room/dwarf/identity.png` separately as the post-ingest
-   identity anchor (`--identity-reference`) for validation.
-4. **Forbid** fresh text-to-image generation for these Motion classes.
-5. Record the declared provider-source hash as `edit_source_sha256` in every
-   image-edit Attempt’s provenance.
+This command:
+
+1. Loads `assets/first-room/dwarf/identity.json`.
+2. Verifies `identity_png` is a 16×24 Release Frame (sanity check only).
+3. Copies `generation_source` → `<seed.png>` **byte-for-byte** (today:
+   `assets/first-room/dwarf/idle/provider/source.png`).
+4. Emits JSON including `generation_source_sha256` (must match
+   `edit_source_sha256` in provenance).
+
+The output `<seed.png>` is already a four-Frame idle strip. Image-edit prompts
+for walk and swing describe editing **that canvas** — changing legs/boots (walk)
+or arms/pickaxe/torso lean (swing) while locked regions stay fixed.
+
+### Image-edit acquisition order
+
+1. Run the seed command above to produce `<seed.png>`.
+2. Submit `<seed.png>` to the provider as the **image-edit base** (edit source).
+   Also supply `identity.png` only if the provider workflow needs a separate
+   visual reference — it is still **not** the generation canvas.
+3. On `strip:polish init`, pass:
+   - `--edit-source <seed.png>` (the idle provider Strip copy)
+   - `--identity-reference assets/first-room/dwarf/identity.png` (16×24 anchor)
+4. **Forbid** fresh text-to-image generation for walk and swing.
+5. Record `generation_source.sha256` from `identity.json` as
+   `edit_source_sha256` in every image-edit Attempt’s provenance.
 6. Run Identity Lock only after provider recovery has produced logical Frames.
 7. Generate **sequential immutable Attempts** until one passes provenance,
    automatic Identity Lock, coherence Gates, polish, and visual audit.
@@ -94,6 +124,16 @@ npm run strip:polish -- seed \
 9. Visual audit judges motion readability and exposed identity **outside** the
    locked regions, but must cite the automatic Identity Lock PASS in the check
    report.
+
+### Explicitly forbidden substitutes
+
+| Forbidden | Why |
+|-----------|-----|
+| Fresh text-to-image from `identity.png` or a prompt alone | Loses provider-detail canvas; breaks `/2` image-edit evidence |
+| Upscaling `identity.png` (16×24) into a generation canvas | Ingest-reduced Cells discard provider detail; not reversible |
+| `prototype/strip-coherence/inbox/*` corpus Strips as the edit source | Motion evidence only — see `docs/first-room-art-direction.md` |
+| Mechanical merge of corpus motion + identity upper body without a ledgered Attempt | Bypasses provenance and does not replace a clean image-edit Attempt |
+| Reusing the pre-`/2` walk or swing `provider/source.png` from issues #110/#111 | Those bundles were text-to-image acquisitions, not image-edit from the idle seed |
 
 Identity Lock rules live in `assets/first-room/dwarf/identity-locks.json`.
 

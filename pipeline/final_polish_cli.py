@@ -397,15 +397,26 @@ def _configure_parser(parser: argparse.ArgumentParser) -> None:
 
     seed = sub.add_parser(
         "seed",
-        help="Copy the hash-bound provider generation source declared by dwarf identity",
+        help=(
+            "Copy identity.json → generation_source (idle/provider/source.png) "
+            "byte-for-byte; does not read identity.png"
+        ),
     )
     seed.add_argument(
         "--identity-declaration",
         type=pathlib.Path,
         required=True,
-        help="Canonical dwarf identity declaration JSON",
+        help=(
+            "Dwarf identity declaration JSON (e.g. assets/first-room/dwarf/identity.json); "
+            "NOT identity.png"
+        ),
     )
-    seed.add_argument("--out", type=pathlib.Path, required=True, help="Output seed strip PNG")
+    seed.add_argument(
+        "--out",
+        type=pathlib.Path,
+        required=True,
+        help="Output edit-source strip PNG (copy of idle/provider/source.png)",
+    )
     seed.add_argument("--json", action="store_true", help="Emit machine-readable JSON on stdout")
 
 

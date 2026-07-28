@@ -40,5 +40,5 @@
     "walk",
     "swing"
   ],
-  "notes": "Use generation_source for provider image editing. identity_png is the post-ingest Release identity anchor, never a generation canvas."
+  "notes": "Walk and swing image-edit uses TWO files. (1) generation_source = assets/first-room/dwarf/idle/provider/source.png — the provider transport strip with four identical idle Frames; copy via `npm run strip:polish -- seed --identity-declaration assets/first-room/dwarf/identity.json --out <seed.png>` and submit <seed.png> as the image-edit base (edit_source_sha256 must match generation_source.sha256). (2) identity_png = assets/first-room/dwarf/identity.png — the 16x24 post-ingest Release anchor for Identity Lock only; bind as --identity-reference, never upscale into a generation canvas. The seed command does NOT take identity.png as input."
 }
