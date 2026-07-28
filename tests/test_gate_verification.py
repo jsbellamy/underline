@@ -236,6 +236,39 @@ def test_apply_manifest_statuses_transitions_named_promotions_only(tmp_path: Pat
     }
 
 
+def test_apply_manifest_statuses_acquires_manifest_lock(tmp_path: Path) -> None:
+    """C6: apply_manifest_statuses writes under .manifest.lock like other manifest mutations."""
+    repo_gc = ROOT / "gate-controls"
+    before = ge.fingerprint_tree(repo_gc)
+    manifest_path = tmp_path / "gate-controls" / "manifest.json"
+    manifest_path.parent.mkdir(parents=True)
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "schema": "gate-control-manifest/0",
+                "specifications": [],
+                "promotions": [
+                    {
+                        "id": "promo--idle--palette_drift_pass",
+                        "status": "PENDING_VERIFICATION",
+                    },
+                ],
+            },
+            indent=2,
+        )
+        + "\n"
+    )
+    lock_path = manifest_path.parent / ".manifest.lock"
+    assert not lock_path.is_file()
+    gv.apply_manifest_statuses(
+        manifest_path,
+        statuses={"promo--idle--palette_drift_pass": "ACTIVE"},
+    )
+    assert lock_path.is_file()
+    after = ge.fingerprint_tree(repo_gc)
+    assert after == before
+
+
 def test_repository_review_dirs_validate_after_second_review_input() -> None:
     for promotion_id in gv.VERIFICATION_PROMOTION_IDS:
         attempt_id = gv.review_dir_for_promotion(ROOT, promotion_id)

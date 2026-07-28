@@ -16,6 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from pipeline import canonical
 from pipeline import gate_evidence as ge
 from pipeline import gate_review as gr
 
@@ -91,7 +92,7 @@ def _manifest_doc_at_slice_binding(
     promotion_id: str,
     status: str = PENDING_STATUS,
 ) -> dict[str, Any]:
-    doc = json.loads(manifest_path.read_text())
+    doc = ge.load_json(manifest_path)
     slice_index = _slice_index(promotion_id)
     if slice_index is None:
         raise VerificationError(f"unknown promotion_id {promotion_id!r}")
@@ -188,7 +189,7 @@ def _manifest_doc_at_binding(
     promotion_ids: frozenset[str],
     status: str = PENDING_STATUS,
 ) -> dict[str, Any]:
-    doc = json.loads(manifest_path.read_text())
+    doc = ge.load_json(manifest_path)
     for promo in doc.get("promotions", []):
         pid = promo.get("id")
         if isinstance(pid, str) and pid in promotion_ids:
@@ -233,8 +234,7 @@ def manifest_sha256_at_binding(
             promotion_ids=promotion_ids,
             status=status,
         )
-    canonical = json.dumps(doc, indent=2) + "\n"
-    return ge.sha256_bytes(canonical.encode())
+    return ge.sha256_bytes(canonical.manifest_bytes(doc))
 
 
 def review_dir_for_promotion(root: Path, promotion_id: str) -> str:
@@ -500,17 +500,20 @@ def apply_manifest_statuses(
     statuses: Mapping[str, str],
 ) -> None:
     """Transition named Promotion statuses in one manifest write."""
-    doc = json.loads(manifest_path.read_text())
-    seen: set[str] = set()
-    for promo in doc.get("promotions", []):
-        pid = promo.get("id")
-        if isinstance(pid, str) and pid in statuses:
-            promo["status"] = statuses[pid]
-            seen.add(pid)
-    missing = set(statuses) - seen
-    if missing:
-        raise VerificationError(f"manifest missing promotions: {sorted(missing)}")
-    manifest_path.write_text(json.dumps(doc, indent=2) + "\n")
+
+    def _mutator(doc: dict[str, Any]) -> dict[str, Any]:
+        seen: set[str] = set()
+        for promo in doc.get("promotions", []):
+            pid = promo.get("id")
+            if isinstance(pid, str) and pid in statuses:
+                promo["status"] = statuses[pid]
+                seen.add(pid)
+        missing = set(statuses) - seen
+        if missing:
+            raise VerificationError(f"manifest missing promotions: {sorted(missing)}")
+        return doc
+
+    ge.mutate_manifest_document(manifest_path, _mutator)
 
 
 def main(argv: list[str] | None = None) -> int:

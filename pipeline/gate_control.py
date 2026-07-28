@@ -19,6 +19,7 @@ from typing import Any, Mapping
 
 from PIL import Image, ImageDraw
 
+from pipeline import canonical
 from pipeline import strip as S
 from pipeline.gate_evidence import (
     EvidenceError,
@@ -28,6 +29,8 @@ from pipeline.gate_evidence import (
     write_json_immutable,
 )
 from pipeline.numeric_policy import NUMERIC_POLICY
+
+GATE_CONFIG_DIGEST_LEN = 16  # stored width of gate_config_digest across committed Measurement runs
 
 MEASUREMENT_SCHEMA = "gate-control-measurement/1"
 
@@ -169,10 +172,8 @@ def gate_config_hash(
         "active_promotions": active_promotions,
         "numeric_policy": NUMERIC_POLICY,
     }
-    digest = hashlib.sha256(
-        json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()
-    ).hexdigest()
-    return digest[:16]
+    digest = hashlib.sha256(canonical.packet_bytes(payload)).hexdigest()
+    return digest[:GATE_CONFIG_DIGEST_LEN]
 
 
 def _fraction_evidence(

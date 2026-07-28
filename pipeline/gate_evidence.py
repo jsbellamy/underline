@@ -15,6 +15,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator, Mapping, Sequence
 
+from pipeline import canonical
+
 KNOWN_SCHEMAS: dict[str, frozenset[str]] = {
     "manifest": frozenset({"gate-control-manifest/0"}),
     "attempt": frozenset({"gate-control-acquisition/0"}),
@@ -528,7 +530,7 @@ def write_provenance_record(path: Path, doc: Mapping[str, Any]) -> None:
 def write_manifest_document(path: Path, doc: Mapping[str, Any]) -> None:
     require_schema(doc, KNOWN_SCHEMAS["manifest"], where=str(path))
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(dict(doc), indent=2) + "\n")
+    path.write_bytes(canonical.manifest_bytes(doc))
 
 
 def mutate_manifest_document(
