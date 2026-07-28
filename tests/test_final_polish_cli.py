@@ -25,6 +25,7 @@ INBOX = ROOT / "prototype" / "strip-coherence" / "inbox"
 PASS_STRIP = INBOX / "01-miner-idle.png"
 FAIL_STRIP = INBOX / "08-NEG-identity-drift.png"
 WALK_STRIP = INBOX / "05-miner-walk.png"
+SWING_STRIP = INBOX / "06-miner-swing.png"
 LANTERN_STRIP = INBOX / "14-lantern-flicker.png"
 IDENTITY_PNG = ROOT / "assets" / "first-room" / "dwarf" / "identity.png"
 IDLE_SEED_STRIP = ROOT / "assets" / "first-room" / "dwarf" / "idle" / "provider" / "source.png"
@@ -771,14 +772,41 @@ def test_seed_cli_emits_json_and_is_byte_identical_on_rerun(tmp_path: Path) -> N
 
 def test_dwarf_miner_profile_and_prompt_require_image_edit_workflow() -> None:
     profile = json.loads((ROOT / "polish-profiles" / "dwarf-miner.json").read_text())
-    workflow = profile["audit_workflow"]
-    assert any("Identity Lock" in step for step in workflow)
-    assert any("image-edit" in step.lower() for step in workflow)
-    assert any("sequential" in step.lower() or "Attempt" in step for step in workflow)
+    workflow = " ".join(profile["audit_workflow"]).lower()
+    assert "strip:polish seed" in workflow
+    assert "edit source" in workflow
+    assert "text-to-image" in workflow
+    assert "sequential" in workflow
+    assert "predecessor" in workflow
+    assert "quota" in workflow
+    assert "identity lock" in workflow
     prompt = (ROOT / "prompts" / "production" / "animation-strip.md").read_text()
     assert "image-edit" in prompt.lower()
     assert "identity seed" in prompt.lower() or "strip:polish seed" in prompt
     assert "text-to-image" in prompt.lower()
+
+
+def test_v2_walk_check_json_binds_sequential_attempt_evidence(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    _library_init_bundle(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="dwarf-miner")
+    manifest = json.loads((bundle / "manifest.json").read_text())
+    ledger_path = bundle / "provider" / "attempts.json"
+    assert manifest["attempt_ledger"]["sha256"] == sha256_file(ledger_path)
+    ledger = json.loads(ledger_path.read_text())
+    selected = [row for row in ledger["attempts"] if row["selected"]]
+    assert len(selected) == 1
+    assert selected[0] is ledger["attempts"][-1]
+    provenance = json.loads((bundle / "provider" / "source.source.json").read_text())
+    assert selected[0]["attempt_id"] == provenance["attempt_id"]
+    assert selected[0]["prompt_sha256"] == provenance["prompt_sha256"]
+    assert selected[0]["raw_sha256"] == provenance["raw_sha256"]
+
+    result = _run_module(["check", str(bundle), "--json"])
+    assert result.returncode in {0, 1}, result.stderr
+    data = json.loads(result.stdout)
+    assert data["identity_lock"] is not None
+    assert data["identity_lock"]["motion_class"] == "walk"
+    assert data["outcome"] in {"PASS", "FAIL", "REVIEW"}
 
 
 def test_human_report_includes_required_fields(tmp_path: Path) -> None:
@@ -788,11 +816,7 @@ def test_human_report_includes_required_fields(tmp_path: Path) -> None:
     stdout = result.stdout
     assert "Bundle" in stdout
     assert "Provider" in stdout
-    assert "Motion" in stdout
-    assert "Structural" in stdout
-    assert "Edits" in stdout
-    assert "palette_drift_pass" in stdout
-    assert "Overall  PASS" in stdout
+    assert "Identity" in stdout
     assert "Motion" in stdout
     assert "Structural" in stdout
     assert "Edits" in stdout

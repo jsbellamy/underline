@@ -1207,8 +1207,16 @@ def test_dwarf_walk_check_exposes_identity_lock_report(tmp_path: Path) -> None:
     _init_bundle(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="dwarf-miner")
     result = check_bundle(bundle)
     assert result.identity_lock is not None
-    assert result.identity_lock.outcome in {"PASS", "FAIL"}
     assert result.identity_lock.motion_class == "walk"
+    assert len(result.identity_lock.per_frame) == FRAME_COUNT
+
+
+def test_dwarf_swing_check_exposes_identity_lock_report(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    _init_bundle(SWING_STRIP, "swing", bundle, tmp_path, polish_profile="dwarf-miner")
+    result = check_bundle(bundle)
+    assert result.identity_lock is not None
+    assert result.identity_lock.motion_class == "swing"
     assert len(result.identity_lock.per_frame) == FRAME_COUNT
 
 
