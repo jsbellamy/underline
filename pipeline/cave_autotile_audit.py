@@ -8,6 +8,7 @@ from typing import Any, Literal, Sequence
 
 from PIL import Image
 
+from pipeline.cell_raster import read_rgba
 from pipeline.gate_evidence import sha256_file
 
 N, E, S, W = 1, 2, 4, 8
@@ -52,13 +53,12 @@ def release_item_path(bundle_root: Path, variant: str, mask: int) -> Path:
 
 
 def load_rgba_cells(path: Path) -> list[list[tuple[int, int, int, int]]]:
-    with Image.open(path) as image:
-        rgba = image.convert("RGBA")
-        if rgba.size != (CELL, CELL):
-            raise ValueError(f"{path}: expected {CELL}x{CELL}, got {rgba.size}")
-        pixels = rgba.load()
-        assert pixels is not None
-        return [[pixels[x, y] for x in range(CELL)] for y in range(CELL)]
+    cells = read_rgba(path)
+    width = len(cells[0]) if cells else 0
+    height = len(cells)
+    if (width, height) != (CELL, CELL):
+        raise ValueError(f"{path}: expected {CELL}x{CELL}, got {(width, height)}")
+    return cells
 
 
 def _rgb(cell: tuple[int, int, int, int]) -> tuple[int, int, int]:

@@ -11,6 +11,7 @@ from typing import Any, Literal, Mapping, Sequence
 
 from PIL import Image, UnidentifiedImageError
 
+from pipeline.cell_raster import cells_from_rgba
 from pipeline.gate_evidence import sha256_file
 from pipeline.strip import Cell
 
@@ -63,24 +64,6 @@ def identity_lock_applies(polish_profile_id: str | None, motion_class: str) -> b
     return polish_profile_id == "dwarf-miner" and motion_class in {"walk", "swing"}
 
 
-def _cells_from_rgba_image(image: Image.Image) -> list[list[Cell]]:
-    rgba = image.convert("RGBA")
-    width, height = rgba.size
-    pixels = rgba.load()
-    assert pixels is not None
-    cells: list[list[Cell]] = []
-    for y in range(height):
-        row: list[Cell] = []
-        for x in range(width):
-            r, g, b, a = pixels[x, y]
-            if a == 0:
-                row.append(None)
-            else:
-                row.append((int(r), int(g), int(b)))
-        cells.append(row)
-    return cells
-
-
 def load_canonical_cells(
     identity_path: Path,
     frame_size: tuple[int, int],
@@ -93,7 +76,7 @@ def load_canonical_cells(
                 raise IdentityLockError(
                     f"identity frame size must be {frame_size[0]}x{frame_size[1]}"
                 )
-            return _cells_from_rgba_image(image.convert("RGBA"))
+            return cells_from_rgba(image.convert("RGBA"))
     except UnidentifiedImageError as exc:
         raise IdentityLockError(f"unreadable identity image: {identity_path}") from exc
 

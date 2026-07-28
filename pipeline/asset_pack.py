@@ -9,6 +9,7 @@ from typing import Any, Literal
 
 from PIL import Image, UnidentifiedImageError
 
+from pipeline.cell_raster import cells_from_rgba
 from pipeline.gate_evidence import sha256_file
 from pipeline.static_asset import _palette_rgb_set
 
@@ -491,15 +492,11 @@ def _verify_release(path: Path, expected_sha: str, allowed_palette: frozenset[tu
         )
     try:
         with Image.open(path) as image:
-            rgba = image.convert("RGBA")
-            pixels = rgba.load()
-            assert pixels is not None
-            for y in range(rgba.height):
-                for x in range(rgba.width):
-                    r, g, b, a = pixels[x, y]
-                    if a == 0:
+            for y, row in enumerate(cells_from_rgba(image)):
+                for x, cell in enumerate(row):
+                    if cell is None:
                         continue
-                    if (int(r), int(g), int(b)) not in allowed_palette:
+                    if cell not in allowed_palette:
                         raise InvalidAssetPackError(
                             f"palette violation in {path} at ({x}, {y})",
                             reason_code="palette_violation",
