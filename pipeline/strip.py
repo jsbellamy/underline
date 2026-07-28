@@ -6,8 +6,10 @@ deterministic coherence report. Grid recovery uses vendored pipeline primitives;
 
 from __future__ import annotations
 
+import os
 import pathlib
 from collections import Counter
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -44,8 +46,22 @@ Facing = Literal["fixed", "free"]
 Outcome = Literal["PASS", "REVIEW", "FAIL"]
 
 _REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
-_DEFAULT_PROFILES_PATH = _REPO_ROOT / "gate-controls" / "acceptance-profiles.json"
-_DEFAULT_MANIFEST_PATH = _REPO_ROOT / "gate-controls" / "manifest.json"
+
+ALPHA = 0.5
+
+
+def _gate_controls_root() -> pathlib.Path:
+    return pathlib.Path(
+        os.environ.get("UNDERLINE_GATE_CONTROLS_ROOT", _REPO_ROOT / "gate-controls")
+    )
+
+
+def _default_profiles_path() -> pathlib.Path:
+    return _gate_controls_root() / "acceptance-profiles.json"
+
+
+def _default_manifest_path() -> pathlib.Path:
+    return _gate_controls_root() / "manifest.json"
 
 _GATE_BUDGET_ATTR = {
     "silhouette_budget": "max_silhouette",
@@ -73,6 +89,49 @@ class ClassBudget:
     loops: bool
     facing: Facing
     min_alignment_sharpness: float | None = None
+
+
+@dataclass(frozen=True)
+class SeparatedBudget:
+    g: float
+    c: float
+    budget: float
+    good_headroom: float
+    review_width: float
+
+
+@dataclass(frozen=True)
+class AcceptancePolicy:
+    motion_classes: Mapping[str, ClassBudget]
+    acceptance_gates: Mapping[str, Mapping[str, GatePolicy]]
+
+    def for_class(self, motion_class: str) -> ClassBudget:
+        try:
+            return self.motion_classes[motion_class]
+        except KeyError as exc:
+            raise ValueError(f"unknown motion_class: {motion_class!r}") from exc
+
+
+def derive_separated_budget(
+    worst_good: float, control: float, *, alpha: float = ALPHA
+) -> SeparatedBudget:
+    """Apply the #28 Gap allocation factor to already-measured endpoints."""
+    g = canonical_metric(worst_good)
+    c = canonical_metric(control)
+    if not 0.0 <= alpha <= 1.0:
+        raise ValueError(f"alpha must be in [0, 1], got {alpha}")
+    if c <= g:
+        raise ValueError(f"control {c} must be strictly above worst-good {g}")
+    budget = canonical_metric(g + alpha * (c - g))
+    if not g <= budget < c:
+        raise ValueError(f"derived Budget {budget} not in [{g}, {c})")
+    return SeparatedBudget(
+        g=g,
+        c=c,
+        budget=budget,
+        good_headroom=round(budget - g, 4),
+        review_width=round(c - budget, 4),
+    )
 
 
 _CLASS_META: dict[str, dict[str, Any]] = {
@@ -158,7 +217,7 @@ def _aggregate_outcome(
     return "PASS"
 
 
-def _validate_separated_promotions(
+def validate_separated_promotions(
     gate_policies: dict[str, dict[str, GatePolicy]],
     *,
     manifest_path: pathlib.Path,
@@ -200,10 +259,10 @@ def build_runtime_acceptance_policy(
     *,
     profiles_path: pathlib.Path | None = None,
     manifest_path: pathlib.Path | None = None,
-) -> tuple[dict[str, ClassBudget], dict[str, dict[str, GatePolicy]]]:
+) -> AcceptancePolicy:
     """Load Acceptance profiles and project runtime Budgets and Gate policies."""
-    profiles_path = profiles_path or _DEFAULT_PROFILES_PATH
-    manifest_path = manifest_path or _DEFAULT_MANIFEST_PATH
+    profiles_path = profiles_path or _default_profiles_path()
+    manifest_path = manifest_path or _default_manifest_path()
     try:
         profiles = load_acceptance_profiles(profiles_path)
     except EvidenceError as exc:
@@ -246,11 +305,29 @@ def build_runtime_acceptance_policy(
             min_alignment_sharpness=meta["min_alignment_sharpness"],
         )
 
-    _validate_separated_promotions(gate_policies, manifest_path=manifest_path)
-    return motion_classes, gate_policies
+    validate_separated_promotions(gate_policies, manifest_path=manifest_path)
+    return AcceptancePolicy(
+        motion_classes=motion_classes,
+        acceptance_gates=gate_policies,
+    )
 
 
-MOTION_CLASSES, ACCEPTANCE_GATES = build_runtime_acceptance_policy()
+_LAZY_POLICY: AcceptancePolicy | None = None
+
+
+def _lazy_acceptance_policy() -> AcceptancePolicy:
+    global _LAZY_POLICY
+    if _LAZY_POLICY is None:
+        _LAZY_POLICY = build_runtime_acceptance_policy()
+    return _LAZY_POLICY
+
+
+def __getattr__(name: str) -> Any:
+    if name == "MOTION_CLASSES":
+        return _lazy_acceptance_policy().motion_classes
+    if name == "ACCEPTANCE_GATES":
+        return _lazy_acceptance_policy().acceptance_gates
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 @dataclass(frozen=True)
@@ -745,9 +822,10 @@ def quantize_motion_frames(
     anchor_row: int | None = None,
 ) -> tuple[list[list[list[Cell]]], int | None]:
     """Shared palette quantize + silhouette anchor, matching coherence_split."""
-    if motion_class not in MOTION_CLASSES:
+    motion_classes = _lazy_acceptance_policy().motion_classes
+    if motion_class not in motion_classes:
         raise ValueError(f"unknown motion_class: {motion_class!r}")
-    budget = MOTION_CLASSES[motion_class]
+    budget = motion_classes[motion_class]
     rgbs = collect_opaque_rgbs(frames)
     palette, _stats = build_shared_palette(
         rgbs, max_colors=max_colors, merge_dist=merge_dist
@@ -910,14 +988,16 @@ def coherence_split(
     max_colors: int = DEFAULT_MAX_PALETTE,
     merge_dist: int = PROVIDER_MERGE_DIST_RGB,
     anchor_row: int | None = None,
+    policy: AcceptancePolicy | None = None,
 ) -> dict[str, Any]:
     """Gate motion and recolour separately, on a shared quantized palette."""
     if not frames:
         return {"pass": False, "reason": "no frames"}
-    if motion_class not in MOTION_CLASSES:
+    effective_policy = policy or _lazy_acceptance_policy()
+    if motion_class not in effective_policy.motion_classes:
         raise ValueError(f"unknown motion_class: {motion_class!r}")
 
-    budget = MOTION_CLASSES[motion_class]
+    budget = effective_policy.motion_classes[motion_class]
     grounded = budget.grounded
     max_silhouette_diff = budget.max_silhouette
     max_loop_diff = budget.max_loop
@@ -998,7 +1078,7 @@ def coherence_split(
 
     disp = displacement_gate_result(q, budget, anchor=sil_anchor)
 
-    gate_policies = ACCEPTANCE_GATES[motion_class]
+    gate_policies = effective_policy.acceptance_gates[motion_class]
     gate_outcomes: dict[str, dict[str, Any]] = {}
     caveats: list[str] = []
 

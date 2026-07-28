@@ -15,7 +15,7 @@ import json
 import os
 import pathlib
 import sys
-from dataclasses import dataclass
+from typing import Any
 
 # Local prototype imports (same pattern as derive_budgets.py).
 HERE = pathlib.Path(__file__).resolve().parent
@@ -26,8 +26,12 @@ import corpus  # noqa: E402
 import derive_budgets as db  # noqa: E402
 from numeric_policy import canonical_metric  # noqa: E402
 from pipeline import strip as S  # noqa: E402
+from pipeline.strip import (  # noqa: E402
+    ALPHA,
+    SeparatedBudget,
+    derive_separated_budget,
+)
 
-ALPHA = 0.5
 GC_ROOT = pathlib.Path(
     os.environ.get("UNDERLINE_GATE_CONTROLS_ROOT", ROOT / "gate-controls")
 )
@@ -47,37 +51,6 @@ RUNTIME_BUDGET_ATTR = {
     "palette_drift_pass": "max_drift",
     "min_pair_cohort_pass": "max_min_pair",
 }
-
-
-@dataclass(frozen=True)
-class SeparatedBudget:
-    g: float
-    c: float
-    budget: float
-    good_headroom: float
-    review_width: float
-
-
-def derive_separated_budget(
-    worst_good: float, control: float, *, alpha: float = ALPHA
-) -> SeparatedBudget:
-    """Apply the #28 Gap allocation factor to already-measured endpoints."""
-    g = canonical_metric(worst_good)
-    c = canonical_metric(control)
-    if not 0.0 <= alpha <= 1.0:
-        raise ValueError(f"alpha must be in [0, 1], got {alpha}")
-    if c <= g:
-        raise ValueError(f"control {c} must be strictly above worst-good {g}")
-    budget = canonical_metric(g + alpha * (c - g))
-    if not g <= budget < c:
-        raise ValueError(f"derived Budget {budget} not in [{g}, {c})")
-    return SeparatedBudget(
-        g=g,
-        c=c,
-        budget=budget,
-        good_headroom=round(budget - g, 4),
-        review_width=round(c - budget, 4),
-    )
 
 
 def _load_acceptance_profiles() -> dict[tuple[str, str], dict]:
@@ -135,78 +108,26 @@ def _worst_good_by_class() -> dict[str, dict[str, tuple[str, float]]]:
     return out
 
 
-def _required_separated_promotion_ids() -> frozenset[str]:
-    """Provider-controlled Separated pairs that require an ACTIVE Promotion."""
-    required: set[str] = set()
-    for row in _load_acceptance_profiles().values():
-        if row.get("status") == "SEPARATED" and "active_promotion" in row:
-            required.add(row["active_promotion"])
-    return frozenset(required)
-
-
-def _assert_all_separated_promotions_active() -> None:
-    """Fail closed when any required Separated Promotion is not ACTIVE."""
-    required = _required_separated_promotion_ids()
-    manifest = json.loads(GC_MANIFEST.read_text())
-    statuses = {p["id"]: p["status"] for p in manifest["promotions"]}
-    inactive = sorted(
-        pid for pid in required if statuses.get(pid) != "ACTIVE"
-    )
-    if inactive:
-        raise SystemExit(
-            "α-Budget derivation blocked: required Separated Promotions "
-            f"not ACTIVE: {', '.join(inactive)}"
-        )
-
-
-def _promoted_controls() -> dict[tuple[str, str], dict]:
-    """(motion_class, gate) → {metric, attempt, caveats, measurement_path}."""
-    profiles = _load_acceptance_profiles()
-    manifest = json.loads(GC_MANIFEST.read_text())
+def _separated_control_context(
+    manifest_path: pathlib.Path,
+) -> dict[tuple[str, str], dict[str, Any]]:
+    """(motion_class, gate) → control metric and display metadata for derivation."""
+    manifest = json.loads(manifest_path.read_text())
     promotions = {p["id"]: p for p in manifest["promotions"]}
-    specifications = {
-        (spec["motion_class"], spec["target_gate"]): spec
-        for spec in manifest["specifications"]
-    }
-    out: dict[tuple[str, str], dict] = {}
+    profiles = _load_acceptance_profiles()
+    out: dict[tuple[str, str], dict[str, Any]] = {}
     for (motion_class, gate), row in profiles.items():
         if row.get("status") != "SEPARATED":
             continue
         promo_id = row.get("active_promotion")
         if promo_id is None:
             continue
-        pair = f"{motion_class}/{gate}"
-        promo = promotions.get(promo_id)
-        if promo is None:
-            raise SystemExit(
-                f"α-Budget derivation blocked: missing Promotion {promo_id!r} "
-                f"for {pair}"
-            )
-        if promo["status"] != "ACTIVE":
-            raise SystemExit(
-                f"α-Budget derivation blocked: Promotion {promo_id!r} not ACTIVE "
-                f"(status={promo['status']!r}) for {pair}"
-            )
-        spec = specifications.get((motion_class, gate))
-        if spec is None:
-            raise SystemExit(
-                f"α-Budget derivation blocked: missing specification for {pair}"
-            )
-        if spec["active_promotion"] != promo_id:
-            raise SystemExit(
-                f"α-Budget derivation blocked: mismatched Promotion for {pair}: "
-                f"profile references {promo_id!r} but manifest spec has "
-                f"{spec['active_promotion']!r}"
-            )
+        promo = promotions[promo_id]
         measurement_path = ROOT / promo["measurement_path"]
-        if not measurement_path.is_file():
-            raise SystemExit(
-                f"α-Budget derivation blocked: missing Measurement evidence at "
-                f"{promo['measurement_path']!r} for {pair}"
-            )
         run = json.loads(measurement_path.read_text())
         gate_row = run.get("gates", {}).get(gate)
         if gate_row is None or "metric" not in gate_row:
+            pair = f"{motion_class}/{gate}"
             raise SystemExit(
                 f"α-Budget derivation blocked: invalid Measurement evidence for "
                 f"{pair} at {promo['measurement_path']!r}"
@@ -215,23 +136,26 @@ def _promoted_controls() -> dict[tuple[str, str], dict]:
             "metric": gate_row["metric"],
             "attempt": promo["attempt_id"],
             "caveats": list(run.get("caveats") or []),
-            "measurement_path": promo["measurement_path"],
-            "promotion": promo["id"],
         }
     return out
 
 
-def _runtime_budget(motion_class: str, gate: str) -> float | None:
-    budget = S.MOTION_CLASSES[motion_class]
+def _runtime_budget(
+    policy: S.AcceptancePolicy, motion_class: str, gate: str
+) -> float | None:
+    budget = policy.motion_classes[motion_class]
     return getattr(budget, RUNTIME_BUDGET_ATTR[gate])
 
 
-def _runtime_gate_policy(motion_class: str, gate: str) -> S.GatePolicy:
-    return S.ACCEPTANCE_GATES[motion_class][gate]
+def _runtime_gate_policy(
+    policy: S.AcceptancePolicy, motion_class: str, gate: str
+) -> S.GatePolicy:
+    return policy.acceptance_gates[motion_class][gate]
 
 
 def _assert_runtime_equivalence(
     *,
+    policy: S.AcceptancePolicy,
     profiles: dict[tuple[str, str], dict],
     separated_rows: list[dict],
 ) -> None:
@@ -239,7 +163,7 @@ def _assert_runtime_equivalence(
     mismatches: list[str] = []
     derived_by_pair = {row["pair"]: row for row in separated_rows}
 
-    for motion_class in ("idle", "blob_idle", "emissive", "walk", "airborne", "swing"):
+    for motion_class in policy.motion_classes:
         for gate in GATE_METRIC_KEY:
             pair_key = (motion_class, gate)
             pair = f"{motion_class}/{gate}"
@@ -248,15 +172,15 @@ def _assert_runtime_equivalence(
                 mismatches.append(f"missing Acceptance profile row for {pair}")
                 continue
 
-            policy = _runtime_gate_policy(motion_class, gate)
+            gate_policy = _runtime_gate_policy(policy, motion_class, gate)
             profile_status = profile_row["status"]
-            if policy.status != profile_status:
+            if gate_policy.status != profile_status:
                 mismatches.append(
                     f"{pair}: status profile={profile_status!r} "
-                    f"runtime={policy.status!r}"
+                    f"runtime={gate_policy.status!r}"
                 )
 
-            runtime_budget = _runtime_budget(motion_class, gate)
+            runtime_budget = _runtime_budget(policy, motion_class, gate)
             profile_budget = profile_row.get("budget")
             if profile_status == "INAPPLICABLE":
                 if runtime_budget is not None:
@@ -270,7 +194,7 @@ def _assert_runtime_equivalence(
                 )
 
             profile_hard_fail = profile_row.get("hard_fail")
-            runtime_hard_fail = policy.hard_fail
+            runtime_hard_fail = gate_policy.hard_fail
             if profile_status == "SEPARATED":
                 if profile_hard_fail != runtime_hard_fail:
                     mismatches.append(
@@ -302,11 +226,14 @@ def _assert_runtime_equivalence(
 
 
 def main() -> int:
-    _assert_all_separated_promotions_active()
+    policy = S.build_runtime_acceptance_policy(
+        profiles_path=ACCEPTANCE_PROFILES,
+        manifest_path=GC_MANIFEST,
+    )
     profiles = _load_acceptance_profiles()
     status = _load_acceptance_status()
     worst = _worst_good_by_class()
-    controls = _promoted_controls()
+    controls = _separated_control_context(GC_MANIFEST)
 
     print(f"α-Budget derivation (α = {ALPHA})")
     print("Budget = ceil₄(G + α·(C − G)) for Separated pairs")
@@ -321,7 +248,7 @@ def main() -> int:
     unseparated_rows: list[dict] = []
     inapplicable: list[str] = []
 
-    for motion_class in ("idle", "blob_idle", "emissive", "walk", "airborne", "swing"):
+    for motion_class in policy.motion_classes:
         for gate, metric_key in GATE_METRIC_KEY.items():
             pair = f"{motion_class}/{gate}"
             pair_status = status.get((motion_class, gate))
@@ -333,7 +260,7 @@ def main() -> int:
                 continue
 
             sample_id, raw_g = worst[motion_class][metric_key]
-            old = _runtime_budget(motion_class, gate)
+            old = _runtime_budget(policy, motion_class, gate)
             if old is None and pair_status != "INAPPLICABLE":
                 raise SystemExit(
                     f"α-Budget derivation blocked: runtime omits Budget for {pair} "
@@ -404,7 +331,11 @@ def main() -> int:
         f"Inapplicable={len(inapplicable)}"
     )
 
-    _assert_runtime_equivalence(profiles=profiles, separated_rows=separated_rows)
+    _assert_runtime_equivalence(
+        policy=policy,
+        profiles=profiles,
+        separated_rows=separated_rows,
+    )
     return 0
 
 
