@@ -7,6 +7,12 @@
       "verdict": "PASS"
     },
     {
+      "id": "identity_lock_pass",
+      "question": "Does the machine-readable check report show automatic Identity Lock PASS for every Frame before you judge exposed identity outside the locked regions?",
+      "rationale": "npm run strip:polish -- check assets/first-room/dwarf/walk --json reports outcome PASS with identity_lock.outcome PASS on all four Frames (fingerprint 961e53b1a5cdce3024cc054ec65b0de27604311a0e4cdead1d4adade187fdddc); upper_body anchor PASS with offsets (0,0), (0,+1), (0,0), (0,-1).",
+      "verdict": "PASS"
+    },
+    {
       "id": "black_eye_no_sclera",
       "question": "When the eye is exposed, is it a single black Cell with no white sclera?",
       "rationale": "Each exposed eye reads as a single near-black Cell with no white sclera Cells in any Frame.",
@@ -106,16 +112,12 @@
     "reference_identity_sha256": "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9"
   },
   "explicit_confirmations": {
-    "automatic_identity_lock_pass_all_frames": "PASS",
     "boot_construction_same_dwarf": "PASS",
     "canonical_upper_body_unchanged": "PASS",
     "closed_walk_loop": "PASS",
     "heavy_deliberate_stride": "PASS",
-    "heavy_stride": "PASS",
-    "horizontal_registration": "PASS",
     "in_place_horizontal_registration": "PASS",
     "legs_alternate_separate_from_torso": "PASS",
-    "loop_closure": "PASS",
     "one_cell_bob": "PASS",
     "same_character_as_identity_and_idle": "PASS"
   },
