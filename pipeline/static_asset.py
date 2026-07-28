@@ -9,11 +9,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, Sequence
 
-from PIL import Image, UnidentifiedImageError
-
+from pipeline.cell_raster import RasterError, write_cells
+from pipeline.cell_raster import read_cells as _read_cells
 from pipeline.gate_evidence import EvidenceError, sha256_bytes, sha256_file, write_json_immutable
 from pipeline.recovery import MIN_GRID_SCORE, detect_pitch, key, raw_clipping, raw_gates, sample_cells
-from pipeline.strip import Cell, export_frames
+from pipeline.strip import Cell
 
 SPEC_SCHEMA = "static-sheet-spec/0"
 BUNDLE_SCHEMA = "static-asset-bundle/0"
@@ -357,35 +357,6 @@ def _cleanup_partial(root: Path) -> None:
         shutil.rmtree(root)
 
 
-def _save_logical_item(cells: list[list[Cell]], path: Path, *, cell_w: int, cell_h: int) -> None:
-    staging = path.parent / ".item-staging"
-    if staging.exists():
-        shutil.rmtree(staging)
-    export_frames([cells], staging, path.stem, frame_w=cell_w, frame_h=cell_h)
-    exported = staging / f"{path.stem}-f0.png"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    shutil.move(str(exported), str(path))
-    shutil.rmtree(staging, ignore_errors=True)
-
-
-def _cells_from_rgba_image(image: Image.Image) -> list[list[Cell]]:
-    rgba = image.convert("RGBA")
-    width, height = rgba.size
-    pixels = rgba.load()
-    assert pixels is not None
-    cells: list[list[Cell]] = []
-    for y in range(height):
-        row: list[Cell] = []
-        for x in range(width):
-            r, g, b, a = pixels[x, y]
-            if a == 0:
-                row.append(None)
-            else:
-                row.append((int(r), int(g), int(b)))
-        cells.append(row)
-    return cells
-
-
 def _load_logical_item_png(
     path: Path,
     *,
@@ -393,37 +364,11 @@ def _load_logical_item_png(
     cell_w: int,
     cell_h: int,
 ) -> list[list[Cell]]:
-    if not path.is_file():
-        raise InvalidBundleError(
-            f"missing logical item: {item_id}",
-            reason_code="missing_item",
-        )
     try:
-        with Image.open(path) as image:
-            if image.mode != "RGBA":
-                raise InvalidBundleError(
-                    f"item must be RGBA: {item_id}",
-                    reason_code="wrong_mode",
-                )
-            if image.size != (cell_w, cell_h):
-                raise InvalidBundleError(
-                    f"item must be {cell_w}x{cell_h}: {item_id}",
-                    reason_code="wrong_size",
-                )
-            rgba = image.convert("RGBA")
-            alpha = rgba.getchannel("A")
-            for value in alpha.get_flattened_data():
-                if value not in (0, 255):
-                    raise InvalidBundleError(
-                        f"non-binary alpha in {item_id}",
-                        reason_code="non_binary_alpha",
-                    )
-            return _cells_from_rgba_image(rgba)
-    except UnidentifiedImageError as exc:
-        raise InvalidBundleError(
-            f"unreadable item: {item_id}",
-            reason_code="unreadable_item",
-        ) from exc
+        return _read_cells(path, size=(cell_w, cell_h), label="item")
+    except RasterError as exc:
+        message = str(exc).replace(path.name, item_id)
+        raise InvalidBundleError(message, reason_code=exc.reason_code) from exc
 
 
 def _load_manifest(bundle_root: Path) -> dict[str, Any]:
@@ -694,7 +639,7 @@ def initialize_static_bundle(
             item_cells = slice_static_item(cells, spec, item.index)
             draft_rel = f"draft/{item.id}.png"
             draft_path = temp_root / draft_rel
-            _save_logical_item(item_cells, draft_path, cell_w=spec.cell_w, cell_h=spec.cell_h)
+            write_cells(draft_path, item_cells)
             polished_path = temp_root / "polished" / f"{item.id}.png"
             polished_path.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(draft_path, polished_path)

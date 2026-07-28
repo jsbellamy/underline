@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import inspect
 import json
 import shutil
 from pathlib import Path
@@ -571,3 +572,20 @@ def test_finalize_does_not_release_on_fail(tmp_path: Path) -> None:
     assert report_path.is_file()
     assert release_paths == []
     assert not (bundle / "release").exists()
+
+
+def test_initialize_bundle_leaves_no_item_staging_directory(tmp_path: Path) -> None:
+    bundle = _init_bundle(tmp_path)
+    staging_dirs = [
+        path
+        for path in bundle.rglob("*")
+        if path.is_dir() and path.name == ".item-staging"
+    ]
+    assert staging_dirs == []
+
+
+def test_static_asset_has_no_pil_dependency() -> None:
+    from pipeline import static_asset
+
+    source = inspect.getsource(static_asset)
+    assert "PIL" not in source
