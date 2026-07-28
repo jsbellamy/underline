@@ -11,6 +11,7 @@ from typing import Any, Literal, Mapping, Sequence
 
 from PIL import Image, UnidentifiedImageError
 
+from pipeline import canonical
 from pipeline.cell_raster import cells_from_rgba
 from pipeline.gate_evidence import sha256_file
 from pipeline.strip import Cell
@@ -156,22 +157,10 @@ def _validate_lock_row(row: Mapping[str, Any], *, where: str) -> dict[str, Any]:
 def _resolve_bound_repo_file(binding: object, *, label: str) -> Path:
     if not isinstance(binding, dict):
         raise IdentityLockError(f"{label} must be a path/hash binding")
-    relative_path = binding.get("relative_path")
-    expected_sha = binding.get("sha256")
-    if not isinstance(relative_path, str) or not relative_path:
-        raise IdentityLockError(f"{label}.relative_path must be a non-empty string")
-    if not isinstance(expected_sha, str) or len(expected_sha) != 64:
-        raise IdentityLockError(f"{label}.sha256 must be a 64-char hex digest")
-    resolved = (_REPO_ROOT / relative_path).resolve()
     try:
-        resolved.relative_to(_REPO_ROOT.resolve())
-    except ValueError as exc:
-        raise IdentityLockError(f"{label} path escapes repository") from exc
-    if not resolved.is_file():
-        raise IdentityLockError(f"missing {label}: {resolved}")
-    if sha256_file(resolved) != expected_sha:
-        raise IdentityLockError(f"{label} hash does not match binding")
-    return resolved
+        return canonical.verify_binding(binding, root=_REPO_ROOT, label=label)
+    except canonical.BindingError as exc:
+        raise IdentityLockError(str(exc)) from exc
 
 
 def _load_palette_roles(path: Path) -> tuple[list[str], list[tuple[str, tuple[int, int, int]]]]:

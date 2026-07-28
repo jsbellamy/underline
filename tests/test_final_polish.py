@@ -1281,3 +1281,37 @@ def test_final_polish_has_no_pil_dependency() -> None:
 
     source = inspect.getsource(final_polish)
     assert "PIL" not in source
+
+
+def test_provenance_binding_rejects_path_escape(tmp_path: Path) -> None:
+    bundle = _init_passing_bundle(tmp_path)
+    outside = tmp_path / "outside.json"
+    outside.write_text("{}\n", encoding="utf-8")
+    manifest = json.loads((bundle / "manifest.json").read_text())
+    manifest["provenance"] = {
+        "relative_path": "../outside.json",
+        "sha256": sha256_file(outside),
+    }
+    (bundle / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+
+    with pytest.raises(InvalidBundleError) as exc:
+        check_bundle(bundle)
+    assert exc.value.reason_code == "provenance_path_escape"
+
+
+def test_polish_profile_binding_rejects_path_escape(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    _init_bundle(PASS_STRIP, "idle", bundle, tmp_path, polish_profile="dwarf-miner")
+    outside = tmp_path / "outside.json"
+    outside.write_text("{}\n", encoding="utf-8")
+    manifest = json.loads((bundle / "manifest.json").read_text())
+    manifest["polish_profile"] = {
+        **manifest["polish_profile"],
+        "relative_path": "../outside.json",
+        "sha256": sha256_file(outside),
+    }
+    (bundle / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+
+    with pytest.raises(InvalidBundleError) as exc:
+        check_bundle(bundle)
+    assert exc.value.reason_code == "profile_path_escape"

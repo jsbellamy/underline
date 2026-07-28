@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, Sequence
 
+from pipeline import canonical
 from pipeline.cell_raster import RasterError, write_cells
 from pipeline.cell_raster import read_cells as _read_cells
 from pipeline.gate_evidence import EvidenceError, sha256_bytes, sha256_file, write_json_immutable
@@ -397,17 +398,12 @@ def _load_bound_palette(bundle_root: Path, manifest: dict[str, Any]) -> dict[str
     binding = manifest.get("master_palette")
     if not isinstance(binding, dict):
         raise InvalidBundleError("invalid master palette binding", reason_code="invalid_palette")
-    rel = binding.get("relative_path")
-    if rel != "palette.json":
+    try:
+        path = canonical.verify_binding(binding, root=bundle_root, label="palette")
+    except canonical.BindingError as exc:
+        raise InvalidBundleError(str(exc), reason_code=exc.reason_code) from exc
+    if binding.get("relative_path") != "palette.json":
         raise InvalidBundleError("invalid master palette path", reason_code="invalid_palette")
-    path = bundle_root / "palette.json"
-    if not path.is_file():
-        raise InvalidBundleError("missing embedded master palette", reason_code="missing_palette")
-    if sha256_file(path) != binding.get("sha256"):
-        raise InvalidBundleError(
-            "embedded master palette hash does not match manifest",
-            reason_code="palette_hash_mismatch",
-        )
     try:
         palette = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
