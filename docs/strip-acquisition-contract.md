@@ -423,7 +423,12 @@ evidence model, add Gates, or change Budgets.
    additionally requires `--identity-reference` and `--edit-source`, copies
    those bytes to `reference/identity.png` and `provider/edit-source.png`,
    requires `generation_mode=image-edit`, and binds the canonical identity hash
-   and seed-strip hash in provenance. Existing unprofiled `/0` and profiled
+   and seed-strip hash in provenance. The edit source is the detailed original
+   idle provider Strip bound by `identity.json` → `generation_source`; the
+   identity reference is the separate post-ingest 16×24 Release Frame bound by
+   `identity.json` → `identity_png`. The Release Frame is an Identity Lock
+   anchor, never a generation canvas and never an input to upscale. Existing
+   unprofiled `/0` and profiled
    `/1` bundles remain valid for `check` and `finalize` under legacy rules.
 2. The four Polished Frames remain exact `16×24` RGBA with binary alpha, exact
    per-Frame Draft alpha masks, and opaque RGB values drawn only from the
@@ -438,6 +443,12 @@ evidence model, add Gates, or change Budgets.
    changed Cell (Draft vs Polished RGB at occupied coordinates) and runs the
    exact Polished Frames through the current Motion-class Acceptance profiles
    via `coherence_split`.
+   For applicable dwarf-miner Frames, Identity Lock `/1` first selects the
+   lowest-distance permitted registration, then enforces declared alpha
+   occupancy and Master Palette role-distribution limits, exact boot occupancy,
+   grounded lamp/eye/buckle landmarks, and the swing relational constraints.
+   Its report records selected offsets, per-check measurements and thresholds,
+   landmark positions, and the first failure.
 5. **`finalize`** repeats current-policy validation (including `/2` evidence
    bindings), records a hash-bound immutable report for every valid outcome,
    and produces Release Frames only on automatic `PASS`; `REVIEW` and `FAIL`

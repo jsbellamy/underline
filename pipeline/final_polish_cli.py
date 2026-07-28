@@ -344,7 +344,7 @@ def _handle_finalize(args: argparse.Namespace) -> int:
 
 def _handle_seed(args: argparse.Namespace) -> int:
     try:
-        meta = build_identity_seed(args.identity, args.out)
+        meta = build_identity_seed(args.identity_declaration, args.out)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2
@@ -395,12 +395,15 @@ def _configure_parser(parser: argparse.ArgumentParser) -> None:
     finalize.add_argument("bundle", type=pathlib.Path, help="Final-polish bundle directory")
     finalize.add_argument("--json", action="store_true", help="Emit machine-readable JSON on stdout")
 
-    seed = sub.add_parser("seed", help="Build a deterministic image-edit seed from canonical identity")
+    seed = sub.add_parser(
+        "seed",
+        help="Copy the hash-bound provider generation source declared by dwarf identity",
+    )
     seed.add_argument(
-        "--identity",
+        "--identity-declaration",
         type=pathlib.Path,
         required=True,
-        help="Canonical identity PNG (16×24 logical frame)",
+        help="Canonical dwarf identity declaration JSON",
     )
     seed.add_argument("--out", type=pathlib.Path, required=True, help="Output seed strip PNG")
     seed.add_argument("--json", action="store_true", help="Emit machine-readable JSON on stdout")
