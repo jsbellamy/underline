@@ -444,3 +444,19 @@ def test_invalid_pack_render_raises(tmp_path: Path) -> None:
     pack_path = _write_pack(tmp_path, doc)
     with pytest.raises(AssetPackError):
         render_pack_preview(pack_path, tmp_path / "preview", repo_root=tmp_path)
+
+
+def test_final_report_binding_rejects_path_escape(tmp_path: Path) -> None:
+    doc = _pack_doc(tmp_path)
+    outside = tmp_path / "outside.json"
+    outside.write_text(
+        json.dumps(_animation_report(), indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    doc["assets"][0]["final_report"] = {
+        "path": "../outside.json",
+        "sha256": sha256_file(outside),
+    }
+    result = check_asset_pack(_write_pack(tmp_path, doc), repo_root=tmp_path)
+    assert not result.valid
+    assert result.reason_codes == ("report_path_escape",)

@@ -5,10 +5,11 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Mapping
 
 from PIL import Image, UnidentifiedImageError
 
+from pipeline import canonical
 from pipeline.cell_raster import cells_from_rgba
 from pipeline.gate_evidence import sha256_file
 from pipeline.static_asset import _palette_rgb_set
@@ -177,15 +178,20 @@ class PackPreviewResult:
     release_hashes: tuple[str, ...]
 
 
-def _validate_repo_relative_path(value: object, field: str) -> str:
+def _require_path_string(value: object, field: str) -> str:
     if not isinstance(value, str) or not value:
         raise InvalidAssetPackError(f"{field} must be a non-empty string", reason_code="invalid_path")
-    if value.startswith("/") or ".." in Path(value).parts:
+    return value
+
+
+def _require_repo_scoped_path(value: object, field: str) -> str:
+    path = _require_path_string(value, field)
+    if path.startswith("/") or ".." in Path(path).parts:
         raise InvalidAssetPackError(
-            f"{field} must be repo-relative: {value!r}",
+            f"{field} must be repo-relative: {path!r}",
             reason_code="invalid_path",
         )
-    return value
+    return path
 
 
 def _positive_int(value: object, field: str) -> int:
@@ -204,7 +210,7 @@ def _load_palette_rgb_set(path: Path) -> frozenset[tuple[int, int, int]]:
 def _parse_report_ref(value: object) -> ReportRef:
     if not isinstance(value, dict):
         raise InvalidAssetPackError("final_report must be an object", reason_code="invalid_report")
-    path = _validate_repo_relative_path(value.get("path"), "final_report.path")
+    path = _require_path_string(value.get("path"), "final_report.path")
     sha = value.get("sha256")
     if not isinstance(sha, str) or not sha:
         raise InvalidAssetPackError("final_report.sha256 required", reason_code="invalid_report")
@@ -219,7 +225,7 @@ def _parse_release_refs(value: object) -> tuple[ReleaseRef, ...]:
     for row in value:
         if not isinstance(row, dict):
             raise InvalidAssetPackError("each release must be an object", reason_code="invalid_releases")
-        path = _validate_repo_relative_path(row.get("path"), "release.path")
+        path = _require_repo_scoped_path(row.get("path"), "release.path")
         sha = row.get("sha256")
         if not isinstance(sha, str) or not sha:
             raise InvalidAssetPackError("release.sha256 required", reason_code="invalid_releases")
@@ -236,7 +242,7 @@ def _parse_animation_row(row: dict[str, Any]) -> AnimationAssetRow:
         raise InvalidAssetPackError("asset id must be a non-empty string", reason_code="invalid_asset")
     if row.get("kind") != "animation":
         raise InvalidAssetPackError(f"asset {asset_id!r} must be animation", reason_code="invalid_kind")
-    bundle_path = _validate_repo_relative_path(row.get("bundle_path"), "bundle_path")
+    bundle_path = _require_repo_scoped_path(row.get("bundle_path"), "bundle_path")
     facing = row.get("facing")
     if facing != "right":
         raise InvalidAssetPackError(f"asset {asset_id!r} facing must be right", reason_code="facing")
@@ -288,7 +294,7 @@ def _parse_static_row(row: dict[str, Any]) -> StaticAssetRow:
         raise InvalidAssetPackError("asset id must be a non-empty string", reason_code="invalid_asset")
     if row.get("kind") != "static":
         raise InvalidAssetPackError(f"asset {asset_id!r} must be static", reason_code="invalid_kind")
-    bundle_path = _validate_repo_relative_path(row.get("bundle_path"), "bundle_path")
+    bundle_path = _require_repo_scoped_path(row.get("bundle_path"), "bundle_path")
     item_ids_raw = row.get("item_ids")
     if not isinstance(item_ids_raw, list) or not item_ids_raw:
         raise InvalidAssetPackError(f"asset {asset_id!r} item_ids required", reason_code="item_ids")
@@ -373,7 +379,7 @@ def parse_asset_pack(doc: dict[str, Any], *, repo_root: Path | None = None) -> A
     palette_binding = doc.get("master_palette")
     if not isinstance(palette_binding, dict):
         raise InvalidAssetPackError("master_palette must be an object", reason_code="invalid_palette")
-    palette_path = _validate_repo_relative_path(
+    palette_path = _require_repo_scoped_path(
         palette_binding.get("path"),
         "master_palette.path",
     )
@@ -455,14 +461,16 @@ def load_asset_pack(path: Path, *, repo_root: Path | None = None) -> AssetPack:
     )
 
 
-def _verify_report(path: Path, expected_sha: str, *, kind: AssetKind) -> None:
-    if not path.is_file():
-        raise InvalidAssetPackError(f"missing final report: {path}", reason_code="missing_report")
-    if sha256_file(path) != expected_sha:
-        raise InvalidAssetPackError(
-            f"final report hash mismatch: {path}",
-            reason_code="report_hash_mismatch",
-        )
+def _verify_report(
+    root: Path,
+    binding: Mapping[str, Any],
+    *,
+    kind: AssetKind,
+) -> None:
+    try:
+        path = canonical.verify_binding(binding, root=root, label="report", path_key="path")
+    except canonical.BindingError as exc:
+        raise InvalidAssetPackError(str(exc), reason_code=exc.reason_code) from exc
     try:
         doc = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
@@ -482,14 +490,15 @@ def _verify_report(path: Path, expected_sha: str, *, kind: AssetKind) -> None:
         )
 
 
-def _verify_release(path: Path, expected_sha: str, allowed_palette: frozenset[tuple[int, int, int]]) -> None:
-    if not path.is_file():
-        raise InvalidAssetPackError(f"missing release: {path}", reason_code="missing_release")
-    if sha256_file(path) != expected_sha:
-        raise InvalidAssetPackError(
-            f"release hash mismatch: {path}",
-            reason_code="release_hash_mismatch",
-        )
+def _verify_release(
+    root: Path,
+    binding: Mapping[str, Any],
+    allowed_palette: frozenset[tuple[int, int, int]],
+) -> None:
+    try:
+        path = canonical.verify_binding(binding, root=root, label="release", path_key="path")
+    except canonical.BindingError as exc:
+        raise InvalidAssetPackError(str(exc), reason_code=exc.reason_code) from exc
     try:
         with Image.open(path) as image:
             for y, row in enumerate(cells_from_rgba(image)):
@@ -545,12 +554,18 @@ def check_asset_pack(manifest_path: Path, *, repo_root: Path | None = None) -> A
         for asset in pack.assets:
             _enforce_first_room_metadata(asset)
         for asset in pack.assets:
-            report_path = root / asset.final_report.path
-            _verify_report(report_path, asset.final_report.sha256, kind=asset.kind)
+            _verify_report(
+                root,
+                {"path": asset.final_report.path, "sha256": asset.final_report.sha256},
+                kind=asset.kind,
+            )
         for asset in pack.assets:
             for release in asset.releases:
-                release_path = root / release.path
-                _verify_release(release_path, release.sha256, palette)
+                _verify_release(
+                    root,
+                    {"path": release.path, "sha256": release.sha256},
+                    palette,
+                )
                 release_hashes.append(release.sha256)
         return AssetPackCheckResult(
             valid=True,

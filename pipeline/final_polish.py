@@ -12,6 +12,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
+from pipeline import canonical
 from pipeline.cell_raster import RasterError, write_cells
 from pipeline.cell_raster import read_cells as _read_cells
 from pipeline.gate_evidence import EvidenceError, sha256_bytes, sha256_file, write_json_immutable
@@ -339,21 +340,14 @@ def _load_bound_profile(
             "invalid Polish profile binding",
             reason_code="invalid_profile",
         )
+    try:
+        path = canonical.verify_binding(binding, root=bundle_root, label="profile")
+    except canonical.BindingError as exc:
+        raise InvalidBundleError(str(exc), reason_code=exc.reason_code) from exc
     if binding.get("relative_path") != "profile.json":
         raise InvalidBundleError(
             "invalid Polish profile path",
             reason_code="invalid_profile",
-        )
-    path = bundle_root / "profile.json"
-    if not path.is_file():
-        raise InvalidBundleError(
-            "missing embedded Polish profile",
-            reason_code="missing_profile",
-        )
-    if sha256_file(path) != binding.get("sha256"):
-        raise InvalidBundleError(
-            "embedded Polish profile hash does not match manifest",
-            reason_code="profile_hash_mismatch",
         )
     try:
         profile = json.loads(path.read_text(encoding="utf-8"))
@@ -1025,25 +1019,18 @@ def _verify_hash_binding(
     *,
     label: str,
 ) -> None:
-    rel = binding.get("relative_path")
-    expected = binding.get("sha256")
-    if not isinstance(rel, str) or not isinstance(expected, str):
-        raise InvalidBundleError(
-            f"invalid {label} binding in manifest",
-            reason_code=f"{label}_hash_mismatch",
+    try:
+        canonical.verify_binding(
+            binding,
+            root=bundle_root,
+            label=label,
+            path_key="relative_path",
         )
-    path = bundle_root / rel
-    if not path.is_file():
-        raise InvalidBundleError(
-            f"missing bundled {label}: {rel}",
-            reason_code=f"missing_{label}",
-        )
-    actual = sha256_file(path)
-    if actual != expected:
-        raise InvalidBundleError(
-            f"bundled {label} hash does not match manifest",
-            reason_code=f"{label}_hash_mismatch",
-        )
+    except canonical.BindingError as exc:
+        reason_code = exc.reason_code
+        if reason_code == f"invalid_{label}":
+            reason_code = f"{label}_hash_mismatch"
+        raise InvalidBundleError(str(exc), reason_code=reason_code) from exc
 
 
 def _verify_evidence_bindings(bundle_root: Path, manifest: Mapping[str, Any]) -> dict[str, Any]:

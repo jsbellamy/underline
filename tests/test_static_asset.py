@@ -589,3 +589,19 @@ def test_static_asset_has_no_pil_dependency() -> None:
 
     source = inspect.getsource(static_asset)
     assert "PIL" not in source
+
+
+def test_master_palette_binding_rejects_path_escape(tmp_path: Path) -> None:
+    bundle = _init_bundle(tmp_path)
+    outside = tmp_path / "outside.json"
+    outside.write_text("{}\n", encoding="utf-8")
+    manifest = json.loads((bundle / "manifest.json").read_text())
+    manifest["master_palette"] = {
+        "relative_path": "../outside.json",
+        "sha256": sha256_file(outside),
+    }
+    (bundle / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+
+    with pytest.raises(InvalidBundleError) as exc:
+        check_static_bundle(bundle)
+    assert exc.value.reason_code == "palette_path_escape"
