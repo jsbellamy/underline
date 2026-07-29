@@ -9,6 +9,7 @@ from itertools import product
 from pathlib import Path
 from typing import Any, Literal, Mapping, Sequence
 
+import numpy as np
 from PIL import Image, UnidentifiedImageError
 
 from pipeline import canonical
@@ -22,6 +23,10 @@ DEFAULT_IDENTITY_LOCKS_PATH = (
     _REPO_ROOT / "assets" / "first-room" / "dwarf" / "identity-locks.json"
 )
 DEFAULT_IDENTITY_PATH = _REPO_ROOT / "assets" / "first-room" / "dwarf" / "identity.png"
+TRANSPORT_MAGENTA = (255, 0, 255)
+# Idle-provider transport uses soft near-magenta; #159 wiped to exact #FF00FF (~0.6).
+MAGENTA_WIPE_MIN_PROVIDER_FRACTION = 0.05
+MAGENTA_WIPE_MAX_EDIT_SOURCE_FRACTION = 0.01
 
 
 class IdentityLockError(ValueError):
@@ -38,6 +43,23 @@ class IdentityLockMismatch:
     y: int
     expected_rgba: tuple[int, int, int, int]
     actual_rgba: tuple[int, int, int, int]
+
+
+@dataclass(frozen=True)
+class EditSourceContinuityResult:
+    outcome: Outcome
+    reason_code: str | None
+    motion_class: str
+    first_failure: dict[str, Any] | None
+    first_mismatch: IdentityLockMismatch | None
+
+
+@dataclass(frozen=True)
+class ProviderPostEditResult:
+    outcome: Outcome
+    reason_code: str | None
+    magenta_wipe: dict[str, Any]
+    continuity: EditSourceContinuityResult | None
 
 
 @dataclass(frozen=True)
@@ -901,6 +923,233 @@ def identity_lock_report_payload(result: IdentityLockResult) -> dict[str, Any]:
         ],
         "first_failure": result.first_failure,
         "first_mismatch": _mismatch_payload(result.first_mismatch),
+    }
+
+
+def exact_magenta_fraction(image_path: Path) -> float:
+    """Fraction of pixels whose RGB is exactly transport magenta ``#FF00FF``."""
+    if not image_path.is_file():
+        raise IdentityLockError(f"missing image for magenta fraction: {image_path}")
+    try:
+        with Image.open(image_path) as image:
+            rgba = np.asarray(image.convert("RGBA"))
+    except UnidentifiedImageError as exc:
+        raise IdentityLockError(f"unreadable image: {image_path}") from exc
+    if rgba.size == 0:
+        return 0.0
+    exact = (
+        (rgba[:, :, 0] == TRANSPORT_MAGENTA[0])
+        & (rgba[:, :, 1] == TRANSPORT_MAGENTA[1])
+        & (rgba[:, :, 2] == TRANSPORT_MAGENTA[2])
+    )
+    return float(exact.mean())
+
+
+def evaluate_edit_source_continuity(
+    provider_frames: Sequence[Sequence[Sequence[Cell]]],
+    edit_source_frames: Sequence[Sequence[Sequence[Cell]]],
+    motion_class: str,
+    *,
+    spec_path: Path = DEFAULT_IDENTITY_LOCKS_PATH,
+) -> EditSourceContinuityResult:
+    """Compare provider lock regions to the edit-source Frames (not identity.png).
+
+    A clean idle-seed image-edit keeps locked Cells continuous with the edit
+    source under the same offsets/thresholds as Identity Lock. Corpus redraws
+    that do not share idle lock construction FAIL this check.
+    """
+    if not provider_frames:
+        raise IdentityLockError("provider frames required for edit-source continuity")
+    if not edit_source_frames:
+        raise IdentityLockError("edit-source frames required for edit-source continuity")
+
+    spec = load_identity_lock_spec(spec_path)
+    motion_doc = spec["motion_classes"].get(motion_class)
+    if motion_doc is None:
+        raise IdentityLockError(
+            f"motion class {motion_class!r} has no Identity Lock rules"
+        )
+
+    frame_size = (int(spec["frame_size"][0]), int(spec["frame_size"][1]))
+    locks = [
+        _validate_lock_row(lock, where=f"motion_classes.{motion_class}")
+        for lock in motion_doc["locks"]
+    ]
+    constraints = motion_doc.get("relational_constraints", []) or []
+    # Landmarks are absolute identity anchors — skip them for edit-source continuity.
+    landmarks: list[Any] = []
+    palette_path = _resolve_bound_repo_file(
+        spec["master_palette"],
+        label="master_palette",
+    )
+    palette_roles, palette_entries = _load_palette_roles(palette_path)
+
+    overall_failure: dict[str, Any] | None = None
+    overall_mismatch: IdentityLockMismatch | None = None
+    for frame_index, attempt in enumerate(provider_frames):
+        if len(attempt) != frame_size[1] or any(
+            len(row) != frame_size[0] for row in attempt
+        ):
+            raise IdentityLockError(
+                "provider frame size does not match Identity Lock frame_size"
+            )
+        source_index = min(frame_index, len(edit_source_frames) - 1)
+        canonical = list(edit_source_frames[source_index])
+        if len(canonical) != frame_size[1] or any(
+            len(row) != frame_size[0] for row in canonical
+        ):
+            raise IdentityLockError(
+                "edit-source frame size does not match Identity Lock frame_size"
+            )
+        (
+            _offsets,
+            _anchor_results,
+            check_results,
+            landmark_results,
+            mismatch,
+        ) = _find_frame_offsets(
+            canonical,
+            list(attempt),
+            locks,
+            constraints,
+            landmarks,
+            palette_entries,
+            palette_roles,
+        )
+        failure = _first_failure(check_results, landmark_results)
+        if failure is not None and overall_failure is None:
+            overall_failure = {"frame_index": frame_index, **failure}
+        if mismatch is not None and overall_mismatch is None:
+            overall_mismatch = mismatch
+
+    if overall_failure is None:
+        return EditSourceContinuityResult(
+            outcome="PASS",
+            reason_code=None,
+            motion_class=motion_class,
+            first_failure=None,
+            first_mismatch=None,
+        )
+    return EditSourceContinuityResult(
+        outcome="FAIL",
+        reason_code="edit_source_continuity_fail",
+        motion_class=motion_class,
+        first_failure=overall_failure,
+        first_mismatch=overall_mismatch,
+    )
+
+
+def evaluate_provider_post_edit(
+    provider_path: Path,
+    edit_source_path: Path,
+    *,
+    motion_class: str,
+    layout: Any | None = None,
+) -> ProviderPostEditResult:
+    """Reject provider rasters post-edited to clear Gates (magenta wipe; lock drift).
+
+    Magenta wipe is a hard integrity signal from the #159 stamp pipeline. Edit-source
+    continuity compares recovered lock regions to the idle edit source.
+    """
+    from pipeline.strip import (  # local import avoids cycle at module load
+        DEFAULT_LAYOUT,
+        StripLayout,
+        canonicalize_frame,
+        load_provider_frames,
+    )
+
+    provider_frac = exact_magenta_fraction(provider_path)
+    edit_frac = exact_magenta_fraction(edit_source_path)
+    magenta_wipe = {
+        "outcome": "PASS",
+        "provider_exact_fraction": provider_frac,
+        "edit_source_exact_fraction": edit_frac,
+        "min_provider_fraction": MAGENTA_WIPE_MIN_PROVIDER_FRACTION,
+        "max_edit_source_fraction": MAGENTA_WIPE_MAX_EDIT_SOURCE_FRACTION,
+    }
+    if (
+        provider_frac >= MAGENTA_WIPE_MIN_PROVIDER_FRACTION
+        and edit_frac <= MAGENTA_WIPE_MAX_EDIT_SOURCE_FRACTION
+    ):
+        magenta_wipe["outcome"] = "FAIL"
+        return ProviderPostEditResult(
+            outcome="FAIL",
+            reason_code="provider_magenta_wipe",
+            magenta_wipe=magenta_wipe,
+            continuity=None,
+        )
+
+    probe = layout
+    if probe is None:
+        probe = StripLayout(
+            frame_w=DEFAULT_LAYOUT.frame_w,
+            frame_h=DEFAULT_LAYOUT.frame_h,
+            frame_count=DEFAULT_LAYOUT.frame_count,
+            gutter=DEFAULT_LAYOUT.gutter,
+            pitch_px=24,
+            margin_cells=0,
+        )
+    provider_raw = load_provider_frames(provider_path, probe)
+    edit_raw = load_provider_frames(edit_source_path, probe)
+    if provider_raw is None or edit_raw is None:
+        return ProviderPostEditResult(
+            outcome="FAIL",
+            reason_code="edit_source_continuity_fail",
+            magenta_wipe=magenta_wipe,
+            continuity=EditSourceContinuityResult(
+                outcome="FAIL",
+                reason_code="edit_source_continuity_fail",
+                motion_class=motion_class,
+                first_failure={"kind": "recovery", "id": "load_provider_frames"},
+                first_mismatch=None,
+            ),
+        )
+
+    provider_frames = [
+        canonicalize_frame(frame, frame_w=probe.frame_w, frame_h=probe.frame_h)
+        for frame in provider_raw
+    ]
+    edit_frames = [
+        canonicalize_frame(frame, frame_w=probe.frame_w, frame_h=probe.frame_h)
+        for frame in edit_raw
+    ]
+    continuity = evaluate_edit_source_continuity(
+        provider_frames,
+        edit_frames,
+        motion_class,
+    )
+    if continuity.outcome != "PASS":
+        return ProviderPostEditResult(
+            outcome="FAIL",
+            reason_code=continuity.reason_code,
+            magenta_wipe=magenta_wipe,
+            continuity=continuity,
+        )
+    return ProviderPostEditResult(
+        outcome="PASS",
+        reason_code=None,
+        magenta_wipe=magenta_wipe,
+        continuity=continuity,
+    )
+
+
+def provider_post_edit_report_payload(
+    result: ProviderPostEditResult,
+) -> dict[str, Any]:
+    continuity_payload: dict[str, Any] | None = None
+    if result.continuity is not None:
+        continuity_payload = {
+            "outcome": result.continuity.outcome,
+            "reason_code": result.continuity.reason_code,
+            "motion_class": result.continuity.motion_class,
+            "first_failure": result.continuity.first_failure,
+            "first_mismatch": _mismatch_payload(result.continuity.first_mismatch),
+        }
+    return {
+        "outcome": result.outcome,
+        "reason_code": result.reason_code,
+        "magenta_wipe": dict(result.magenta_wipe),
+        "continuity": continuity_payload,
     }
 
 

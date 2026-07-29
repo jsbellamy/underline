@@ -19,8 +19,10 @@ from pipeline.gate_evidence import EvidenceError, sha256_bytes, sha256_file, wri
 from pipeline.identity_lock import (
     IdentityLockResult,
     evaluate_identity_lock,
+    evaluate_provider_post_edit,
     identity_lock_applies,
     identity_lock_report_payload,
+    provider_post_edit_report_payload,
 )
 from pipeline.strip import (
     DEFAULT_LAYOUT,
@@ -147,6 +149,7 @@ class FinalPolishCheckResult:
     fingerprint: str
     profile_id: str | None = None
     profile_sha256: str | None = None
+    provider_post_edit: dict[str, Any] | None = None
 
 
 def _corpus_layout() -> StripLayout:
@@ -1151,14 +1154,52 @@ def _aggregate_outcome(
     identity_lock: IdentityLockResult | None,
     structural: StructuralCheckResult,
     coherence: dict[str, Any],
+    provider_post_edit: dict[str, Any] | None = None,
 ) -> Outcome:
     if provider_outcome != "PASS":
         return provider_outcome
+    if (
+        provider_post_edit is not None
+        and provider_post_edit.get("outcome") != "PASS"
+    ):
+        return "FAIL"
     if identity_lock is not None and identity_lock.outcome != "PASS":
         return "FAIL"
     if not structural.pass_:
         return structural.outcome
     return coherence.get("outcome", "FAIL")
+
+
+def _verify_provider_post_edit(
+    bundle_root: Path,
+    manifest: Mapping[str, Any],
+    *,
+    profile_id: str | None,
+) -> dict[str, Any] | None:
+    """Hard-reject magenta-wiped providers; report edit-source continuity."""
+    if not _requires_image_edit_evidence(profile_id, str(manifest["motion_class"])):
+        return None
+    edit_binding = manifest.get("edit_source")
+    if not isinstance(edit_binding, dict):
+        return None
+    provider_path = bundle_root / str(manifest["provider"]["relative_path"])
+    edit_source_path = bundle_root / str(edit_binding["relative_path"])
+    if not edit_source_path.is_file():
+        return None
+    result = evaluate_provider_post_edit(
+        provider_path,
+        edit_source_path,
+        motion_class=str(manifest["motion_class"]),
+        layout=_corpus_layout(),
+    )
+    payload = provider_post_edit_report_payload(result)
+    if result.reason_code == "provider_magenta_wipe":
+        raise InvalidBundleError(
+            "provider transport looks magenta-wiped relative to edit-source "
+            "(post-edit stamp pipeline); regenerate instead of painting Gates",
+            reason_code="provider_magenta_wipe",
+        )
+    return payload
 
 
 def _verify_provider_and_drafts(bundle_root: Path, manifest: dict[str, Any]) -> Outcome:
@@ -1368,6 +1409,12 @@ def check_bundle(bundle_root: Path) -> FinalPolishCheckResult:
     profile = _load_bound_profile(bundle_root, manifest)
     manifest_hash = _manifest_sha256(bundle_root)
     provider_outcome = _verify_provider_and_drafts(bundle_root, manifest)
+    profile_id = None if profile is None else str(profile["id"])
+    provider_post_edit = _verify_provider_post_edit(
+        bundle_root,
+        manifest,
+        profile_id=profile_id,
+    )
 
     draft_frames = _load_frame_sequence(bundle_root, "draft")
     polished_frames = _load_frame_sequence(bundle_root, "polished")
@@ -1378,7 +1425,6 @@ def check_bundle(bundle_root: Path) -> FinalPolishCheckResult:
     structural = _structural_check(draft_frames, polished_frames)
     delta = _visible_cell_delta(draft_frames, polished_frames)
     coherence = coherence_split(polished_frames, motion_class=manifest["motion_class"])
-    profile_id = None if profile is None else str(profile["id"])
     identity_lock: IdentityLockResult | None = None
     if (
         manifest.get("schema") == BUNDLE_SCHEMA
@@ -1393,6 +1439,7 @@ def check_bundle(bundle_root: Path) -> FinalPolishCheckResult:
         identity_lock=identity_lock,
         structural=structural,
         coherence=coherence,
+        provider_post_edit=provider_post_edit,
     )
     fingerprint = _fingerprint_polished_hashes(polished_hashes)
 
@@ -1414,6 +1461,7 @@ def check_bundle(bundle_root: Path) -> FinalPolishCheckResult:
             if profile is None
             else str(manifest["polish_profile"]["sha256"])
         ),
+        provider_post_edit=provider_post_edit,
     )
 
 
@@ -1438,6 +1486,7 @@ def _report_payload(bundle_root: Path, result: FinalPolishCheckResult) -> dict[s
             for index, digest in enumerate(result.polished_hashes)
         ],
         "provider_acceptance": {"outcome": result.provider_outcome},
+        "provider_post_edit": result.provider_post_edit,
         "identity_lock": (
             None
             if result.identity_lock is None

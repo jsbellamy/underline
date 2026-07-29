@@ -825,6 +825,9 @@ def test_dwarf_miner_profile_and_prompt_require_image_edit_workflow() -> None:
     assert "unmodified provider" in workflow
     assert "painting or stamping identity lock" in workflow
     assert "hard flat identity lock stamps" in workflow
+    assert "provider_magenta_wipe" in workflow
+    assert "provider_post_edit" in workflow
+    assert "edit_source_continuity_fail" in workflow
     prompt = (ROOT / "prompts" / "production" / "animation-strip.md").read_text()
     prompt_lower = prompt.lower()
     assert "image-edit" in prompt_lower
@@ -844,10 +847,14 @@ def test_dwarf_miner_profile_and_prompt_require_image_edit_workflow() -> None:
     assert "tiling `identity.png`" in prompt_lower
     assert "painting/stamping identity lock" in prompt_lower
     assert "unmodified" in prompt_lower and "provider transport raster" in prompt_lower
+    assert "provider_magenta_wipe" in prompt
+    assert "edit_source_continuity_fail" in prompt
     contract = (ROOT / "docs" / "strip-acquisition-contract.md").read_text()
     assert "edit_source_not_generation_source" in contract
     assert "generation_source.sha256" in contract
     assert "paint/stamp Identity Lock" in contract or "paint/stamp identity lock" in contract.lower()
+    assert "provider_magenta_wipe" in contract
+    assert "edit_source_continuity_fail" in contract
     art = (ROOT / "docs" / "first-room-art-direction.md").read_text().lower()
     assert "idle provider" in art
     assert "does not prove the edit came from idle" in art.replace("\n", " ")

@@ -443,8 +443,11 @@ evidence model, add Gates, or change Budgets.
    shift Frames for baseline, or paint/stamp Identity Lock (or flat identity)
    colors into pitch sample centers or locked regions to force Gate PASS. Those
    post-edits create hard flat lock blocks and seams that poison cell recovery
-   while still allowing Identity Lock PASS. Failed lock/baseline/clipping/pitch
-   requires another Attempt. See
+   while still allowing Identity Lock PASS. `check_bundle` hard-rejects a
+   magenta-wiped provider relative to `provider/edit-source.png` with
+   `provider_magenta_wipe`, and reports edit-source lock continuity under
+   `provider_post_edit` (FAIL → overall FAIL via `edit_source_continuity_fail`).
+   Failed lock/baseline/clipping/pitch requires another Attempt. See
    `prompts/production/animation-strip.md` § Dwarf-miner walk and swing. Existing
    unprofiled `/0` and profiled
    `/1` bundles remain valid for `check` and `finalize` under legacy rules.
