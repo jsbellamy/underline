@@ -86,6 +86,7 @@
     "Keep the subject (including pickaxe arc) inside a safe empty magenta inset so the bounding box does not touch provider canvas edges. Touching a canvas edge triggers provider_clipping — regenerate with margin guidance rather than post-editing the provider transport raster.",
     "Generate sequential immutable Attempts until provenance, automatic Identity Lock, coherence, and polish pass on the unmodified provider transport raster. Do not script- or hand-edit provider/source.png after generation to clear Gates.",
     "Forbidden provider post-edits include: wiping near-magenta to exact #FF00FF, shifting Frames for baseline, and painting or stamping Identity Lock / flat identity colors into pitch sample centers or locked regions.",
+    "check_bundle hard-rejects magenta-wiped providers with provider_magenta_wipe and reports edit-source lock continuity under provider_post_edit (edit_source_continuity_fail). Regenerate — never paint — when those fire.",
     "A failed Identity Lock, baseline, clipping, or pitch check requires another Attempt — never provider painting. Only permitted post-ingest Polished Cell edits are allowed after ingest.",
     "Record every rejection and predecessor edge in provider/attempts.json; do not cap Attempt count with a fixed quota.",
     "When rejecting for Identity Lock, set rejection_reason to identity_lock and record rejection_detail from the machine-readable check report (schema identity-lock-near-miss/0) so near-miss Attempts remain auditable.",

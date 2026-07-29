@@ -175,7 +175,7 @@ or arms/pickaxe/torso lean (swing) while locked regions stay fixed.
 | `prototype/strip-coherence/inbox/*` corpus Strips as the edit source | Motion evidence only — see `docs/first-room-art-direction.md` |
 | Mechanical merge of corpus motion + identity upper body without a ledgered Attempt | Bypasses provenance and does not replace a clean image-edit Attempt |
 | Reusing the pre-`/2` walk or swing `provider/source.png` from issues #110/#111 | Those bundles were text-to-image acquisitions, not image-edit from the idle seed |
-| Post-editing `provider/source.png` after generation to clear Gates (near-magenta wipe to exact `#FF00FF`, Frame shifts for baseline, painting/stamping Identity Lock or flat identity colors into pitch sample centers or locked regions) | Produces hard flat lock blocks and seams that confuse cell recovery; Identity Lock PASS no longer proves a clean idle-seed edit. Regenerate until lock/baseline pass without provider painting |
+| Post-editing `provider/source.png` after generation to clear Gates (near-magenta wipe to exact `#FF00FF`, Frame shifts for baseline, painting/stamping Identity Lock or flat identity colors into pitch sample centers or locked regions) | Produces hard flat lock blocks and seams that confuse cell recovery; Identity Lock PASS no longer proves a clean idle-seed edit. `check_bundle` rejects magenta wipe with `provider_magenta_wipe` and reports edit-source lock continuity as `provider_post_edit` / `edit_source_continuity_fail`. Regenerate until lock/baseline pass without provider painting |
 
 Identity Lock rules live in `assets/first-room/dwarf/identity-locks.json`.
 

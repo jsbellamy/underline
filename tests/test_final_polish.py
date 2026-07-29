@@ -1412,6 +1412,47 @@ def test_dwarf_swing_check_exposes_identity_lock_report(tmp_path: Path) -> None:
     assert result.identity_lock is not None
     assert result.identity_lock.motion_class == "swing"
     assert len(result.identity_lock.per_frame) == FRAME_COUNT
+    assert result.provider_post_edit is not None
+    assert result.provider_post_edit["magenta_wipe"]["outcome"] == "PASS"
+
+
+def test_dwarf_swing_check_rejects_magenta_wiped_provider(tmp_path: Path) -> None:
+    import numpy as np
+
+    bundle = tmp_path / "bundle"
+    _init_bundle(SWING_STRIP, "swing", bundle, tmp_path, polish_profile="dwarf-miner")
+    provider_path = bundle / "provider" / "source.png"
+    image = Image.open(provider_path).convert("RGBA")
+    arr = np.asarray(image).copy()
+    near = (
+        (np.abs(arr[:, :, 0].astype(np.int16) - 255) <= 40)
+        & (np.abs(arr[:, :, 1].astype(np.int16) - 0) <= 40)
+        & (np.abs(arr[:, :, 2].astype(np.int16) - 255) <= 40)
+    )
+    arr[near] = (255, 0, 255, 255)
+    Image.fromarray(arr).save(provider_path)
+
+    new_sha = sha256_file(provider_path)
+    provenance_path = bundle / "provider" / "source.source.json"
+    provenance = json.loads(provenance_path.read_text())
+    provenance["raw_sha256"] = new_sha
+    provenance_path.write_text(json.dumps(provenance, indent=2, sort_keys=True) + "\n")
+    ledger_path = bundle / "provider" / "attempts.json"
+    ledger = json.loads(ledger_path.read_text())
+    for row in ledger["attempts"]:
+        if row.get("selected"):
+            row["raw_sha256"] = new_sha
+    ledger_path.write_text(json.dumps(ledger, indent=2, sort_keys=True) + "\n")
+    manifest_path = bundle / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["provider"]["sha256"] = new_sha
+    manifest["provenance"]["sha256"] = sha256_file(provenance_path)
+    manifest["attempt_ledger"]["sha256"] = sha256_file(ledger_path)
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+
+    with pytest.raises(InvalidBundleError) as exc:
+        check_bundle(bundle)
+    assert exc.value.reason_code == "provider_magenta_wipe"
 
 
 def test_identity_lock_fail_blocks_release_despite_passing_structural_and_coherence(
