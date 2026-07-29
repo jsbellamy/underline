@@ -195,8 +195,10 @@ Motion-class Attempt. For dwarf walk and swing this is explicitly
 `identity.json` → `generation_source` and copied by
 `strip:polish seed --identity-declaration identity.json`. It is **not**
 `identity.png`. It is distinct from the post-ingest identity anchor and must not
-be reconstructed by upscaling a Release Frame.
-_Avoid_: identity anchor, Release Frame, visual reference, identity.png as edit canvas
+be reconstructed by upscaling a Release Frame. The selected Attempt’s
+`provider/source.png` must remain the unmodified provider output — painting
+Identity Lock cells into the transport raster to force Gate PASS is forbidden.
+_Avoid_: identity anchor, Release Frame, visual reference, identity.png as edit canvas, provider lock-stamp
 
 **Post-ingest identity anchor**:
 The post-ingest Release Frame used by Identity Lock as external canonical

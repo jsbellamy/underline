@@ -85,8 +85,10 @@ Those bytes are copied to `provider/edit-source.png` and
 `reference/identity.png`, bound in the manifest, and must match
 `generation_mode=image-edit` with the canonical identity hash in
 `reference_image_sha256` and the idle-provider hash in `edit_source_sha256`.
-Full acquisition rules: `prompts/production/animation-strip.md` § Dwarf-miner
-walk and swing.
+Keep `provider/source.png` as the unmodified provider Attempt — do not paint
+Identity Lock cells into the transport raster to clear Gates; regenerate until
+lock and baseline pass. Full acquisition rules:
+`prompts/production/animation-strip.md` § Dwarf-miner walk and swing.
 
 Existing `final-polish-bundle/0` and `/1` bundles (including the checked-in
 dwarf `idle` bundle) remain readable under their legacy rules; `check` and
