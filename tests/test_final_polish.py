@@ -1414,6 +1414,10 @@ def test_dwarf_swing_check_exposes_identity_lock_report(tmp_path: Path) -> None:
     assert len(result.identity_lock.per_frame) == FRAME_COUNT
     assert result.provider_post_edit is not None
     assert result.provider_post_edit["magenta_wipe"]["outcome"] == "PASS"
+    # Corpus swing is not an idle-seed edit — continuity must FAIL at check_bundle.
+    assert result.provider_post_edit["outcome"] == "FAIL"
+    assert result.provider_post_edit["reason_code"] == "edit_source_continuity_fail"
+    assert result.outcome == "FAIL"
 
 
 def test_dwarf_swing_check_rejects_magenta_wiped_provider(tmp_path: Path) -> None:
