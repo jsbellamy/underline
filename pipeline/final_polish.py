@@ -528,13 +528,6 @@ def _binding_sha256(doc: Mapping[str, Any], key: str) -> str:
     return digest
 
 
-def _canonical_identity_sha256() -> str:
-    return _binding_sha256(_load_dwarf_identity_doc(), "identity_png")
-
-
-def _canonical_generation_source_sha256() -> str:
-    return _binding_sha256(_load_dwarf_identity_doc(), "generation_source")
-
 def _requires_image_edit_evidence(polish_profile: str | None, motion_class: str) -> bool:
     return polish_profile == "dwarf-miner" and motion_class in {"walk", "swing"}
 
