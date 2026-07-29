@@ -17,6 +17,7 @@ from pipeline.cell_raster import RasterError, write_cells
 from pipeline.cell_raster import read_cells as _read_cells
 from pipeline.gate_evidence import EvidenceError, sha256_bytes, sha256_file, write_json_immutable
 from pipeline.identity_lock import (
+    IDENTITY_LOCK_NEAR_MISS_SCHEMA,
     IdentityLockResult,
     evaluate_identity_lock,
     identity_lock_applies,
@@ -873,12 +874,38 @@ def _validate_attempt_ledger_row(row: Mapping[str, Any], *, where: str) -> None:
                 "accepted attempt ledger row must have null rejection_reason",
                 reason_code="invalid_attempt_ledger",
             )
+        if row.get("rejection_detail") is not None:
+            raise InvalidBundleError(
+                "accepted attempt ledger row must have null rejection_detail",
+                reason_code="invalid_attempt_ledger",
+            )
     else:
         if not isinstance(rejection_reason, str) or not rejection_reason:
             raise InvalidBundleError(
                 "rejected attempt ledger row requires rejection_reason",
                 reason_code="invalid_attempt_ledger",
             )
+        rejection_detail = row.get("rejection_detail")
+        if rejection_detail is not None:
+            if not isinstance(rejection_detail, dict):
+                raise InvalidBundleError(
+                    "attempt ledger rejection_detail must be an object",
+                    reason_code="invalid_attempt_ledger",
+                )
+            schema = rejection_detail.get("schema")
+            if not isinstance(schema, str) or not schema:
+                raise InvalidBundleError(
+                    "attempt ledger rejection_detail requires schema",
+                    reason_code="invalid_attempt_ledger",
+                )
+            if schema == IDENTITY_LOCK_NEAR_MISS_SCHEMA:
+                primary_reason_code = rejection_detail.get("primary_reason_code")
+                if not isinstance(primary_reason_code, str) or not primary_reason_code:
+                    raise InvalidBundleError(
+                        "identity-lock near-miss rejection_detail requires "
+                        "primary_reason_code",
+                        reason_code="invalid_attempt_ledger",
+                    )
     if not _is_sha256_hex(row.get("prompt_sha256")):
         raise InvalidBundleError(
             "attempt ledger prompt_sha256 must be SHA-256 hex",

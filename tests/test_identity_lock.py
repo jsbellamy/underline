@@ -13,11 +13,16 @@ from pipeline.gate_evidence import sha256_file
 from pipeline.identity_lock import (
     DEFAULT_IDENTITY_LOCKS_PATH,
     DEFAULT_IDENTITY_PATH,
+    IDENTITY_LOCK_NEAR_MISS_SCHEMA,
     IDENTITY_LOCK_SCHEMA,
+    FrameIdentityLockResult,
     IdentityLockError,
+    IdentityLockMismatch,
+    IdentityLockResult,
     build_identity_seed,
     evaluate_identity_lock,
     identity_lock_applies,
+    identity_lock_rejection_detail,
     identity_lock_report_payload,
     load_canonical_cells,
     load_identity_lock_spec,
@@ -395,6 +400,186 @@ def test_identity_lock_applies_only_to_dwarf_walk_swing() -> None:
     assert identity_lock_applies("dwarf-miner", "swing")
     assert not identity_lock_applies("dwarf-miner", "idle")
     assert not identity_lock_applies("miner", "walk")
+
+
+def _synthetic_fail_result(
+    *,
+    frame_index: int,
+    first_failure: dict[str, object],
+    selected_offsets: dict[str, tuple[int, int]],
+    first_mismatch: IdentityLockMismatch | None = None,
+) -> IdentityLockResult:
+    frame = FrameIdentityLockResult(
+        selected_offsets=selected_offsets,
+        anchor_results={"upper_body": "FAIL"},
+        check_results={
+            "upper_body": {
+                "outcome": "FAIL",
+                "comparison": "registered-structure",
+                "occupancy_difference": first_failure.get("occupancy_difference", 0.0),
+                "palette_role_distance": first_failure.get("palette_role_distance"),
+                "max_occupancy_difference": first_failure.get("max_occupancy_difference"),
+                "max_palette_role_distance": first_failure.get("max_palette_role_distance"),
+            }
+        },
+        landmark_results={},
+        first_failure=dict(first_failure),
+        first_mismatch=first_mismatch,
+    )
+    empty_frame = FrameIdentityLockResult(
+        selected_offsets={"upper_body": (0, 0)},
+        anchor_results={"upper_body": "PASS"},
+        check_results={},
+        landmark_results={},
+        first_failure=None,
+        first_mismatch=None,
+    )
+    per_frame = [empty_frame] * 4
+    per_frame[frame_index] = frame
+    overall_failure = {"frame_index": frame_index, **dict(first_failure)}
+    return IdentityLockResult(
+        outcome="FAIL",
+        identity_sha256=CANONICAL_IDENTITY_SHA,
+        lock_spec_sha256="a" * 64,
+        motion_class="walk",
+        per_frame=tuple(per_frame),
+        first_failure=overall_failure,
+        first_mismatch=first_mismatch,
+    )
+
+
+def test_identity_lock_rejection_detail_pass_returns_none() -> None:
+    result = evaluate_identity_lock(_canonical_frames(), "walk")
+    assert result.outcome == "PASS"
+    assert identity_lock_rejection_detail(result) is None
+
+
+def test_identity_lock_rejection_detail_near_miss_check_failure() -> None:
+    selected_offsets = {"upper_body": (0, 1)}
+    mismatch = IdentityLockMismatch(
+        anchor="upper_body",
+        x=3,
+        y=5,
+        expected_rgba=(17, 16, 24, 255),
+        actual_rgba=(0, 0, 0, 0),
+    )
+    first_failure = {
+        "kind": "check",
+        "id": "upper_body",
+        "outcome": "FAIL",
+        "comparison": "registered-structure",
+        "occupancy_difference": 0.22,
+        "max_occupancy_difference": 0.20,
+        "palette_role_distance": 0.05,
+        "max_palette_role_distance": 0.20,
+    }
+    result = _synthetic_fail_result(
+        frame_index=2,
+        first_failure=first_failure,
+        selected_offsets=selected_offsets,
+        first_mismatch=mismatch,
+    )
+    detail = identity_lock_rejection_detail(result)
+    assert detail is not None
+    assert detail["schema"] == IDENTITY_LOCK_NEAR_MISS_SCHEMA
+    assert detail["primary_reason_code"] == "identity_lock_near_miss"
+    assert detail["frame_index"] == 2
+    assert detail["kind"] == "check"
+    assert detail["id"] == "upper_body"
+    assert detail["occupancy_difference"] == 0.22
+    assert detail["max_occupancy_difference"] == 0.20
+    assert detail["occupancy_margin"] == pytest.approx(-0.02)
+    assert detail["palette_role_distance"] == 0.05
+    assert detail["max_palette_role_distance"] == 0.20
+    assert detail["selected_offsets"] == {"upper_body": [0, 1]}
+    assert detail["first_mismatch"] == {
+        "anchor": "upper_body",
+        "x": 3,
+        "y": 5,
+        "expected_rgba": [17, 16, 24, 255],
+        "actual_rgba": [0, 0, 0, 0],
+    }
+
+
+def test_identity_lock_rejection_detail_large_occupancy_uses_identity_lock() -> None:
+    first_failure = {
+        "kind": "check",
+        "id": "upper_body",
+        "outcome": "FAIL",
+        "comparison": "registered-structure",
+        "occupancy_difference": 0.40,
+        "max_occupancy_difference": 0.20,
+        "palette_role_distance": 0.0,
+        "max_palette_role_distance": 0.20,
+    }
+    result = _synthetic_fail_result(
+        frame_index=1,
+        first_failure=first_failure,
+        selected_offsets={"upper_body": (0, 0)},
+    )
+    detail = identity_lock_rejection_detail(result)
+    assert detail is not None
+    assert detail["primary_reason_code"] == "identity_lock"
+    assert detail["occupancy_margin"] == pytest.approx(-0.20)
+    assert detail["frame_index"] == 1
+
+
+def test_identity_lock_rejection_detail_landmark_failure() -> None:
+    frame = FrameIdentityLockResult(
+        selected_offsets={"upper_body": (0, 0)},
+        anchor_results={"upper_body": "PASS"},
+        check_results={
+            "upper_body": {
+                "outcome": "PASS",
+                "comparison": "registered-structure",
+                "occupancy_difference": 0.0,
+                "palette_role_distance": 0.0,
+                "max_occupancy_difference": 0.20,
+                "max_palette_role_distance": 0.20,
+            }
+        },
+        landmark_results={
+            "eye": {
+                "outcome": "FAIL",
+                "expected_role": "dark-outline",
+                "actual_role": "amber-emission",
+                "expected_position": [10, 7],
+                "actual_position": None,
+                "max_distance": 1,
+                "anchor": "upper_body",
+            }
+        },
+        first_failure={
+            "kind": "landmark",
+            "id": "eye",
+            "outcome": "FAIL",
+            "expected_role": "dark-outline",
+            "actual_role": "amber-emission",
+            "expected_position": [10, 7],
+            "actual_position": None,
+            "max_distance": 1,
+            "anchor": "upper_body",
+        },
+        first_mismatch=None,
+    )
+    result = IdentityLockResult(
+        outcome="FAIL",
+        identity_sha256=CANONICAL_IDENTITY_SHA,
+        lock_spec_sha256="b" * 64,
+        motion_class="swing",
+        per_frame=(frame,),
+        first_failure={"frame_index": 0, **frame.first_failure},
+        first_mismatch=None,
+    )
+    detail = identity_lock_rejection_detail(result)
+    assert detail == {
+        "schema": IDENTITY_LOCK_NEAR_MISS_SCHEMA,
+        "primary_reason_code": "identity_lock",
+        "frame_index": 0,
+        "kind": "landmark",
+        "id": "eye",
+        "selected_offsets": {"upper_body": [0, 0]},
+    }
 
 
 def test_invalid_spec_rejects_bad_hash(tmp_path: Path) -> None:

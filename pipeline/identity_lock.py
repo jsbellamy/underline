@@ -17,6 +17,7 @@ from pipeline.gate_evidence import sha256_file
 from pipeline.strip import Cell
 
 IDENTITY_LOCK_SCHEMA = "identity-lock/1"
+IDENTITY_LOCK_NEAR_MISS_SCHEMA = "identity-lock-near-miss/0"
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_IDENTITY_LOCKS_PATH = (
     _REPO_ROOT / "assets" / "first-room" / "dwarf" / "identity-locks.json"
@@ -877,6 +878,72 @@ def _mismatch_payload(mismatch: IdentityLockMismatch | None) -> dict[str, Any] |
         "expected_rgba": list(mismatch.expected_rgba),
         "actual_rgba": list(mismatch.actual_rgba),
     }
+
+
+def identity_lock_rejection_detail(result: IdentityLockResult) -> dict[str, Any] | None:
+    """Summarize a FAIL Identity Lock result as a near-miss ledger detail payload."""
+    if result.outcome == "PASS":
+        return None
+
+    first_failure = result.first_failure
+    if first_failure is None:
+        return {
+            "schema": IDENTITY_LOCK_NEAR_MISS_SCHEMA,
+            "primary_reason_code": "identity_lock",
+        }
+
+    detail: dict[str, Any] = {
+        "schema": IDENTITY_LOCK_NEAR_MISS_SCHEMA,
+        "primary_reason_code": "identity_lock",
+    }
+
+    frame_index = first_failure.get("frame_index")
+    kind = first_failure.get("kind")
+    failure_id = first_failure.get("id")
+    if frame_index is not None:
+        detail["frame_index"] = frame_index
+    if kind is not None:
+        detail["kind"] = kind
+    if failure_id is not None:
+        detail["id"] = failure_id
+
+    if isinstance(frame_index, int) and 0 <= frame_index < len(result.per_frame):
+        frame = result.per_frame[frame_index]
+        detail["selected_offsets"] = {
+            anchor: [offsets[0], offsets[1]]
+            for anchor, offsets in frame.selected_offsets.items()
+        }
+
+    if kind == "check":
+        occupancy_difference = first_failure.get("occupancy_difference")
+        max_occupancy_difference = first_failure.get("max_occupancy_difference")
+        if occupancy_difference is not None:
+            detail["occupancy_difference"] = occupancy_difference
+        if max_occupancy_difference is not None:
+            detail["max_occupancy_difference"] = max_occupancy_difference
+            if occupancy_difference is not None:
+                detail["occupancy_margin"] = (
+                    float(max_occupancy_difference) - float(occupancy_difference)
+                )
+            if (
+                occupancy_difference is not None
+                and float(occupancy_difference)
+                <= float(max_occupancy_difference) + 0.05
+            ):
+                detail["primary_reason_code"] = "identity_lock_near_miss"
+
+        palette_role_distance = first_failure.get("palette_role_distance")
+        max_palette_role_distance = first_failure.get("max_palette_role_distance")
+        if palette_role_distance is not None:
+            detail["palette_role_distance"] = palette_role_distance
+        if max_palette_role_distance is not None:
+            detail["max_palette_role_distance"] = max_palette_role_distance
+
+    mismatch_payload = _mismatch_payload(result.first_mismatch)
+    if mismatch_payload is not None:
+        detail["first_mismatch"] = mismatch_payload
+
+    return detail
 
 
 def identity_lock_report_payload(result: IdentityLockResult) -> dict[str, Any]:

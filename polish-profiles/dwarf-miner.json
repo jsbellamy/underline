@@ -87,6 +87,7 @@
     "Forbidden provider post-edits include: wiping near-magenta to exact #FF00FF, shifting Frames for baseline, and painting or stamping Identity Lock / flat identity colors into pitch sample centers or locked regions.",
     "A failed Identity Lock, baseline, clipping, or pitch check requires another Attempt — never provider painting. Only permitted post-ingest Polished Cell edits are allowed after ingest.",
     "Record every rejection and predecessor edge in provider/attempts.json; do not cap Attempt count with a fixed quota.",
+    "When rejecting for Identity Lock, set rejection_reason to identity_lock and record rejection_detail from the machine-readable check report (schema identity-lock-near-miss/0) so near-miss Attempts remain auditable.",
     "Run Identity Lock only after provider recovery produces logical Frames; read that machine-readable check report before opening art and confirm automatic PASS.",
     "Inspect one composite or animation preview at native scale and enlarged with nearest-neighbor scaling beside identity.png, the idle provider Strip, and idle Release Frames.",
     "Reject art that reads as an upscaled or tiled identity.png rather than an edit of idle-provider outline, shading, helmet lamp, and tool construction. Also reject hard flat Identity Lock stamps or seams where painted lock Cells meet softer generated shading. Identity Lock PASS alone does not satisfy the audit when the edit source was not the idle provider Strip or when lock Cells were painted into the provider raster after generation.",

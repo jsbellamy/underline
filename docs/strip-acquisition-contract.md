@@ -478,6 +478,15 @@ evidence model, add Gates, or change Budgets.
    missing, malformed, identity-mismatched, or hash-mismatched embedded profile
    makes a profiled bundle invalid.
 
+**Attempt ledger rows** (`animation-attempt-ledger/0`) record each provider
+Attempt. Accepted rows require null `rejection_reason` and `rejection_detail`.
+Rejected rows require a non-empty `rejection_reason`. Optional `rejection_detail`
+carries structured near-miss evidence when a rejection is close to passing. For
+Identity Lock failures, set `rejection_reason` to `"identity_lock"` and populate
+`rejection_detail` from the machine-readable check report (schema
+`identity-lock-near-miss/0`; helper `identity_lock_rejection_detail()` in
+`pipeline/identity_lock.py`). Ledgers without `rejection_detail` remain valid.
+
 **Structural polish invariants** (alpha mask, palette membership, provenance
 reproduction) are enforced before coherence Gates run. Failures on these
 invariants are structural hard failures — they do not become new Gates and do
