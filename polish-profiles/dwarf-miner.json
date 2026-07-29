@@ -83,6 +83,7 @@
     "On strip:polish init, pass --edit-source <seed.png> and --identity-reference assets/first-room/dwarf/identity.png.",
     "Record identity.json generation_source.sha256 as edit_source_sha256 in each image-edit Attempt provenance. That digest must equal 655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3 while idle/provider/source.png is the declared generation source; any other digest fails with edit_source_not_generation_source.",
     "Do not use fresh text-to-image generation for walk or swing.",
+    "Keep the subject (including pickaxe arc) inside a safe empty magenta inset so the bounding box does not touch provider canvas edges. Touching a canvas edge triggers provider_clipping — regenerate with margin guidance rather than post-editing the provider transport raster.",
     "Generate sequential immutable Attempts until provenance, automatic Identity Lock, coherence, and polish pass on the unmodified provider transport raster. Do not script- or hand-edit provider/source.png after generation to clear Gates.",
     "Forbidden provider post-edits include: wiping near-magenta to exact #FF00FF, shifting Frames for baseline, and painting or stamping Identity Lock / flat identity colors into pitch sample centers or locked regions.",
     "A failed Identity Lock, baseline, clipping, or pitch check requires another Attempt — never provider painting. Only permitted post-ingest Polished Cell edits are allowed after ingest.",

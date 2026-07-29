@@ -104,7 +104,10 @@ equal `identity.json` → `generation_source.sha256`; a tiled or upscaled
 `identity.png` seed is rejected. Keep `provider/source.png` as the unmodified
 provider Attempt — do not paint Identity Lock cells, wipe magenta, or shift
 Frames in the transport raster to clear Gates; regenerate until lock and
-baseline pass cleanly. Visual audit for walk and swing must compare Release
+baseline pass cleanly. Keep walk and swing subjects inside a safe empty magenta
+inset away from provider canvas edges — `provider_clipping` requires
+regeneration, not provider painting. Visual audit for walk and swing must
+compare Release
 Frames to the idle provider Strip and idle Release Frames — Identity Lock PASS
 alone does not prove the edit came from idle or that the provider raster was
 unpainted. Full rules:

@@ -443,8 +443,10 @@ evidence model, add Gates, or change Budgets.
    shift Frames for baseline, or paint/stamp Identity Lock (or flat identity)
    colors into pitch sample centers or locked regions to force Gate PASS. Those
    post-edits create hard flat lock blocks and seams that poison cell recovery
-   while still allowing Identity Lock PASS. Failed lock/baseline/clipping/pitch
-   requires another Attempt. See
+   while still allowing Identity Lock PASS. Subjects must stay inside a safe empty magenta inset away from provider canvas edges; touching an edge is
+   `provider_clipping` and requires regeneration — see
+   `prompts/production/animation-strip.md` § Provider canvas safe inset. Failed
+   lock/baseline/clipping/pitch requires another Attempt. See
    `prompts/production/animation-strip.md` § Dwarf-miner walk and swing. Existing
    unprofiled `/0` and profiled
    `/1` bundles remain valid for `check` and `finalize` under legacy rules.

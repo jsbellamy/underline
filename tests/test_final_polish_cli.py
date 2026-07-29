@@ -853,6 +853,32 @@ def test_dwarf_miner_profile_and_prompt_require_image_edit_workflow() -> None:
     assert "does not prove the edit came from idle" in art.replace("\n", " ")
     assert "do not paint identity lock cells" in art.replace("\n", " ")
 
+def test_dwarf_miner_profile_and_prompt_require_clipping_margin_guidance() -> None:
+    profile = json.loads((ROOT / "polish-profiles" / "dwarf-miner.json").read_text())
+    workflow = " ".join(profile["audit_workflow"]).lower()
+    assert "safe empty magenta inset" in workflow
+    assert "canvas edge" in workflow
+    assert "provider_clipping" in workflow
+
+    prompt = (ROOT / "prompts" / "production" / "animation-strip.md").read_text()
+    prompt_lower = prompt.lower()
+    assert "16×24" in prompt
+    assert "gutter" in prompt_lower and "2" in prompt
+    assert "safe" in prompt_lower and "empty magenta inset" in prompt_lower
+    assert "canvas edge" in prompt_lower
+    assert "provider_clipping" in prompt_lower
+    assert "logical strip" in prompt_lower or "logical strip /" in prompt_lower
+    assert "gutter=2" in prompt_lower or "gutter = 2" in prompt_lower
+    assert "pickaxe" in prompt_lower
+    assert "regenerate" in prompt_lower
+
+    contract = (ROOT / "docs" / "strip-acquisition-contract.md").read_text().lower()
+    assert "safe empty magenta inset" in contract
+    assert "provider_clipping" in contract
+
+    art = (ROOT / "docs" / "first-room-art-direction.md").read_text().lower()
+    assert "provider_clipping" in art or "safe empty magenta inset" in art
+
 def test_v2_walk_check_json_binds_sequential_attempt_evidence(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
     _library_init_bundle(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="dwarf-miner")

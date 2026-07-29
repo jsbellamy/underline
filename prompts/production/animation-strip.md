@@ -32,6 +32,27 @@ Every production animation Strip must declare and honor:
 Logical Cells are flat square blocks at provider scale — no anti-aliasing,
 blur, gradient, or dithering within a Cell.
 
+## Provider canvas safe inset (clipping)
+
+The logical Strip geometry above (16×24 Frames, gutter=2 magenta Cells) defines
+**recovery slicing** — it is not the full provider canvas margin.
+
+When submitting to an image **provider**, keep the subject — dwarf, tools, and
+pickaxe arc included — inside a **safe empty magenta inset** around the logical
+Strip row. The subject bounding box must **not** touch the provider transport
+raster edges (top, bottom, left, or right). Paint uninterrupted flat magenta
+`#FF00FF` between the subject and each canvas edge.
+
+This safe inset is **outside** the logical Strip / gutters. It is provider
+canvas margin for layout, **not** a change to gutter=2 or Frame size.
+
+Touching a provider canvas edge trips recovery **`provider_clipping`** — discard
+the Attempt and regenerate with more inset margin. Do not crop or paint the
+provider PNG after generation to clear clipping.
+
+Prefer compact tool arcs that fit inside the safe inset rather than widening
+logical Frames or shrinking gutter width.
+
 ## Master Palette
 
 Opaque RGB in every Frame must be drawn only from
@@ -126,8 +147,8 @@ or arms/pickaxe/torso lean (swing) while locked regions stay fixed.
 7. Generate **sequential immutable Attempts** until one passes provenance,
    automatic Identity Lock, coherence Gates, polish, and visual audit on the
    **unmodified** provider transport raster (plus only permitted post-ingest
-   Polished Cell edits). A failed Identity Lock, baseline, clipping, or pitch
-   check requires another Attempt — never a script or hand paint of the
+   Polished Cell edits). A failed Identity Lock, baseline, `provider_clipping`,
+   clipping, or pitch check requires another Attempt — never a script or hand paint of the
    provider PNG to force PASS.
 8. Record every rejection and predecessor edge in the attempt ledger; never cap
    Attempt count with a fixed quota.
@@ -185,6 +206,10 @@ dithering.
 <Motion-specific pose and baseline rules. Feet on bottom row for grounded classes.>
 
 Between each frame: two full magenta logical Cells of empty gutter.
+
+Keep the subject (including tools and pickaxe arc) inside a safe empty magenta
+inset so the bounding box does not touch the provider canvas edges. This inset
+is outside the logical Strip / gutters (gutter=2 unchanged).
 
 Flat solid magenta #FF00FF background everywhere else. Master Palette
 membership only — see assets/palettes/first-room.json. Neutral upper-left
