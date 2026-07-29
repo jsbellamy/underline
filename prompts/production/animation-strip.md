@@ -124,7 +124,11 @@ or arms/pickaxe/torso lean (swing) while locked regions stay fixed.
    `edit_source_not_generation_source`.
 6. Run Identity Lock only after provider recovery has produced logical Frames.
 7. Generate **sequential immutable Attempts** until one passes provenance,
-   automatic Identity Lock, coherence Gates, polish, and visual audit.
+   automatic Identity Lock, coherence Gates, polish, and visual audit on the
+   **unmodified** provider transport raster (plus only permitted post-ingest
+   Polished Cell edits). A failed Identity Lock, baseline, clipping, or pitch
+   check requires another Attempt — never a script or hand paint of the
+   provider PNG to force PASS.
 8. Record every rejection and predecessor edge in the attempt ledger; never cap
    Attempt count with a fixed quota.
 9. Visual audit judges motion readability and exposed identity **outside** the
@@ -132,8 +136,11 @@ or arms/pickaxe/torso lean (swing) while locked regions stay fixed.
    report. Inspect Release Frames beside the idle provider Strip and idle
    Release Frames; reject art that reads as an upscaled or tiled `identity.png`
    rather than an edit of idle-provider outline, shading, helmet lamp, and tool
-   construction. Identity Lock PASS alone does not satisfy the audit when the
-   edit source was not the idle provider Strip.
+   construction. Also reject hard flat Identity Lock stamps or seams where
+   painted lock Cells meet softer generated shading in `provider/source.png` or
+   Draft Frames. Identity Lock PASS alone does not satisfy the audit when the
+   edit source was not the idle provider Strip or when lock Cells were painted
+   into the provider raster after generation.
 
 ### Explicitly forbidden substitutes
 
@@ -145,6 +152,7 @@ or arms/pickaxe/torso lean (swing) while locked regions stay fixed.
 | `prototype/strip-coherence/inbox/*` corpus Strips as the edit source | Motion evidence only — see `docs/first-room-art-direction.md` |
 | Mechanical merge of corpus motion + identity upper body without a ledgered Attempt | Bypasses provenance and does not replace a clean image-edit Attempt |
 | Reusing the pre-`/2` walk or swing `provider/source.png` from issues #110/#111 | Those bundles were text-to-image acquisitions, not image-edit from the idle seed |
+| Post-editing `provider/source.png` after generation to clear Gates (near-magenta wipe to exact `#FF00FF`, Frame shifts for baseline, painting/stamping Identity Lock or flat identity colors into pitch sample centers or locked regions) | Produces hard flat lock blocks and seams that confuse cell recovery; Identity Lock PASS no longer proves a clean idle-seed edit. Regenerate until lock/baseline pass without provider painting |
 
 Identity Lock rules live in `assets/first-room/dwarf/identity-locks.json`.
 

@@ -822,6 +822,9 @@ def test_dwarf_miner_profile_and_prompt_require_image_edit_workflow() -> None:
     assert "predecessor" in workflow
     assert "quota" in workflow
     assert "identity lock" in workflow
+    assert "unmodified provider" in workflow
+    assert "painting or stamping identity lock" in workflow
+    assert "hard flat identity lock stamps" in workflow
     prompt = (ROOT / "prompts" / "production" / "animation-strip.md").read_text()
     prompt_lower = prompt.lower()
     assert "image-edit" in prompt_lower
@@ -839,12 +842,16 @@ def test_dwarf_miner_profile_and_prompt_require_image_edit_workflow() -> None:
     assert "text-to-image" in prompt_lower
     assert "explicitly forbidden substitutes" in prompt_lower
     assert "tiling `identity.png`" in prompt_lower
+    assert "painting/stamping identity lock" in prompt_lower
+    assert "unmodified" in prompt_lower and "provider transport raster" in prompt_lower
     contract = (ROOT / "docs" / "strip-acquisition-contract.md").read_text()
     assert "edit_source_not_generation_source" in contract
     assert "generation_source.sha256" in contract
+    assert "paint/stamp Identity Lock" in contract or "paint/stamp identity lock" in contract.lower()
     art = (ROOT / "docs" / "first-room-art-direction.md").read_text().lower()
     assert "idle provider" in art
     assert "does not prove the edit came from idle" in art.replace("\n", " ")
+    assert "do not paint identity lock cells" in art.replace("\n", " ")
 
 def test_v2_walk_check_json_binds_sequential_attempt_evidence(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"

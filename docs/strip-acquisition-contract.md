@@ -438,7 +438,13 @@ evidence model, add Gates, or change Budgets.
    `provider/edit-source.png` bytes must equal
    `identity.json` → `generation_source.sha256`; a self-consistent tiled or
    upscaled `identity.png` seed is rejected with
-   `edit_source_not_generation_source`. See
+   `edit_source_not_generation_source`. The checked-in `provider/source.png`
+   must be the **unmodified** provider Attempt output: do not wipe near-magenta,
+   shift Frames for baseline, or paint/stamp Identity Lock (or flat identity)
+   colors into pitch sample centers or locked regions to force Gate PASS. Those
+   post-edits create hard flat lock blocks and seams that poison cell recovery
+   while still allowing Identity Lock PASS. Failed lock/baseline/clipping/pitch
+   requires another Attempt. See
    `prompts/production/animation-strip.md` § Dwarf-miner walk and swing. Existing
    unprofiled `/0` and profiled
    `/1` bundles remain valid for `check` and `finalize` under legacy rules.
