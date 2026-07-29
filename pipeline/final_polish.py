@@ -740,7 +740,8 @@ def _validate_animation_provenance_record(
                 "dwarf-miner walk/swing requires generation_mode=image-edit",
                 "generation_mode_mismatch",
             )
-        canonical_identity = _canonical_identity_sha256()
+        identity_doc = _load_dwarf_identity_doc()
+        canonical_identity = _binding_sha256(identity_doc, "identity_png")
         if ordered_refs != [canonical_identity]:
             reject(
                 "provenance reference_image_sha256 must bind the canonical identity",
@@ -757,7 +758,9 @@ def _validate_animation_provenance_record(
                 "edit_source_hash_mismatch",
             )
         if require_image_edit:
-            canonical_generation_source = _canonical_generation_source_sha256()
+            canonical_generation_source = _binding_sha256(
+                identity_doc, "generation_source"
+            )
             if str(edit_source) != canonical_generation_source:
                 reject(
                     "provenance edit_source_sha256 must equal identity.json "
@@ -766,6 +769,8 @@ def _validate_animation_provenance_record(
                 )
 
     return dict(record)
+
+
 def _validate_provenance_sidecar(
     provider_path: Path,
     provenance_path: Path,
