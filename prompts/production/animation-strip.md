@@ -151,7 +151,9 @@ or arms/pickaxe/torso lean (swing) while locked regions stay fixed.
    clipping, or pitch check requires another Attempt — never a script or hand paint of the
    provider PNG to force PASS.
 8. Record every rejection and predecessor edge in the attempt ledger; never cap
-   Attempt count with a fixed quota.
+   Attempt count with a fixed quota. When rejecting for Identity Lock, set
+   `rejection_reason` to `identity_lock` and record `rejection_detail` from the
+   machine-readable check report (schema `identity-lock-near-miss/0`).
 9. Visual audit judges motion readability and exposed identity **outside** the
    locked regions, but must cite the automatic Identity Lock PASS in the check
    report. Inspect Release Frames beside the idle provider Strip and idle

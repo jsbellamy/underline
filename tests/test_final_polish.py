@@ -1171,6 +1171,132 @@ def test_valid_sequential_attempt_ledger_passes_check(tmp_path: Path) -> None:
     assert check_bundle(bundle).outcome == "PASS"
 
 
+def test_rejected_attempt_ledger_with_identity_lock_near_miss_detail_passes(
+    tmp_path: Path,
+) -> None:
+    bundle = _init_passing_bundle(tmp_path)
+    provenance_path = bundle / "provider" / "source.source.json"
+    provenance = json.loads(provenance_path.read_text())
+    provenance["attempt_id"] = "test--002"
+    provenance_path.write_text(
+        json.dumps(provenance, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    manifest_path = bundle / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["provenance"]["sha256"] = sha256_file(provenance_path)
+    manifest_path.write_text(
+        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    _write_attempt_ledger(
+        bundle,
+        [
+            {
+                "attempt_id": "test--001",
+                "predecessor_attempt_id": None,
+                "outcome": "rejected",
+                "rejection_reason": "identity_lock",
+                "rejection_detail": {
+                    "schema": "identity-lock-near-miss/0",
+                    "primary_reason_code": "identity_lock_near_miss",
+                    "frame_index": 2,
+                    "kind": "check",
+                    "id": "upper_body",
+                    "occupancy_difference": 0.22,
+                    "max_occupancy_difference": 0.20,
+                    "occupancy_margin": -0.02,
+                },
+                "prompt_sha256": "a" * 64,
+                "raw_sha256": "1" * 64,
+                "selected": False,
+            },
+            {
+                "attempt_id": "test--002",
+                "predecessor_attempt_id": "test--001",
+                "outcome": "accepted",
+                "rejection_reason": None,
+                "prompt_sha256": provenance["prompt_sha256"],
+                "raw_sha256": provenance["raw_sha256"],
+                "selected": True,
+            },
+        ],
+    )
+    assert check_bundle(bundle).outcome == "PASS"
+
+
+@pytest.mark.parametrize(
+    ("rejection_detail", "reason_code"),
+    [
+        ({"schema": "identity-lock-near-miss/0"}, "invalid_attempt_ledger"),
+        ({"primary_reason_code": "identity_lock"}, "invalid_attempt_ledger"),
+        ("not-an-object", "invalid_attempt_ledger"),
+    ],
+)
+def test_malformed_rejection_detail_fails_closed(
+    tmp_path: Path,
+    rejection_detail: object,
+    reason_code: str,
+) -> None:
+    bundle = _init_passing_bundle(tmp_path)
+    provenance = json.loads((bundle / "provider" / "source.source.json").read_text())
+    attempts: list[dict[str, object]] = [
+        {
+            "attempt_id": "test--001",
+            "predecessor_attempt_id": None,
+            "outcome": "rejected",
+            "rejection_reason": "identity_lock",
+            "rejection_detail": rejection_detail,
+            "prompt_sha256": "a" * 64,
+            "raw_sha256": "1" * 64,
+            "selected": False,
+        },
+        {
+            "attempt_id": provenance["attempt_id"],
+            "predecessor_attempt_id": "test--001",
+            "outcome": "accepted",
+            "rejection_reason": None,
+            "prompt_sha256": provenance["prompt_sha256"],
+            "raw_sha256": provenance["raw_sha256"],
+            "selected": True,
+        },
+    ]
+    _write_attempt_ledger(bundle, attempts)
+
+    with pytest.raises(InvalidBundleError) as exc:
+        check_bundle(bundle)
+    assert exc.value.reason_code == reason_code
+
+
+def test_accepted_row_with_rejection_detail_fails_closed(tmp_path: Path) -> None:
+    bundle = _init_passing_bundle(tmp_path)
+    provenance = json.loads((bundle / "provider" / "source.source.json").read_text())
+    _write_attempt_ledger(
+        bundle,
+        [
+            {
+                **{
+                    "attempt_id": provenance["attempt_id"],
+                    "predecessor_attempt_id": None,
+                    "outcome": "accepted",
+                    "rejection_reason": None,
+                    "prompt_sha256": provenance["prompt_sha256"],
+                    "raw_sha256": provenance["raw_sha256"],
+                    "selected": True,
+                },
+                "rejection_detail": {
+                    "schema": "identity-lock-near-miss/0",
+                    "primary_reason_code": "identity_lock",
+                },
+            }
+        ],
+    )
+
+    with pytest.raises(InvalidBundleError) as exc:
+        check_bundle(bundle)
+    assert exc.value.reason_code == "invalid_attempt_ledger"
+
+
 @pytest.mark.parametrize(
     ("mutation", "reason_code"),
     [
