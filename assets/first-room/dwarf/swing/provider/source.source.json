@@ -1,36 +1,33 @@
 {
-  "schema": "gate-control-provenance/0",
-  "specification_id": "first-room/dwarf/swing",
-  "attempt_id": "dwarf-swing--001",
-  "generator": "cursor-image-gen",
-  "prompt_text": "TRUE chunky pixel art animation Strip only. Four PICKAXE SWING Frames of exactly the SAME right-facing DWARF MINER shown in the supplied identity reference, in one horizontal row.\n\nExact 16\u00d724 logical Frames rendered as crisp square Cells; four Frames; two magenta #FF00FF logical gutter Cells; flat magenta keyed background; no labels, margins, extra rows, anti-aliasing, blur, gradients, or dithering.\n\nCopy the reference identity: same short broad body, rust beard, oversized blue lamp helmet, centered amber lamp, black eye Cell without white sclera, green tunic, gloves, leather belt/buckle, broad boots, and the same heavy pickaxe proportions. Use only the first-room Master Palette.\n\nOne-shot mining action, not a loop:\nFrame 0 \u2014 strong anticipation, pickaxe raised behind and above helmet.\nFrame 1 \u2014 accelerated downswing at head height.\nFrame 2 \u2014 pickaxe crossing forward, torso and beard following the weight.\nFrame 3 \u2014 clear ground-level contact ahead of the boots.\n\nBoth boots remain planted on the bottom row. The hand stays visibly attached to the handle, face remains separate from the leading hand, and the pickaxe head traces one continuous arc. Frame 3 is the only contact Frame. Do not include rock, terrain, ore, debris, sparks, or a baked target in the character Strip.\n\nWarm rugged storybook pixel art, selective warm-dark outline, neutral upper-left local light. Intended read: heavy committed mining blow with dwarf weight transfer.\n",
-  "prompt": "TRUE chunky pixel art animation Strip only. Four PICKAXE SWING Frames of exactly the SAME right-facing DWARF MINER shown in the supplied identity reference, in one horizontal row.\n\nExact 16\u00d724 logical Frames rendered as crisp square Cells; four Frames; two magenta #FF00FF logical gutter Cells; flat magenta keyed background; no labels, margins, extra rows, anti-aliasing, blur, gradients, or dithering.\n\nCopy the reference identity: same short broad body, rust beard, oversized blue lamp helmet, centered amber lamp, black eye Cell without white sclera, green tunic, gloves, leather belt/buckle, broad boots, and the same heavy pickaxe proportions. Use only the first-room Master Palette.\n\nOne-shot mining action, not a loop:\nFrame 0 \u2014 strong anticipation, pickaxe raised behind and above helmet.\nFrame 1 \u2014 accelerated downswing at head height.\nFrame 2 \u2014 pickaxe crossing forward, torso and beard following the weight.\nFrame 3 \u2014 clear ground-level contact ahead of the boots.\n\nBoth boots remain planted on the bottom row. The hand stays visibly attached to the handle, face remains separate from the leading hand, and the pickaxe head traces one continuous arc. Frame 3 is the only contact Frame. Do not include rock, terrain, ore, debris, sparks, or a baked target in the character Strip.\n\nWarm rugged storybook pixel art, selective warm-dark outline, neutral upper-left local light. Intended read: heavy committed mining blow with dwarf weight transfer.\n",
-  "prompt_sha256": "a052fc59f65a14b50c88f50dd6cd46f728aa6dd22395b7a30e07da8ebafb59d0",
-  "reference_image_sha256": [
-    "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9"
-  ],
-  "generated_at": "2026-07-27T22:30:00+00:00",
-  "acquiring_agent": "cursor-agent-issue-111",
-  "repository_commit": "87d3df920ddeba61795f4d8bd7c5b2d7095e5d0f",
-  "raw_path": "assets/first-room/dwarf/swing/provider/source.png",
-  "raw_sha256": "73c8ddbc1e80c3dfe0803f9aa34c190bdd15011a77dd23b44121a7142fdcf1b1",
-  "media_type": "image/png",
+  "acquiring_agent": "cursor-agent-issue-127",
+  "attempt_id": "dwarf-swing--003",
   "dimensions": [
     1536,
     1024
   ],
-  "master_palette_id": "first-room",
-  "motion_class": "swing",
-  "polish_profile": "dwarf-miner",
+  "edit_source_sha256": "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3",
+  "generated_at": "2026-07-29T03:40:00+00:00",
+  "generation_mode": "image-edit",
+  "generator": "cursor-image-gen",
   "item_geometry": {
-    "frame_w": 16,
-    "frame_h": 24,
     "frame_count": 4,
+    "frame_h": 24,
+    "frame_w": 16,
     "gutter": 2
   },
-  "asset_kind": "animation-strip",
-  "provider": {
-    "generator": "cursor-image-gen",
-    "model": "cursor-image-gen"
-  }
+  "master_palette_id": "first-room",
+  "media_type": "image/png",
+  "model": "cursor-image-gen",
+  "motion_class": "swing",
+  "predecessor_attempt_id": "dwarf-swing--002",
+  "prompt_sha256": "d69802003471d8102ba66e8211f076088c36e1226ec4e7569e948892fe265310",
+  "prompt_text": "IMAGE EDIT ONLY \u2014 do not redraw or reinterpret the character. The supplied edit canvas contains four identical copies of the canonical right-facing dwarf miner. Keep the canvas, four-Frame row, logical grid, magenta Gutters, canonical dwarf scale, and identity construction.\n\nCreate one four-Frame PICKAXE SWING by editing the arms, hands, pickaxe, beard overlap outside the locked face region, and only the torso silhouette needed for a limited lean.\n\nPreserve these canonical exact-RGBA anchors in every Frame:\n- helmet and face rectangle x=5..12, y=1..10, moved by at most one Cell horizontally or vertically;\n- belt-core rectangle x=4..12, y=15..18, moved by at most one Cell horizontally and zero or one Cell downward;\n- boots rectangle x=3..14, y=21..23 at exactly its canonical position.\n\nHelmet/face and belt horizontal offsets may differ by no more than one Cell. Their vertical separation may differ from the canonical dwarf by no more than one Cell. Do not repaint, restyle, simplify, rescale, or add decoration to any locked Cell. Both boots remain the exact planted canonical boots.\n\nFrame 0: strong anticipation, pickaxe raised behind and above the helmet.\nFrame 1: accelerated downswing at head height.\nFrame 2: pickaxe crossing forward, arms and beard overlap following the tool weight.\nFrame 3: clear ground-level contact ahead of the boots, the only contact Frame.\n\nThe gripping hand stays attached to the handle and visually separate from it. The pickaxe head traces one continuous arc and remains the same compact heavy tool. Do not add rock, terrain, ore, debris, sparks, or a baked target.\n\nExact 16\u00d724 logical Frames rendered as crisp flat square Cells; four Frames; two full magenta #FF00FF logical Gutter Cells; one horizontal row; no margins, labels, extra rows, anti-aliasing, blur, gradients, or dithering. Preserve canonical subject colors in locked Cells; newly edited subject Cells use only the first-room Master Palette and never transport magenta.\n\nIntended read: the exact idle dwarf commits his weight to one mining blow; pose and tool arc change without becoming a different, smaller character.\n",
+  "raw_path": "source.png",
+  "raw_sha256": "34bedd2042d92f5af7a345264e9c7150267325eb1e34ab0dc470f42ebc09ef97",
+  "reference_image_sha256": [
+    "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9"
+  ],
+  "repository_commit": "8abcbd3e51ec0a01f1eb95e4d0e3d2fc7254061c",
+  "schema": "animation-strip-provenance/0",
+  "specification_id": "first-room/dwarf/swing"
 }

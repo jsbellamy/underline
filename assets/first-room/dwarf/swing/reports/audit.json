@@ -1,96 +1,104 @@
 {
-  "schema": "polish-visual-audit/0",
-  "bundle": "assets/first-room/dwarf/swing",
-  "profile_id": "dwarf-miner",
-  "profile_sha256": "0e60aee8d4a630bad6fdabc8d2525c8ae9e2cda8ceab92e37a1dd972a4fcedcf",
-  "motion_class": "swing",
-  "inspection": {
-    "native_scale": true,
-    "nearest_neighbor_enlargement": true,
-    "composites": [
-      "inspected release Frames at 16\u00d724 native",
-      "inspected 8\u00d7 nearest-neighbor composite of polished Frames",
-      "cross-checked beside assets/first-room/dwarf/identity.png and idle release Frames (walk cohort unavailable on branch base)"
-    ]
-  },
-  "machine_check": {
-    "command": "npm run strip:polish -- check assets/first-room/dwarf/swing --json",
-    "outcome": "PASS",
-    "fingerprint": "7bb07da1f38037da8ad1cbe3301271f4cefeec53bbf11250ded6df44345abc2b",
-    "visible_cell_edits": 0,
-    "edit_summary": "No Cell edits required; provider ingest and draft Frames passed all gates and profile questions at native scale."
-  },
   "answers": [
     {
       "id": "identity_anchors",
       "question": "Are short/broad proportions, beard mass, the oversized blue lamp helmet, green clothing, belt and buckle, gloves, boots, and pickaxe legible and temporally consistent whenever the pose exposes them?",
-      "verdict": "PASS",
-      "rationale": "Short/broad dwarf proportions, rust beard mass, oversized blue lamp helmet with centered amber lamp, green tunic, leather belt with amber buckle, gloves, broad boots, and the same compact heavy pickaxe remain legible and consistent with identity.png across all four swing Frames whenever exposed."
+      "rationale": "Short/broad dwarf, rust beard, oversized blue lamp helmet, green tunic, belt/buckle, gloves, boots, and pickaxe remain legible across all four swing Frames whenever exposed.",
+      "verdict": "PASS"
+    },
+    {
+      "id": "identity_lock_pass",
+      "question": "Does the machine-readable check report show automatic Identity Lock PASS for every Frame before you judge exposed identity outside the locked regions?",
+      "rationale": "npm run strip:polish -- check assets/first-room/dwarf/swing --json reports outcome PASS with identity_lock.outcome PASS on all four Frames (fingerprint 58ddd41b3058917d49f98a94ffe528262fdc1b309d2cee137bb07478c95a5867); helmet_face, belt_core, and boots anchors PASS with offsets (0,0).",
+      "verdict": "PASS"
     },
     {
       "id": "black_eye_no_sclera",
       "question": "When the eye is exposed, is it a single black Cell with no white sclera?",
-      "verdict": "PASS",
-      "rationale": "Frames 0\u20132 expose a single near-black eye Cell under the helmet rim with no white sclera; Frame 3 occludes the eye during the forward contact lean."
+      "rationale": "Exposed eye is a single near-black Cell at the locked landmark with no white sclera Cells.",
+      "verdict": "PASS"
     },
     {
       "id": "native_scale_separation",
       "question": "At native scale, are face/beard, beard/torso, hands/handle, legs/torso, and boots/ground separated rather than accidentally melding at same-value contacts?",
-      "verdict": "PASS",
-      "rationale": "At native 16\u00d724, face/beard, beard/torso, gripping hand/handle, legs/torso, and boots/ground read as separated masses without same-value melding."
+      "rationale": "At native 16\u00d724, face/beard, beard/torso, grip/handle, legs/torso, and boots vs void remain separable; no baked ground meld.",
+      "verdict": "PASS"
     },
     {
       "id": "palette_lighting_outline",
       "question": "Do Master Palette roles, upper-left local light, and selective warm-dark outline remain stable across Frames?",
-      "verdict": "PASS",
-      "rationale": "Warm-dark selective outline, upper-left local highlights on helmet/beard/pickaxe, and role hues (blue metal, green cloth, earth/beard, amber accents) stay stable across the one-shot within the draft palette."
+      "rationale": "Palette roles, selective warm-dark outline, and local highlights stay stable across the one-shot within the draft palette.",
+      "verdict": "PASS"
     },
     {
       "id": "temporal_consistency",
       "question": "Do identity accents and intentional outlines remain stable across Frames without one-Frame decorative flicker?",
-      "verdict": "PASS",
-      "rationale": "Identity accents (lamp, buckle, beard mass, pickaxe head) do not one-Frame flicker; motion follows a single committed swing arc."
+      "rationale": "Lamp, eye, buckle, and outline accents hold without one-Frame decorative flicker; motion is arms/pickaxe arc only.",
+      "verdict": "PASS"
     },
     {
       "id": "readable_anticipation",
       "question": "Does the swing sequence show readable anticipation before the strike?",
-      "verdict": "PASS",
-      "rationale": "Frame 0 shows strong anticipation with the pickaxe raised behind and above the helmet before the accelerated downswing."
+      "rationale": "Frame 0 reads as a high wind-up with the pickaxe raised behind and above the helmet.",
+      "verdict": "PASS"
     },
     {
       "id": "continuous_pickaxe_arc",
       "question": "Does the pickaxe preserve a clear, continuous action arc across the one-shot sequence?",
-      "verdict": "PASS",
-      "rationale": "The pickaxe traces one continuous arc from raised anticipation through head-height downswing, forward crossing, to ground-level contact in Frame 3."
+      "rationale": "Pickaxe head path high-back \u2192 mid \u2192 forward \u2192 ground contact reads as one continuous heavy arc.",
+      "verdict": "PASS"
     },
     {
       "id": "hand_handle_separation",
       "question": "Is the gripping hand distinguishable from the pickaxe handle at native scale?",
-      "verdict": "PASS",
-      "rationale": "Glove mass remains distinguishable from the brown handle along the grip in every Frame where the hand is visible."
+      "rationale": "Gripping hand Cells stay distinguishable from the darker handle at native scale.",
+      "verdict": "PASS"
     },
     {
       "id": "planted_boots",
       "question": "Do the boots read as planted and stable through the swing?",
-      "verdict": "PASS",
-      "rationale": "Both boots remain on baseline row 23 in all Frames; machine check reports baseline_row_stable=true with baseline_rows [23,23,23,23]."
+      "rationale": "Boots match the exact-occupancy Identity Lock on every Frame; baseline stays planted on row 23.",
+      "verdict": "PASS"
     },
     {
       "id": "contact_readability_frame3",
       "question": "At Frame 3, is mining contact readable without losing hand, tool, or boot separation?",
-      "verdict": "PASS",
-      "rationale": "Frame 3 alone shows clear ground-level pickaxe contact ahead of the planted boots; hand, handle, pickaxe head, and boot soles remain separated at native scale with no baked rock/debris Cells."
+      "rationale": "Frame 3 alone reads as ground-level mining contact with hand, tool head, and boots still separated.",
+      "verdict": "PASS"
     }
   ],
-  "explicit_confirmations": {
-    "identity_stable_vs_identity_png": "PASS",
-    "same_pickaxe_tool_as_idle": "PASS",
-    "boots_planted_all_frames": "PASS",
-    "frame3_only_contact": "PASS",
-    "no_scenery_or_effect_cells": "PASS",
-    "cross_animation_cohort_idle": "PASS",
-    "walk_cohort_deferred": "not on branch base; idle + identity cross-check satisfied"
+  "bindings": {
+    "check_fingerprint": "58ddd41b3058917d49f98a94ffe528262fdc1b309d2cee137bb07478c95a5867",
+    "edit_source_sha256": "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3",
+    "identity_png_sha256": "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9",
+    "idle_provider_sha256": "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3",
+    "idle_release_frame_0_sha256": "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9",
+    "polished_frame_sha256": [
+      "87483cff486579fa111a81860ea9d0a7b952d2b73eda626fb5d9a3d3a8a0bb09",
+      "29321ee1246914288cb1007e0af4f019f6a513428d9267b84fba9b945b0093dd",
+      "6d9dd176dcb846dd3b5545f151229e18aa6883657122c2d87cee600dcd76648d",
+      "079594f7172ae24ba2c00035f8d69e2acf93cf9c51b46e07f84877a6cfce4c2c"
+    ]
   },
-  "uncertain_count": 0,
-  "overall": "PASS"
+  "bundle": "assets/first-room/dwarf/swing",
+  "explicit_confirmations": {
+    "automatic_identity_lock_pass": "PASS",
+    "continuous_heavy_pickaxe_arc": "PASS",
+    "frame3_only_contact": "PASS",
+    "idle_provider_construction_match": "PASS",
+    "no_baked_scenery_or_effects": "PASS",
+    "not_upscaled_or_tiled_identity": "PASS",
+    "planted_boots": "PASS"
+  },
+  "idle_provider_comparison": {
+    "edit_source_sha256": "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3",
+    "idle_provider_sha256": "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3",
+    "idle_release_frame_0_sha256": "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9",
+    "rationale": "Edit source is byte-identical to idle/provider/source.png (655b8ff6\u2026). Release Frames keep locked helmet/face, belt-core, and boots from that idle construction; motion is arms/pickaxe/limited lean only. Art does not read as an upscaled or tiled identity.png."
+  },
+  "motion_class": "swing",
+  "overall": "PASS",
+  "polish_profile_id": "dwarf-miner",
+  "schema": "final-polish-audit/0",
+  "uncertain_count": 0
 }
