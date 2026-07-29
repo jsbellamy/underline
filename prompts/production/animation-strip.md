@@ -107,7 +107,8 @@ or arms/pickaxe/torso lean (swing) while locked regions stay fixed.
 ### Image-edit acquisition order
 
 1. Run the seed command above to produce `<seed.png>`.
-2. Submit `<seed.png>` to the provider as the **image-edit base** (edit source).
+2. Submit `<seed.png>` to the provider as the **image-edit base** (edit source) —
+   the image being edited. Do **not** generate a new image from the prompt alone.
    Also supply `identity.png` only if the provider workflow needs a separate
    visual reference — it is still **not** the generation canvas.
 3. On `strip:polish init`, pass:
@@ -115,7 +116,12 @@ or arms/pickaxe/torso lean (swing) while locked regions stay fixed.
    - `--identity-reference assets/first-room/dwarf/identity.png` (16×24 anchor)
 4. **Forbid** fresh text-to-image generation for walk and swing.
 5. Record `generation_source.sha256` from `identity.json` as
-   `edit_source_sha256` in every image-edit Attempt’s provenance.
+   `edit_source_sha256` in every image-edit Attempt’s provenance. That digest
+   must remain
+   `655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3` while
+   `idle/provider/source.png` is the declared generation source. `init` and
+   `/2` `check`/`finalize` reject any other digest with
+   `edit_source_not_generation_source`.
 6. Run Identity Lock only after provider recovery has produced logical Frames.
 7. Generate **sequential immutable Attempts** until one passes provenance,
    automatic Identity Lock, coherence Gates, polish, and visual audit.
@@ -123,14 +129,19 @@ or arms/pickaxe/torso lean (swing) while locked regions stay fixed.
    Attempt count with a fixed quota.
 9. Visual audit judges motion readability and exposed identity **outside** the
    locked regions, but must cite the automatic Identity Lock PASS in the check
-   report.
+   report. Inspect Release Frames beside the idle provider Strip and idle
+   Release Frames; reject art that reads as an upscaled or tiled `identity.png`
+   rather than an edit of idle-provider outline, shading, helmet lamp, and tool
+   construction. Identity Lock PASS alone does not satisfy the audit when the
+   edit source was not the idle provider Strip.
 
 ### Explicitly forbidden substitutes
 
 | Forbidden | Why |
 |-----------|-----|
 | Fresh text-to-image from `identity.png` or a prompt alone | Loses provider-detail canvas; breaks `/2` image-edit evidence |
-| Upscaling `identity.png` (16×24) into a generation canvas | Ingest-reduced Cells discard provider detail; not reversible |
+| Upscaling `identity.png` (16×24) into a generation canvas | Ingest-reduced Cells discard provider detail; not reversible; rejected as `edit_source_not_generation_source` |
+| Tiling `identity.png` into a four-Frame “seed” | Same failure mode as upscaling; must use idle provider bytes |
 | `prototype/strip-coherence/inbox/*` corpus Strips as the edit source | Motion evidence only — see `docs/first-room-art-direction.md` |
 | Mechanical merge of corpus motion + identity upper body without a ledgered Attempt | Bypasses provenance and does not replace a clean image-edit Attempt |
 | Reusing the pre-`/2` walk or swing `provider/source.png` from issues #110/#111 | Those bundles were text-to-image acquisitions, not image-edit from the idle seed |

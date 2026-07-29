@@ -497,27 +497,43 @@ def _visible_cell_delta(
     )
 
 
-def _canonical_identity_sha256() -> str:
+def _load_dwarf_identity_doc() -> dict[str, Any]:
     if not _DWARF_IDENTITY_DOC.is_file():
         raise FinalPolishError(
             f"missing dwarf identity authority: {_DWARF_IDENTITY_DOC}",
             reason_code="missing_identity_authority",
         )
     doc = json.loads(_DWARF_IDENTITY_DOC.read_text(encoding="utf-8"))
-    binding = doc.get("identity_png")
+    if not isinstance(doc, dict):
+        raise FinalPolishError(
+            "dwarf identity authority must be a JSON object",
+            reason_code="missing_identity_authority",
+        )
+    return doc
+
+
+def _binding_sha256(doc: Mapping[str, Any], key: str) -> str:
+    binding = doc.get(key)
     if not isinstance(binding, dict):
         raise FinalPolishError(
-            "dwarf identity authority missing identity_png",
+            f"dwarf identity authority missing {key}",
             reason_code="missing_identity_authority",
         )
     digest = binding.get("sha256")
     if not isinstance(digest, str) or len(digest) != 64:
         raise FinalPolishError(
-            "dwarf identity authority has invalid sha256",
+            f"dwarf identity authority has invalid {key} sha256",
             reason_code="missing_identity_authority",
         )
     return digest
 
+
+def _canonical_identity_sha256() -> str:
+    return _binding_sha256(_load_dwarf_identity_doc(), "identity_png")
+
+
+def _canonical_generation_source_sha256() -> str:
+    return _binding_sha256(_load_dwarf_identity_doc(), "generation_source")
 
 def _requires_image_edit_evidence(polish_profile: str | None, motion_class: str) -> bool:
     return polish_profile == "dwarf-miner" and motion_class in {"walk", "swing"}
@@ -740,10 +756,16 @@ def _validate_animation_provenance_record(
                 "provenance edit_source_sha256 does not match edit-source bytes",
                 "edit_source_hash_mismatch",
             )
+        if require_image_edit:
+            canonical_generation_source = _canonical_generation_source_sha256()
+            if str(edit_source) != canonical_generation_source:
+                reject(
+                    "provenance edit_source_sha256 must equal identity.json "
+                    "generation_source.sha256 (idle provider Strip)",
+                    "edit_source_not_generation_source",
+                )
 
     return dict(record)
-
-
 def _validate_provenance_sidecar(
     provider_path: Path,
     provenance_path: Path,

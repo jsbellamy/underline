@@ -433,7 +433,12 @@ evidence model, add Gates, or change Budgets.
    (16×24 post-ingest Release Frame from `identity.json` → `identity_png`).
    The seed command does **not** take `identity.png` as input. Never upscale
    the identity anchor into a generation canvas. Corpus inbox Strips and
-   text-to-image redraws are not valid edit sources. See
+   text-to-image redraws are not valid edit sources. On `init` and on every
+   `/2` `check`/`finalize`, provenance `edit_source_sha256` and the bound
+   `provider/edit-source.png` bytes must equal
+   `identity.json` → `generation_source.sha256`; a self-consistent tiled or
+   upscaled `identity.png` seed is rejected with
+   `edit_source_not_generation_source`. See
    `prompts/production/animation-strip.md` § Dwarf-miner walk and swing. Existing
    unprofiled `/0` and profiled
    `/1` bundles remain valid for `check` and `finalize` under legacy rules.
