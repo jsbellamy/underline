@@ -497,23 +497,32 @@ def _visible_cell_delta(
     )
 
 
-def _canonical_identity_sha256() -> str:
+def _load_dwarf_identity_doc() -> dict[str, Any]:
     if not _DWARF_IDENTITY_DOC.is_file():
         raise FinalPolishError(
             f"missing dwarf identity authority: {_DWARF_IDENTITY_DOC}",
             reason_code="missing_identity_authority",
         )
     doc = json.loads(_DWARF_IDENTITY_DOC.read_text(encoding="utf-8"))
-    binding = doc.get("identity_png")
+    if not isinstance(doc, dict):
+        raise FinalPolishError(
+            "dwarf identity authority must be a JSON object",
+            reason_code="missing_identity_authority",
+        )
+    return doc
+
+
+def _binding_sha256(doc: Mapping[str, Any], key: str) -> str:
+    binding = doc.get(key)
     if not isinstance(binding, dict):
         raise FinalPolishError(
-            "dwarf identity authority missing identity_png",
+            f"dwarf identity authority missing {key}",
             reason_code="missing_identity_authority",
         )
     digest = binding.get("sha256")
     if not isinstance(digest, str) or len(digest) != 64:
         raise FinalPolishError(
-            "dwarf identity authority has invalid sha256",
+            f"dwarf identity authority has invalid {key} sha256",
             reason_code="missing_identity_authority",
         )
     return digest
@@ -724,7 +733,8 @@ def _validate_animation_provenance_record(
                 "dwarf-miner walk/swing requires generation_mode=image-edit",
                 "generation_mode_mismatch",
             )
-        canonical_identity = _canonical_identity_sha256()
+        identity_doc = _load_dwarf_identity_doc()
+        canonical_identity = _binding_sha256(identity_doc, "identity_png")
         if ordered_refs != [canonical_identity]:
             reject(
                 "provenance reference_image_sha256 must bind the canonical identity",
@@ -740,6 +750,16 @@ def _validate_animation_provenance_record(
                 "provenance edit_source_sha256 does not match edit-source bytes",
                 "edit_source_hash_mismatch",
             )
+        if require_image_edit:
+            canonical_generation_source = _binding_sha256(
+                identity_doc, "generation_source"
+            )
+            if str(edit_source) != canonical_generation_source:
+                reject(
+                    "provenance edit_source_sha256 must equal identity.json "
+                    "generation_source.sha256 (idle provider Strip)",
+                    "edit_source_not_generation_source",
+                )
 
     return dict(record)
 

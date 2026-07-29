@@ -812,6 +812,10 @@ def test_dwarf_miner_profile_and_prompt_require_image_edit_workflow() -> None:
     assert "16x24" in workflow
     assert "does not read or upscale identity.png" in workflow
     assert "edit_source_sha256" in workflow
+    assert "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3" in workflow
+    assert "edit_source_not_generation_source" in workflow
+    assert "idle provider strip" in workflow
+    assert "upscaled or tiled" in workflow
     assert "after provider recovery" in workflow
     assert "text-to-image" in workflow
     assert "sequential" in workflow
@@ -827,10 +831,20 @@ def test_dwarf_miner_profile_and_prompt_require_image_edit_workflow() -> None:
     assert "is not the seed command" in prompt_lower
     assert "construct a four-copy strip from `identity.png`" in prompt_lower
     assert "edit_source_sha256" in prompt
+    assert "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3" in prompt
+    assert "edit_source_not_generation_source" in prompt
+    assert "the image being edited" in prompt_lower
+    assert "idle provider strip" in prompt_lower
     assert "after provider recovery" in prompt_lower
     assert "text-to-image" in prompt_lower
     assert "explicitly forbidden substitutes" in prompt_lower
-
+    assert "tiling `identity.png`" in prompt_lower
+    contract = (ROOT / "docs" / "strip-acquisition-contract.md").read_text()
+    assert "edit_source_not_generation_source" in contract
+    assert "generation_source.sha256" in contract
+    art = (ROOT / "docs" / "first-room-art-direction.md").read_text().lower()
+    assert "idle provider" in art
+    assert "does not prove the edit came from idle" in art.replace("\n", " ")
 
 def test_v2_walk_check_json_binds_sequential_attempt_evidence(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"

@@ -99,7 +99,11 @@ different roles:
 | `assets/first-room/dwarf/identity.png` | Post-ingest identity anchor — Identity Lock evidence only (16×24) |
 
 Copy the edit source with `strip:polish seed` against
-`assets/first-room/dwarf/identity.json`. Full rules:
+`assets/first-room/dwarf/identity.json`. Provenance `edit_source_sha256` must
+equal `identity.json` → `generation_source.sha256`; a tiled or upscaled
+`identity.png` seed is rejected. Visual audit for walk and swing must compare
+Release Frames to the idle provider Strip and idle Release Frames — Identity
+Lock PASS alone does not prove the edit came from idle. Full rules:
 `prompts/production/animation-strip.md` § Dwarf-miner walk and swing.
 
 ## Corpus miner Strips — motion evidence, not identity

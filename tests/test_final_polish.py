@@ -1033,6 +1033,73 @@ def test_dwarf_walk_init_requires_identity_and_edit_source(tmp_path: Path) -> No
     assert not bundle.exists()
 
 
+def _write_tiled_identity_seed(path: Path) -> Path:
+    """Mechanical four-copy of identity.png — the #127/#155 failure mode."""
+    with Image.open(IDENTITY_PNG) as identity:
+        cell = identity.convert("RGBA")
+    frame_w, frame_h = cell.size
+    gutter = 2
+    magenta = (255, 0, 255, 255)
+    strip = Image.new("RGBA", (frame_w * 4 + gutter * 3, frame_h), magenta)
+    for index in range(4):
+        strip.paste(cell, (index * (frame_w + gutter), 0))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    strip.save(path)
+    return path
+
+
+def test_dwarf_walk_init_rejects_edit_source_that_is_not_generation_source(
+    tmp_path: Path,
+) -> None:
+    wrong_seed = _write_tiled_identity_seed(tmp_path / "tiled-identity-seed.png")
+    assert sha256_file(wrong_seed) != sha256_file(IDLE_SEED_STRIP)
+    provenance_path = tmp_path / "walk.source.json"
+    _write_animation_provenance(
+        WALK_STRIP,
+        provenance_path,
+        motion_class="walk",
+        generation_mode="image-edit",
+        reference_image_sha256=[CANONICAL_IDENTITY_SHA],
+        edit_source_sha256=sha256_file(wrong_seed),
+    )
+    bundle = tmp_path / "bundle"
+    with pytest.raises(InitializationRejectedError) as exc:
+        initialize_bundle(
+            WALK_STRIP,
+            "walk",
+            bundle,
+            provenance_sidecar=provenance_path,
+            polish_profile="dwarf-miner",
+            identity_reference=IDENTITY_PNG,
+            edit_source=wrong_seed,
+        )
+    assert exc.value.reason_code == "edit_source_not_generation_source"
+    assert not bundle.exists()
+
+
+def test_dwarf_walk_check_rejects_edit_source_that_is_not_generation_source(
+    tmp_path: Path,
+) -> None:
+    bundle = tmp_path / "bundle"
+    _init_bundle(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="dwarf-miner")
+    wrong_seed = _write_tiled_identity_seed(tmp_path / "tiled-identity-seed.png")
+    edit_dest = bundle / "provider" / "edit-source.png"
+    shutil.copy2(wrong_seed, edit_dest)
+    provenance_path = bundle / "provider" / "source.source.json"
+    record = json.loads(provenance_path.read_text())
+    record["edit_source_sha256"] = sha256_file(edit_dest)
+    provenance_path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
+    manifest_path = bundle / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["edit_source"]["sha256"] = sha256_file(edit_dest)
+    manifest["provenance"]["sha256"] = sha256_file(provenance_path)
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+
+    with pytest.raises(InvalidBundleError) as exc:
+        check_bundle(bundle)
+    assert exc.value.reason_code == "edit_source_not_generation_source"
+
+
 def test_tampered_v2_provenance_blocks_check_and_finalize(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
     provenance = bundle / "provider" / "source.source.json"
