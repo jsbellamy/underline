@@ -1291,12 +1291,13 @@ def build_identity_seed(
     identity_declaration_path: Path,
     out_path: Path,
 ) -> dict[str, Any]:
-    """Copy ``identity.json`` → ``generation_source`` byte-for-byte.
+    """Emit the image-edit seed from ``identity.json`` bindings.
 
-    For dwarf walk/swing this is ``idle/provider/source.png`` (four identical
-    idle Frames on magenta). ``identity_png`` (``identity.png``, 16×24) is
-    validated but **not** copied — it is the post-ingest Identity Lock anchor,
-    never the image-edit canvas.
+    Without ``seed_pad_px``, copies ``generation_source`` byte-for-byte. When
+    ``seed_pad_px`` is declared, writes a uniform ``#FF00FF`` pad of that width
+    on all four sides around the generation-source raster (interior unchanged).
+    ``identity_png`` (16×24) is validated but never copied — it is the Identity
+    Lock anchor, not the image-edit canvas.
     """
     if not identity_declaration_path.is_file():
         raise IdentityLockError(

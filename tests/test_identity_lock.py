@@ -450,7 +450,7 @@ def test_seed_rejects_invalid_seed_pad_px(tmp_path: Path) -> None:
         build_identity_seed(declaration_path, tmp_path / "seed.png")
 
 
-def test_expected_image_edit_source_sha256_matches_pad_seed(tmp_path: Path) -> None:
+def test_pad_seed_digest_matches_expected_image_edit_source_sha256(tmp_path: Path) -> None:
     declaration = json.loads(IDENTITY_JSON.read_text())
     declaration["seed_pad_px"] = 64
     declaration_path = tmp_path / "identity.json"

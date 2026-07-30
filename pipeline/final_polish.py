@@ -766,8 +766,8 @@ def _validate_animation_provenance_record(
                 reject(str(exc), "missing_identity_authority")
             if str(edit_source) != expected_edit_source_sha:
                 reject(
-                    "provenance edit_source_sha256 must equal identity.json "
-                    "generation_source.sha256 (idle provider Strip)",
+                    "provenance edit_source_sha256 must equal the identity.json "
+                    "image-edit seed digest (generation_source or magenta pad)",
                     "edit_source_not_generation_source",
                 )
 
