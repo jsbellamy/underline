@@ -1,0 +1,438 @@
+{
+  "prototype": "swing-cell-author",
+  "question": "Can an agent hand-author a swing at 16x24 from idle polished frame-0 while preserving Identity Lock, without image gen?",
+  "idle_source": "assets/first-room/dwarf/idle/polished/frame-0.png",
+  "identity_lock_outcome": "PASS",
+  "identity_lock": {
+    "outcome": "PASS",
+    "identity_sha256": "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9",
+    "lock_spec_sha256": "6fa967247d1582641a0da6534a228dee2b5fe27c58c17824703b7e42e729db0b",
+    "motion_class": "swing",
+    "per_frame": [
+      {
+        "selected_offsets": {
+          "helmet_face": [
+            0,
+            0
+          ],
+          "belt_core": [
+            0,
+            0
+          ],
+          "boots": [
+            0,
+            0
+          ]
+        },
+        "anchor_results": {
+          "helmet_face": "PASS",
+          "belt_core": "PASS",
+          "boots": "PASS"
+        },
+        "check_results": {
+          "helmet_face": {
+            "outcome": "PASS",
+            "comparison": "registered-structure",
+            "occupancy_difference": 0.0,
+            "palette_role_distance": 0.0,
+            "max_occupancy_difference": 0.25,
+            "max_palette_role_distance": 0.25
+          },
+          "belt_core": {
+            "outcome": "PASS",
+            "comparison": "registered-structure",
+            "occupancy_difference": 0.0,
+            "palette_role_distance": 0.0,
+            "max_occupancy_difference": 0.25,
+            "max_palette_role_distance": 0.3
+          },
+          "boots": {
+            "outcome": "PASS",
+            "comparison": "exact-occupancy",
+            "occupancy_difference": 0.0,
+            "palette_role_distance": null
+          }
+        },
+        "landmark_results": {
+          "lamp": {
+            "outcome": "PASS",
+            "expected_role": "amber-emission",
+            "actual_role": "amber-emission",
+            "expected_position": [
+              12,
+              4
+            ],
+            "actual_position": [
+              12,
+              4
+            ],
+            "max_distance": 2,
+            "anchor": "helmet_face"
+          },
+          "eye": {
+            "outcome": "PASS",
+            "expected_role": "dark-outline",
+            "actual_role": "dark-outline",
+            "expected_position": [
+              10,
+              7
+            ],
+            "actual_position": [
+              10,
+              7
+            ],
+            "max_distance": 1,
+            "anchor": "helmet_face"
+          },
+          "buckle": {
+            "outcome": "PASS",
+            "expected_role": "amber-emission",
+            "actual_role": "amber-emission",
+            "expected_position": [
+              11,
+              16
+            ],
+            "actual_position": [
+              11,
+              16
+            ],
+            "max_distance": 2,
+            "anchor": "belt_core"
+          }
+        },
+        "first_failure": null,
+        "first_mismatch": null
+      },
+      {
+        "selected_offsets": {
+          "helmet_face": [
+            0,
+            0
+          ],
+          "belt_core": [
+            0,
+            0
+          ],
+          "boots": [
+            0,
+            0
+          ]
+        },
+        "anchor_results": {
+          "helmet_face": "PASS",
+          "belt_core": "PASS",
+          "boots": "PASS"
+        },
+        "check_results": {
+          "helmet_face": {
+            "outcome": "PASS",
+            "comparison": "registered-structure",
+            "occupancy_difference": 0.0,
+            "palette_role_distance": 0.0,
+            "max_occupancy_difference": 0.25,
+            "max_palette_role_distance": 0.25
+          },
+          "belt_core": {
+            "outcome": "PASS",
+            "comparison": "registered-structure",
+            "occupancy_difference": 0.0,
+            "palette_role_distance": 0.0,
+            "max_occupancy_difference": 0.25,
+            "max_palette_role_distance": 0.3
+          },
+          "boots": {
+            "outcome": "PASS",
+            "comparison": "exact-occupancy",
+            "occupancy_difference": 0.0,
+            "palette_role_distance": null
+          }
+        },
+        "landmark_results": {
+          "lamp": {
+            "outcome": "PASS",
+            "expected_role": "amber-emission",
+            "actual_role": "amber-emission",
+            "expected_position": [
+              12,
+              4
+            ],
+            "actual_position": [
+              12,
+              4
+            ],
+            "max_distance": 2,
+            "anchor": "helmet_face"
+          },
+          "eye": {
+            "outcome": "PASS",
+            "expected_role": "dark-outline",
+            "actual_role": "dark-outline",
+            "expected_position": [
+              10,
+              7
+            ],
+            "actual_position": [
+              10,
+              7
+            ],
+            "max_distance": 1,
+            "anchor": "helmet_face"
+          },
+          "buckle": {
+            "outcome": "PASS",
+            "expected_role": "amber-emission",
+            "actual_role": "amber-emission",
+            "expected_position": [
+              11,
+              16
+            ],
+            "actual_position": [
+              11,
+              16
+            ],
+            "max_distance": 2,
+            "anchor": "belt_core"
+          }
+        },
+        "first_failure": null,
+        "first_mismatch": null
+      },
+      {
+        "selected_offsets": {
+          "helmet_face": [
+            0,
+            0
+          ],
+          "belt_core": [
+            0,
+            0
+          ],
+          "boots": [
+            0,
+            0
+          ]
+        },
+        "anchor_results": {
+          "helmet_face": "PASS",
+          "belt_core": "PASS",
+          "boots": "PASS"
+        },
+        "check_results": {
+          "helmet_face": {
+            "outcome": "PASS",
+            "comparison": "registered-structure",
+            "occupancy_difference": 0.0,
+            "palette_role_distance": 0.0,
+            "max_occupancy_difference": 0.25,
+            "max_palette_role_distance": 0.25
+          },
+          "belt_core": {
+            "outcome": "PASS",
+            "comparison": "registered-structure",
+            "occupancy_difference": 0.0,
+            "palette_role_distance": 0.0,
+            "max_occupancy_difference": 0.25,
+            "max_palette_role_distance": 0.3
+          },
+          "boots": {
+            "outcome": "PASS",
+            "comparison": "exact-occupancy",
+            "occupancy_difference": 0.0,
+            "palette_role_distance": null
+          }
+        },
+        "landmark_results": {
+          "lamp": {
+            "outcome": "PASS",
+            "expected_role": "amber-emission",
+            "actual_role": "amber-emission",
+            "expected_position": [
+              12,
+              4
+            ],
+            "actual_position": [
+              12,
+              4
+            ],
+            "max_distance": 2,
+            "anchor": "helmet_face"
+          },
+          "eye": {
+            "outcome": "PASS",
+            "expected_role": "dark-outline",
+            "actual_role": "dark-outline",
+            "expected_position": [
+              10,
+              7
+            ],
+            "actual_position": [
+              10,
+              7
+            ],
+            "max_distance": 1,
+            "anchor": "helmet_face"
+          },
+          "buckle": {
+            "outcome": "PASS",
+            "expected_role": "amber-emission",
+            "actual_role": "amber-emission",
+            "expected_position": [
+              11,
+              16
+            ],
+            "actual_position": [
+              11,
+              16
+            ],
+            "max_distance": 2,
+            "anchor": "belt_core"
+          }
+        },
+        "first_failure": null,
+        "first_mismatch": null
+      },
+      {
+        "selected_offsets": {
+          "helmet_face": [
+            0,
+            0
+          ],
+          "belt_core": [
+            0,
+            0
+          ],
+          "boots": [
+            0,
+            0
+          ]
+        },
+        "anchor_results": {
+          "helmet_face": "PASS",
+          "belt_core": "PASS",
+          "boots": "PASS"
+        },
+        "check_results": {
+          "helmet_face": {
+            "outcome": "PASS",
+            "comparison": "registered-structure",
+            "occupancy_difference": 0.0,
+            "palette_role_distance": 0.0,
+            "max_occupancy_difference": 0.25,
+            "max_palette_role_distance": 0.25
+          },
+          "belt_core": {
+            "outcome": "PASS",
+            "comparison": "registered-structure",
+            "occupancy_difference": 0.0,
+            "palette_role_distance": 0.0,
+            "max_occupancy_difference": 0.25,
+            "max_palette_role_distance": 0.3
+          },
+          "boots": {
+            "outcome": "PASS",
+            "comparison": "exact-occupancy",
+            "occupancy_difference": 0.0,
+            "palette_role_distance": null
+          }
+        },
+        "landmark_results": {
+          "lamp": {
+            "outcome": "PASS",
+            "expected_role": "amber-emission",
+            "actual_role": "amber-emission",
+            "expected_position": [
+              12,
+              4
+            ],
+            "actual_position": [
+              12,
+              4
+            ],
+            "max_distance": 2,
+            "anchor": "helmet_face"
+          },
+          "eye": {
+            "outcome": "PASS",
+            "expected_role": "dark-outline",
+            "actual_role": "dark-outline",
+            "expected_position": [
+              10,
+              7
+            ],
+            "actual_position": [
+              10,
+              7
+            ],
+            "max_distance": 1,
+            "anchor": "helmet_face"
+          },
+          "buckle": {
+            "outcome": "PASS",
+            "expected_role": "amber-emission",
+            "actual_role": "amber-emission",
+            "expected_position": [
+              11,
+              16
+            ],
+            "actual_position": [
+              11,
+              16
+            ],
+            "max_distance": 2,
+            "anchor": "belt_core"
+          }
+        },
+        "first_failure": null,
+        "first_mismatch": null
+      }
+    ],
+    "first_failure": null,
+    "first_mismatch": null
+  },
+  "lock_region_mutations": [
+    {
+      "frame": 0,
+      "count": 0,
+      "cells": []
+    },
+    {
+      "frame": 1,
+      "count": 0,
+      "cells": []
+    },
+    {
+      "frame": 2,
+      "count": 0,
+      "cells": []
+    },
+    {
+      "frame": 3,
+      "count": 0,
+      "cells": []
+    }
+  ],
+  "occupancy": [
+    0.6823,
+    0.6641,
+    0.6458,
+    0.651
+  ],
+  "ascii": [
+    "--- authored frame 0 ---\n00 ..###...........\n01 ..###..####.....\n02 ..###.#######...\n03 ....##########..\n04 ....#########...\n05 ....##########..\n06 ....#########...\n07 ....#########...\n08 ..###########...\n09 ...###########..\n10 ...###########..\n11 ...############.\n12 ...############.\n13 .##############.\n14 .##############.\n15 ..#############.\n16 ..#############.\n17 ...#############\n18 ..##############\n19 ..#############.\n20 ...###########..\n21 ...#####.#####..\n22 ...#####.######.\n23 ...############.",
+    "--- authored frame 1 ---\n00 ................\n01 .......####.....\n02 ......#######...\n03 .....#########..\n04 .....###########\n05 .....###########\n06 .....###########\n07 .....#########..\n08 ....##########..\n09 ....##########..\n10 ...###########..\n11 ...############.\n12 ...############.\n13 .##############.\n14 .##############.\n15 ..#############.\n16 ..#############.\n17 ...#############\n18 ..##############\n19 ..#############.\n20 ...###########..\n21 ...#####.#####..\n22 ...#####.######.\n23 ...############.",
+    "--- authored frame 2 ---\n00 ................\n01 .......####.....\n02 ......#######...\n03 .....#########..\n04 .....########...\n05 .....#########..\n06 .....########...\n07 .....########...\n08 ....#########...\n09 ....##########..\n10 ...###########..\n11 ...#############\n12 ...#############\n13 .###############\n14 .##############.\n15 ..#############.\n16 ..#############.\n17 ...#############\n18 ..##############\n19 ..#############.\n20 ...###########..\n21 ...#####.#####..\n22 ...#####.######.\n23 ...############.",
+    "--- authored frame 3 ---\n00 ................\n01 .......####.....\n02 ......#######...\n03 .....#########..\n04 .....########...\n05 .....#########..\n06 .....########...\n07 .....########...\n08 ....#########...\n09 ....##########..\n10 ...###########..\n11 ...############.\n12 ...############.\n13 .##############.\n14 .##############.\n15 ..#############.\n16 ..#############.\n17 ...#############\n18 ..##############\n19 ..#############.\n20 ...#############\n21 ...#####.#####.#\n22 ...#####.#######\n23 ...#############"
+  ],
+  "artifacts": [
+    "out/frames/frame-0.png",
+    "out/frames/frame-1.png",
+    "out/frames/frame-2.png",
+    "out/frames/frame-3.png",
+    "out/idle-grid-locks.png",
+    "out/authored-strip-grid.png",
+    "out/reference-swing-strip-grid.png",
+    "out/idle-plus-authored-grid.png",
+    "out/authored-swing.gif",
+    "out/scoreboard.json"
+  ]
+}
