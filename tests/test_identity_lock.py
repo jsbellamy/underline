@@ -368,7 +368,7 @@ def test_seed_is_byte_identical_copy_of_bound_generation_source(tmp_path: Path) 
     assert meta["identity_anchor_sha256"] == CANONICAL_IDENTITY_SHA
 
 
-def test_seed_rerun_is_byte_identical(tmp_path: Path) -> None:
+def test_checked_in_identity_seed_rerun_is_deterministic(tmp_path: Path) -> None:
     first = tmp_path / "seed-a.png"
     second = tmp_path / "seed-b.png"
     build_identity_seed(IDENTITY_JSON, first)
