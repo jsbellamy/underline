@@ -29,7 +29,7 @@ from pipeline.final_polish import (
     load_polish_brief,
 )
 from pipeline.gate_evidence import sha256_bytes, sha256_file
-from pipeline.identity_lock import load_canonical_cells
+from pipeline.identity_lock import build_identity_seed, load_canonical_cells
 from pipeline.strip import DEFAULT_LAYOUT, IngestResult, StripLayout, ingest_strip_provider
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -40,6 +40,7 @@ WALK_STRIP = INBOX / "05-miner-walk.png"
 SWING_STRIP = INBOX / "06-miner-swing.png"
 LANTERN_STRIP = INBOX / "14-lantern-flicker.png"
 IDENTITY_PNG = ROOT / "assets" / "first-room" / "dwarf" / "identity.png"
+IDENTITY_JSON = ROOT / "assets" / "first-room" / "dwarf" / "identity.json"
 IDLE_SEED_STRIP = ROOT / "assets" / "first-room" / "dwarf" / "idle" / "provider" / "source.png"
 CANONICAL_IDENTITY_SHA = "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9"
 DWARF_IDLE_BUNDLE = ROOT / "assets" / "first-room" / "dwarf" / "idle"
@@ -1048,6 +1049,12 @@ def _write_tiled_identity_seed(path: Path) -> Path:
     return path
 
 
+def _identity_doc_with_seed_pad_px(seed_pad_px: int = 64) -> dict[str, object]:
+    doc = json.loads(IDENTITY_JSON.read_text(encoding="utf-8"))
+    doc["seed_pad_px"] = seed_pad_px
+    return doc
+
+
 def test_dwarf_walk_init_rejects_edit_source_that_is_not_generation_source(
     tmp_path: Path,
 ) -> None:
@@ -1077,6 +1084,74 @@ def test_dwarf_walk_init_rejects_edit_source_that_is_not_generation_source(
     assert not bundle.exists()
 
 
+def test_dwarf_walk_init_rejects_wrong_edit_source_when_seed_pad_px_set(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "pipeline.final_polish._load_dwarf_identity_doc",
+        lambda: _identity_doc_with_seed_pad_px(),
+    )
+    wrong_seed = _write_tiled_identity_seed(tmp_path / "tiled-identity-seed.png")
+    provenance_path = tmp_path / "walk.source.json"
+    _write_animation_provenance(
+        WALK_STRIP,
+        provenance_path,
+        motion_class="walk",
+        generation_mode="image-edit",
+        reference_image_sha256=[CANONICAL_IDENTITY_SHA],
+        edit_source_sha256=sha256_file(wrong_seed),
+    )
+    bundle = tmp_path / "bundle"
+    with pytest.raises(InitializationRejectedError) as exc:
+        initialize_bundle(
+            WALK_STRIP,
+            "walk",
+            bundle,
+            provenance_sidecar=provenance_path,
+            polish_profile="dwarf-miner",
+            identity_reference=IDENTITY_PNG,
+            edit_source=wrong_seed,
+        )
+    assert exc.value.reason_code == "edit_source_not_generation_source"
+    assert not bundle.exists()
+
+
+def test_dwarf_walk_init_accepts_padded_edit_source_when_seed_pad_px_set(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    identity_doc = _identity_doc_with_seed_pad_px()
+    monkeypatch.setattr(
+        "pipeline.final_polish._load_dwarf_identity_doc",
+        lambda: identity_doc,
+    )
+    declaration_path = tmp_path / "identity.json"
+    declaration_path.write_text(json.dumps(identity_doc), encoding="utf-8")
+    padded_seed = tmp_path / "padded-seed.png"
+    build_identity_seed(declaration_path, padded_seed)
+    provenance_path = tmp_path / "walk.source.json"
+    _write_animation_provenance(
+        WALK_STRIP,
+        provenance_path,
+        motion_class="walk",
+        generation_mode="image-edit",
+        reference_image_sha256=[CANONICAL_IDENTITY_SHA],
+        edit_source_sha256=sha256_file(padded_seed),
+    )
+    bundle = tmp_path / "bundle"
+    initialize_bundle(
+        WALK_STRIP,
+        "walk",
+        bundle,
+        provenance_sidecar=provenance_path,
+        polish_profile="dwarf-miner",
+        identity_reference=IDENTITY_PNG,
+        edit_source=padded_seed,
+    )
+    assert bundle.exists()
+
+
 def test_dwarf_walk_check_rejects_edit_source_that_is_not_generation_source(
     tmp_path: Path,
 ) -> None:
@@ -1098,6 +1173,42 @@ def test_dwarf_walk_check_rejects_edit_source_that_is_not_generation_source(
     with pytest.raises(InvalidBundleError) as exc:
         check_bundle(bundle)
     assert exc.value.reason_code == "edit_source_not_generation_source"
+
+
+def test_dwarf_walk_check_accepts_correct_padded_edit_source_when_seed_pad_px_set(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    identity_doc = _identity_doc_with_seed_pad_px()
+    monkeypatch.setattr(
+        "pipeline.final_polish._load_dwarf_identity_doc",
+        lambda: identity_doc,
+    )
+    declaration_path = tmp_path / "identity.json"
+    declaration_path.write_text(json.dumps(identity_doc), encoding="utf-8")
+    padded_seed = tmp_path / "padded-seed.png"
+    build_identity_seed(declaration_path, padded_seed)
+
+    bundle = tmp_path / "bundle"
+    provenance_path = _provenance_for(
+        WALK_STRIP,
+        tmp_path,
+        "walk",
+        polish_profile="dwarf-miner",
+    )
+    record = json.loads(provenance_path.read_text())
+    record["edit_source_sha256"] = sha256_file(padded_seed)
+    provenance_path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
+    initialize_bundle(
+        WALK_STRIP,
+        "walk",
+        bundle,
+        provenance_sidecar=provenance_path,
+        polish_profile="dwarf-miner",
+        identity_reference=IDENTITY_PNG,
+        edit_source=padded_seed,
+    )
+    check_bundle(bundle)
 
 
 def test_tampered_v2_provenance_blocks_check_and_finalize(tmp_path: Path) -> None:

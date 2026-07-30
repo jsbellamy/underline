@@ -18,9 +18,11 @@ from pipeline.cell_raster import read_cells as _read_cells
 from pipeline.gate_evidence import EvidenceError, sha256_bytes, sha256_file, write_json_immutable
 from pipeline.identity_lock import (
     IDENTITY_LOCK_NEAR_MISS_SCHEMA,
+    IdentityLockError,
     IdentityLockResult,
     evaluate_identity_lock,
     evaluate_provider_post_edit,
+    expected_image_edit_source_sha256,
     identity_lock_applies,
     identity_lock_report_payload,
     provider_post_edit_report_payload,
@@ -755,10 +757,14 @@ def _validate_animation_provenance_record(
                 "edit_source_hash_mismatch",
             )
         if require_image_edit:
-            canonical_generation_source = _binding_sha256(
-                identity_doc, "generation_source"
-            )
-            if str(edit_source) != canonical_generation_source:
+            try:
+                expected_edit_source_sha = expected_image_edit_source_sha256(
+                    identity_doc,
+                    root=_REPO_ROOT,
+                )
+            except IdentityLockError as exc:
+                reject(str(exc), "missing_identity_authority")
+            if str(edit_source) != expected_edit_source_sha:
                 reject(
                     "provenance edit_source_sha256 must equal identity.json "
                     "generation_source.sha256 (idle provider Strip)",

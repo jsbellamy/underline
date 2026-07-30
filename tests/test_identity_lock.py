@@ -6,6 +6,7 @@ import copy
 import json
 from pathlib import Path
 
+import numpy as np
 import pytest
 from PIL import Image
 
@@ -21,6 +22,7 @@ from pipeline.identity_lock import (
     IdentityLockResult,
     build_identity_seed,
     evaluate_identity_lock,
+    expected_image_edit_source_sha256,
     identity_lock_applies,
     identity_lock_rejection_detail,
     identity_lock_report_payload,
@@ -393,6 +395,76 @@ def test_seed_rejects_missing_generation_source_binding(tmp_path: Path) -> None:
 
     with pytest.raises(IdentityLockError, match="generation_source"):
         build_identity_seed(declaration_path, tmp_path / "seed.png")
+
+
+def test_seed_with_seed_pad_px_adds_magenta_border_and_preserves_interior(
+    tmp_path: Path,
+) -> None:
+    declaration = json.loads(IDENTITY_JSON.read_text())
+    declaration["seed_pad_px"] = 64
+    declaration_path = tmp_path / "identity.json"
+    declaration_path.write_text(json.dumps(declaration))
+    out_path = tmp_path / "seed.png"
+    meta = build_identity_seed(declaration_path, out_path)
+
+    with Image.open(IDLE_PROVIDER_SOURCE) as source:
+        gen_w, gen_h = source.size
+    assert meta["seed_pad_px"] == 64
+    assert meta["dimensions"] == [gen_w + 128, gen_h + 128]
+    assert meta["generation_source_sha256"] == sha256_file(IDLE_PROVIDER_SOURCE)
+    assert meta["sha256"] != meta["generation_source_sha256"]
+
+    with Image.open(out_path) as padded:
+        rgba = np.asarray(padded.convert("RGBA"))
+    pad = 64
+    magenta = np.array([255, 0, 255, 255], dtype=np.uint8)
+    assert np.all(rgba[:pad, :, :] == magenta)
+    assert np.all(rgba[-pad:, :, :] == magenta)
+    assert np.all(rgba[:, :pad, :] == magenta)
+    assert np.all(rgba[:, -pad:, :] == magenta)
+    with Image.open(IDLE_PROVIDER_SOURCE) as source:
+        interior = np.asarray(source.convert("RGBA"))
+    assert np.array_equal(rgba[pad:-pad, pad:-pad, :], interior)
+
+
+def test_seed_with_seed_pad_px_rerun_is_deterministic(tmp_path: Path) -> None:
+    declaration = json.loads(IDENTITY_JSON.read_text())
+    declaration["seed_pad_px"] = 64
+    declaration_path = tmp_path / "identity.json"
+    declaration_path.write_text(json.dumps(declaration))
+    first = tmp_path / "seed-a.png"
+    second = tmp_path / "seed-b.png"
+    first_meta = build_identity_seed(declaration_path, first)
+    second_meta = build_identity_seed(declaration_path, second)
+    assert first.read_bytes() == second.read_bytes()
+    assert first_meta["sha256"] == second_meta["sha256"]
+
+
+def test_seed_rejects_invalid_seed_pad_px(tmp_path: Path) -> None:
+    declaration = json.loads(IDENTITY_JSON.read_text())
+    declaration["seed_pad_px"] = 0
+    declaration_path = tmp_path / "identity.json"
+    declaration_path.write_text(json.dumps(declaration))
+
+    with pytest.raises(IdentityLockError, match="seed_pad_px"):
+        build_identity_seed(declaration_path, tmp_path / "seed.png")
+
+
+def test_expected_image_edit_source_sha256_matches_pad_seed(tmp_path: Path) -> None:
+    declaration = json.loads(IDENTITY_JSON.read_text())
+    declaration["seed_pad_px"] = 64
+    declaration_path = tmp_path / "identity.json"
+    declaration_path.write_text(json.dumps(declaration))
+    out_path = tmp_path / "seed.png"
+    meta = build_identity_seed(declaration_path, out_path)
+    assert expected_image_edit_source_sha256(
+        declaration,
+        root=ROOT,
+    ) == meta["sha256"]
+    assert expected_image_edit_source_sha256(
+        json.loads(IDENTITY_JSON.read_text()),
+        root=ROOT,
+    ) == sha256_file(IDLE_PROVIDER_SOURCE)
 
 
 def test_identity_lock_applies_only_to_dwarf_walk_swing() -> None:
