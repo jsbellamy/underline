@@ -99,8 +99,10 @@ different roles:
 | `assets/first-room/dwarf/identity.png` | Post-ingest identity anchor — Identity Lock evidence only (16×24) |
 
 Copy the edit source with `strip:polish seed` against
-`assets/first-room/dwarf/identity.json`. Provenance `edit_source_sha256` must
-equal `identity.json` → `generation_source.sha256`; a tiled or upscaled
+`assets/first-room/dwarf/identity.json` (applies `seed_pad_px: 64` magenta
+border). Provenance `edit_source_sha256` must equal the padded seed digest from
+`seed --json` (the `seed_pad_px` transform of `identity.json` →
+`generation_source`), not raw `generation_source.sha256`; a tiled or upscaled
 `identity.png` seed is rejected. Keep `provider/source.png` as the unmodified
 provider Attempt — do not paint Identity Lock cells, wipe magenta, or shift
 Frames in the transport raster to clear Gates; regenerate until lock and

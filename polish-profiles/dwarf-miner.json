@@ -78,10 +78,10 @@
   ],
   "audit_workflow": [
     "Walk and swing use two different PNGs: edit source = assets/first-room/dwarf/idle/provider/source.png (generation canvas); identity anchor = assets/first-room/dwarf/identity.png (16x24 lock evidence only).",
-    "Run strip:polish seed: npm run strip:polish -- seed --identity-declaration assets/first-room/dwarf/identity.json --out <seed.png>. This copies idle/provider/source.png byte-for-byte; it does NOT read or upscale identity.png.",
+    "Run strip:polish seed: npm run strip:polish -- seed --identity-declaration assets/first-room/dwarf/identity.json --out <seed.png>. This applies seed_pad_px: 64 magenta border around idle/provider/source.png; it does NOT read or upscale identity.png.",
     "Submit <seed.png> to the provider as the image-edit base (the image being edited). Do not generate a new image from the prompt alone. Do not use identity.png as the edit canvas.",
     "On strip:polish init, pass --edit-source <seed.png> and --identity-reference assets/first-room/dwarf/identity.png.",
-    "Record identity.json generation_source.sha256 as edit_source_sha256 in each image-edit Attempt provenance. That digest must equal 655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3 while idle/provider/source.png is the declared generation source; any other digest fails with edit_source_not_generation_source.",
+    "Record the padded seed digest (sha256 from seed --json) as edit_source_sha256 in each image-edit Attempt provenance. That digest must equal the seed_pad_px transform of identity.json generation_source, not raw generation_source.sha256; any other digest fails with edit_source_not_generation_source.",
     "Do not use fresh text-to-image generation for walk or swing.",
     "Keep the subject (including pickaxe arc) inside a safe empty magenta inset so the bounding box does not touch provider canvas edges. Touching a canvas edge triggers provider_clipping — regenerate with margin guidance rather than post-editing the provider transport raster.",
     "Generate sequential immutable Attempts until provenance, automatic Identity Lock, coherence, and polish pass on the unmodified provider transport raster. Do not script- or hand-edit provider/source.png after generation to clear Gates.",

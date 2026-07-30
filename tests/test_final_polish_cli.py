@@ -18,6 +18,7 @@ from PIL import Image
 from pipeline.final_polish import initialize_bundle
 from pipeline.final_polish_cli import main
 from pipeline.gate_evidence import sha256_bytes, sha256_file
+from pipeline.identity_lock import build_identity_seed
 from pipeline.strip import DEFAULT_LAYOUT, IngestResult, StripLayout, ingest_strip_provider
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -31,6 +32,15 @@ IDENTITY_PNG = ROOT / "assets" / "first-room" / "dwarf" / "identity.png"
 IDENTITY_JSON = ROOT / "assets" / "first-room" / "dwarf" / "identity.json"
 IDLE_SEED_STRIP = ROOT / "assets" / "first-room" / "dwarf" / "idle" / "provider" / "source.png"
 CANONICAL_IDENTITY_SHA = "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9"
+GENERATION_SOURCE_SHA256 = "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3"
+PADDED_SEED_SHA256 = "acb2b1c3b282e1a5a34a39c1c283e10f2377451b7344675d37afbfac1de9f5fd"
+PADDED_SEED_DIMENSIONS = [1664, 1152]
+
+
+def _padded_edit_source_seed(tmp_path: Path) -> Path:
+    out = tmp_path / "padded-edit-source.png"
+    build_identity_seed(IDENTITY_JSON, out)
+    return out
 LOGICAL_SIZE = (DEFAULT_LAYOUT.frame_w, DEFAULT_LAYOUT.frame_h)
 FRAME_COUNT = DEFAULT_LAYOUT.frame_count
 
@@ -133,18 +143,19 @@ def _provenance_args(
     kwargs: dict[str, object] = {"motion_class": motion_class}
     identity_args: list[str] = []
     if polish_profile == "dwarf-miner" and motion_class in {"walk", "swing"}:
+        padded_seed = _padded_edit_source_seed(tmp_path)
         kwargs.update(
             {
                 "generation_mode": "image-edit",
                 "reference_image_sha256": [CANONICAL_IDENTITY_SHA],
-                "edit_source_sha256": sha256_file(IDLE_SEED_STRIP),
+                "edit_source_sha256": sha256_file(padded_seed),
             }
         )
         identity_args = [
             "--identity-reference",
             str(IDENTITY_PNG),
             "--edit-source",
-            str(IDLE_SEED_STRIP),
+            str(padded_seed),
         ]
     _write_animation_provenance(provider_path, provenance_path, **kwargs)
     return ["--provenance", str(provenance_path), *identity_args]
@@ -754,7 +765,7 @@ def test_no_override_flags_in_parser() -> None:
     assert "override" not in flags
 
 
-def test_seed_cli_emits_json_and_is_byte_identical_on_rerun(tmp_path: Path) -> None:
+def test_seed_cli_emits_json_and_is_deterministic_on_rerun(tmp_path: Path) -> None:
     out_a = tmp_path / "seed-a.png"
     out_b = tmp_path / "seed-b.png"
     result = _run_module(
@@ -769,11 +780,14 @@ def test_seed_cli_emits_json_and_is_byte_identical_on_rerun(tmp_path: Path) -> N
     )
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
-    assert data["dimensions"] == [1536, 1024]
+    assert data["dimensions"] == PADDED_SEED_DIMENSIONS
+    assert data["seed_pad_px"] == 64
+    assert data["sha256"] == PADDED_SEED_SHA256
     assert data["sha256"] == sha256_file(out_a)
-    assert data["generation_source_sha256"] == sha256_file(IDLE_SEED_STRIP)
+    assert data["generation_source_sha256"] == GENERATION_SOURCE_SHA256
+    assert data["sha256"] != data["generation_source_sha256"]
     assert data["identity_anchor_sha256"] == CANONICAL_IDENTITY_SHA
-    assert out_a.read_bytes() == IDLE_SEED_STRIP.read_bytes()
+    assert out_a.read_bytes() != IDLE_SEED_STRIP.read_bytes()
     rerun = _run_module(
         [
             "seed",
@@ -812,7 +826,9 @@ def test_dwarf_miner_profile_and_prompt_require_image_edit_workflow() -> None:
     assert "16x24" in workflow
     assert "does not read or upscale identity.png" in workflow
     assert "edit_source_sha256" in workflow
-    assert "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3" in workflow
+    assert "seed_pad_px" in workflow
+    assert "padded seed digest" in workflow
+    assert "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3" not in workflow
     assert "edit_source_not_generation_source" in workflow
     assert "idle provider strip" in workflow
     assert "upscaled or tiled" in workflow
@@ -837,7 +853,9 @@ def test_dwarf_miner_profile_and_prompt_require_image_edit_workflow() -> None:
     assert "is not the seed command" in prompt_lower
     assert "construct a four-copy strip from `identity.png`" in prompt_lower
     assert "edit_source_sha256" in prompt
-    assert "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3" in prompt
+    assert "seed_pad_px" in prompt_lower
+    assert "padded seed digest" in prompt_lower
+    assert "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3" not in prompt
     assert "edit_source_not_generation_source" in prompt
     assert "the image being edited" in prompt_lower
     assert "idle provider strip" in prompt_lower
@@ -851,12 +869,15 @@ def test_dwarf_miner_profile_and_prompt_require_image_edit_workflow() -> None:
     assert "edit_source_continuity_fail" in prompt
     contract = (ROOT / "docs" / "strip-acquisition-contract.md").read_text()
     assert "edit_source_not_generation_source" in contract
-    assert "generation_source.sha256" in contract
+    assert "seed_pad_px" in contract
+    assert "padded seed digest" in contract
     assert "paint/stamp Identity Lock" in contract or "paint/stamp identity lock" in contract.lower()
     assert "provider_magenta_wipe" in contract
     assert "edit_source_continuity_fail" in contract
     art = (ROOT / "docs" / "first-room-art-direction.md").read_text().lower()
     assert "idle provider" in art
+    assert "seed_pad_px" in art
+    assert "padded seed digest" in art
     assert "does not prove the edit came from idle" in art.replace("\n", " ")
     assert "do not paint identity lock cells" in art.replace("\n", " ")
 
