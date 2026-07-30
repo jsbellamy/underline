@@ -353,8 +353,12 @@ def test_evaluation_rejects_unbound_identity_image(tmp_path: Path) -> None:
 
 
 def test_seed_is_byte_identical_copy_of_bound_generation_source(tmp_path: Path) -> None:
+    declaration = json.loads(IDENTITY_JSON.read_text())
+    declaration.pop("seed_pad_px", None)
+    declaration_path = tmp_path / "identity-unpadded.json"
+    declaration_path.write_text(json.dumps(declaration))
     out_path = tmp_path / "seed.png"
-    meta = build_identity_seed(IDENTITY_JSON, out_path)
+    meta = build_identity_seed(declaration_path, out_path)
     assert meta["dimensions"] == [1536, 1024]
     assert out_path.is_file()
     assert out_path.read_bytes() == IDLE_PROVIDER_SOURCE.read_bytes()
@@ -364,7 +368,7 @@ def test_seed_is_byte_identical_copy_of_bound_generation_source(tmp_path: Path) 
     assert meta["identity_anchor_sha256"] == CANONICAL_IDENTITY_SHA
 
 
-def test_seed_rerun_is_byte_identical(tmp_path: Path) -> None:
+def test_checked_in_identity_seed_rerun_is_deterministic(tmp_path: Path) -> None:
     first = tmp_path / "seed-a.png"
     second = tmp_path / "seed-b.png"
     build_identity_seed(IDENTITY_JSON, first)
@@ -461,10 +465,12 @@ def test_pad_seed_digest_matches_expected_image_edit_source_sha256(tmp_path: Pat
         declaration,
         root=ROOT,
     ) == meta["sha256"]
+    checked_in = json.loads(IDENTITY_JSON.read_text())
+    assert checked_in["seed_pad_px"] == 64
     assert expected_image_edit_source_sha256(
-        json.loads(IDENTITY_JSON.read_text()),
+        checked_in,
         root=ROOT,
-    ) == sha256_file(IDLE_PROVIDER_SOURCE)
+    ) != sha256_file(IDLE_PROVIDER_SOURCE)
 
 
 def test_identity_lock_applies_only_to_dwarf_walk_swing() -> None:

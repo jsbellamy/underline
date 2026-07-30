@@ -398,8 +398,9 @@ def _configure_parser(parser: argparse.ArgumentParser) -> None:
     seed = sub.add_parser(
         "seed",
         help=(
-            "Copy identity.json → generation_source (idle/provider/source.png) "
-            "byte-for-byte; does not read identity.png"
+            "Emit image-edit seed from identity.json generation_source; "
+            "when seed_pad_px is declared, adds uniform #FF00FF border "
+            "(does not read identity.png)"
         ),
     )
     seed.add_argument(
@@ -415,7 +416,7 @@ def _configure_parser(parser: argparse.ArgumentParser) -> None:
         "--out",
         type=pathlib.Path,
         required=True,
-        help="Output edit-source strip PNG (copy of idle/provider/source.png)",
+        help="Output edit-source strip PNG (padded seed when seed_pad_px declared)",
     )
     seed.add_argument("--json", action="store_true", help="Emit machine-readable JSON on stdout")
 

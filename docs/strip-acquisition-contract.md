@@ -424,20 +424,21 @@ evidence model, add Gates, or change Budgets.
    those bytes to `reference/identity.png` and `provider/edit-source.png`,
    requires `generation_mode=image-edit`, and binds the canonical identity hash
    and seed-strip hash in provenance. These are **two different files**:
-   `--edit-source` must be the idle provider Strip at
-   `assets/first-room/dwarf/idle/provider/source.png`, obtained via
+   `--edit-source` must be the padded image-edit seed obtained via
    `npm run strip:polish -- seed --identity-declaration
-   assets/first-room/dwarf/identity.json` (byte-for-byte copy of
-   `identity.json` → `generation_source`; already four identical idle Frames).
+   assets/first-room/dwarf/identity.json` (applies `seed_pad_px` from
+   `identity.json` around `generation_source`; dwarf: 64 px `#FF00FF` border,
+   interior unchanged; already four identical idle Frames).
    `--identity-reference` must be `assets/first-room/dwarf/identity.png`
    (16×24 post-ingest Release Frame from `identity.json` → `identity_png`).
    The seed command does **not** take `identity.png` as input. Never upscale
    the identity anchor into a generation canvas. Corpus inbox Strips and
    text-to-image redraws are not valid edit sources. On `init` and on every
    `/2` `check`/`finalize`, provenance `edit_source_sha256` and the bound
-   `provider/edit-source.png` bytes must equal
-   `identity.json` → `generation_source.sha256`; a self-consistent tiled or
-   upscaled `identity.png` seed is rejected with
+   `provider/edit-source.png` bytes must equal the padded seed digest (the
+   `seed_pad_px` transform of `identity.json` → `generation_source`; not raw
+   `generation_source.sha256`, which remains the idle interior binding); a
+   self-consistent tiled or upscaled `identity.png` seed is rejected with
    `edit_source_not_generation_source`. The checked-in `provider/source.png`
    must be the **unmodified** provider Attempt output: do not wipe near-magenta,
    shift Frames for baseline, or paint/stamp Identity Lock (or flat identity)

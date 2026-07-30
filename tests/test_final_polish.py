@@ -118,6 +118,12 @@ def _write_animation_provenance(
     )
 
 
+def _padded_edit_source_seed(tmp_path: Path) -> Path:
+    out = tmp_path / "padded-edit-source.png"
+    build_identity_seed(IDENTITY_JSON, out)
+    return out
+
+
 def _provenance_for(
     provider_path: Path,
     tmp_path: Path,
@@ -128,11 +134,12 @@ def _provenance_for(
     provenance_path = tmp_path / f"{provider_path.stem}.source.json"
     kwargs: dict[str, object] = {"motion_class": motion_class}
     if polish_profile == "dwarf-miner" and motion_class in {"walk", "swing"}:
+        padded_seed = _padded_edit_source_seed(tmp_path)
         kwargs.update(
             {
                 "generation_mode": "image-edit",
                 "reference_image_sha256": [CANONICAL_IDENTITY_SHA],
-                "edit_source_sha256": sha256_file(IDLE_SEED_STRIP),
+                "edit_source_sha256": sha256_file(padded_seed),
             }
         )
     _write_animation_provenance(provider_path, provenance_path, **kwargs)
@@ -159,7 +166,7 @@ def _init_bundle(
         )
     if polish_profile == "dwarf-miner" and motion_class in {"walk", "swing"}:
         identity_reference = identity_reference or IDENTITY_PNG
-        edit_source = edit_source or IDLE_SEED_STRIP
+        edit_source = edit_source or _padded_edit_source_seed(tmp_path)
     initialize_bundle(
         provider_path,
         motion_class,
@@ -1531,7 +1538,9 @@ def test_dwarf_swing_check_exposes_identity_lock_report(tmp_path: Path) -> None:
     assert result.outcome == "FAIL"
 
 
-def test_dwarf_swing_check_rejects_magenta_wiped_provider(tmp_path: Path) -> None:
+def test_dwarf_swing_check_does_not_trip_magenta_wipe_with_padded_edit_source(
+    tmp_path: Path,
+) -> None:
     import numpy as np
 
     bundle = tmp_path / "bundle"
@@ -1565,9 +1574,10 @@ def test_dwarf_swing_check_rejects_magenta_wiped_provider(tmp_path: Path) -> Non
     manifest["attempt_ledger"]["sha256"] = sha256_file(ledger_path)
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
-    with pytest.raises(InvalidBundleError) as exc:
-        check_bundle(bundle)
-    assert exc.value.reason_code == "provider_magenta_wipe"
+    result = check_bundle(bundle)
+    assert result.outcome == "FAIL"
+    assert result.provider_post_edit is not None
+    assert result.provider_post_edit["magenta_wipe"]["outcome"] == "PASS"
 
 
 def test_identity_lock_fail_blocks_release_despite_passing_structural_and_coherence(

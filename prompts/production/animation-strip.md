@@ -100,9 +100,11 @@ Both paths are declared and hash-bound in `assets/first-room/dwarf/identity.json
 | `identity_png` | `identity.png` | Post-ingest lock anchor — ingest-reduced Release Frame |
 
 **`identity.png` is not the seed command’s input file.** The seed command reads
-`identity.json` and copies `generation_source` byte-for-byte. It does **not**
-read `identity.png`, does **not** upscale `identity.png`, and does **not**
-construct a four-copy strip from `identity.png`.
+`identity.json` and emits the image-edit seed from `generation_source`. When
+`seed_pad_px` is declared (64 for dwarf), it adds a uniform `#FF00FF` border of
+that width on all four sides around the generation-source interior; otherwise it
+copies `generation_source` byte-for-byte. It does **not** read `identity.png`,
+does **not** upscale `identity.png`, and does **not** construct a four-copy strip from `identity.png`.
 
 ### Seed command — exact behavior
 
@@ -116,10 +118,11 @@ This command:
 
 1. Loads `assets/first-room/dwarf/identity.json`.
 2. Verifies `identity_png` is a 16×24 Release Frame (sanity check only).
-3. Copies `generation_source` → `<seed.png>` **byte-for-byte** (today:
-   `assets/first-room/dwarf/idle/provider/source.png`).
-4. Emits JSON including `generation_source_sha256` (must match
-   `edit_source_sha256` in provenance).
+3. Writes `generation_source` → `<seed.png>` with the declared `seed_pad_px`
+   transform (dwarf: 64 px `#FF00FF` border around
+   `assets/first-room/dwarf/idle/provider/source.png`; interior unchanged).
+4. Emits JSON including `generation_source_sha256` (idle interior binding) and
+   `sha256` (padded seed digest — must match `edit_source_sha256` in provenance).
 
 The output `<seed.png>` is already a four-Frame idle strip. Image-edit prompts
 for walk and swing describe editing **that canvas** — changing legs/boots (walk)
@@ -136,13 +139,12 @@ or arms/pickaxe/torso lean (swing) while locked regions stay fixed.
    - `--edit-source <seed.png>` (the idle provider Strip copy)
    - `--identity-reference assets/first-room/dwarf/identity.png` (16×24 anchor)
 4. **Forbid** fresh text-to-image generation for walk and swing.
-5. Record `generation_source.sha256` from `identity.json` as
+5. Record the padded seed digest (`sha256` from `seed --json`) as
    `edit_source_sha256` in every image-edit Attempt’s provenance. That digest
-   must remain
-   `655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3` while
-   `idle/provider/source.png` is the declared generation source. `init` and
-   `/2` `check`/`finalize` reject any other digest with
-   `edit_source_not_generation_source`.
+   must equal the `seed_pad_px` transform of `identity.json` →
+   `generation_source` (not raw `generation_source.sha256`, which remains the
+   idle interior binding). `init` and `/2` `check`/`finalize` reject any other
+   digest with `edit_source_not_generation_source`.
 6. Run Identity Lock only after provider recovery has produced logical Frames.
 7. Generate **sequential immutable Attempts** until one passes provenance,
    automatic Identity Lock, coherence Gates, polish, and visual audit on the
