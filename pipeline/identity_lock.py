@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import shutil
 from dataclasses import dataclass
+from io import BytesIO
 from itertools import product
 from pathlib import Path
 from typing import Any, Literal, Mapping, Sequence
@@ -14,7 +15,7 @@ from PIL import Image, UnidentifiedImageError
 
 from pipeline import canonical
 from pipeline.cell_raster import cells_from_rgba
-from pipeline.gate_evidence import sha256_file
+from pipeline.gate_evidence import sha256_bytes, sha256_file
 from pipeline.strip import Cell
 
 IDENTITY_LOCK_SCHEMA = "identity-lock/1"
@@ -1220,16 +1221,83 @@ def provider_post_edit_report_payload(
     }
 
 
+def _parse_seed_pad_px(raw: object) -> int:
+    if not isinstance(raw, int) or raw <= 0:
+        raise IdentityLockError("seed_pad_px must be a positive integer")
+    return raw
+
+
+def magenta_pad_generation_source_png(
+    generation_source_png_bytes: bytes,
+    seed_pad_px: int,
+) -> bytes:
+    """Return a PNG whose border ring is exact transport magenta and interior matches source."""
+    pad_px = _parse_seed_pad_px(seed_pad_px)
+    try:
+        with Image.open(BytesIO(generation_source_png_bytes)) as generation_source:
+            source_rgba = generation_source.convert("RGBA")
+            gen_w, gen_h = source_rgba.size
+    except UnidentifiedImageError as exc:
+        raise IdentityLockError("generation source must be a readable PNG") from exc
+
+    out_w = gen_w + 2 * pad_px
+    out_h = gen_h + 2 * pad_px
+    padded = Image.new(
+        "RGBA",
+        (out_w, out_h),
+        (*TRANSPORT_MAGENTA, 255),
+    )
+    padded.paste(source_rgba, (pad_px, pad_px))
+    out_buf = BytesIO()
+    padded.save(out_buf, format="PNG")
+    return out_buf.getvalue()
+
+
+def expected_image_edit_source_sha256(
+    declaration: Mapping[str, Any],
+    *,
+    root: Path | None = None,
+) -> str:
+    """SHA-256 of the image-edit seed implied by a dwarf-identity/0 declaration."""
+    generation_binding = declaration.get("generation_source")
+    if not isinstance(generation_binding, dict):
+        raise IdentityLockError(
+            "identity declaration requires generation_source bindings"
+        )
+    generation_sha = generation_binding.get("sha256")
+    if not isinstance(generation_sha, str) or len(generation_sha) != 64:
+        raise IdentityLockError("generation_source.sha256 must be a 64-char hex digest")
+    seed_pad_px = declaration.get("seed_pad_px")
+    if seed_pad_px is None:
+        return generation_sha
+    pad_px = _parse_seed_pad_px(seed_pad_px)
+    repo_root = root if root is not None else _REPO_ROOT
+    try:
+        generation_path = canonical.verify_binding(
+            generation_binding,
+            root=repo_root,
+            label="generation source",
+        )
+    except canonical.BindingError as exc:
+        raise IdentityLockError(str(exc)) from exc
+    padded_bytes = magenta_pad_generation_source_png(
+        generation_path.read_bytes(),
+        pad_px,
+    )
+    return sha256_bytes(padded_bytes)
+
+
 def build_identity_seed(
     identity_declaration_path: Path,
     out_path: Path,
 ) -> dict[str, Any]:
-    """Copy ``identity.json`` → ``generation_source`` byte-for-byte.
+    """Emit the image-edit seed from ``identity.json`` bindings.
 
-    For dwarf walk/swing this is ``idle/provider/source.png`` (four identical
-    idle Frames on magenta). ``identity_png`` (``identity.png``, 16×24) is
-    validated but **not** copied — it is the post-ingest Identity Lock anchor,
-    never the image-edit canvas.
+    Without ``seed_pad_px``, copies ``generation_source`` byte-for-byte. When
+    ``seed_pad_px`` is declared, writes a uniform ``#FF00FF`` pad of that width
+    on all four sides around the generation-source raster (interior unchanged).
+    ``identity_png`` (16×24) is validated but never copied — it is the Identity
+    Lock anchor, not the image-edit canvas.
     """
     if not identity_declaration_path.is_file():
         raise IdentityLockError(
@@ -1263,18 +1331,35 @@ def build_identity_seed(
         if identity.size != (16, 24):
             raise IdentityLockError("identity anchor must be a 16×24 Release Frame")
     with Image.open(generation_source_path) as generation_source:
-        dimensions = [generation_source.width, generation_source.height]
+        gen_w, gen_h = generation_source.size
 
+    seed_pad_px_raw = declaration.get("seed_pad_px")
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(generation_source_path, out_path)
-
-    return {
+    result: dict[str, Any] = {
         "identity_declaration_path": str(identity_declaration_path.resolve()),
         "generation_source_path": str(generation_source_path),
         "generation_source_sha256": generation_source_sha,
         "identity_anchor_path": str(identity_path),
         "identity_anchor_sha256": identity_sha,
         "out_path": str(out_path.resolve()),
-        "dimensions": dimensions,
-        "sha256": sha256_file(out_path),
     }
+    if seed_pad_px_raw is None:
+        shutil.copyfile(generation_source_path, out_path)
+        result["dimensions"] = [gen_w, gen_h]
+        result["sha256"] = sha256_file(out_path)
+        return result
+
+    seed_pad_px = _parse_seed_pad_px(seed_pad_px_raw)
+    padded_bytes = magenta_pad_generation_source_png(
+        generation_source_path.read_bytes(),
+        seed_pad_px,
+    )
+    out_path.write_bytes(padded_bytes)
+    result.update(
+        {
+            "seed_pad_px": seed_pad_px,
+            "dimensions": [gen_w + 2 * seed_pad_px, gen_h + 2 * seed_pad_px],
+            "sha256": sha256_bytes(padded_bytes),
+        }
+    )
+    return result
