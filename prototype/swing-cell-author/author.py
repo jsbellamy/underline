@@ -148,31 +148,28 @@ def erase_idle_pickaxe(frame: list[list[Cell]], *, helmet_off: tuple[int, int], 
 
 
 def _head_blob(cx: int, cy: int) -> list[tuple[int, int, Cell]]:
-    """Chunky ~5×4 pickaxe head — compact but heavy vs the miner torso."""
+    """Compact-heavy head (~4×3). Keep mass near the handle socket — do not
+    float a wide metal island that reads as detached from the arm."""
     return [
-        # top spike / peen
-        (cx, cy - 2, HEAD_LIT),
-        (cx + 1, cy - 2, HEAD),
+        (cx, cy - 2, HEAD),
+        (cx + 1, cy - 2, HEAD_LIT),
         (cx - 1, cy - 1, HEAD_DARK),
         (cx, cy - 1, HEAD_LIT),
         (cx + 1, cy - 1, HEAD),
-        (cx + 2, cy - 1, HEAD_DARK),
-        # mass row
-        (cx - 2, cy, OUTLINE),
         (cx - 1, cy, HEAD),
         (cx, cy, HEAD_LIT),
         (cx + 1, cy, HEAD),
-        (cx + 2, cy, HEAD_LIT),
-        # lower mass / blade
-        (cx - 2, cy + 1, HEAD_DARK),
-        (cx - 1, cy + 1, HEAD),
+        (cx - 1, cy + 1, OUTLINE),
         (cx, cy + 1, HEAD_DARK),
         (cx + 1, cy + 1, OUTLINE),
-        (cx + 2, cy + 1, OUTLINE),
-        (cx - 1, cy + 2, OUTLINE),
-        (cx, cy + 2, HEAD_DARK),
-        (cx + 1, cy + 2, HEAD_DARK),
+        # socket toward the handle (same column as grip)
+        (cx - 1, cy + 2, HANDLE_MID),
     ]
+
+
+def _arm_bridge(cells: list[tuple[int, int, Cell]]) -> list[tuple[int, int, Cell]]:
+    """Forearm/hand Cells that must stay contiguous with torso + handle."""
+    return cells
 
 
 def _lean_mass(
@@ -258,30 +255,34 @@ def author_swing_frames(idle: list[list[Cell]]) -> list[list[list[Cell]]]:
         f0,
         [
             *_lean_mass(direction="back", helmet_off=h0, belt_off=b0),
-            # bulky head high/behind — uses left free columns + row 0
+            # tool high / behind — tall wind-up
+            (1, 0, HEAD_DARK),
+            (2, 0, HEAD_LIT),
+            (3, 0, HEAD),
+            (0, 1, HEAD_DARK),
             *_head_blob(2, 2),
-            (0, 0, HEAD_DARK),
-            (1, 0, HEAD_LIT),
-            (2, 0, HEAD),
-            (3, 0, HEAD_DARK),
-            (0, 1, OUTLINE),
-            (1, 1, HEAD),
-            # thicker handle shaft
-            (1, 4, HANDLE_MID),
+            (1, 3, HANDLE_MID),
             (2, 4, HANDLE),
-            (1, 5, HANDLE),
             (2, 5, HANDLE_MID),
-            (2, 6, HANDLE),
-            (3, 6, HANDLE_MID),
-            (2, 7, HANDLE),
-            (3, 7, HANDLE),
-            (2, 8, GLOVE),
-            (3, 8, GLOVE_LIT),
-            (1, 8, OUTLINE),
-            (2, 9, OUTLINE),
-            (3, 9, GLOVE),
-            (1, 10, OUTLINE),
-            (2, 10, GLOVE_LIT),
+            (3, 6, HANDLE),
+            (3, 7, HANDLE_MID),
+            *_arm_bridge(
+                [
+                    # continuous rear arm: shoulder → elbow → grip on handle
+                    (3, 11, TUNIC),
+                    (2, 11, TUNIC_DARK),
+                    (2, 10, GLOVE_LIT),
+                    (3, 10, GLOVE),
+                    (1, 10, OUTLINE),
+                    (2, 9, GLOVE),
+                    (3, 9, GLOVE_LIT),
+                    (1, 9, OUTLINE),
+                    (2, 8, GLOVE),
+                    (3, 8, GLOVE_LIT),
+                    (1, 8, OUTLINE),
+                    (3, 7, GLOVE),  # overlaps handle socket — reads as gripping
+                ]
+            ),
         ],
         helmet_off=h0,
         belt_off=b0,
@@ -294,32 +295,34 @@ def author_swing_frames(idle: list[list[Cell]]) -> list[list[list[Cell]]]:
     paint(
         f1,
         [
-            # head sits in right free columns; spill into unlocked torso edge
-            *_head_blob(13, 4),
-            (15, 2, HEAD_LIT),
-            (15, 3, HEAD),
+            # head stays on the free right column; handle sockets into the grip
+            *_head_blob(14, 5),
             (15, 4, HEAD_LIT),
             (15, 5, HEAD),
             (15, 6, HEAD_DARK),
-            (14, 2, HEAD_DARK),
-            # thick handle down the x=13 corridor
-            (13, 6, HANDLE_MID),
-            (12, 6, HANDLE),
-            (13, 7, HANDLE),
-            (12, 7, HANDLE_MID),
-            (13, 8, HANDLE_MID),
-            (13, 9, HANDLE),
-            (13, 10, HANDLE_MID),
-            (13, 11, GLOVE_LIT),
-            (14, 10, OUTLINE),
-            (14, 11, GLOVE),
-            (12, 11, GLOVE),
-            (12, 12, GLOVE_LIT),
-            (11, 12, OUTLINE),
-            (10, 13, GLOVE),
-            (9, 13, OUTLINE),
-            (11, 14, HANDLE),
-            (12, 3, HEAD_DARK),  # short motion mass behind head
+            (13, 5, HANDLE_MID),
+            (13, 6, HANDLE),
+            (13, 7, HANDLE_MID),
+            (13, 8, HANDLE),
+            (13, 9, HANDLE_MID),
+            *_arm_bridge(
+                [
+                    # attached whip arm: torso (x8-11) → grip on x=13 handle
+                    (11, 14, TUNIC_DARK),
+                    (12, 13, TUNIC),
+                    (11, 13, TUNIC_MID),
+                    (10, 13, TUNIC_DARK),
+                    (9, 13, OUTLINE),
+                    (12, 12, GLOVE),
+                    (11, 12, GLOVE_LIT),
+                    (10, 12, GLOVE),
+                    (12, 11, GLOVE_LIT),
+                    (13, 11, GLOVE),
+                    (13, 10, GLOVE_LIT),
+                    (14, 11, OUTLINE),
+                    (12, 10, OUTLINE),
+                ]
+            ),
         ],
         helmet_off=h1,
         belt_off=b1,
@@ -333,26 +336,32 @@ def author_swing_frames(idle: list[list[Cell]]) -> list[list[list[Cell]]]:
         f2,
         [
             *_lean_mass(direction="forward", helmet_off=h2, belt_off=b2),
-            *_head_blob(13, 13),
-            (15, 11, HEAD_LIT),
-            (15, 12, HEAD),
-            (15, 13, HEAD_LIT),
+            *_head_blob(14, 13),
+            (15, 12, HEAD_LIT),
+            (15, 13, HEAD),
             (15, 14, HEAD_DARK),
-            (14, 14, HEAD),
-            (13, 11, HANDLE_MID),
-            (13, 12, HANDLE),
-            (12, 12, HANDLE_MID),
-            (12, 13, HANDLE),
-            (11, 13, HANDLE_MID),
-            (11, 14, HANDLE),
-            (10, 14, HANDLE_MID),
-            (9, 14, GLOVE_LIT),
-            (8, 14, GLOVE),
-            (9, 13, OUTLINE),
-            (8, 13, OUTLINE),
-            (10, 13, GLOVE),
+            (13, 12, HANDLE_MID),
+            (13, 13, HANDLE),
+            (12, 13, HANDLE_MID),
+            (12, 14, HANDLE),
+            *_arm_bridge(
+                [
+                    (11, 14, HANDLE_MID),
+                    (10, 14, GLOVE_LIT),
+                    (9, 14, GLOVE),
+                    (8, 14, GLOVE),
+                    (9, 13, GLOVE_LIT),
+                    (8, 13, OUTLINE),
+                    (10, 13, GLOVE),
+                    (11, 13, GLOVE_LIT),
+                    (7, 13, OUTLINE),
+                    (7, 14, TUNIC_DARK),  # shoulder seam into torso
+                    (8, 12, TUNIC),
+                    (9, 12, TUNIC_DARK),
+                ]
+            ),
             (14, 11, BEARD),
-            (13, 10, BEARD_DARK),  # skipped if still in face lock after +1x helmet
+            (13, 11, BEARD_DARK),
         ],
         helmet_off=h2,
         belt_off=b2,
@@ -366,36 +375,39 @@ def author_swing_frames(idle: list[list[Cell]]) -> list[list[list[Cell]]]:
         f3,
         [
             *_lean_mass(direction="squash", helmet_off=h3, belt_off=b3),
-            # Chunky strike head in free cells: x=14–15 + y<=20.
-            # Boots lock is x=3..14,y=21..23 — only x=15 can occupy those rows.
-            (13, 17, HEAD_DARK),
-            (14, 17, HEAD),
-            (15, 17, HEAD_LIT),
-            (13, 18, HEAD),
-            (14, 18, HEAD_LIT),
-            (15, 18, HEAD),
-            (13, 19, HEAD_DARK),
-            (14, 19, HEAD),
+            # chunky contact wedge at ground, ahead of boots (x=15)
             (15, 19, HEAD_LIT),
-            (13, 20, OUTLINE),
-            (14, 20, HEAD_DARK),
             (15, 20, HEAD),
             (15, 21, HEAD_DARK),
             (15, 22, OUTLINE),
             (15, 23, OUTLINE),
-            # braced handle up the right corridor (belt shifted to x=5..13,y=16..19)
+            (14, 20, HEAD),
+            (14, 19, HEAD_DARK),
+            # handle braced from strike up the right column (outside belt after +1)
+            (13, 19, HANDLE_MID),
+            (13, 18, HANDLE),  # may be inside shifted belt — skipped if locked
+            (14, 18, HANDLE_MID),
+            (14, 17, HANDLE),
             (14, 16, HANDLE_MID),
             (14, 15, HANDLE),
-            (14, 14, HANDLE_MID),
-            (13, 14, HANDLE),
-            (12, 14, HANDLE_MID),
-            (11, 14, HANDLE),
-            (10, 14, GLOVE_LIT),
-            (9, 14, GLOVE),
-            (10, 13, OUTLINE),
-            (9, 13, OUTLINE),
-            (11, 13, GLOVE),
+            (13, 14, HANDLE_MID),
+            (12, 14, HANDLE),
+            *_arm_bridge(
+                [
+                    (11, 14, GLOVE_LIT),
+                    (10, 14, GLOVE),
+                    (9, 14, GLOVE),
+                    (10, 13, GLOVE_LIT),
+                    (9, 13, OUTLINE),
+                    (11, 13, GLOVE),
+                    (8, 13, OUTLINE),
+                    (8, 14, TUNIC_DARK),
+                    (7, 13, TUNIC),
+                    (7, 14, TUNIC_MID),
+                ]
+            ),
             (2, 20, OUTLINE),
+            (13, 20, HANDLE),
         ],
         helmet_off=h3,
         belt_off=b3,

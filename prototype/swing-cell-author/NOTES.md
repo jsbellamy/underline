@@ -64,8 +64,9 @@ permitted Identity Lock offsets + art-direction timing:
 
 Re-run still Identity Lock PASS; body mass sells weight, not just tool teleport.
 
-## Tool mass pass
+## Tool mass / arm attachment
 
-Bumped pickaxe head from ~3×3 to ~5×4 chunky mass; thicker handle.
-Strike head parked in free cells (x=14–15 / y≤20) so boots lock does not clip it.
+Wide ~5×4 head floated metal away from the grip (arm read as detached).
+Reverted toward the impact-pass tool size (~4×3), kept socket into the handle,
+and painted continuous forearm/hand bridges torso→grip on every Frame.
 Still Identity Lock PASS.
