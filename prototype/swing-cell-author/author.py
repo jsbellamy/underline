@@ -182,32 +182,22 @@ def _head_blob(cx: int, cy: int) -> list[tuple[int, int, Cell]]:
     ]
 
 
-def _rear_torso_fill() -> list[tuple[int, int, Cell]]:
-    """Rebuild left/rear silhouette after tool erase / forward lean.
-
-    Uses tunic/outline only — never glove colors — so the gripping hand is not
-    visually confused with the back mass.
-    """
-    cells: list[tuple[int, int, Cell]] = []
-    for y, colors in (
-        (8, (OUTLINE, TUNIC_DARK, TUNIC)),
-        (9, (OUTLINE, TUNIC, TUNIC_MID)),
-        (10, (TUNIC_DARK, TUNIC, TUNIC_MID)),
-        (11, (TUNIC_DARK, TUNIC, TUNIC)),
-        (12, (OUTLINE, TUNIC_DARK, TUNIC_MID)),
-        (13, (TUNIC_DARK, TUNIC, TUNIC)),
-        (14, (OUTLINE, TUNIC_DARK, TUNIC)),
-    ):
-        for i, color in enumerate(colors):
-            cells.append((1 + i, y, color))
-    cells.extend(
-        [
-            (0, 10, OUTLINE),
-            (0, 11, TUNIC_DARK),
-            (0, 12, OUTLINE),
-        ]
-    )
-    return cells
+def _thin_back_edge() -> list[tuple[int, int, Cell]]:
+    """One-column rear silhouette — not a parked arm."""
+    return [
+        (1, 8, OUTLINE),
+        (1, 9, TUNIC_DARK),
+        (1, 10, TUNIC),
+        (1, 11, TUNIC_MID),
+        (1, 12, TUNIC),
+        (1, 13, TUNIC_DARK),
+        (1, 14, OUTLINE),
+        (0, 11, OUTLINE),
+        (2, 11, TUNIC_DARK),
+        (2, 12, TUNIC),
+        (2, 13, TUNIC_DARK),
+        (2, 14, TUNIC),
+    ]
 
 
 def _fill_vacated_after_forward_lean() -> list[tuple[int, int, Cell]]:
@@ -220,21 +210,50 @@ def _fill_vacated_after_forward_lean() -> list[tuple[int, int, Cell]]:
     return cells
 
 
+def clear_cells(
+    frame: list[list[Cell]],
+    coords: Iterable[tuple[int, int]],
+    *,
+    helmet_off: tuple[int, int],
+    belt_off: tuple[int, int],
+) -> None:
+    for x, y in coords:
+        set_cell(frame, x, y, None, helmet_off=helmet_off, belt_off=belt_off)
+
+
+def clear_parked_rear_arm(
+    frame: list[list[Cell]],
+    *,
+    helmet_off: tuple[int, int],
+    belt_off: tuple[int, int],
+) -> None:
+    """Remove the idle left arm mass so it cannot read as a static limb."""
+    coords = [
+        (x, y)
+        for y in range(7, 15)
+        for x in range(0, 4)
+    ]
+    clear_cells(frame, coords, helmet_off=helmet_off, belt_off=belt_off)
+
+
 def _lean_mass(direction: str) -> list[tuple[int, int, Cell]]:
     cells: list[tuple[int, int, Cell]] = []
     if direction == "back":
-        cells.extend(_rear_torso_fill())
-        cells.extend(
-            [
-                (1, 12, OUTLINE),
-                (1, 13, TUNIC_DARK),
-                (2, 14, TUNIC),
-                (3, 14, TUNIC_MID),
-            ]
-        )
+        # thick rear coil — arm IS on this side this frame
+        for y, colors in (
+            (8, (OUTLINE, TUNIC_DARK, TUNIC)),
+            (9, (OUTLINE, TUNIC, TUNIC_MID)),
+            (10, (TUNIC_DARK, TUNIC, TUNIC_MID)),
+            (11, (TUNIC_DARK, TUNIC, TUNIC)),
+            (12, (OUTLINE, TUNIC_DARK, TUNIC_MID)),
+            (13, (TUNIC_DARK, TUNIC, TUNIC)),
+            (14, (OUTLINE, TUNIC_DARK, TUNIC)),
+        ):
+            for i, color in enumerate(colors):
+                cells.append((1 + i, y, color))
+        cells.extend([(0, 11, OUTLINE), (0, 12, TUNIC_DARK)])
     elif direction == "forward":
-        # still keep a thin rear edge so the back does not tear open
-        cells.extend(_rear_torso_fill())
+        cells.extend(_thin_back_edge())
         for y, color in (
             (11, TUNIC),
             (12, TUNIC_MID),
@@ -242,24 +261,15 @@ def _lean_mass(direction: str) -> list[tuple[int, int, Cell]]:
             (14, TUNIC_DARK),
         ):
             cells.extend([(13, y, color), (14, y, TUNIC_DARK)])
-        cells.extend(
-            [
-                (13, 11, BEARD_DARK),
-                (14, 11, BEARD),
-                (15, 12, OUTLINE),
-                (15, 13, TUNIC_DARK),
-            ]
-        )
+        cells.extend([(14, 11, BEARD), (15, 12, OUTLINE)])
     elif direction == "squash":
-        cells.extend(_rear_torso_fill())
+        cells.extend(_thin_back_edge())
         cells.extend(
             [
                 (13, 14, TUNIC_MID),
                 (14, 14, TUNIC),
                 (13, 19, TUNIC_DARK),
                 (14, 19, TUNIC),
-                (2, 14, TUNIC_DARK),
-                (3, 14, TUNIC),
                 (2, 19, TUNIC_DARK),
                 (3, 19, OUTLINE),
                 (13, 13, BEARD),
@@ -290,10 +300,10 @@ def _base(
 
 
 def author_swing_frames(idle: list[list[Cell]]) -> list[list[list[Cell]]]:
-    """Coil → whip → commit → strike with a *traveling* grip."""
+    """Coil → whip → commit → strike — whole arm moves with the axe."""
     frames: list[list[list[Cell]]] = []
 
-    # Frame 0 — coil: grip HIGH-BACK with the raised tool.
+    # Frame 0 — coil: arm + hand + axe all HIGH-BACK (left).
     h0, b0 = (-1, 0), (-1, 0)
     f0 = _base(idle, h0, b0)
     paint(
@@ -309,33 +319,36 @@ def author_swing_frames(idle: list[list[Cell]]) -> list[list[list[Cell]]]:
             (2, 4, HANDLE),
             (2, 5, HANDLE_MID),
             (3, 6, HANDLE),
-            # shoulder(rear) → elbow → hand on handle (all on the left)
-            (3, 11, TUNIC),
-            (2, 11, TUNIC_DARK),
-            (2, 10, GLOVE_LIT),
-            (3, 10, GLOVE),
-            (1, 10, OUTLINE),
-            (2, 9, GLOVE),
-            (3, 9, GLOVE_LIT),
-            (1, 9, OUTLINE),
+            # hand ON handle
+            (2, 7, GLOVE_LIT),
+            (3, 7, GLOVE),
             (2, 8, GLOVE),
             (3, 8, GLOVE_LIT),
             (1, 8, OUTLINE),
-            (3, 7, GLOVE),
-            (2, 7, HANDLE_MID),
+            (2, 9, GLOVE),
+            (3, 9, GLOVE_LIT),
+            # forearm / shoulder on the same side as the tool
+            (2, 10, TUNIC_DARK),
+            (3, 10, TUNIC),
+            (1, 10, OUTLINE),
+            (2, 11, TUNIC),
+            (3, 11, TUNIC_MID),
+            (1, 11, TUNIC_DARK),
         ],
         helmet_off=h0,
         belt_off=b0,
     )
     frames.append(f0)
 
-    # Frame 1 — whip: big glove cluster HIGH-RIGHT on the handle; span uses tunic.
+    # Frame 1 — whip: clear parked left arm; rebuild arm on the RIGHT with the axe.
     h1, b1 = (0, 0), (0, 0)
     f1 = _base(idle, h1, b1)
+    clear_parked_rear_arm(f1, helmet_off=h1, belt_off=b1)
     paint(
         f1,
         [
-            *_rear_torso_fill(),
+            *_thin_back_edge(),
+            # axe high-right
             *_head_blob(14, 4),
             (15, 3, HEAD_LIT),
             (15, 4, HEAD),
@@ -343,40 +356,42 @@ def author_swing_frames(idle: list[list[Cell]]) -> list[list[list[Cell]]]:
             (13, 4, HANDLE_MID),
             (13, 5, HANDLE),
             (13, 6, HANDLE_MID),
-            # GLOVES only at x>=13 while helmet lock owns x<=12 for y<=10
+            # HAND glued to axe/handle (x>=13 only above y=10)
+            (13, 6, GLOVE),
+            (14, 6, GLOVE_LIT),
             (13, 7, GLOVE_LIT),
-            (14, 6, GLOVE),
-            (14, 7, GLOVE_LIT),
+            (14, 7, GLOVE),
             (15, 7, GLOVE),
             (13, 8, GLOVE),
             (14, 8, GLOVE_LIT),
             (15, 8, OUTLINE),
-            (13, 9, GLOVE),
-            (14, 9, OUTLINE),
-            # sleeve span in tunic (below face lock / outside it)
-            (3, 11, TUNIC),
-            (4, 11, TUNIC_DARK),
-            (8, 11, TUNIC),
-            (9, 11, TUNIC_MID),
-            (10, 11, TUNIC_DARK),
+            # FOREARM on the right edge (moves with axe)
+            (13, 9, TUNIC),
+            (14, 9, TUNIC_DARK),
+            (13, 10, TUNIC_MID),
+            (14, 10, TUNIC),
+            # UPPER ARM from shoulder (below face lock) out to the right limb
             (11, 11, TUNIC),
             (12, 11, TUNIC_MID),
-            (12, 12, TUNIC),
-            (11, 12, TUNIC_DARK),
-            (10, 12, TUNIC),
-            (7, 12, TUNIC_DARK),
-            (8, 12, TUNIC),
-            (13, 10, TUNIC),  # x=13 free beside helmet
-            (14, 10, TUNIC_DARK),
+            (13, 11, TUNIC),
+            (14, 11, TUNIC_DARK),
+            (10, 12, TUNIC_DARK),
+            (11, 12, TUNIC),
+            (12, 12, TUNIC_MID),
+            (13, 12, TUNIC),
+            (9, 12, OUTLINE),
+            (10, 13, TUNIC),
+            (11, 13, TUNIC_DARK),
         ],
         helmet_off=h1,
         belt_off=b1,
     )
     frames.append(f1)
 
-    # Frame 2 — commit: gloves locked to the forward tool head.
+    # Frame 2 — commit: arm stretched forward-down; hand on axe head.
     h2, b2 = (1, 0), (1, 0)
     f2 = _base(idle, h2, b2)
+    clear_parked_rear_arm(f2, helmet_off=h2, belt_off=b2)
     paint(
         f2,
         [
@@ -388,34 +403,35 @@ def author_swing_frames(idle: list[list[Cell]]) -> list[list[list[Cell]]]:
             (15, 14, HEAD_DARK),
             (13, 12, HANDLE_MID),
             (13, 13, HANDLE),
-            (12, 13, HANDLE_MID),
-            # traveling hand = only these forward gloves
+            # HAND on the axe (no gap)
+            (12, 12, GLOVE),
             (13, 14, GLOVE_LIT),
             (14, 14, GLOVE),
+            (12, 13, GLOVE_LIT),
             (12, 14, GLOVE),
-            (14, 13, GLOVE_LIT),
-            (13, 11, GLOVE),
-            (12, 12, GLOVE),
-            # sleeve in tunic from rear fill toward grip
-            (3, 11, TUNIC),
-            (4, 12, TUNIC_DARK),
-            (8, 12, TUNIC),
-            (9, 12, TUNIC_MID),
-            (10, 12, TUNIC_DARK),
-            (11, 12, TUNIC),
-            (11, 13, TUNIC_MID),
-            (10, 13, TUNIC_DARK),
-            (9, 13, TUNIC),
-            (14, 11, BEARD),
+            (14, 12, GLOVE),
+            # ARM mass with the tool on the right
+            (11, 11, TUNIC),
+            (12, 11, TUNIC_MID),
+            (13, 11, TUNIC),
+            (11, 12, TUNIC_DARK),
+            (11, 13, TUNIC),
+            (10, 12, TUNIC),
+            (10, 13, TUNIC_MID),
+            (9, 13, TUNIC_DARK),
+            (9, 14, TUNIC),
+            (10, 14, TUNIC_DARK),
+            (11, 14, TUNIC),
         ],
         helmet_off=h2,
         belt_off=b2,
     )
     frames.append(f2)
 
-    # Frame 3 — strike: gloves at the low-forward brace on the handle.
+    # Frame 3 — strike: arm and hand follow the tip to the ground.
     h3, b3 = (1, 1), (1, 1)
     f3 = _base(idle, h3, b3)
+    clear_parked_rear_arm(f3, helmet_off=h3, belt_off=b3)
     paint(
         f3,
         [
@@ -426,30 +442,30 @@ def author_swing_frames(idle: list[list[Cell]]) -> list[list[list[Cell]]]:
             (15, 21, HEAD_DARK),
             (15, 22, OUTLINE),
             (15, 23, OUTLINE),
-            (14, 20, HEAD),
-            (14, 19, HEAD_DARK),
+            (14, 19, HEAD),
+            (14, 20, HEAD_DARK),
             (13, 19, HANDLE_MID),
-            (14, 18, HANDLE_MID),
-            (14, 17, HANDLE),
-            (14, 16, HANDLE_MID),
-            (14, 15, HANDLE),
-            # hand at strike
+            (14, 18, HANDLE),
+            (14, 17, HANDLE_MID),
+            (14, 16, HANDLE),
+            (14, 15, HANDLE_MID),
+            # HAND on the low handle / strike brace
             (13, 14, GLOVE_LIT),
             (14, 14, GLOVE),
             (12, 14, GLOVE),
-            (13, 20, GLOVE),  # near tip brace; skipped if boots lock
+            (13, 15, GLOVE),
+            (12, 15, GLOVE_LIT),
             (14, 14, GLOVE_LIT),
-            (12, 15, OUTLINE),
-            # sleeve tunic only
-            (3, 11, TUNIC),
-            (3, 12, TUNIC_DARK),
-            (8, 12, TUNIC),
-            (9, 13, TUNIC_MID),
-            (10, 13, TUNIC),
+            # ARM driven down-forward with the strike
+            (11, 12, TUNIC),
+            (12, 12, TUNIC_MID),
             (11, 13, TUNIC_DARK),
-            (11, 14, TUNIC),
+            (12, 13, TUNIC),
+            (10, 13, TUNIC),
             (10, 14, TUNIC_MID),
-            (2, 20, OUTLINE),
+            (11, 14, TUNIC),
+            (9, 13, OUTLINE),
+            (9, 14, TUNIC_DARK),
             (13, 20, HANDLE),
         ],
         helmet_off=h3,

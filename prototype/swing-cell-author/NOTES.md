@@ -76,3 +76,9 @@ Fix:
 - narrower idle-tool erase (keep body mass)
 
 Still Identity Lock PASS.
+
+## Whole-arm travel pass
+
+The mid-left green mass was still reading as a parked arm while the axe arced.
+Now f1–f3 clear that rear arm band, keep only a thin back edge, and rebuild the
+green limb + brown hand on the axe side every Frame (hand glued to handle).
