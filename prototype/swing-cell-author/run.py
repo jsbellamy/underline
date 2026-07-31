@@ -17,7 +17,13 @@ from pipeline.cell_raster import cells_from_rgba, write_cells
 from pipeline.identity_lock import evaluate_identity_lock, identity_lock_report_payload
 from pipeline.strip import Cell
 
-from author import LOCKS, author_swing_frames, frame_to_ascii, in_lock
+from author import (
+    LOCKS,
+    SWING_FRAME_MS,
+    author_swing_frames,
+    frame_to_ascii,
+    in_lock,
+)
 
 IDLE = REPO / "assets/first-room/dwarf/idle/polished/frame-0.png"
 REF_DIR = REPO / "assets/first-room/dwarf/swing/polished"
@@ -98,16 +104,29 @@ def occupancy(frame: list[list[Cell]]) -> float:
     return total / (16 * 24)
 
 
-def lock_paint_violations(
-    idle: list[list[Cell]], frame: list[list[Cell]]
-) -> list[dict[str, int]]:
-    bad: list[dict[str, int]] = []
-    for y in range(24):
-        for x in range(16):
-            if not in_lock(x, y):
-                continue
-            if frame[y][x] != idle[y][x]:
-                bad.append({"x": x, "y": y})
+def lock_destination_mismatches(
+    idle: list[list[Cell]],
+    frame: list[list[Cell]],
+    *,
+    helmet_off: tuple[int, int],
+    belt_off: tuple[int, int],
+) -> list[dict[str, int | str]]:
+    """Compare each lock's destination Cells to the idle source rectangle."""
+    bad: list[dict[str, int | str]] = []
+    specs = [
+        ("helmet_face", 5, 12, 1, 10, helmet_off),
+        ("belt_core", 4, 12, 15, 18, belt_off),
+        ("boots", 3, 14, 21, 23, (0, 0)),
+    ]
+    for name, x0, x1, y0, y1, (dx, dy) in specs:
+        for y in range(y0, y1 + 1):
+            for x in range(x0, x1 + 1):
+                nx, ny = x + dx, y + dy
+                if not (0 <= nx < 16 and 0 <= ny < 24):
+                    bad.append({"lock": name, "x": x, "y": y})
+                    continue
+                if frame[ny][nx] != idle[y][x]:
+                    bad.append({"lock": name, "x": nx, "y": ny})
     return bad
 
 
@@ -123,10 +142,14 @@ def main() -> int:
     ascii_blocks = []
     violations = []
 
+    planned_offsets = [((-1, 0), (-1, 0)), ((0, 0), (0, 0)), ((1, 0), (1, 0)), ((1, 1), (1, 1))]
     for i, frame in enumerate(authored):
         write_cells(native_dir / f"frame-{i}.png", frame)
         ascii_blocks.append(f"--- authored frame {i} ---\n{frame_to_ascii(frame)}")
-        v = lock_paint_violations(idle, frame)
+        h_off, b_off = planned_offsets[i]
+        v = lock_destination_mismatches(
+            idle, frame, helmet_off=h_off, belt_off=b_off
+        )
         violations.append({"frame": i, "count": len(v), "cells": v[:20]})
         overlay_imgs.append(
             enlarge(frame, draw_grid=True, draw_locks=True, label=f"authored f{i}")
@@ -152,16 +175,24 @@ def main() -> int:
         enlarge(f, draw_grid=False, draw_locks=False, label=f"f{i}").convert("P")
         for i, f in enumerate(authored)
     ]
+    # One-shot swing timing from art direction — not an even loop.
     gif_frames[0].save(
         OUT / "authored-swing.gif",
         save_all=True,
         append_images=gif_frames[1:],
-        duration=180,
+        duration=list(SWING_FRAME_MS),
         loop=0,
     )
 
     lock = evaluate_identity_lock(authored, "swing")
     lock_payload = identity_lock_report_payload(lock)
+    offsets = [
+        {
+            "frame": i,
+            "selected_offsets": fr.selected_offsets,
+        }
+        for i, fr in enumerate(lock.per_frame)
+    ]
 
     scoreboard = {
         "prototype": "swing-cell-author",
@@ -170,8 +201,16 @@ def main() -> int:
             "frame-0 while preserving Identity Lock, without image gen?"
         ),
         "idle_source": str(IDLE.relative_to(REPO)),
+        "impact_model": {
+            "f0": "coil back (helmet/belt dx=-1), tool high",
+            "f1": "whip at head height, long leverage",
+            "f2": "commit forward (helmet/belt dx=+1)",
+            "f3": "strike squash (helmet/belt +1,+1), tip ahead of boots",
+            "timing_ms": list(SWING_FRAME_MS),
+        },
         "identity_lock_outcome": lock.outcome,
         "identity_lock": lock_payload,
+        "selected_lock_offsets": offsets,
         "lock_region_mutations": violations,
         "occupancy": [round(occupancy(f), 4) for f in authored],
         "ascii": ascii_blocks,
@@ -196,6 +235,8 @@ def main() -> int:
     print(f"identity_lock: {lock.outcome}")
     if lock.first_failure is not None:
         print(f"first_failure: {json.dumps(lock.first_failure)}")
+    print(f"timing_ms: {list(SWING_FRAME_MS)}")
+    print(f"selected_lock_offsets: {json.dumps(offsets)}")
     print(f"lock_region_mutations: {[v['count'] for v in violations]}")
     print(f"occupancy: {scoreboard['occupancy']}")
     print(f"wrote {OUT}")
