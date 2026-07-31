@@ -64,9 +64,15 @@ permitted Identity Lock offsets + art-direction timing:
 
 Re-run still Identity Lock PASS; body mass sells weight, not just tool teleport.
 
-## Tool mass / arm attachment
+## Grip travel / rear fill pass
 
-Wide ~5×4 head floated metal away from the grip (arm read as detached).
-Reverted toward the impact-pass tool size (~4×3), kept socket into the handle,
-and painted continuous forearm/hand bridges torso→grip on every Frame.
+Diagnosis: grip stayed mid-torso while the head arced; idle-tool erase left
+rear holes on f1–f3.
+
+Fix:
+- traveling glove cluster: f0 rear → f1 high-right (x>=13) → f2/f3 forward-low
+- sleeve span uses tunic (not glove) so the hand is unambiguous
+- rear torso refill + vacated x=5 column fill after forward lean
+- narrower idle-tool erase (keep body mass)
+
 Still Identity Lock PASS.
