@@ -50,3 +50,16 @@ mode (e.g. `generation_mode: cell-author`) that:
 **PASS** — Cell hand-author from idle polished 16×24 is feasible: Identity Lock
 PASS with zero lock-region mutations, readable swing arc/contact, no image gen.
 Worth a follow-up respec if we want this to replace Cursor Image Gen for #127.
+## Impact pass (follow-up)
+
+First draft only relocated the pickaxe (read as a pivot). Impact model now uses
+permitted Identity Lock offsets + art-direction timing:
+
+| Frame | Body | Tool | ms |
+|-------|------|------|----|
+| 0 | coil back helmet/belt `dx=-1` | high wind-up | 150 |
+| 1 | neutral | long head-height whip | 80 |
+| 2 | commit forward `dx=+1` | crossing down | 60 |
+| 3 | squash `(+1,+1)` | tip ahead of planted boots | 180 |
+
+Re-run still Identity Lock PASS; body mass sells weight, not just tool teleport.
