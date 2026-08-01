@@ -69,3 +69,73 @@ jobs:
           name: isolation-report
           path: ${{ runner.temp }}/isolation-report.json
           if-no-files-found: warn
+
+  external-acceptance:
+    # Every acceptance verdict used to be produced by the pipeline code on the
+    # same branch being judged, so a PR that changes pipeline/ changed its own
+    # evaluator and nothing noticed (issue #232). This job recomputes each
+    # bundle's verdict with main's pipeline and fails when it disagrees with
+    # the candidate branch's own verdict, unless the PR carries the
+    # evaluator-change label. It needs PR context (merge ref, labels), so it
+    # only runs for pull_request events.
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the candidate (PR merge ref)
+        uses: actions/checkout@v4
+        with:
+          path: candidate
+
+      - name: Check out the evaluator (main) -- a branch cannot select its own judge
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          path: evaluator
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+          cache-dependency-path: evaluator/requirements.txt
+
+      - name: Install Python dependencies
+        run: pip install -r evaluator/requirements.txt
+
+      - name: Compare main's verdict against the candidate's own, per bundle
+        run: >-
+          PYTHONPATH=candidate python3 candidate/scripts/external_acceptance.py
+          --candidate-assets candidate/assets
+          --evaluator-root evaluator
+          --candidate-root candidate
+          --report "$RUNNER_TEMP/external-acceptance-report.json"
+          ${{ contains(github.event.pull_request.labels.*.name, 'evaluator-change') && '--evaluator-change' || '' }}
+
+      - name: Upload external-acceptance report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: external-acceptance-report
+          path: ${{ runner.temp }}/external-acceptance-report.json
+          if-no-files-found: warn
+
+      # C5: an asset change can edit a checked-in characterization test to
+      # accommodate itself; that edited test never runs here, because this
+      # step runs main's tests/ against the candidate's assets/ and
+      # gate-controls/ trees. continue-on-error mirrors C3's label policy: a
+      # legitimate evaluator change is allowed to fail this step, but only
+      # with the label, and only as a visible annotation.
+      - name: Run main's test suite against the candidate's assets and gate-controls trees
+        id: evaluator-suite
+        continue-on-error: ${{ contains(github.event.pull_request.labels.*.name, 'evaluator-change') }}
+        run: |
+          set -e
+          rm -rf evaluator/assets evaluator/gate-controls
+          cp -r candidate/assets evaluator/assets
+          cp -r candidate/gate-controls evaluator/gate-controls
+          cd evaluator
+          PYTHONPATH=. python3 -m pytest -q --durations=25
+
+      - name: Annotate a suppressed evaluator-suite failure
+        if: steps.evaluator-suite.outcome == 'failure'
+        run: |
+          echo "::notice::main's test suite failed against the candidate's assets and gate-controls trees, but the evaluator-change label suppresses it (C5, same policy as C3)."
