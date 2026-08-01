@@ -96,3 +96,26 @@ pinned_agent_allows_bare_slug() {
 
   is_pinned_subagent "$subagent_type" && pinned_agent_frontmatter_standard "$subagent_type" "$workspace_root"
 }
+
+# Bare composer-2.5 is Cursor's ambiguous slug; callers usually mean standard mode.
+is_bare_composer_25_slug() {
+  case "$1" in
+    composer-2.5 | composer-2.5[])
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+is_explicit_composer_25_fast() {
+  case "$1" in
+    *composer-2.5-fast* | composer-2.5-fast | *"[fast=true]"* | *fast=true*)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}

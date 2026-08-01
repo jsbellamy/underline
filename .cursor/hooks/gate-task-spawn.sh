@@ -49,11 +49,17 @@ if is_pinned_subagent "$subagent_type"; then
 fi
 
 if [[ -n "$inline_model" ]]; then
+  if is_explicit_composer_25_fast "$inline_model"; then
+    deny_task "Inline Task model was ${inline_model}."
+  fi
+
+  if is_bare_composer_25_slug "$inline_model"; then
+    allow_task_with_model "$COMPOSER_25_STANDARD_MODEL" \
+      "Rewrote bare inline Task model ${inline_model} to ${COMPOSER_25_STANDARD_MODEL}."
+  fi
+
   inline_mode=$(composer_25_mode "$inline_model" "[]")
   case "$inline_mode" in
-    fast)
-      deny_task "Inline Task model was ${inline_model}."
-      ;;
     standard)
       echo '{"permission":"allow"}'
       exit 0
