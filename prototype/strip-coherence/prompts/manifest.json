@@ -45,9 +45,9 @@
       "id": "06-miner-swing",
       "class": "one-shot",
       "motion_class": "swing",
-      "contract_expect": "PASS",
-      "contract_expect_gates": [],
-      "why": "non-looping action; adjacent motion should stay sane while loop closure blows out"
+      "contract_expect": "REVIEW",
+      "contract_expect_gates": ["static_silhouette_pass"],
+      "why": "non-looping action; adjacent motion should stay sane while loop closure blows out; corpus static_silhouette exceeds production reference budget (issue #173)"
     },
     {
       "id": "07-NEG-palette-drift",
@@ -157,17 +157,17 @@
       "id": "20-axe-swing",
       "class": "one-shot",
       "motion_class": "swing",
-      "contract_expect": "PASS",
-      "contract_expect_gates": [],
-      "why": "second swing sample"
+      "contract_expect": "REVIEW",
+      "contract_expect_gates": ["static_silhouette_pass"],
+      "why": "second swing sample; corpus static_silhouette exceeds production reference budget (issue #173)"
     },
     {
       "id": "21-hammer-swing",
       "class": "one-shot",
       "motion_class": "swing",
-      "contract_expect": "PASS",
-      "contract_expect_gates": [],
-      "why": "third swing sample"
+      "contract_expect": "REVIEW",
+      "contract_expect_gates": ["static_silhouette_pass"],
+      "why": "third swing sample; corpus static_silhouette exceeds production reference budget (issue #173)"
     },
     {
       "id": "22-NEG-airborne-identity",

@@ -276,7 +276,9 @@
         },
         "static_silhouette_pass": {
           "status": "UNSEPARATED",
-          "budget": 0.86
+          "budget": 0.86,
+          "evidence_attempt": "assets/first-room/dwarf/swing/polished",
+          "rationale": "alpha-only adjacent stillness ceiling; reference polished worst-pair 0.86 at budget boundary; cell-authored prototype worst-pair 0.92 yields REVIEW"
         }
       }
     }

@@ -129,6 +129,12 @@ def test_cell_authored_swing_prototype_yields_review() -> None:
         DWARF / "swing" / "provider" / "source.png",
         S.provider_probe_layout(layout),
     )
+    pairs = [
+        S.static_silhouette_pair_fraction(provider[i], provider[i + 1])
+        for i in range(len(provider) - 1)
+    ]
+    assert pairs == pytest.approx((0.8227, 0.8968, 0.9244), abs=TOLERANCE)
+    assert round(max(pairs), 2) == 0.92
     result = S.coherence_split(provider, motion_class="swing")
     gate = result["gate_outcomes"]["static_silhouette_pass"]
     assert gate["outcome"] == "REVIEW"
