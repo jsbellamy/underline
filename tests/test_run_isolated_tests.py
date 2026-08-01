@@ -8,6 +8,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from scripts.run_isolated_tests import STALE_HINT_RATIO
+
 ROOT = Path(__file__).resolve().parents[1]
 RUNNER = ROOT / "scripts" / "run_isolated_tests.py"
 
@@ -94,6 +96,65 @@ def test_report_records_per_file_duration_and_total_wall_time(tmp_path: Path) ->
     assert report["wall_s"] + rounding_tolerance_s >= sum(
         row["duration_s"] for row in rows
     )
+
+
+def test_hint_accuracy_is_reported_without_affecting_outcome_or_schedule(
+    tmp_path: Path,
+) -> None:
+    files = _probe_files(tmp_path, ["test_timed_0.py", "test_timed_1.py"])
+    durations = tmp_path / "durations.json"
+    # test_timed_0.py's hint is deliberately too low (stale); test_timed_1.py's
+    # hint comfortably covers a fast probe, so it never reads as stale.
+    durations.write_text(
+        json.dumps({"test_timed_0.py": 0.001, "test_timed_1.py": 10.0}),
+        encoding="utf-8",
+    )
+
+    result, report = _run_isolation(
+        tmp_path,
+        files,
+        workers=1,
+        extra_args=["--durations", str(durations)],
+    )
+
+    # C2: reporting only -- the schedule still follows the hints themselves
+    # (largest recorded hint dispatched first), the outcome is unaffected, and
+    # the process still exits 0.
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert report["schedule"] == ["test_timed_1.py", "test_timed_0.py"]
+    assert report["outcome"] == "PASS"
+
+    by_name = {Path(row["path"]).name: row for row in report["files"]}
+    stale_row = by_name["test_timed_0.py"]
+    accurate_row = by_name["test_timed_1.py"]
+    assert stale_row["hint_s"] == 0.001
+    assert stale_row["hint_ratio"] > STALE_HINT_RATIO
+    assert accurate_row["hint_s"] == 10.0
+    assert accurate_row["hint_ratio"] < 1.0
+
+    # C3: only the file whose measured duration exceeds 2x its hint is named.
+    assert report["stale_hint_files"] == ["test_timed_0.py"]
+    assert report["worst_case_hint_ratio"] == stale_row["hint_ratio"]
+
+
+def test_accurate_hints_report_no_stale_files(tmp_path: Path) -> None:
+    files = _probe_files(tmp_path, ["test_a.py", "test_b.py"])
+    durations = tmp_path / "durations.json"
+    durations.write_text(
+        json.dumps({"test_a.py": 10.0, "test_b.py": 10.0}),
+        encoding="utf-8",
+    )
+
+    result, report = _run_isolation(
+        tmp_path,
+        files,
+        workers=1,
+        extra_args=["--durations", str(durations)],
+    )
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert report["stale_hint_files"] == []
+    assert all(row["hint_ratio"] < STALE_HINT_RATIO for row in report["files"])
 
 
 def test_worker_count_defaults_to_the_available_cpus_and_runs_files_concurrently(
