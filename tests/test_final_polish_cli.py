@@ -6,9 +6,8 @@ import argparse
 import hashlib
 import inspect
 import json
-import os
 import subprocess
-import sys
+from dataclasses import dataclass
 from pathlib import Path
 from unittest.mock import patch
 
@@ -56,16 +55,17 @@ def _corpus_layout() -> StripLayout:
     )
 
 
-def _run_module(args: list[str]) -> subprocess.CompletedProcess[str]:
-    env = os.environ.copy()
-    env["PYTHONPATH"] = str(ROOT)
-    return subprocess.run(
-        [sys.executable, "-m", "pipeline.final_polish_cli", *args],
-        cwd=ROOT,
-        env=env,
-        capture_output=True,
-        text=True,
-    )
+@dataclass
+class _CliResult:
+    returncode: int
+    stdout: str
+    stderr: str
+
+
+def _run_cli(capsys: pytest.CaptureFixture[str], args: list[str]) -> _CliResult:
+    returncode = main(args)
+    captured = capsys.readouterr()
+    return _CliResult(returncode=returncode, stdout=captured.out, stderr=captured.err)
 
 
 def _run_npm(args: list[str]) -> subprocess.CompletedProcess[str]:
@@ -276,26 +276,26 @@ def test_npm_entrypoint_runs_init_check_finalize(tmp_path: Path) -> None:
     assert list((bundle / "release").glob("*.png"))
 
 
-def test_init_creates_bundle_via_module_entrypoint(tmp_path: Path) -> None:
+def test_init_creates_bundle_via_module_entrypoint(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
-    result = _run_module(_init_cli_args(tmp_path, PASS_STRIP, "idle", bundle))
+    result = _run_cli(capsys, _init_cli_args(tmp_path, PASS_STRIP, "idle", bundle))
     assert result.returncode == 0, result.stderr
     assert (bundle / "manifest.json").is_file()
     assert (bundle / "polished" / "frame-0.png").is_file()
 
 
-def test_init_fail_strip_exit_1(tmp_path: Path) -> None:
+def test_init_fail_strip_exit_1(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
-    result = _run_module(_init_cli_args(tmp_path, FAIL_STRIP, "idle", bundle))
+    result = _run_cli(capsys, _init_cli_args(tmp_path, FAIL_STRIP, "idle", bundle))
     assert result.returncode == 1
     assert not bundle.exists()
     assert "FAIL" in result.stdout
     assert "palette_drift_pass" in result.stdout or "silhouette" in result.stdout
 
 
-def test_init_fail_strip_json_exit_1(tmp_path: Path) -> None:
+def test_init_fail_strip_json_exit_1(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
-    result = _run_module(_init_cli_args(tmp_path, FAIL_STRIP, "idle", bundle, json_mode=True))
+    result = _run_cli(capsys, _init_cli_args(tmp_path, FAIL_STRIP, "idle", bundle, json_mode=True))
     assert result.returncode == 1
     assert not bundle.exists()
     data = json.loads(result.stdout)
@@ -305,9 +305,9 @@ def test_init_fail_strip_json_exit_1(tmp_path: Path) -> None:
     assert "gate_outcomes" in data
 
 
-def test_init_pass_json_exit_0(tmp_path: Path) -> None:
+def test_init_pass_json_exit_0(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
-    result = _run_module(_init_cli_args(tmp_path, PASS_STRIP, "idle", bundle, json_mode=True))
+    result = _run_cli(capsys, _init_cli_args(tmp_path, PASS_STRIP, "idle", bundle, json_mode=True))
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
     assert data["outcome"] == "PASS"
@@ -315,9 +315,9 @@ def test_init_pass_json_exit_0(tmp_path: Path) -> None:
     assert "structural" in data
 
 
-def test_init_with_profile_binds_profile_in_json_result(tmp_path: Path) -> None:
+def test_init_with_profile_binds_profile_in_json_result(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
-    result = _run_module(
+    result = _run_cli(capsys,
         _init_cli_args(
             tmp_path,
             PASS_STRIP,
@@ -344,12 +344,13 @@ def test_init_with_profile_binds_profile_in_json_result(tmp_path: Path) -> None:
 )
 def test_init_with_production_profile_binds_profile_in_json_result(
     tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
     profile_id: str,
     strip: Path,
     motion_class: str,
 ) -> None:
     bundle = tmp_path / "bundle"
-    result = _run_module(
+    result = _run_cli(capsys,
         _init_cli_args(
             tmp_path,
             strip,
@@ -376,6 +377,7 @@ def test_init_with_production_profile_binds_profile_in_json_result(
 )
 def test_brief_json_selects_production_profile_motion_questions(
     tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
     profile_id: str,
     strip: Path,
     motion_class: str,
@@ -397,7 +399,7 @@ def test_brief_json_selects_production_profile_motion_questions(
     )
     before = _bundle_fingerprint(bundle)
 
-    result = _run_module(["brief", str(bundle), "--json"])
+    result = _run_cli(capsys, ["brief", str(bundle), "--json"])
 
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
@@ -407,9 +409,9 @@ def test_brief_json_selects_production_profile_motion_questions(
     assert _bundle_fingerprint(bundle) == before
 
 
-def test_init_unknown_profile_exit_2_without_partial_bundle(tmp_path: Path) -> None:
+def test_init_unknown_profile_exit_2_without_partial_bundle(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
-    result = _run_module(
+    result = _run_cli(capsys,
         _init_cli_args(
             tmp_path,
             PASS_STRIP,
@@ -468,12 +470,12 @@ def test_init_review_strip_exit_3(tmp_path: Path, capsys) -> None:
     assert "REVIEW" in capsys.readouterr().out
 
 
-def test_init_invalid_provider_exit_2(tmp_path: Path) -> None:
+def test_init_invalid_provider_exit_2(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
     missing = tmp_path / "missing.png"
     provenance_path = tmp_path / "missing.source.json"
     _write_animation_provenance(PASS_STRIP, provenance_path, motion_class="idle")
-    result = _run_module(
+    result = _run_cli(capsys,
         [
             "init",
             str(missing),
@@ -490,34 +492,34 @@ def test_init_invalid_provider_exit_2(tmp_path: Path) -> None:
     assert not result.stdout.strip()
 
 
-def test_init_unknown_motion_class_exit_2(tmp_path: Path) -> None:
+def test_init_unknown_motion_class_exit_2(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
-    result = _run_module(_init_cli_args(tmp_path, PASS_STRIP, "nonsense", bundle))
+    result = _run_cli(capsys, _init_cli_args(tmp_path, PASS_STRIP, "nonsense", bundle))
     assert result.returncode == 2
     assert "unknown motion_class" in result.stderr
 
 
-def test_init_existing_bundle_exit_2(tmp_path: Path) -> None:
+def test_init_existing_bundle_exit_2(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
     bundle.mkdir()
-    result = _run_module(_init_cli_args(tmp_path, PASS_STRIP, "idle", bundle))
+    result = _run_cli(capsys, _init_cli_args(tmp_path, PASS_STRIP, "idle", bundle))
     assert result.returncode == 2
     assert "already exists" in result.stderr
 
 
-def test_check_pass_exit_0(tmp_path: Path) -> None:
+def test_check_pass_exit_0(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
-    result = _run_module(["check", str(bundle)])
+    result = _run_cli(capsys, ["check", str(bundle)])
     assert result.returncode == 0, result.stderr
     assert "Overall  PASS" in result.stdout
 
 
-def test_brief_json_is_read_only_and_selects_walk_questions(tmp_path: Path) -> None:
+def test_brief_json_is_read_only_and_selects_walk_questions(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
     _library_init_bundle(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="miner")
     before = _bundle_fingerprint(bundle)
 
-    result = _run_module(["brief", str(bundle), "--json"])
+    result = _run_cli(capsys, ["brief", str(bundle), "--json"])
 
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
@@ -534,11 +536,11 @@ def test_brief_json_is_read_only_and_selects_walk_questions(tmp_path: Path) -> N
     assert _bundle_fingerprint(bundle) == before
 
 
-def test_brief_human_output_is_actionable(tmp_path: Path) -> None:
+def test_brief_human_output_is_actionable(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
     _library_init_bundle(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="miner")
 
-    result = _run_module(["brief", str(bundle)])
+    result = _run_cli(capsys, ["brief", str(bundle)])
 
     assert result.returncode == 0, result.stderr
     assert "Profile   miner" in result.stdout
@@ -549,19 +551,19 @@ def test_brief_human_output_is_actionable(tmp_path: Path) -> None:
     assert "Audit workflow" in result.stdout
 
 
-def test_brief_requires_a_profiled_bundle(tmp_path: Path) -> None:
+def test_brief_requires_a_profiled_bundle(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
 
-    result = _run_module(["brief", str(bundle), "--json"])
+    result = _run_cli(capsys, ["brief", str(bundle), "--json"])
 
     assert result.returncode == 2
     assert "--polish-profile" in result.stderr
     assert not result.stdout
 
 
-def test_check_json_includes_silhouette_artifacts(tmp_path: Path) -> None:
+def test_check_json_includes_silhouette_artifacts(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
-    result = _run_module(["check", str(bundle), "--json"])
+    result = _run_cli(capsys, ["check", str(bundle), "--json"])
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
     assert data["silhouette_artifacts"]["strip"]["relative_path"] == "reports/silhouette-strip.png"
@@ -572,24 +574,24 @@ def test_check_json_includes_silhouette_artifacts(tmp_path: Path) -> None:
     assert data["silhouette_artifacts"]["gif"]["sha256"] == sha256_file(gif_path)
 
 
-def test_check_fail_exit_1(tmp_path: Path) -> None:
+def test_check_fail_exit_1(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
     polished = bundle / "polished" / "frame-0.png"
     x, y = _first_opaque_xy(polished)
     _set_opaque_rgb(polished, x, y, (3, 99, 200))
 
-    result = _run_module(["check", str(bundle)])
+    result = _run_cli(capsys, ["check", str(bundle)])
     assert result.returncode == 1
     assert "FAIL" in result.stdout
 
 
-def test_check_fail_json_exit_1(tmp_path: Path) -> None:
+def test_check_fail_json_exit_1(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
     polished = bundle / "polished" / "frame-0.png"
     x, y = _first_opaque_xy(polished)
     _set_opaque_rgb(polished, x, y, (3, 99, 200))
 
-    result = _run_module(["check", str(bundle), "--json"])
+    result = _run_cli(capsys, ["check", str(bundle), "--json"])
     assert result.returncode == 1
     data = json.loads(result.stdout)
     assert data["outcome"] == "FAIL"
@@ -663,27 +665,27 @@ def test_check_review_json_exit_3(tmp_path: Path, capsys) -> None:
     assert data["outcome"] == "REVIEW"
 
 
-def test_check_invalid_bundle_exit_2(tmp_path: Path) -> None:
+def test_check_invalid_bundle_exit_2(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
     (bundle / "manifest.json").unlink()
-    result = _run_module(["check", str(bundle)])
+    result = _run_cli(capsys, ["check", str(bundle)])
     assert result.returncode == 2
     assert result.stderr.strip()
     assert not result.stdout.strip()
 
 
-def test_finalize_pass_exit_0_and_creates_release(tmp_path: Path) -> None:
+def test_finalize_pass_exit_0_and_creates_release(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
-    result = _run_module(["finalize", str(bundle)])
+    result = _run_cli(capsys, ["finalize", str(bundle)])
     assert result.returncode == 0, result.stderr
     assert "Report" in result.stdout
     assert "Release" in result.stdout
     assert (bundle / "release" / "frame-0.png").is_file()
 
 
-def test_finalize_pass_json_exit_0(tmp_path: Path) -> None:
+def test_finalize_pass_json_exit_0(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
-    result = _run_module(["finalize", str(bundle), "--json"])
+    result = _run_cli(capsys, ["finalize", str(bundle), "--json"])
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
     assert data["outcome"] == "PASS"
@@ -692,13 +694,13 @@ def test_finalize_pass_json_exit_0(tmp_path: Path) -> None:
     assert len(data["release_frames"]) == FRAME_COUNT
 
 
-def test_finalize_fail_json_exit_1(tmp_path: Path) -> None:
+def test_finalize_fail_json_exit_1(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
     polished = bundle / "polished" / "frame-1.png"
     x, y = _first_opaque_xy(polished)
     _set_opaque_rgb(polished, x, y, (250, 1, 2))
 
-    result = _run_module(["finalize", str(bundle), "--json"])
+    result = _run_cli(capsys, ["finalize", str(bundle), "--json"])
     assert result.returncode == 1
     data = json.loads(result.stdout)
     assert data["outcome"] == "FAIL"
@@ -749,13 +751,13 @@ def test_finalize_review_json_exit_3(tmp_path: Path, capsys) -> None:
     assert "release_frames" not in data
 
 
-def test_finalize_fail_exit_1_records_report_without_release(tmp_path: Path) -> None:
+def test_finalize_fail_exit_1_records_report_without_release(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
     polished = bundle / "polished" / "frame-1.png"
     x, y = _first_opaque_xy(polished)
     _set_opaque_rgb(polished, x, y, (250, 1, 2))
 
-    result = _run_module(["finalize", str(bundle)])
+    result = _run_cli(capsys, ["finalize", str(bundle)])
     assert result.returncode == 1
     assert "Report" in result.stdout
     assert "Release" not in result.stdout
@@ -778,10 +780,10 @@ def test_no_override_flags_in_parser() -> None:
     assert "override" not in flags
 
 
-def test_seed_cli_emits_json_and_is_deterministic_on_rerun(tmp_path: Path) -> None:
+def test_seed_cli_emits_json_and_is_deterministic_on_rerun(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     out_a = tmp_path / "seed-a.png"
     out_b = tmp_path / "seed-b.png"
-    result = _run_module(
+    result = _run_cli(capsys,
         [
             "seed",
             "--identity-declaration",
@@ -801,7 +803,7 @@ def test_seed_cli_emits_json_and_is_deterministic_on_rerun(tmp_path: Path) -> No
     assert data["sha256"] != data["generation_source_sha256"]
     assert data["identity_anchor_sha256"] == CANONICAL_IDENTITY_SHA
     assert out_a.read_bytes() != IDLE_SEED_STRIP.read_bytes()
-    rerun = _run_module(
+    rerun = _run_cli(capsys,
         [
             "seed",
             "--identity-declaration",
@@ -815,8 +817,8 @@ def test_seed_cli_emits_json_and_is_deterministic_on_rerun(tmp_path: Path) -> No
     assert out_a.read_bytes() == out_b.read_bytes()
 
 
-def test_seed_cli_rejects_release_identity_as_generation_source(tmp_path: Path) -> None:
-    result = _run_module(
+def test_seed_cli_rejects_release_identity_as_generation_source(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    result = _run_cli(capsys,
         [
             "seed",
             "--identity-declaration",
@@ -920,7 +922,7 @@ def test_dwarf_miner_profile_and_prompt_require_clipping_margin_guidance() -> No
     art = (ROOT / "docs" / "first-room-art-direction.md").read_text().lower()
     assert "provider_clipping" in art or "safe empty magenta inset" in art
 
-def test_v2_walk_check_json_binds_sequential_attempt_evidence(tmp_path: Path) -> None:
+def test_v2_walk_check_json_binds_sequential_attempt_evidence(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
     _library_init_bundle(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="dwarf-miner")
     manifest = json.loads((bundle / "manifest.json").read_text())
@@ -935,7 +937,7 @@ def test_v2_walk_check_json_binds_sequential_attempt_evidence(tmp_path: Path) ->
     assert selected[0]["prompt_sha256"] == provenance["prompt_sha256"]
     assert selected[0]["raw_sha256"] == provenance["raw_sha256"]
 
-    result = _run_module(["check", str(bundle), "--json"])
+    result = _run_cli(capsys, ["check", str(bundle), "--json"])
     assert result.returncode == 1, result.stderr
     data = json.loads(result.stdout)
     assert data["identity_lock"] is not None
@@ -957,9 +959,9 @@ def test_v2_walk_check_json_binds_sequential_attempt_evidence(tmp_path: Path) ->
     assert data["outcome"] == "FAIL"
 
 
-def test_human_report_includes_required_fields(tmp_path: Path) -> None:
+def test_human_report_includes_required_fields(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
-    result = _run_module(["check", str(bundle)])
+    result = _run_cli(capsys, ["check", str(bundle)])
     assert result.returncode == 0, result.stderr
     stdout = result.stdout
     assert "Bundle" in stdout
@@ -972,9 +974,9 @@ def test_human_report_includes_required_fields(tmp_path: Path) -> None:
     assert "Overall  PASS" in stdout
 
 
-def test_json_mode_emits_single_object_with_complete_payload(tmp_path: Path) -> None:
+def test_json_mode_emits_single_object_with_complete_payload(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
-    result = _run_module(["check", str(bundle), "--json"])
+    result = _run_cli(capsys, ["check", str(bundle), "--json"])
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
     assert data["outcome"] == "PASS"
@@ -989,33 +991,33 @@ def test_json_mode_emits_single_object_with_complete_payload(tmp_path: Path) -> 
     assert "gate_outcomes" in data
 
 
-def test_json_invalid_invocation_writes_stderr_only(tmp_path: Path) -> None:
-    result = _run_module(["check", str(tmp_path / "missing-bundle")])
+def test_json_invalid_invocation_writes_stderr_only(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    result = _run_cli(capsys, ["check", str(tmp_path / "missing-bundle")])
     assert result.returncode == 2
     assert result.stderr.strip()
     assert not result.stdout.strip()
 
 
-def test_check_is_read_only_human_and_json(tmp_path: Path) -> None:
+def test_check_is_read_only_human_and_json(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
     before = _bundle_fingerprint(bundle)
 
-    human = _run_module(["check", str(bundle)])
+    human = _run_cli(capsys, ["check", str(bundle)])
     assert human.returncode == 0, human.stderr
     assert _bundle_fingerprint(bundle) == before
 
-    json_result = _run_module(["check", str(bundle), "--json"])
+    json_result = _run_cli(capsys, ["check", str(bundle), "--json"])
     assert json_result.returncode == 0, json_result.stderr
     assert _bundle_fingerprint(bundle) == before
 
 
-def test_finalize_revalidates_and_lists_release_only_on_pass(tmp_path: Path) -> None:
+def test_finalize_revalidates_and_lists_release_only_on_pass(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
     polished = bundle / "polished" / "frame-0.png"
     x, y = _first_opaque_xy(polished)
     _set_opaque_rgb(polished, x, y, (250, 1, 2))
 
-    fail = _run_module(["finalize", str(bundle)])
+    fail = _run_cli(capsys, ["finalize", str(bundle)])
     assert fail.returncode == 1
     report_path = next((bundle / "reports").glob("*.json"))
     report = json.loads(report_path.read_text())
@@ -1026,7 +1028,7 @@ def test_finalize_revalidates_and_lists_release_only_on_pass(tmp_path: Path) -> 
     draft = bundle / "draft" / "frame-0.png"
     polished.write_bytes(draft.read_bytes())
 
-    pass_result = _run_module(["finalize", str(bundle)])
+    pass_result = _run_cli(capsys, ["finalize", str(bundle)])
     assert pass_result.returncode == 0, pass_result.stderr
     assert "Report" in pass_result.stdout
     release_paths = sorted((bundle / "release").glob("*.png"))
@@ -1036,7 +1038,7 @@ def test_finalize_revalidates_and_lists_release_only_on_pass(tmp_path: Path) -> 
         assert sha256_file(path) == sha256_file(polished_path)
 
 
-def test_direct_png_edit_accepted_without_editor(tmp_path: Path) -> None:
+def test_direct_png_edit_accepted_without_editor(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
     polished = bundle / "polished" / "frame-0.png"
     x, y = _first_opaque_xy(polished)
@@ -1056,7 +1058,7 @@ def test_direct_png_edit_accepted_without_editor(tmp_path: Path) -> None:
     palette_color = next(iter(draft_union))
     _set_opaque_rgb(polished, x, y, palette_color)
 
-    result = _run_module(["check", str(bundle)])
+    result = _run_cli(capsys, ["check", str(bundle)])
     assert result.returncode == 0, result.stderr
 
 
