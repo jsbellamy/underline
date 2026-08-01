@@ -23,7 +23,11 @@ from scripts.extract_anchors import (
     render,
     write_paths_from_anchors,
 )
-from scripts.select_changed_tests import Selection, select_test_files
+from scripts.select_changed_tests import (
+    Selection,
+    _ACQUISITION_CONTROL_COMPANION_TESTS,
+    select_test_files,
+)
 
 MODULE = '''"""A module docstring."""
 
@@ -174,20 +178,17 @@ def test_a_create_entry_is_kept_without_requiring_an_anchor() -> None:
     )
 
 
-_ACQUISITION_CONTROL_COMPANIONS = (
-    "tests/test_asset_acquire.py",
-    "tests/test_final_polish.py",
-    "tests/test_final_polish_cli.py",
-)
+_ACQUISITION_CONTROL_COMPANIONS = _ACQUISITION_CONTROL_COMPANION_TESTS
 
-_ISSUE_233_WRITE_PATHS = (
-    "acquisition-controls/legacy-bundles.json",
-    "pipeline/final_polish.py",
-    "pipeline/final_polish_cli.py",
-)
+_ISSUE_233_TOUCHES = """## Touches
+
+- modify: `pipeline/final_polish.py` :: `initialize_bundle` — C2 registration
+- modify: `pipeline/final_polish_cli.py` :: `_configure_parser` — summary output
+- create: `acquisition-controls/legacy-bundles.json` — C5 allowlist
+"""
 
 
-def test_write_paths_exclude_read_roles_and_dedupe_modify_paths() -> None:
+def test_a_manifest_write_set_excludes_read_paths_and_dedupes_modify_paths() -> None:
     anchors = parse_touches(
         "## Touches\n\n"
         "- modify: `pipeline/final_polish.py` :: `initialize_bundle` — init\n"
@@ -202,11 +203,11 @@ def test_write_paths_exclude_read_roles_and_dedupe_modify_paths() -> None:
     )
 
 
-def test_forecast_selected_lists_sorted_test_paths() -> None:
+def test_a_manifest_write_set_forecasts_selected_test_paths() -> None:
     anchors = parse_touches(
         "## Touches\n\n"
         "- modify: `scripts/extract_anchors.py` :: `render` — forecast\n"
-        "- modify: `tests/test_extract_anchors.py` :: `test_forecast_selected_lists_sorted_test_paths` — pin\n"
+        "- modify: `tests/test_extract_anchors.py` :: `test_a_manifest_write_set_forecasts_selected_test_paths` — pin\n"
     )
     existing = {
         "tests/test_extract_anchors.py",
@@ -223,7 +224,7 @@ def test_forecast_selected_lists_sorted_test_paths() -> None:
     assert selection.files == ("tests/test_extract_anchors.py",)
 
 
-def test_forecast_whole_suite_reports_the_selector_reason() -> None:
+def test_an_unknown_create_path_forecasts_whole_suite_with_the_selector_reason() -> None:
     anchors = parse_touches(
         "## Touches\n\n- create: `mystery/new-control.json` — unknown top-level file\n"
     )
@@ -245,7 +246,7 @@ def test_forecast_nothing_when_the_manifest_has_only_read_paths() -> None:
     assert selection == Selection(kind="nothing", reason="no changed files")
 
 
-def test_format_test_impact_selected_lists_sorted_paths() -> None:
+def test_the_selected_forecast_footer_lists_test_paths_in_sorted_order() -> None:
     output = format_test_impact(
         Selection(
             kind="selected",
@@ -260,7 +261,7 @@ def test_format_test_impact_selected_lists_sorted_paths() -> None:
     assert output.index("tests/test_a.py") < output.index("tests/test_b.py")
 
 
-def test_format_test_impact_whole_suite_includes_the_reason() -> None:
+def test_the_whole_suite_forecast_footer_includes_the_selector_reason() -> None:
     reason = (
         "mystery/new-control.json has no mapping rule, "
         "so the selection widens to the whole suite"
@@ -271,14 +272,14 @@ def test_format_test_impact_whole_suite_includes_the_reason() -> None:
     assert reason in output
 
 
-def test_format_test_impact_nothing_includes_the_reason() -> None:
+def test_the_nothing_forecast_footer_includes_the_selector_reason() -> None:
     output = format_test_impact(Selection(kind="nothing", reason="no changed files"))
 
     assert "--- planned test selection: nothing" in output
     assert "no changed files" in output
 
 
-def test_render_appends_a_read_only_test_impact_forecast() -> None:
+def test_the_anchor_output_appends_a_read_only_test_forecast() -> None:
     anchors = parse_touches(
         "## Touches\n\n"
         "- modify: `scripts/extract_anchors.py` :: `render` — forecast\n"
@@ -309,10 +310,12 @@ def test_a_create_path_participates_in_the_forecast_before_it_exists() -> None:
     assert selection.files == _ACQUISITION_CONTROL_COMPANIONS
 
 
-def test_issue_233_representative_write_set_selects_acquisition_companions() -> None:
-    selection = select_test_files(
-        list(_ISSUE_233_WRITE_PATHS),
-        existing_tests={
+def test_issue_233s_manifest_forecasts_acquisition_control_companions() -> None:
+    anchors = parse_touches(_ISSUE_233_TOUCHES)
+
+    selection = forecast_test_selection(
+        anchors,
+        {
             *_ACQUISITION_CONTROL_COMPANIONS,
             "tests/test_strip.py",
         },

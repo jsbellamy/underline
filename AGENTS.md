@@ -70,7 +70,9 @@ npm run --silent agents:anchors -- --issue <N>
 ```
 
 which prints each anchored function, constant, or doc section as numbered
-source. It also reports directory and binary entries that need their appropriate
+source, then appends a read-only `planned test selection` footer forecasting
+the local `test:changed` gate from the manifest's write paths (`modify:`,
+`create:`, `add:`, `delete:`). It also reports directory and binary entries that need their appropriate
 inspection tool. A named text anchor that does not resolve is a manifest defect:
 return it for repair instead of compensating with a whole-file read. A whole-file
 read of a module over ~800 lines is a deliberate choice that belongs in the PR
