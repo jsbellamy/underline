@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
@@ -64,27 +65,36 @@ def build_scoreboard() -> tuple[dict[str, object], dict[str, list]]:
 def write_artifacts(
     scoreboard: dict[str, object],
     rendered_by_variant: dict[str, list],
+    *,
+    out_dir: Path,
 ) -> None:
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    out_dir.mkdir(parents=True, exist_ok=True)
 
-    scoreboard_path = OUT_DIR / "scoreboard.json"
+    scoreboard_path = out_dir / "scoreboard.json"
     scoreboard_path.write_text(
         json.dumps(scoreboard, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
 
     for variant, rendered in rendered_by_variant.items():
-        variant_dir = OUT_DIR / "variants" / variant
+        variant_dir = out_dir / "variants" / variant
         variant_dir.mkdir(parents=True, exist_ok=True)
         for index, frame in enumerate(rendered):
             write_cells(variant_dir / f"frame-{index}.png", frame)
             silhouette_render(frame).save(variant_dir / f"frame-{index}-silhouette.png")
 
 
-def main() -> int:
+def _parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--out-dir", type=Path, default=OUT_DIR)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = _parser().parse_args(argv)
     scoreboard, rendered_by_variant = build_scoreboard()
-    write_artifacts(scoreboard, rendered_by_variant)
-    print(f"wrote {OUT_DIR / 'scoreboard.json'}")
+    write_artifacts(scoreboard, rendered_by_variant, out_dir=args.out_dir)
+    print(f"wrote {args.out_dir / 'scoreboard.json'}")
     return 0
 
 
