@@ -32,10 +32,10 @@
     "relative_path": "assets/first-room/dwarf/idle",
     "motion_class": "idle",
     "polish_profile": "dwarf-miner",
-    "report_relative_path": "assets/first-room/dwarf/idle/reports/b6e797e22a179c7ae0028fa1fb3eaf4cdafb161e8baf829cbbb1b2546e600cf7.json",
-    "report_sha256": "5644750b6c39f25912713dcd075988c3380674ded89d241c48267ba5deb023c2",
-    "report_fingerprint": "b6e797e22a179c7ae0028fa1fb3eaf4cdafb161e8baf829cbbb1b2546e600cf7",
-    "release_frame_0_sha256": "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9"
+    "report_relative_path": "assets/first-room/dwarf/idle/reports/c95fd35dec103433e2fdfdc65ef4c7133d6b2496b5fd7bd7db98991d98d1fe3c.json",
+    "report_sha256": "756493795710c219a93c0190f0cddf9f7f5a69af3925af3498d592458cee72bf",
+    "report_fingerprint": "c95fd35dec103433e2fdfdc65ef4c7133d6b2496b5fd7bd7db98991d98d1fe3c",
+    "release_frame_0_sha256": "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6"
   },
   "visual_reference_for": [
     "walk",

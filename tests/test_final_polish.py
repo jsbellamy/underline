@@ -785,6 +785,22 @@ def test_new_opaque_color_fails_structurally(tmp_path: Path) -> None:
     assert any(v.code == "palette_violation" for v in result.structural.violations)
 
 
+def test_master_palette_color_outside_draft_union_passes_structural_layer(
+    tmp_path: Path,
+) -> None:
+    from pipeline.palette_quantize import load_master_palette
+
+    bundle = _init_passing_bundle(tmp_path)
+    palette = load_master_palette(ROOT / "assets" / "palettes" / "first-room.json")
+    master_only = palette.role_colors["cyan-crystal"][0]
+    polished = bundle / "polished" / "frame-0.png"
+    x, y = _first_opaque_xy(polished)
+    _set_opaque_rgb(polished, x, y, master_only)
+
+    result = check_bundle(bundle)
+    assert result.structural.pass_ is True
+
+
 def test_reused_draft_palette_color_passes_structural_layer(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
     draft_union: set[tuple[int, int, int]] = set()
