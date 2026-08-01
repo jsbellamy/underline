@@ -10,12 +10,13 @@ import numpy as np
 import pytest
 from PIL import Image
 
+from pipeline.cell_raster import read_cells, write_cells
 from pipeline.gate_evidence import sha256_file
 from pipeline.identity_lock import (
     DEFAULT_IDENTITY_LOCKS_PATH,
-    DEFAULT_IDENTITY_PATH,
     IDENTITY_LOCK_NEAR_MISS_SCHEMA,
     IDENTITY_LOCK_SCHEMA,
+    IDENTITY_LOCK_SCHEMA_V2,
     FrameIdentityLockResult,
     IdentityLockError,
     IdentityLockMismatch,
@@ -32,13 +33,35 @@ from pipeline.identity_lock import (
     validate_identity_lock_spec,
 )
 
+from pipeline.palette_quantize import load_master_palette, quantize_cells
+
 ROOT = Path(__file__).resolve().parents[1]
 IDENTITY_PNG = ROOT / "assets" / "first-room" / "dwarf" / "identity.png"
+IDENTITY_V2_PNG = ROOT / "assets" / "first-room" / "dwarf" / "identity-v2.png"
+IDENTITY_ROLES_JSON = ROOT / "assets" / "first-room" / "dwarf" / "identity-roles.json"
 IDENTITY_JSON = ROOT / "assets" / "first-room" / "dwarf" / "identity.json"
 IDLE_PROVIDER_SOURCE = (
     ROOT / "assets" / "first-room" / "dwarf" / "idle" / "provider" / "source.png"
 )
 CANONICAL_IDENTITY_SHA = "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9"
+PALETTE_EXACT_IDENTITY_SHA = (
+    "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6"
+)
+PRE_CLEANUP_IDENTITY_V2_SHA = (
+    "a8203c90f10f234665de5a263728f49402230085e138016a346a7b033b3cdf74"
+)
+BEARD_CHEST_RECT = {"x0": 10, "x1": 13, "y0": 6, "y1": 14}
+LANDMARK_COORDS = {
+    "lamp": (12, 4),
+    "eye": (10, 7),
+    "buckle": (11, 16),
+}
+LANDMARK_ROLES = {
+    "lamp": "amber-emission",
+    "eye": "dark-outline",
+    "buckle": "amber-emission",
+}
+MASTER_PALETTE_PATH = ROOT / "assets" / "palettes" / "first-room.json"
 METRIC_ABS_TOLERANCE = 1e-12
 
 
@@ -59,9 +82,17 @@ def _set_cell(
 
 def test_schema_validates_structural_policy_palette_landmarks_and_grounded_anchor() -> None:
     spec = load_identity_lock_spec(DEFAULT_IDENTITY_LOCKS_PATH)
-    assert spec["schema"] == IDENTITY_LOCK_SCHEMA == "identity-lock/1"
+    assert spec["schema"] == IDENTITY_LOCK_SCHEMA_V2 == "identity-lock/2"
     assert spec["identity_sha256"] == CANONICAL_IDENTITY_SHA
     assert spec["frame_size"] == [16, 24]
+    palette_exact = spec["palette_exact_identity"]
+    assert palette_exact["identity_sha256"] == PALETTE_EXACT_IDENTITY_SHA
+    assert palette_exact["relative_path"] == "assets/first-room/dwarf/identity-v2.png"
+    assert (
+        palette_exact["role_map_relative_path"]
+        == "assets/first-room/dwarf/identity-roles.json"
+    )
+    assert palette_exact["frame_size"] == [16, 24]
     assert spec["master_palette"]["relative_path"] == "assets/palettes/first-room.json"
     assert len(spec["master_palette"]["sha256"]) == 64
     walk = spec["motion_classes"]["walk"]["locks"][0]
@@ -667,3 +698,149 @@ def test_invalid_spec_rejects_bad_hash(tmp_path: Path) -> None:
     bad_path.write_text(json.dumps(bad))
     with pytest.raises(Exception):
         validate_identity_lock_spec(bad, spec_path=bad_path)
+
+
+def _load_identity_role_assignment() -> dict[tuple[int, int], str]:
+    doc = json.loads(IDENTITY_ROLES_JSON.read_text(encoding="utf-8"))
+    cells = doc.get("cells")
+    assert isinstance(cells, dict)
+    return {
+        (int(x_text), int(y_text)): role
+        for key, role in cells.items()
+        for x_text, y_text in [key.split(",", maxsplit=1)]
+    }
+
+
+def _palette_color_set() -> set[tuple[int, int, int]]:
+    palette = load_master_palette(MASTER_PALETTE_PATH)
+    colors: set[tuple[int, int, int]] = set()
+    for role_colors in palette.role_colors.values():
+        colors.update(role_colors)
+    return colors
+
+
+def test_identity_v2_is_palette_exact_with_identical_alpha_mask() -> None:
+    assert sha256_file(IDENTITY_V2_PNG) == PALETTE_EXACT_IDENTITY_SHA
+    allowed = _palette_color_set()
+    v2_cells = read_cells(IDENTITY_V2_PNG)
+    for row in v2_cells:
+        for cell in row:
+            if cell is not None:
+                assert cell in allowed
+    with Image.open(IDENTITY_PNG) as v1_image, Image.open(IDENTITY_V2_PNG) as v2_image:
+        v1_alpha = np.asarray(v1_image.convert("RGBA"))[:, :, 3]
+        v2_alpha = np.asarray(v2_image.convert("RGBA"))[:, :, 3]
+    assert np.array_equal(v1_alpha, v2_alpha)
+
+
+def test_identity_v2_landmark_roles_match_lock_spec() -> None:
+    v2_cells = read_cells(IDENTITY_V2_PNG)
+    palette = load_master_palette(MASTER_PALETTE_PATH)
+    for landmark_id, (x, y) in LANDMARK_COORDS.items():
+        cell = v2_cells[y][x]
+        assert cell is not None
+        assert nearest_palette_role(cell, palette.entries) == LANDMARK_ROLES[landmark_id]
+
+
+def test_identity_v2_beard_cluster_excludes_amber_except_landmarks() -> None:
+    v2_cells = read_cells(IDENTITY_V2_PNG)
+    palette = load_master_palette(MASTER_PALETTE_PATH)
+    landmark_cells = set(LANDMARK_COORDS.values())
+    for x in range(BEARD_CHEST_RECT["x0"], BEARD_CHEST_RECT["x1"] + 1):
+        for y in range(BEARD_CHEST_RECT["y0"], BEARD_CHEST_RECT["y1"] + 1):
+            cell = v2_cells[y][x]
+            if cell is None:
+                continue
+            role = nearest_palette_role(cell, palette.entries)
+            if (x, y) not in landmark_cells:
+                assert role != "amber-emission"
+
+
+def test_identity_roles_reproduce_precleanup_raster(tmp_path: Path) -> None:
+    role_assignment = _load_identity_role_assignment()
+    source_cells = read_cells(IDENTITY_PNG)
+    palette = load_master_palette(MASTER_PALETTE_PATH)
+    precleanup = quantize_cells(source_cells, palette, role_assignment)
+    out_path = tmp_path / "precleanup.png"
+    write_cells(out_path, precleanup)
+    assert sha256_file(out_path) == PRE_CLEANUP_IDENTITY_V2_SHA
+    committed_v2 = read_cells(IDENTITY_V2_PNG)
+    diff_count = sum(
+        1
+        for y in range(24)
+        for x in range(16)
+        if precleanup[y][x] != committed_v2[y][x]
+    )
+    # Hand cleanup: (5,4) cyan helmet island, (12,7) and (8,12) isolated skin in beard.
+    assert diff_count == 3
+
+
+def test_evaluate_identity_lock_v1_resolution_unchanged() -> None:
+    frames = _canonical_frames()
+    walk = evaluate_identity_lock(frames, "walk")
+    swing = evaluate_identity_lock(frames, "swing")
+    assert walk.outcome == "PASS"
+    assert swing.outcome == "PASS"
+    assert walk.identity_sha256 == CANONICAL_IDENTITY_SHA
+    assert swing.identity_sha256 == CANONICAL_IDENTITY_SHA
+    walk_payload = identity_lock_report_payload(walk)
+    swing_payload = identity_lock_report_payload(swing)
+    assert walk_payload["outcome"] == "PASS"
+    assert swing_payload["outcome"] == "PASS"
+    assert walk_payload["identity_sha256"] == CANONICAL_IDENTITY_SHA
+    assert swing_payload["identity_sha256"] == CANONICAL_IDENTITY_SHA
+    assert walk_payload["per_frame"][0]["anchor_results"]["upper_body"] == "PASS"
+    assert swing_payload["per_frame"][0]["anchor_results"]["helmet_face"] == "PASS"
+    assert swing_payload["per_frame"][0]["anchor_results"]["boots"] == "PASS"
+    assert walk_payload["per_frame"][0]["landmark_results"]["lamp"]["outcome"] == "PASS"
+    assert walk_payload["per_frame"][0]["landmark_results"]["eye"]["outcome"] == "PASS"
+    assert walk_payload["per_frame"][0]["landmark_results"]["buckle"]["outcome"] == "PASS"
+
+
+def test_identity_lock_schema_v1_still_validates() -> None:
+    v1_doc = {
+        "schema": IDENTITY_LOCK_SCHEMA,
+        "identity_sha256": CANONICAL_IDENTITY_SHA,
+        "frame_size": [16, 24],
+        "master_palette": {
+            "relative_path": "assets/palettes/first-room.json",
+            "sha256": "b21e2a2a85cf8e25c1cbdc69f8f0ffc4cfda7dc7f1f0a451ef7ed9d1fa7d6041",
+        },
+        "motion_classes": {
+            "walk": {
+                "locks": [
+                    {
+                        "id": "upper_body",
+                        "rectangle": {"x0": 0, "x1": 15, "y0": 1, "y1": 18},
+                        "permitted_offsets": [[0, 0]],
+                        "comparison": "registered-structure",
+                        "max_occupancy_difference": 0.20,
+                        "max_palette_role_distance": 0.20,
+                    }
+                ],
+                "landmarks": [
+                    {
+                        "id": "lamp",
+                        "canonical": [12, 4],
+                        "palette_role": "amber-emission",
+                        "max_distance": 2,
+                    }
+                ],
+            }
+        },
+    }
+    validate_identity_lock_spec(v1_doc)
+
+
+def test_adr_0002_indexed_with_required_sections() -> None:
+    adr_path = ROOT / "docs" / "adr" / "0002-palette-exact-canonical-identity.md"
+    readme = (ROOT / "docs" / "adr" / "README.md").read_text(encoding="utf-8")
+    text = adr_path.read_text(encoding="utf-8")
+    assert adr_path.is_file()
+    assert "0002-palette-exact-canonical-identity.md" in readme
+    for section in ("## Status", "## Context", "## Decision", "## Consequences"):
+        assert section in text
+    assert "expand–contract" in text
+    assert "db68353f" in text
+    assert "amber-emission" in text
+    assert "mirroring" in text

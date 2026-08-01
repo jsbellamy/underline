@@ -19,6 +19,8 @@ from pipeline.gate_evidence import sha256_bytes, sha256_file
 from pipeline.strip import Cell
 
 IDENTITY_LOCK_SCHEMA = "identity-lock/1"
+IDENTITY_LOCK_SCHEMA_V2 = "identity-lock/2"
+IDENTITY_LOCK_SCHEMAS = frozenset({IDENTITY_LOCK_SCHEMA, IDENTITY_LOCK_SCHEMA_V2})
 IDENTITY_LOCK_NEAR_MISS_SCHEMA = "identity-lock-near-miss/0"
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_IDENTITY_LOCKS_PATH = (
@@ -226,9 +228,62 @@ def _load_palette_roles(path: Path) -> tuple[list[str], list[tuple[str, tuple[in
     return role_ids, entries
 
 
+def _validate_palette_exact_identity_entry(
+    entry: object,
+    *,
+    frame_w: int,
+    frame_h: int,
+    spec_path: Path | None = None,
+) -> dict[str, Any]:
+    if not isinstance(entry, dict):
+        raise IdentityLockError("palette_exact_identity must be an object")
+    identity_sha = entry.get("identity_sha256")
+    if not isinstance(identity_sha, str) or len(identity_sha) != 64:
+        raise IdentityLockError(
+            "palette_exact_identity.identity_sha256 must be a 64-char hex digest"
+        )
+    relative_path = entry.get("relative_path")
+    if not isinstance(relative_path, str) or not relative_path:
+        raise IdentityLockError("palette_exact_identity.relative_path must be a string")
+    role_map_path = entry.get("role_map_relative_path")
+    if not isinstance(role_map_path, str) or not role_map_path:
+        raise IdentityLockError(
+            "palette_exact_identity.role_map_relative_path must be a string"
+        )
+    frame_size = entry.get("frame_size")
+    if frame_size != [frame_w, frame_h]:
+        raise IdentityLockError(
+            "palette_exact_identity.frame_size must match the document frame_size"
+        )
+    if spec_path is not None and spec_path.is_file():
+        identity_path = _REPO_ROOT / relative_path
+        if not identity_path.is_file():
+            raise IdentityLockError(
+                f"palette_exact_identity raster missing: {relative_path}"
+            )
+        if sha256_file(identity_path) != identity_sha:
+            raise IdentityLockError(
+                "palette_exact_identity.identity_sha256 does not match bound raster"
+            )
+        role_map_file = _REPO_ROOT / role_map_path
+        if not role_map_file.is_file():
+            raise IdentityLockError(
+                f"palette_exact_identity role map missing: {role_map_path}"
+            )
+    return {
+        "identity_sha256": identity_sha,
+        "relative_path": relative_path,
+        "role_map_relative_path": role_map_path,
+        "frame_size": [frame_w, frame_h],
+    }
+
+
 def validate_identity_lock_spec(doc: Mapping[str, Any], *, spec_path: Path | None = None) -> None:
-    if doc.get("schema") != IDENTITY_LOCK_SCHEMA:
-        raise IdentityLockError(f"schema must be {IDENTITY_LOCK_SCHEMA!r}")
+    schema = doc.get("schema")
+    if schema not in IDENTITY_LOCK_SCHEMAS:
+        raise IdentityLockError(
+            f"schema must be one of {sorted(IDENTITY_LOCK_SCHEMAS)!r}"
+        )
     identity_sha = doc.get("identity_sha256")
     if not isinstance(identity_sha, str) or len(identity_sha) != 64:
         raise IdentityLockError("identity_sha256 must be a 64-char hex digest")
@@ -334,6 +389,13 @@ def validate_identity_lock_spec(doc: Mapping[str, Any], *, spec_path: Path | Non
                     raise IdentityLockError(
                         f"relational_constraints.{key} must be a non-negative integer"
                     )
+    if schema == IDENTITY_LOCK_SCHEMA_V2:
+        _validate_palette_exact_identity_entry(
+            doc.get("palette_exact_identity"),
+            frame_w=frame_w,
+            frame_h=frame_h,
+            spec_path=spec_path,
+        )
     if spec_path is not None and spec_path.is_file():
         identity_path = DEFAULT_IDENTITY_PATH
         if sha256_file(identity_path) != identity_sha:
