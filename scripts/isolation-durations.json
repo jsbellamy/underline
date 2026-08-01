@@ -26,7 +26,6 @@
   "test_static_silhouette.py": 1.318,
   "test_gate_review.py": 1.028,
   "test_palette_quantize.py": 0.813,
-  "test_swing_canvas.py": 0.811,
   "test_gate_evidence.py": 0.788,
   "test_cell_raster.py": 0.748,
   "test_verdicts.py": 0.747,

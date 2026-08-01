@@ -26,10 +26,9 @@ when all of the following hold (they do):
 5. Numeric quantization, comparison epsilon, α, and the resulting Budget deltas
    are decided from that evidence.
 
-**Out of this wave:** landing the production α-Budgets into runtime
-`MOTION_CLASSES`, and building a non-worst-good production estimator. Those are
-implementation work that consumes this spec; they must not re-litigate α,
-quantization, Acceptance profiles, or the evidence contract.
+Production α-Budgets have landed in runtime `MOTION_CLASSES` (Wave B). Building
+a non-worst-good production estimator remains out of this map; it must not
+re-litigate α, quantization, Acceptance profiles, or the evidence contract.
 
 ## 2. Standing authorities (do not fork)
 
@@ -111,8 +110,8 @@ Counts: **17 Separated** · **4 Unseparated** (continuous metric) · **3 Inappli
 control · `airborne/displacement_pass` Unseparated (binary / often undecidable —
 see §6).
 
-Runtime `MOTION_CLASSES` still hold pre-α budgets until the implementation wave
-lands α-Budgets. Fragile claims under α = 0.5:
+Runtime `MOTION_CLASSES` hold the landed α-Budgets and the proof runner verifies
+exact equivalence. Fragile claims under α = 0.5:
 
 | Pair | Budget | C | Good headroom | Review width |
 |------|-------:|--:|--------------:|-------------:|
@@ -126,6 +125,10 @@ an `ISOLATED` control inadmissible for deriving that target's Budget.
 ## 6. Acceptance profile matrix (locked)
 
 Machine-readable index: `gate-controls/acceptance-profiles.json`.
+
+The 17 Separated / 4 Unseparated / 3 Inapplicable counts in §5 cover the four
+provider-controlled α metric Gates. `static_silhouette_pass` is recorded below
+but sits outside those Gate-control counts.
 
 ### Separated (provider Gate control required unless structural)
 
@@ -167,6 +170,7 @@ candidates still follow the two-phase Promotion path in §8
 | `emissive/min_pair_cohort_pass` | 0.12 | `emissive--min_pair_cohort_pass--006` | target and collateral both fail after ceiling quantization |
 | `walk/min_pair_cohort_pass` | 0.17 | `walk--min_pair_cohort_pass--003` | formal incompatibility with isolating from `loop_closure_pass` at shared f3↔f0 0.17 |
 | `airborne/displacement_pass` | n/a (binary) | corpus sharpness floor | class-applicable; no isolatable control while undecidable on measured airborne Strips; when `None`, caveat; when decidable `False`, agent Review (never autonomous hard-fail from a missing C); when `True`, pass |
+| `swing/static_silhouette_pass` | 0.88 | production swing reference + corpus | runtime action-stillness Review threshold; no provider Gate-control Promotion |
 
 No further provider generation for the four continuous Unseparated pairs.
 
@@ -178,6 +182,11 @@ No further provider generation for the four continuous Unseparated pairs.
 | `airborne/baseline_row_stable` | not grounded |
 | `swing/loop_closure_pass` | one-shot; `loops=false` |
 | `swing/min_pair_cohort_pass` | one-shot; `max_min_pair=None` |
+| `idle/static_silhouette_pass` | no class Budget derived |
+| `blob_idle/static_silhouette_pass` | no class Budget derived |
+| `emissive/static_silhouette_pass` | no class Budget derived |
+| `walk/static_silhouette_pass` | no class Budget derived |
+| `airborne/static_silhouette_pass` | no class Budget derived |
 
 ## 7. Isolation verdict amendments (locked over #19)
 
@@ -314,6 +323,12 @@ review approves. A rejected Gate rejects the Strip.
 | `min_pair_cohort_pass` | Same subject, one coherent animation despite no sufficiently similar pair? | Flagged occupancy comparisons + full Frame row |
 | `loop_closure_pass` | Final→first reads as deliberate continuous loop vs pose jump / identity break? | Final→first occupancy + full Frame row |
 | `displacement_pass` | Genuine subject motion vs entire Frame translated on the grid? | Flagged in/out alignment vectors + neighbors |
+| `static_silhouette_pass` | Adjacent Frames preserve the intended action silhouette rather than only recolouring a held pose? | Adjacent opaque-union overlap + full Frame row |
+
+`static_silhouette_pass` uses this question for runtime ingest Review. It has no
+provider Gate-control specification or Promotion, so the production
+`gate-control:score` / `gate-control:review` evidence workflow does not accept it
+as a target.
 
 ### Immutable Review packet (deterministic references)
 
@@ -375,7 +390,10 @@ npm run prototype:strip:adversarial
 npm run prototype:strip:alpha-budgets
 ```
 
-### Wave B — Land α-Budgets in runtime
+### Wave B — Land α-Budgets in runtime (**complete**)
+
+Wave B landed in #62. Runtime policies, tri-state ingest, characterization
+baselines, and the α-Budget equivalence proof are current.
 
 1. Replace applicable Separated entries in `MOTION_CLASSES` with the α-Budgets
    from `docs/alpha-budget-tables.md` / `acceptance-profiles.json`.
@@ -405,8 +423,8 @@ Production modules live under `pipeline/` with canonical npm commands (§12):
 4. `pipeline/gate_verification.py` — manifest-backed full-repository verification
    (`gate-control:verify`).
 
-Deprecated compatibility shims remain in `prototype/strip-coherence/` for this
-wave only (§12); they are not the operator path.
+The temporary `prototype/strip-coherence/` compatibility shims were retired
+after the production commands landed.
 
 Remaining polish (non-blocking for the checked-in cohort): tighter acquisition
 CLI ergonomics and end-to-end wiring in a future runtime/UI slice.
@@ -440,17 +458,6 @@ npm run gate-control:verify -- run --promotion-id <promo-id>
 ```
 
 Numeric policy for Measurement runs: `pipeline/numeric_policy.py`.
-
-### Deprecated compatibility shims (this wave only)
-
-These prototype forwarders remain for legacy scripts. They are **deprecated**;
-there is no announced removal date. Use the production commands above instead:
-
-| Shim (this directory) | Replacement |
-|------|-------------|
-| `gate_control.py` | `npm run gate-control:score` → `pipeline/gate_control.py` |
-| `gate_control_acquire.py` | `npm run gate-control:acquire` → `pipeline/gate_control_acquire.py` |
-| `numeric_policy.py` | `pipeline/numeric_policy.py` |
 
 ### Historical / proof commands
 

@@ -63,15 +63,16 @@ does not override structural locks, coherence Gates, or PASS-only finalization.
 
 `docs/strip-acquisition-contract.md` is the authority for motion classes, gates,
 budgets, the budget-derivation rule, and known gaps. Read it before changing any
-gate, budget, or class property. Its measured tables are reproduced by
-`npm run prototype:strip:derive-budgets` — cite the command output, not a
-remembered number. AFK acceptance α-Budgets are reproduced by
-`npm run prototype:strip:alpha-budgets` (see `docs/alpha-budget-tables.md`).
+gate, budget, or class property. Production AFK Budget changes cite
+`npm run prototype:strip:alpha-budgets`, the runtime-equivalence oracle (see
+`docs/alpha-budget-tables.md`). `npm run prototype:strip:derive-budgets`
+reproduces the historical pre-α baseline only.
 
-Budgets are **per motion class** and derived from manifest-good strips. Do not
-add good strips to strengthen a separation claim; under the current derivation
-rule good strips can only widen budgets toward the fixed negative controls. The
-contract's "Next corpus priority" section owns which samples are worth adding.
+Budgets are **per motion class** and derived from manifest-good strips plus the
+contract's single named legacy idle baseline. Do not add good strips to
+strengthen a separation claim; under the current derivation rule good strips can
+only widen budgets toward the fixed negative controls. The contract's "Next
+corpus priority" section owns which samples are worth adding.
 
 ### Code style and test seams
 

@@ -763,20 +763,6 @@ def test_invalidate_stale_active_promotion(tmp_path: Path) -> None:
     assert promo.status == gv.INVALIDATED_STATUS
 
 
-def test_prototype_forwarder_delegates_to_production() -> None:
-    import importlib.util
-
-    spec = importlib.util.spec_from_file_location(
-        "prototype_gate_control_acquire",
-        ROOT / "prototype/strip-coherence/gate_control_acquire.py",
-    )
-    assert spec and spec.loader
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    assert module.record_attempt is gca.record_attempt
-    assert module.promote_isolated is gca.promote_isolated
-
-
 def test_isolated_non_review_attempt_has_no_composite(tmp_path: Path) -> None:
     _seed_gate_controls(tmp_path)
     png = tmp_path / "candidate.png"
@@ -902,13 +888,6 @@ def test_canonical_review_help_exposes_validate_subcommand() -> None:
         check=True,
     )
     assert "validate" in result.stdout
-
-
-def test_prototype_acquire_shim_documents_production_replacement() -> None:
-    doc = (ROOT / "prototype/strip-coherence/gate_control_acquire.py").read_text()
-    assert "DEPRECATED" in doc
-    assert "pipeline.gate_control_acquire" in doc
-    assert "gate-control:acquire" in doc
 
 
 def test_measurement_persist_is_append_only_on_rescore(tmp_path: Path) -> None:

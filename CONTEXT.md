@@ -52,9 +52,10 @@ _Avoid_: global acceptance criteria, animation-specific exceptions
 
 **Gate**:
 One deterministic measurement with an automatic-pass, agent-review, or hard-fail
-outcome: `silhouette_budget`, `palette_drift_pass`, `min_pair_cohort_pass`,
-`loop_closure_pass`, `displacement_pass`, `baseline_row_stable`. Each exists to
-catch one failure mode and reports which one tripped.
+outcome: `dimension_parity`, `silhouette_budget`, `palette_drift_pass`,
+`min_pair_cohort_pass`, `loop_closure_pass`, `displacement_pass`,
+`static_silhouette_pass`, `baseline_row_stable`. Each exists to catch one
+failure mode and reports which one tripped.
 _Avoid_: check, validation
 
 **Budget**:

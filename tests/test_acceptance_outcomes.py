@@ -30,23 +30,9 @@ def _idle_loop_policy() -> GatePolicy:
     return GatePolicy(status="UNSEPARATED", budget=0.3, hard_fail=None, active_promotion=None)
 
 
-def test_canonical_metric_matches_production_and_prototype_imports() -> None:
+def test_canonical_metric_preserves_exact_four_place_value() -> None:
     value = 0.2795
-    from pipeline.numeric_policy import canonical_metric as production
-
-    assert production(value) == 0.2795
-    import sys
-
-    sys.path.insert(0, str(ROOT / "prototype" / "strip-coherence"))
-    from numeric_policy import canonical_metric as prototype  # noqa: WPS433
-
-    assert prototype(value) == production(value)
-
-
-def test_numeric_policy_shim_documents_production_replacement() -> None:
-    doc = (ROOT / "prototype/strip-coherence/numeric_policy.py").read_text()
-    assert "DEPRECATED" in doc
-    assert "pipeline.numeric_policy" in doc
+    assert canonical_metric(value) == value
 
 
 @pytest.mark.parametrize(

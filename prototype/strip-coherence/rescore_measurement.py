@@ -16,9 +16,9 @@ import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 GC_ROOT = ROOT / "gate-controls"
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+sys.path.insert(0, str(ROOT))
 
-from numeric_policy import NUMERIC_POLICY, canonical_metric  # noqa: E402
+from pipeline.numeric_policy import NUMERIC_POLICY, canonical_metric  # noqa: E402
 
 
 def gate_outcome(metric: float | None, budget: float | None) -> str | None:

@@ -168,62 +168,6 @@ def test_canonical_score_command_help_exits_zero() -> None:
     assert "--target-gate" in result.stdout
 
 
-def test_prototype_scorer_shim_documents_production_replacement() -> None:
-    doc = (ROOT / "prototype/strip-coherence/gate_control.py").read_text()
-    assert "DEPRECATED" in doc
-    assert "pipeline.gate_control" in doc
-    assert "gate-control:score" in doc
-
-
-def test_production_and_compatibility_cli_emit_equivalent_json() -> None:
-    assert IDLE_CONTROL.is_file()
-    env = {**dict(__import__("os").environ), "PYTHONPATH": str(ROOT)}
-    prod = subprocess.run(
-        [
-            sys.executable,
-            "-m",
-            "pipeline.gate_control",
-            str(IDLE_CONTROL),
-            "--motion-class",
-            "idle",
-            "--target-gate",
-            "silhouette_budget",
-            "--recorded-at",
-            "2026-07-27T12:00:00+00:00",
-            "--scorer-commit",
-            "testcommit",
-        ],
-        cwd=ROOT,
-        env=env,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    compat = subprocess.run(
-        [
-            sys.executable,
-            str(ROOT / "prototype/strip-coherence/gate_control.py"),
-            str(IDLE_CONTROL),
-            "--motion-class",
-            "idle",
-            "--target-gate",
-            "silhouette_budget",
-            "--recorded-at",
-            "2026-07-27T12:00:00+00:00",
-            "--scorer-commit",
-            "testcommit",
-        ],
-        cwd=ROOT,
-        env=env,
-        capture_output=True,
-        text=True,
-        check=True,
-    )
-    prod_run = json.loads(prod.stdout)
-    compat_run = json.loads(compat.stdout)
-    assert prod_run == compat_run
-
-
 @pytest.mark.parametrize(
     ("motion_class", "target_gate"),
     [
@@ -438,21 +382,6 @@ def test_persist_measurement_run_is_append_only(tmp_path: Path) -> None:
     with pytest.raises(EvidenceError, match="refusing to mutate"):
         gc.persist_measurement_run(path, {"schema": gc.MEASUREMENT_SCHEMA, "isolation": "X"})
     assert path.read_bytes() == original
-
-
-def test_prototype_forwards_production_measure() -> None:
-    import importlib.util
-
-    spec = importlib.util.spec_from_file_location(
-        "prototype_gate_control",
-        ROOT / "prototype/strip-coherence/gate_control.py",
-    )
-    assert spec and spec.loader
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    assert module.measure is gc.measure
-    assert module.primary_failure is gc.primary_failure
-    assert module.GATE_ORDER is gc.GATE_ORDER
 
 
 def test_measure_does_not_mutate_manifest(tmp_path: Path) -> None:

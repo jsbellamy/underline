@@ -1,8 +1,9 @@
 # Strip acquisition contract
 
-Authority for Underline strip coherence gates. The prototype in
-`prototype/strip-coherence/` implements this contract; Nightglass's frozen
-animation contract does not govern here.
+Authority for Underline strip coherence gates. `pipeline/strip.py` implements
+this contract and `prototype/strip-coherence/` holds the corpus and proof runners
+over it (see **Implementation** below); Nightglass's frozen animation contract
+does not govern here.
 
 ## Motion classes
 
@@ -46,6 +47,14 @@ frames legitimately never repeat closely (swing) omit the gate (`max_min_pair=No
 being calibrated. `derive_budgets.py` scores every manifest-good PNG regardless of gate
 outcome; rows that fail the *current* runtime budgets are flagged but still count toward
 worst-good.
+
+**One exception:** `inbox/miner-idle-strip.png` is the legacy adversarial baseline. It
+has no `prompts/manifest.json` row, but the runners add it to the `idle` cohort by name
+(`EXTRA_GOOD` in `derive_budgets.py` and `displacement_probe.py`, and the `legacy`
+branches in `corpus.py` / `adversarial.py`). It is the binding good strip for
+`idle/silhouette_budget` and `idle/loop_closure_pass`, so the idle cohort is n=4 against
+18 manifest-good rows. Any new good strip goes in the manifest; do not add a second
+by-name exception.
 
 Measurements taken after pitch slicing (#2) and per-class anchor handling (#3), on inbox
 corpus PNGs. Re-derived 2026-07-26 after fixing the gate-pass exclusion bug and

@@ -17,15 +17,15 @@ import pathlib
 import sys
 from typing import Any
 
-# Local prototype imports (same pattern as derive_budgets.py).
+# Local proof-runner imports (same pattern as derive_budgets.py).
 HERE = pathlib.Path(__file__).resolve().parent
 ROOT = HERE.parents[1]
 sys.path.insert(0, str(HERE))
 
 import corpus  # noqa: E402
 import derive_budgets as db  # noqa: E402
-from numeric_policy import canonical_metric  # noqa: E402
 from pipeline import strip as S  # noqa: E402
+from pipeline.numeric_policy import canonical_metric  # noqa: E402
 from pipeline.strip import (  # noqa: E402
     ALPHA,
     SeparatedBudget,
