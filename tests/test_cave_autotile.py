@@ -109,8 +109,9 @@ def test_compatible_autotile_edges_match_across_kit() -> None:
     assert _canonical_json(payload) == _canonical_json(checked)
 
 
-def test_terraced_shaft_render_matches_committed_audit() -> None:
-    preview = BUNDLE / "reports" / "terraced-shaft-preview.png"
+def test_terraced_shaft_render_matches_committed_audit(tmp_path: Path) -> None:
+    committed_preview = BUNDLE / "reports" / "terraced-shaft-preview.png"
+    preview = tmp_path / "terraced-shaft-preview.png"
     rendered = render_terraced_shaft(BUNDLE, out_path=preview)
     assert rendered["overall"] == "PASS"
     assert rendered["dimensions"] == [320, 160]
@@ -118,7 +119,17 @@ def test_terraced_shaft_render_matches_committed_audit() -> None:
     assert preview.is_file()
 
     committed = json.loads((BUNDLE / "reports" / "terraced-shaft-audit.json").read_text())
-    assert _canonical_json(rendered) == _canonical_json(committed)
+    # image.relative_path in the payload names the committed artifact, not the
+    # tmp_path copy this test rendered into; the digest is compared explicitly
+    # against the committed file's own sha256 rather than folded into the
+    # blanket equality below.
+    assert rendered["image"]["relative_path"] == (
+        "assets/first-room/cave/reports/terraced-shaft-preview.png"
+    )
+    assert rendered["image"]["sha256"] == sha256_file(committed_preview)
+    rendered_without_image = {k: v for k, v in rendered.items() if k != "image"}
+    committed_without_image = {k: v for k, v in committed.items() if k != "image"}
+    assert _canonical_json(rendered_without_image) == _canonical_json(committed_without_image)
     assert committed["inspection"]["walking_terraces_legible"] == "PASS"
     assert committed["inspection"]["vertical_mining_space_legible"] == "PASS"
     assert committed["inspection"]["block_boundaries_legible"] == "PASS"

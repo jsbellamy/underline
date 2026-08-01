@@ -947,10 +947,12 @@ def test_conflicting_release_fails_closed(tmp_path: Path) -> None:
     assert exc.value.reason_code == "release_conflict"
 
 
-def test_existing_v1_idle_bundle_remains_check_compatible() -> None:
-    result = check_bundle(DWARF_IDLE_BUNDLE)
+def test_existing_v1_idle_bundle_remains_check_compatible(tmp_path: Path) -> None:
+    bundle = tmp_path / "dwarf-idle"
+    shutil.copytree(DWARF_IDLE_BUNDLE, bundle)
+    result = check_bundle(bundle)
     assert result.outcome == "PASS"
-    manifest = json.loads((DWARF_IDLE_BUNDLE / "manifest.json").read_text())
+    manifest = json.loads((bundle / "manifest.json").read_text())
     assert manifest["schema"] == BUNDLE_SCHEMA_LEGACY_1
 
 
@@ -1716,22 +1718,26 @@ def _silhouette_artifacts_payload(result) -> dict[str, object]:
     }
 
 
-def test_check_emits_two_colour_silhouette_strip_and_gif_for_dwarf_idle() -> None:
-    layout = json.loads((DWARF_IDLE_BUNDLE / "manifest.json").read_text())["layout"]
+def test_check_emits_two_colour_silhouette_strip_and_gif_for_dwarf_idle(
+    tmp_path: Path,
+) -> None:
+    bundle = tmp_path / "dwarf-idle"
+    shutil.copytree(DWARF_IDLE_BUNDLE, bundle)
+    layout = json.loads((bundle / "manifest.json").read_text())["layout"]
     expected_strip_size = (
         layout["frame_count"] * layout["frame_w"]
         + (layout["frame_count"] - 1) * layout["gutter"],
         layout["frame_h"],
     )
-    reports = DWARF_IDLE_BUNDLE / "reports"
+    reports = bundle / "reports"
     existing_report_hashes = {
         path.name: sha256_file(path) for path in reports.glob("*.json")
     }
 
-    result = check_bundle(DWARF_IDLE_BUNDLE)
+    result = check_bundle(bundle)
 
-    strip_path = DWARF_IDLE_BUNDLE / "reports" / "silhouette-strip.png"
-    gif_path = DWARF_IDLE_BUNDLE / "reports" / "silhouette.gif"
+    strip_path = bundle / "reports" / "silhouette-strip.png"
+    gif_path = bundle / "reports" / "silhouette.gif"
     assert strip_path.is_file()
     assert gif_path.is_file()
     with Image.open(strip_path) as strip:
