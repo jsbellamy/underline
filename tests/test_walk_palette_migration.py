@@ -153,9 +153,23 @@ def test_walk_bundle_check_passes_with_palette_exact_identity_lock() -> None:
     assert lock.identity_sha256 == PALETTE_EXACT_IDENTITY_SHA
 
 
+def _strip_finalize_outputs(bundle: Path) -> None:
+    """Remove immutable finalize outputs so finalize_bundle can rewrite them."""
+    reports = bundle / "reports"
+    if reports.is_dir():
+        for path in reports.iterdir():
+            if path.name != "audit.json":
+                path.unlink()
+    release = bundle / "release"
+    if release.is_dir():
+        for path in release.iterdir():
+            path.unlink()
+
+
 def test_walk_finalize_rebinds_release_and_report(tmp_path: Path) -> None:
     bundle = tmp_path / "walk"
     shutil.copytree(WALK_BUNDLE, bundle)
+    _strip_finalize_outputs(bundle)
     report_path = finalize_bundle(bundle)
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert report["outcome"] == "PASS"
