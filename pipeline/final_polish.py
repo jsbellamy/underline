@@ -47,12 +47,9 @@ from pipeline.strip import (
     resolve_class_frame_geometry,
 )
 
-BUNDLE_SCHEMA_LEGACY_0 = "final-polish-bundle/0"
 BUNDLE_SCHEMA_LEGACY_1 = "final-polish-bundle/1"
 BUNDLE_SCHEMA = "final-polish-bundle/2"
-BUNDLE_SCHEMAS = frozenset(
-    {BUNDLE_SCHEMA_LEGACY_0, BUNDLE_SCHEMA_LEGACY_1, BUNDLE_SCHEMA}
-)
+BUNDLE_SCHEMAS = frozenset({BUNDLE_SCHEMA_LEGACY_1, BUNDLE_SCHEMA})
 PROVENANCE_SCHEMA = "animation-strip-provenance/0"
 ATTEMPT_LEDGER_SCHEMA = "animation-attempt-ledger/0"
 PROFILE_SCHEMA = "polish-profile/0"

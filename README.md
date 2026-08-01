@@ -90,10 +90,11 @@ Identity Lock cells into the transport raster to clear Gates; regenerate until
 lock and baseline pass. Full acquisition rules:
 `prompts/production/animation-strip.md` § Dwarf-miner walk and swing.
 
-Existing `final-polish-bundle/0` and `/1` bundles (including the checked-in
-dwarf `idle` bundle) remain readable under their legacy rules; `check` and
-`finalize` revalidate every `/2` evidence hash and semantic binding before polish
-or Release Frames.
+Existing `final-polish-bundle/1` bundles (including the checked-in dwarf
+`idle` bundle) remain readable under their legacy rules; see
+[ADR 0004](docs/adr/0004-pre-attestation-acquisitions.md) for why `/1` is
+retained. `check` and `finalize` revalidate every `/2` evidence hash and semantic
+binding before polish or Release Frames.
 
 Exit codes: `0` `PASS`, `1` `FAIL`, `2` invalid or structural error, `3`
 `REVIEW`. `polished/` is the editor-facing PNG sequence; `release/` is written
