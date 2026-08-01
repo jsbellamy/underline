@@ -52,14 +52,16 @@ runtime supports worktrees.
 4. Implement test-first at the seams in `docs/agents/code-style.md` (that doc is
    the standing seam agreement). **Cursor:** read `.cursor/skills/tdd/SKILL.md`
    and follow its blocking loop before any production or asset edit. **Other
-   runtimes:** invoke `/tdd`, or read `~/.claude/skills/tdd/SKILL.md`. Run
-   focused test files during implementation; run
-   `npm run test:changed` before publishing — it selects the tests the diff
-   against `main` actually touches (`scripts/select_changed_tests.py`) and
-   widens to the whole suite whenever the mapping is ambiguous. CI
-   (`.github/workflows/ci.yml`) owns the full suite and the per-file isolation
-   sweep on every PR, so `test:changed` is the local gate, not a substitute for
-   CI passing.
+   runtimes:** invoke `/tdd`, or read `~/.claude/skills/tdd/SKILL.md`. During
+   implementation, run each Contract claim's focused Proof test with normal
+   pytest output and short tracebacks — do not pipe diagnostic runs through
+   `tail` or another truncator; a failed traceback must be visible without a
+   rerun. When the focused tests are green, run `npm run test:changed` once
+   before publishing — it selects the tests the diff against `main` actually
+   touches (`scripts/select_changed_tests.py`) and widens to the whole suite
+   whenever the mapping is ambiguous. CI (`.github/workflows/ci.yml`) owns the
+   full suite and the per-file isolation sweep on every PR, so `test:changed` is
+   the local gate, not a substitute for CI passing.
    - **TypeScript changes** — `npm run typecheck` green before publishing. No
      TypeScript exists yet, so the script does not exist either: the slice that
      lands `src/` adds it to `package.json`. Keep
@@ -109,7 +111,9 @@ runtime supports worktrees.
    that does not carry `Closes #<N>`. "Editorial disposition" is what the
    orchestrator or a human decides after receiving that blocked report or
    draft — it is never a reason for this agent to continue toward a completion
-   PR.
+   PR. When `npm run test:changed` reports `whole_suite`, record the selector
+   reason in the completion matrix so the cost is attributable to a path rule
+   rather than mistaken for flaky retries.
 6. Commit only the issue's changes. Let any commit hooks run; never bypass them.
    For every before/after Polish Bundle Proof, record the resulting revision with
    `git rev-parse HEAD`, rerun the same `check <bundle> --summary-json` command,
