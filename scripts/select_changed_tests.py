@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 import pathlib
+import re
 import subprocess
 import sys
 from dataclasses import dataclass
@@ -33,24 +34,15 @@ _WHOLE_SUITE_PATHS = {
 # outright (C2 row 3).
 _WHOLE_SUITE_DIRS = {"assets", "gate-controls"}
 
-# Companion suites for acquisition-control data (issue #241 C1).
-_ACQUISITION_CONTROL_COMPANION_TESTS = (
-    "tests/test_asset_acquire.py",
-    "tests/test_final_polish.py",
-    "tests/test_final_polish_cli.py",
-)
-
-# Consumers of the shared final-polish harness (issue #241 C2).
-_FINAL_POLISH_HARNESS_CONSUMER_TESTS = (
-    "tests/test_final_polish.py",
-    "tests/test_final_polish_cli.py",
-)
-
 # Changed paths that are prose rather than code: any Markdown file, plus
 # anything under these directories. A doc has no module to map to, so it
 # selects the tests that actually read it (see `_tests_reading_doc`) instead
 # of widening the suite.
 _DOCUMENTATION_DIRS = {"docs", "prompts"}
+
+_FROM_IMPORT_RE = re.compile(r"^\s*from\s+([\w.]+)\s+import", re.MULTILINE)
+_IMPORT_RE = re.compile(r"^\s*import\s+([\w.]+)", re.MULTILINE)
+_ACQUISITION_CONTROLS_MARKER = "acquisition-controls"
 
 
 @dataclass(frozen=True)
@@ -96,6 +88,107 @@ def _tests_reading_doc(
     does. A doc no test names contributes no tests at all.
     """
     return {test for test, source in test_sources.items() if path.name in source}
+
+
+def _is_test_module_path(path: pathlib.PurePosixPath) -> bool:
+    return (
+        len(path.parts) >= 2
+        and path.parts[0] == "tests"
+        and path.suffix == ".py"
+        and path.name.startswith("test_")
+    )
+
+
+def _is_support_module_path(path: pathlib.PurePosixPath) -> bool:
+    return (
+        len(path.parts) >= 2
+        and path.parts[0] == "tests"
+        and path.suffix == ".py"
+        and not path.name.startswith("test_")
+    )
+
+
+def _module_dotted_path(path: pathlib.PurePosixPath) -> str:
+    """Return the dotted import path for a repo-relative Python file."""
+    without_suffix = path.as_posix()[: -len(".py")]
+    if path.name == "__init__.py":
+        without_suffix = path.parent.as_posix()
+    return without_suffix.replace("/", ".")
+
+
+def _imported_modules(source: str) -> set[str]:
+    modules: set[str] = set()
+    modules.update(_FROM_IMPORT_RE.findall(source))
+    modules.update(_IMPORT_RE.findall(source))
+    return modules
+
+
+def _source_imports_module(
+    source: str, module: str, *, package_prefix: str | None = None
+) -> bool:
+    for imported in _imported_modules(source):
+        if package_prefix is not None:
+            if imported == package_prefix or imported.startswith(f"{package_prefix}."):
+                return True
+            continue
+        if imported == module or imported.startswith(f"{module}."):
+            return True
+    return False
+
+
+def _tests_importing_support_module(
+    path: pathlib.PurePosixPath,
+    test_sources: Mapping[str, str],
+    existing: set[str],
+) -> set[str]:
+    module = _module_dotted_path(path)
+    package_prefix = module if path.name == "__init__.py" else None
+    selected: set[str] = set()
+    for test_path in existing:
+        if not _is_test_module_path(pathlib.PurePosixPath(test_path)):
+            continue
+        source = test_sources.get(test_path)
+        if source is None:
+            continue
+        if _source_imports_module(
+            source, module, package_prefix=package_prefix
+        ):
+            selected.add(test_path)
+    if _is_test_module_path(path):
+        selected.add(path.as_posix())
+    return selected
+
+
+def _support_modules_referencing_acquisition_controls(
+    test_sources: Mapping[str, str],
+) -> set[str]:
+    return {
+        _module_dotted_path(pathlib.PurePosixPath(path))
+        for path, source in test_sources.items()
+        if _is_support_module_path(pathlib.PurePosixPath(path))
+        and _ACQUISITION_CONTROLS_MARKER in source
+    }
+
+
+def _tests_for_acquisition_controls(
+    test_sources: Mapping[str, str], existing: set[str]
+) -> set[str]:
+    support_modules = _support_modules_referencing_acquisition_controls(test_sources)
+    selected: set[str] = set()
+    for test_path in existing:
+        if not _is_test_module_path(pathlib.PurePosixPath(test_path)):
+            continue
+        source = test_sources.get(test_path)
+        if source is None:
+            continue
+        if _ACQUISITION_CONTROLS_MARKER in source:
+            selected.add(test_path)
+            continue
+        if any(
+            _source_imports_module(source, module) for module in support_modules
+        ):
+            selected.add(test_path)
+    return selected
 
 
 def select_test_files(
@@ -148,11 +241,11 @@ def select_test_files(
             continue
 
         if path.parts and path.parts[0] == "acquisition-controls":
-            selected.update(set(_ACQUISITION_CONTROL_COMPANION_TESTS) & existing)
+            selected.update(_tests_for_acquisition_controls(sources, existing))
             continue
 
-        if posix == "tests/final_polish_harness.py":
-            selected.update(set(_FINAL_POLISH_HARNESS_CONSUMER_TESTS) & existing)
+        if _is_support_module_path(path):
+            selected.update(_tests_importing_support_module(path, sources, existing))
             continue
 
         if _is_documentation(path):
@@ -224,10 +317,14 @@ def _existing_test_files(tests_dir: pathlib.Path, root: pathlib.Path) -> set[str
 
 
 def _test_sources(tests_dir: pathlib.Path, root: pathlib.Path) -> dict[str, str]:
-    return {
-        p.relative_to(root).as_posix(): p.read_text(encoding="utf-8")
-        for p in tests_dir.glob("test_*.py")
-    }
+    sources: dict[str, str] = {}
+    for path in tests_dir.rglob("*.py"):
+        rel = path.relative_to(root).as_posix()
+        try:
+            sources[rel] = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+    return sources
 
 
 def main() -> int:
