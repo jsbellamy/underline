@@ -245,7 +245,10 @@ def _write_pack(root: Path, doc: dict[str, object] | None = None) -> Path:
 DWARF_RELEASE_FRAMES: tuple[tuple[str, str, int, int, int], ...] = (
     ("dwarf-idle", "idle", 268, 255, 0),
     ("dwarf-walk", "walk", 152, 152, 0),
-    ("dwarf-swing", "swing", 177, 176, 0),
+)
+
+DWARF_PALETTE_EXACT_RELEASE_FRAMES: tuple[tuple[str, str, int, int, int], ...] = (
+    ("dwarf-swing", "swing", 177, 19, 177),
 )
 
 
@@ -436,12 +439,20 @@ def test_metadata_policy_rejects_release_hash_mismatch(tmp_path: Path) -> None:
 
 
 def test_dwarf_release_frames_violate_master_palette(tmp_path: Path) -> None:
-    """Characterization of a known defect (#171): dwarf release frames use off-palette colours.
+    """Characterization of a known defect (#171): idle and walk release frames stay off-palette.
 
-    Every checked-in dwarf release frame-0 has zero opaque Cells in the Master Palette.
-    Issue #179 should invert this test to expect PASS — do not delete it when migrating.
+    Swing migrated to palette-exact in issue #178; issue #179 retires the remaining v1 bindings.
     """
     for asset_id, anim, expected_opaque, expected_unique, expected_in_palette in DWARF_RELEASE_FRAMES:
+        rel = f"assets/first-room/dwarf/{anim}/release/frame-0.png"
+        opaque, unique, in_palette = _frame_palette_stats(rel)
+        assert opaque == expected_opaque, asset_id
+        assert unique == expected_unique, asset_id
+        assert in_palette == expected_in_palette, asset_id
+
+    for asset_id, anim, expected_opaque, expected_unique, expected_in_palette in (
+        DWARF_PALETTE_EXACT_RELEASE_FRAMES
+    ):
         rel = f"assets/first-room/dwarf/{anim}/release/frame-0.png"
         opaque, unique, in_palette = _frame_palette_stats(rel)
         assert opaque == expected_opaque, asset_id

@@ -16,9 +16,9 @@
   "machine_check": {
     "command": "npm run strip:polish -- check assets/first-room/dwarf/swing --json",
     "outcome": "PASS",
-    "fingerprint": "7bb07da1f38037da8ad1cbe3301271f4cefeec53bbf11250ded6df44345abc2b",
+    "fingerprint": "0c9e68431a486aa82d6c303fb76344a241f7d2edb31f9f2d38fac390c081f923",
     "visible_cell_edits": 0,
-    "edit_summary": "No Cell edits required; provider ingest and draft Frames passed all gates and profile questions at native scale."
+    "edit_summary": "Palette-exact requantization against identity-v2; Identity Lock PASS at palette-exact roles. Silhouette unchanged; colour conformance only (issue #178)."
   },
   "answers": [
     {
@@ -43,7 +43,7 @@
       "id": "palette_lighting_outline",
       "question": "Do Master Palette roles, upper-left local light, and selective warm-dark outline remain stable across Frames?",
       "verdict": "PASS",
-      "rationale": "Warm-dark selective outline, upper-left local highlights on helmet/beard/pickaxe, and role hues (blue metal, green cloth, earth/beard, amber accents) stay stable across the one-shot within the draft palette."
+      "rationale": "Master Palette roles and upper-left local light read stable across the one-shot after palette-exact requantization; role hues remain coherent at native scale."
     },
     {
       "id": "temporal_consistency",
