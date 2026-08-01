@@ -172,6 +172,20 @@ def _init_rejection_json_payload(
     }
 
 
+def _init_provenance_rejection_json_payload(
+    provider_path: pathlib.Path,
+    motion_class: str,
+    reason_code: str,
+) -> dict[str, Any]:
+    return {
+        "pass": False,
+        "provider": str(provider_path.resolve()),
+        "motion_class": motion_class,
+        "outcome": "FAIL",
+        "reason_code": reason_code,
+    }
+
+
 def _format_provider_post_edit(payload: dict[str, Any] | None) -> str:
     if payload is None:
         return "(n/a)"
@@ -295,6 +309,14 @@ def _handle_init(args: argparse.Namespace) -> int:
         return 2
     except InitializationRejectedError as exc:
         if exc.reason_code != "ingest_not_pass":
+            if args.json:
+                _emit_json(
+                    _init_provenance_rejection_json_payload(
+                        args.provider,
+                        args.motion_class,
+                        exc.reason_code or "unknown",
+                    )
+                )
             print(str(exc), file=sys.stderr)
             return 2
         try:

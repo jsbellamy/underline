@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import shutil
+import struct
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Mapping, Sequence
@@ -627,6 +628,15 @@ def _is_sha256_hex(value: object) -> bool:
     )
 
 
+def _png_dimensions(path: Path) -> list[int]:
+    with path.open("rb") as stream:
+        header = stream.read(24)
+    if len(header) < 24 or header[:8] != b"\x89PNG\r\n\x1a\n":
+        raise ValueError(f"not a PNG: {path}")
+    width, height = struct.unpack(">II", header[16:24])
+    return [width, height]
+
+
 def _expected_item_geometry(layout: StripLayout) -> dict[str, int]:
     return {
         "frame_w": layout.frame_w,
@@ -670,6 +680,7 @@ def _validate_animation_provenance_record(
     *,
     identity_reference_sha256: str | None = None,
     edit_source_sha256: str | None = None,
+    edit_source_path: Path | None = None,
     require_image_edit: bool = False,
     expected_raw_basename: str | None = None,
     error_class: type[FinalPolishError] = InitializationRejectedError,
@@ -801,6 +812,15 @@ def _validate_animation_provenance_record(
             "provenance dimensions must be a two-element positive integer array",
             "invalid_provenance",
         )
+    provider_dimensions = _png_dimensions(provider_path)
+    if list(dimensions) != provider_dimensions:
+        declared_w, declared_h = dimensions
+        actual_w, actual_h = provider_dimensions
+        reject(
+            "provenance_dimensions_mismatch: provenance declares "
+            f"{declared_w}x{declared_h} but provider raster is {actual_w}x{actual_h}",
+            "provenance_dimensions_mismatch",
+        )
 
     item_geometry = record.get("item_geometry")
     if not isinstance(item_geometry, dict):
@@ -853,6 +873,17 @@ def _validate_animation_provenance_record(
                     "provenance edit_source_sha256 must equal the identity.json "
                     "image-edit seed digest (generation_source or magenta pad)",
                     "edit_source_not_generation_source",
+                )
+        if edit_source_sha256 is not None and edit_source_path is not None:
+            edit_source_dimensions = _png_dimensions(edit_source_path)
+            if provider_dimensions != edit_source_dimensions:
+                provider_w, provider_h = provider_dimensions
+                edit_w, edit_h = edit_source_dimensions
+                reject(
+                    "edit_source_geometry_mismatch: provider raster is "
+                    f"{provider_w}x{provider_h} but edit source {edit_source} is "
+                    f"{edit_w}x{edit_h}; an image edit preserves the edit-source canvas",
+                    "edit_source_geometry_mismatch",
                 )
 
     return dict(record)
@@ -908,6 +939,7 @@ def _validate_provenance_sidecar(
         layout,
         identity_reference_sha256=identity_sha,
         edit_source_sha256=edit_sha,
+        edit_source_path=edit_source_path,
         require_image_edit=require_image_edit,
     )
 
@@ -1212,6 +1244,11 @@ def _verify_evidence_bindings(bundle_root: Path, manifest: Mapping[str, Any]) ->
         ),
         edit_source_sha256=(
             sha256_file(bundle_root / "provider" / "edit-source.png")
+            if (bundle_root / "provider" / "edit-source.png").is_file()
+            else None
+        ),
+        edit_source_path=(
+            bundle_root / "provider" / "edit-source.png"
             if (bundle_root / "provider" / "edit-source.png").is_file()
             else None
         ),
