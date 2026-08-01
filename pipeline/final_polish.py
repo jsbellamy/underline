@@ -6,6 +6,7 @@ Consumes current production Acceptance profiles via ``ingest_strip_provider`` an
 
 from __future__ import annotations
 
+import functools
 import json
 import shutil
 import struct
@@ -58,6 +59,8 @@ PROFILE_SCHEMA = "polish-profile/0"
 REPORT_SCHEMA = "final-polish-report/0"
 GENERATION_MODES = frozenset({"text-to-image", "image-edit"})
 ATTEMPT_OUTCOMES = frozenset({"accepted", "rejected"})
+LEGACY_BUNDLES_SCHEMA = "acquisition-legacy-allowlist/0"
+ATTEMPTS_JSONL_REL = "attempts.jsonl"
 PROVENANCE_REQUIRED_FIELDS = (
     "schema",
     "specification_id",
@@ -162,6 +165,13 @@ class SilhouetteArtifacts:
 
 
 @dataclass(frozen=True)
+class AttestationState:
+    state: str
+    attempt_id: str | None = None
+    store_path: str | None = None
+
+
+@dataclass(frozen=True)
 class FinalPolishCheckResult:
     outcome: Outcome
     provider_outcome: Outcome
@@ -178,6 +188,7 @@ class FinalPolishCheckResult:
     profile_sha256: str | None = None
     provider_post_edit: dict[str, Any] | None = None
     silhouette_artifacts: SilhouetteArtifacts | None = None
+    attestation: AttestationState | None = None
 
 
 def _corpus_layout() -> StripLayout:
@@ -944,19 +955,140 @@ def _validate_provenance_sidecar(
     )
 
 
-def _build_initial_attempt_ledger(provenance: Mapping[str, Any]) -> dict[str, Any]:
-    predecessor = provenance.get("predecessor_attempt_id")
-    if predecessor is not None:
-        raise InitializationRejectedError(
-            "init cannot create a bundle when provenance predecessor_attempt_id is set",
-            reason_code="invalid_provenance",
+def _legacy_bundles_allowlist_path() -> Path:
+    return _REPO_ROOT / "acquisition-controls" / "legacy-bundles.json"
+
+
+@functools.lru_cache(maxsize=1)
+def _load_legacy_bundle_allowlist() -> tuple[tuple[str, str], ...]:
+    path = _legacy_bundles_allowlist_path()
+    if not path.is_file():
+        return ()
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    if doc.get("schema") != LEGACY_BUNDLES_SCHEMA:
+        raise InvalidBundleError(
+            f"legacy bundle allowlist schema must be {LEGACY_BUNDLES_SCHEMA!r}",
+            reason_code="invalid_legacy_allowlist",
         )
+    entries = doc.get("bundles")
+    if not isinstance(entries, list):
+        raise InvalidBundleError(
+            "legacy bundle allowlist bundles must be an array",
+            reason_code="invalid_legacy_allowlist",
+        )
+    allowed: list[tuple[str, str]] = []
+    for index, entry in enumerate(entries):
+        if not isinstance(entry, dict):
+            raise InvalidBundleError(
+                f"legacy bundle allowlist entry[{index}] must be an object",
+                reason_code="invalid_legacy_allowlist",
+            )
+        specification_id = entry.get("specification_id")
+        provider_sha256 = entry.get("provider_sha256")
+        if not isinstance(specification_id, str) or not specification_id:
+            raise InvalidBundleError(
+                f"legacy bundle allowlist entry[{index}] missing specification_id",
+                reason_code="invalid_legacy_allowlist",
+            )
+        if not _is_sha256_hex(provider_sha256):
+            raise InvalidBundleError(
+                f"legacy bundle allowlist entry[{index}] provider_sha256 must be SHA-256 hex",
+                reason_code="invalid_legacy_allowlist",
+            )
+        allowed.append((specification_id, str(provider_sha256)))
+    return tuple(allowed)
+
+
+def _legacy_bundle_allowed(specification_id: str, provider_sha256: str) -> bool:
+    return (specification_id, provider_sha256) in _load_legacy_bundle_allowlist()
+
+
+def _store_row_by_attempt_id(
+    store_rows: Sequence[Mapping[str, Any]],
+    attempt_id: str,
+) -> Mapping[str, Any] | None:
+    for row in store_rows:
+        if str(row.get("attempt_id")) == attempt_id:
+            return row
+    return None
+
+
+def _reject_unregistered_attempt(message: str) -> None:
+    raise InitializationRejectedError(message, reason_code="attempt_not_registered")
+
+
+def _assert_attempt_registered_for_init(
+    provenance: Mapping[str, Any],
+    provider_sha256: str,
+    store_rows: Sequence[Mapping[str, Any]],
+    *,
+    store_root: Path,
+) -> Mapping[str, Any]:
+    attempt_id = str(provenance["attempt_id"])
+    row = _store_row_by_attempt_id(store_rows, attempt_id)
+    if row is None:
+        _reject_unregistered_attempt(
+            f"provenance attempt_id {attempt_id!r} is not registered in the attested store"
+        )
+    if str(row["raw_sha256"]) != provider_sha256:
+        _reject_unregistered_attempt(
+            "registered Attempt raw_sha256 differs from provider PNG digest"
+        )
+    if row.get("outcome") == "rejected":
+        _reject_unregistered_attempt("a rejected Attempt cannot be selected for init")
+    store_provenance = _load_json_object(
+        store_root / str(row["provenance_path"]),
+        reason_code="attempt_not_registered",
+    )
+    for field in ("generation_mode", "motion_class", "prompt_sha256"):
+        if store_provenance.get(field) != provenance.get(field):
+            _reject_unregistered_attempt(
+                f"registered Attempt {field!r} disagrees with provenance sidecar"
+            )
+    matching = [candidate for candidate in store_rows if str(candidate["raw_sha256"]) == provider_sha256]
+    if not matching or str(matching[-1]["attempt_id"]) != attempt_id:
+        _reject_unregistered_attempt(
+            "no registered Attempt matches the provider PNG digest"
+        )
+    return row
+
+
+def _project_store_rows_to_ledger(
+    store_rows: Sequence[Mapping[str, Any]],
+    selected_attempt_id: str,
+) -> dict[str, Any]:
+    selected_index: int | None = None
+    for index, row in enumerate(store_rows):
+        if str(row["attempt_id"]) == selected_attempt_id:
+            selected_index = index
+            break
+    if selected_index is None:
+        raise InitializationRejectedError(
+            f"selected attempt_id {selected_attempt_id!r} is absent from the store projection",
+            reason_code="attempt_not_registered",
+        )
+    attempts: list[dict[str, Any]] = []
+    for index, row in enumerate(store_rows[: selected_index + 1]):
+        ledger_row: dict[str, Any] = {
+            "attempt_id": row["attempt_id"],
+            "predecessor_attempt_id": row.get("predecessor_attempt_id"),
+            "outcome": row["outcome"],
+            "rejection_reason": row.get("rejection_reason"),
+            "prompt_sha256": row["prompt_sha256"],
+            "raw_sha256": row["raw_sha256"],
+            "selected": index == selected_index,
+        }
+        attempts.append(ledger_row)
+    return {"schema": ATTEMPT_LEDGER_SCHEMA, "attempts": attempts}
+
+
+def _build_legacy_single_row_attempt_ledger(provenance: Mapping[str, Any]) -> dict[str, Any]:
     return {
         "schema": ATTEMPT_LEDGER_SCHEMA,
         "attempts": [
             {
                 "attempt_id": provenance["attempt_id"],
-                "predecessor_attempt_id": None,
+                "predecessor_attempt_id": provenance.get("predecessor_attempt_id"),
                 "outcome": "accepted",
                 "rejection_reason": None,
                 "prompt_sha256": provenance["prompt_sha256"],
@@ -966,6 +1098,148 @@ def _build_initial_attempt_ledger(provenance: Mapping[str, Any]) -> dict[str, An
         ],
     }
 
+
+def _build_initial_attempt_ledger(
+    provenance: Mapping[str, Any],
+    store_rows: Sequence[Mapping[str, Any]],
+) -> dict[str, Any]:
+    selected_attempt_id = str(provenance["attempt_id"])
+    return _project_store_rows_to_ledger(store_rows, selected_attempt_id)
+
+
+_PROJECTED_LEDGER_FIELDS = (
+    "attempt_id",
+    "predecessor_attempt_id",
+    "outcome",
+    "rejection_reason",
+    "prompt_sha256",
+    "raw_sha256",
+    "selected",
+)
+
+
+def _ledger_attestation_view(ledger: Mapping[str, Any]) -> dict[str, Any]:
+    attempts = ledger.get("attempts")
+    if not isinstance(attempts, list):
+        raise InvalidBundleError(
+            "attempt ledger attempts must be a non-empty array",
+            reason_code="invalid_attempt_ledger",
+        )
+    return {
+        "schema": ledger.get("schema"),
+        "attempts": [
+            {field: row.get(field) for field in _PROJECTED_LEDGER_FIELDS}
+            for row in attempts
+            if isinstance(row, dict)
+        ],
+    }
+
+
+def _bundle_provenance_record(
+    bundle_root: Path,
+    manifest: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    if manifest.get("schema") == BUNDLE_SCHEMA:
+        provenance_binding = manifest.get("provenance")
+        if not isinstance(provenance_binding, dict):
+            return None
+        provenance_path = bundle_root / str(provenance_binding["relative_path"])
+    else:
+        provenance_path = bundle_root / "provider" / "source.source.json"
+    if not provenance_path.is_file():
+        return None
+    return _load_json_object(
+        provenance_path,
+        reason_code="invalid_provenance",
+        error_class=InvalidBundleError,
+    )
+
+
+def _specification_id_for_bundle(
+    bundle_root: Path,
+    provenance: Mapping[str, Any] | None,
+) -> str | None:
+    if provenance is not None:
+        specification_id = provenance.get("specification_id")
+        if isinstance(specification_id, str) and specification_id:
+            return specification_id
+    try:
+        return bundle_root.resolve().relative_to(_REPO_ROOT / "assets").as_posix()
+    except ValueError:
+        return None
+
+
+def _attestation_report_payload(state: AttestationState) -> dict[str, Any]:
+    payload: dict[str, Any] = {"state": state.state}
+    if state.attempt_id is not None:
+        payload["attempt_id"] = state.attempt_id
+    if state.store_path is not None:
+        payload["store_path"] = state.store_path
+    return payload
+
+
+def _resolve_bundle_attestation(
+    bundle_root: Path,
+    manifest: Mapping[str, Any],
+    *,
+    provenance: Mapping[str, Any] | None = None,
+) -> AttestationState | None:
+    if manifest.get("schema") != BUNDLE_SCHEMA:
+        provenance = provenance or _bundle_provenance_record(bundle_root, manifest)
+        specification_id = _specification_id_for_bundle(bundle_root, provenance)
+        if specification_id is None:
+            return None
+        provider_sha256 = sha256_file(_provider_path(bundle_root))
+        if _legacy_bundle_allowed(specification_id, provider_sha256):
+            return AttestationState(state="legacy")
+        return None
+
+    provenance = provenance or _bundle_provenance_record(bundle_root, manifest)
+    if provenance is None:
+        raise InvalidBundleError(
+            "schema /2 bundle missing provenance record",
+            reason_code="missing_provenance",
+        )
+    specification_id = str(provenance["specification_id"])
+    provider_sha256 = sha256_file(_provider_path(bundle_root))
+    if _legacy_bundle_allowed(specification_id, provider_sha256):
+        return AttestationState(state="legacy")
+
+    from pipeline.asset_acquire import acquisition_controls_root, load_asset_attempts
+
+    store_root = acquisition_controls_root(_REPO_ROOT)
+    store_rows = load_asset_attempts(store_root, specification_id)
+    if not store_rows:
+        raise InvalidBundleError(
+            f"no attested Attempt rows for specification {specification_id!r}",
+            reason_code="attempt_not_registered",
+        )
+    selected_attempt_id = str(provenance["attempt_id"])
+    expected_ledger = _project_store_rows_to_ledger(store_rows, selected_attempt_id)
+    ledger_binding = manifest.get("attempt_ledger")
+    if not isinstance(ledger_binding, dict):
+        raise InvalidBundleError(
+            "schema /2 bundle missing attempt_ledger binding",
+            reason_code="missing_attempt_ledger",
+        )
+    ledger_path = bundle_root / str(ledger_binding["relative_path"])
+    committed_ledger = _load_json_object(
+        ledger_path,
+        reason_code="invalid_attempt_ledger",
+        error_class=InvalidBundleError,
+    )
+    if _canonical_json(_ledger_attestation_view(committed_ledger)) != _canonical_json(
+        _ledger_attestation_view(expected_ledger)
+    ):
+        raise InvalidBundleError(
+            "committed attempt ledger disagrees with attested store projection",
+            reason_code="attempt_ledger_not_attested",
+        )
+    return AttestationState(
+        state="attested",
+        attempt_id=selected_attempt_id,
+        store_path=ATTEMPTS_JSONL_REL,
+    )
 
 def _validate_attempt_ledger_row(row: Mapping[str, Any], *, where: str) -> None:
     for field in (
@@ -1205,9 +1479,15 @@ def _verify_hash_binding(
         raise InvalidBundleError(str(exc), reason_code=reason_code) from exc
 
 
-def _verify_evidence_bindings(bundle_root: Path, manifest: Mapping[str, Any]) -> dict[str, Any]:
+def _verify_evidence_bindings(
+    bundle_root: Path,
+    manifest: Mapping[str, Any],
+) -> tuple[dict[str, Any], AttestationState]:
     if manifest.get("schema") != BUNDLE_SCHEMA:
-        return {}
+        raise InvalidBundleError(
+            "schema /2 bundle expected for evidence bindings",
+            reason_code="missing_provenance",
+        )
 
     provenance_binding = manifest.get("provenance")
     if not isinstance(provenance_binding, dict):
@@ -1291,6 +1571,16 @@ def _verify_evidence_bindings(bundle_root: Path, manifest: Mapping[str, Any]) ->
         reason_code="invalid_attempt_ledger",
         error_class=InvalidBundleError,
     )
+    attestation = _resolve_bundle_attestation(
+        bundle_root,
+        manifest,
+        provenance=provenance,
+    )
+    if attestation is None:
+        raise InvalidBundleError(
+            "bundle has no attested or legacy Attempt registration",
+            reason_code="attempt_not_registered",
+        )
     _validate_attempt_ledger_document(
         ledger,
         provenance,
@@ -1299,7 +1589,7 @@ def _verify_evidence_bindings(bundle_root: Path, manifest: Mapping[str, Any]) ->
         where=str(ledger_path),
     )
 
-    return provenance
+    return provenance, attestation
 
 
 def _init_ingest_allowed(ingest: IngestResult) -> bool:
@@ -1414,9 +1704,13 @@ def _probe_layout_for_manifest(manifest: Mapping[str, Any]) -> StripLayout:
     return _corpus_layout()
 
 
-def _verify_provider_and_drafts(bundle_root: Path, manifest: dict[str, Any]) -> Outcome:
+def _verify_provider_and_drafts(
+    bundle_root: Path,
+    manifest: dict[str, Any],
+) -> tuple[Outcome, AttestationState | None]:
+    attestation: AttestationState | None = None
     if manifest.get("schema") == BUNDLE_SCHEMA:
-        _verify_evidence_bindings(bundle_root, manifest)
+        _, attestation = _verify_evidence_bindings(bundle_root, manifest)
 
     provider_rel = manifest["provider"]["relative_path"]
     expected_provider_hash = manifest["provider"]["sha256"]
@@ -1462,7 +1756,7 @@ def _verify_provider_and_drafts(bundle_root: Path, manifest: dict[str, Any]) -> 
         probe_layout,
         motion_class=manifest["motion_class"],
     )
-    return _effective_provider_outcome(ingest)
+    return _effective_provider_outcome(ingest), attestation
 
 
 def initialize_bundle(
@@ -1504,7 +1798,46 @@ def initialize_bundle(
         identity_reference_path=identity_reference,
         edit_source_path=edit_source,
     )
-    attempt_ledger = _build_initial_attempt_ledger(provenance_record)
+    specification_id = str(provenance_record["specification_id"])
+    provider_sha256 = sha256_file(provider_path)
+    if _legacy_bundle_allowed(specification_id, provider_sha256):
+        attempt_ledger = _build_legacy_single_row_attempt_ledger(provenance_record)
+    else:
+        from pipeline.asset_acquire import acquisition_controls_root, load_asset_attempts
+
+        store_root = acquisition_controls_root(_REPO_ROOT)
+        store_rows = load_asset_attempts(store_root, specification_id)
+        if not store_rows:
+            raise InitializationRejectedError(
+                f"no attested Attempt rows for specification {specification_id!r}",
+                reason_code="attempt_not_registered",
+            )
+        _assert_attempt_registered_for_init(
+            provenance_record,
+            provider_sha256,
+            store_rows,
+            store_root=store_root,
+        )
+        attempt_ledger = _build_initial_attempt_ledger(provenance_record, store_rows)
+
+    try:
+        _validate_attempt_ledger_document(
+            attempt_ledger,
+            provenance_record,
+            provider_sha256=provider_sha256,
+            original_filename=provider_path.name,
+            where="initialize_bundle",
+        )
+    except InvalidBundleError as exc:
+        raise InitializationRejectedError(
+            str(exc),
+            reason_code=(
+                "attempt_not_registered"
+                if exc.reason_code
+                in {"invalid_attempt_ledger", "attempt_ledger_mismatch"}
+                else exc.reason_code or "attempt_not_registered"
+            ),
+        ) from exc
 
     ingest = ingest_strip_provider(provider_path, probe_layout, motion_class=motion_class)
     if not _init_ingest_allowed(ingest):
@@ -1725,7 +2058,7 @@ def check_bundle(bundle_root: Path) -> FinalPolishCheckResult:
     manifest = _load_manifest(bundle_root)
     profile = _load_bound_profile(bundle_root, manifest)
     manifest_hash = _manifest_sha256(bundle_root)
-    provider_outcome = _verify_provider_and_drafts(bundle_root, manifest)
+    provider_outcome, attestation = _verify_provider_and_drafts(bundle_root, manifest)
     profile_id = None if profile is None else str(profile["id"])
     provider_post_edit = _verify_provider_post_edit(
         bundle_root,
@@ -1767,6 +2100,8 @@ def check_bundle(bundle_root: Path) -> FinalPolishCheckResult:
     )
     fingerprint = _fingerprint_polished_hashes(polished_hashes)
     silhouette_artifacts = _emit_silhouette_artifacts(bundle_root, polished_frames, manifest)
+    if attestation is None:
+        attestation = _resolve_bundle_attestation(bundle_root, manifest)
 
     return FinalPolishCheckResult(
         outcome=outcome,
@@ -1788,6 +2123,7 @@ def check_bundle(bundle_root: Path) -> FinalPolishCheckResult:
         ),
         provider_post_edit=provider_post_edit,
         silhouette_artifacts=silhouette_artifacts,
+        attestation=attestation,
     )
 
 
@@ -1857,6 +2193,8 @@ def _report_payload(bundle_root: Path, result: FinalPolishCheckResult) -> dict[s
         "coherence": result.coherence,
         "outcome": result.outcome,
     }
+    if result.attestation is not None:
+        payload["attestation"] = _attestation_report_payload(result.attestation)
     if result.silhouette_artifacts is not None:
         payload["silhouette_artifacts"] = _silhouette_artifacts_report_payload(
             result.silhouette_artifacts
