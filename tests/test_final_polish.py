@@ -620,6 +620,14 @@ def test_review_strip_creates_nothing(tmp_path: Path) -> None:
     assert not bundle.exists()
 
 
+def test_init_allows_unseparated_only_review_for_swing(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    _init_bundle(SWING_STRIP, "swing", bundle, tmp_path, polish_profile="dwarf-miner")
+    assert bundle.exists()
+    manifest = json.loads((bundle / "manifest.json").read_text())
+    assert manifest["motion_class"] == "swing"
+
+
 def test_existing_destination_is_preserved(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
     bundle.mkdir()

@@ -23,7 +23,10 @@ STRIP_GAP_CASES = [
 def test_untouched_passes_per_class(motion_class: str) -> None:
     frames = adversarial.real_frames(motion_class)
     result = S.coherence_split(frames, motion_class=motion_class)
-    assert result["outcome"] == "PASS"
+    want = adversarial.BASELINE_OUTCOME.get(motion_class, "PASS")
+    assert result["outcome"] == want
+    if motion_class == "swing":
+        assert result["gate_outcomes"]["static_silhouette_pass"]["outcome"] == "REVIEW"
 
 
 @pytest.mark.parametrize("motion_class,mutation", MUTATION_CASES)
@@ -34,6 +37,16 @@ def test_required_mutation_not_automatically_accepted(
     mutated = adversarial.mutate(motion_class, mutation, frames)
     result = S.coherence_split(mutated, motion_class=motion_class)
     assert result["outcome"] != "PASS"
+
+
+def test_swing_hold_pose_trips_static_silhouette() -> None:
+    frames = adversarial.real_frames("swing")
+    mutated = adversarial.hold_pose(frames)
+    result = S.coherence_split(mutated, motion_class="swing")
+    assert result["outcome"] == "REVIEW"
+    gate = result["gate_outcomes"]["static_silhouette_pass"]
+    assert gate["outcome"] == "REVIEW"
+    assert gate["metric"] == 1.0
 
 
 def test_blob_idle_slide_review_or_fail() -> None:

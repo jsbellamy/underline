@@ -95,7 +95,7 @@ def main() -> int:
         if sample["id"] in NEGATIVE_IDS:
             negatives[sample["id"]] = metrics
             continue
-        if sample.get("contract_expect") != "PASS":
+        if sample.get("contract_expect") not in ("PASS", "REVIEW"):
             continue
         by_class.setdefault(sample["motion_class"], []).append((sample["id"], metrics))
 

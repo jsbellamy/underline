@@ -77,7 +77,7 @@ def _worst_good_by_class() -> dict[str, dict[str, tuple[str, float]]]:
     manifest = json.loads(db.MANIFEST.read_text())
     by_class: dict[str, list[tuple[str, dict[str, float]]]] = {}
     for sample in manifest["samples"]:
-        if sample.get("contract_expect") != "PASS" or sample["id"] in db.NEGATIVE_IDS:
+        if sample.get("contract_expect") not in ("PASS", "REVIEW") or sample["id"] in db.NEGATIVE_IDS:
             continue
         path = corpus.find_png(sample["id"])
         if path is None:

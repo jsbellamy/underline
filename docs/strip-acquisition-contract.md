@@ -104,7 +104,7 @@ that falsify the thinnest claims directly (see **Next corpus priority** below).
 | `emissive` | 3 | 03, 14, 15 |
 | `airborne` | 3 | 04, 16, 17 |
 | `walk` | 3 | 05, 18, 19 |
-| `swing` | 3 | 06, 20, 21 |
+| `swing` | 3 | 06, 20, 21 (`contract_expect: REVIEW` on `static_silhouette_pass`; still manifest-good for silhouette/drift derivation) |
 
 ## Separation check (C6)
 
@@ -258,6 +258,34 @@ On **`16-moth-flap`** and **`17-wisp-float`**, hop and slide trip **`displacemen
 (live gate). Mirror (`wrong_pose`) is **out of scope** on `facing: free` classes. On
 `facing: fixed` classes (`walk`, `swing`), silhouette already rejects mirror.
 
+On **`swing`**, **`hold_pose`** trips **`static_silhouette_pass`** (adjacent alpha
+frozen). Corpus inbox baselines (`06-miner-swing` at **0.91**) exceed the budget
+tuned on production reference `dwarf/swing/polished` (**0.86** worst-pair) and yield
+**`REVIEW`** on the untouched baseline — documented in `adversarial.BASELINE_OUTCOME`.
+
+## Static silhouette gate (`static_silhouette_pass`)
+
+RGBA churn anti-correlates with real motion on soft-shaded sources (idle churns more
+in RGBA than swing). The metric is **alpha-only**: for an adjacent Frame pair,
+`static_silhouette_fraction = 1 − (Cells whose opacity differs) / (frame_w × frame_h)`.
+The strip metric is the **maximum** over adjacent pairs — the stillest transition
+governs. `evaluate_continuous_gate_outcome` applies ceiling semantics:
+`metric <= budget → PASS`; above budget on an `UNSEPARATED` gate yields **`REVIEW`**.
+
+| Class | Status | Budget | Notes |
+|-------|--------|--------|-------|
+| `swing` | **UNSEPARATED** | **0.86** | reference polished worst-pair sits on boundary |
+| `idle`, `blob_idle`, `walk`, `airborne`, `emissive` | **INAPPLICABLE** | — | no budget derived for the class |
+
+Reference and prototype anchors (production bundles, not corpus strips):
+
+| Strip | Per-pair static fraction | vs budget 0.86 |
+|-------|--------------------------|----------------|
+| `dwarf/swing/polished` (reference) | 0.68, 0.82, **0.86** | PASS at boundary |
+| Cell-authored swing prototype | 0.82, 0.90, **0.92** | REVIEW |
+| walk (polished) | 0.94, 0.93, 0.94 | INAPPLICABLE |
+| idle (polished) | 0.90, 0.96, 0.95 | INAPPLICABLE |
+
 ## Antisymmetric displacement gate (`displacement_pass`)
 
 A translated frame shows up as an equal-and-opposite pair of best-alignment shifts.
@@ -358,6 +386,7 @@ when `loops=true` and `max_min_pair` is set. Pass when `min_pair <= max_min_pair
 | Cohort identity | `min_pair_cohort_pass` | four-character drift (08) | single-frame tamper |
 | Frame translation | `displacement_pass` | hop, slide on applicable airborne | strips below sharpness floor; mirror |
 | Recolour | `palette_drift_pass` | palette swap | — |
+| Static silhouette | `static_silhouette_pass` | hold pose (swing) | RGBA churn; recolour without alpha motion |
 
 Single-frame hop/slide on grounded classes is caught by adjacent silhouette (or
 baseline). Airborne hop/slide on applicable strips is caught by **`displacement_pass`**;

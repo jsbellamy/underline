@@ -32,6 +32,7 @@ from pipeline.identity_lock import (
 from pipeline.strip import (
     DEFAULT_LAYOUT,
     Cell,
+    IngestResult,
     Outcome,
     StripLayout,
     canonicalize_frame,
@@ -1200,6 +1201,26 @@ def _verify_evidence_bindings(bundle_root: Path, manifest: Mapping[str, Any]) ->
     return provenance
 
 
+def _init_ingest_allowed(ingest: IngestResult) -> bool:
+    """Allow bundle init on PASS or UNSEPARATED-only REVIEW (issue #173)."""
+    if ingest.outcome == "PASS":
+        return ingest.pass_
+    if ingest.outcome != "REVIEW":
+        return False
+    gate_outcomes = ingest.coherence.get("gate_outcomes") or {}
+    if any(row.get("outcome") == "FAIL" for row in gate_outcomes.values()):
+        return False
+    review_gates = [
+        gate for gate, row in gate_outcomes.items() if row.get("outcome") == "REVIEW"
+    ]
+    if not review_gates:
+        return False
+    return all(
+        gate_outcomes[gate].get("acceptance_status") == "UNSEPARATED"
+        for gate in review_gates
+    )
+
+
 def _aggregate_outcome(
     *,
     provider_outcome: Outcome,
@@ -1208,6 +1229,15 @@ def _aggregate_outcome(
     coherence: dict[str, Any],
     provider_post_edit: dict[str, Any] | None = None,
 ) -> Outcome:
+    if (
+        provider_post_edit is not None
+        and provider_post_edit.get("outcome") == "FAIL"
+    ):
+        return "FAIL"
+    if identity_lock is not None and identity_lock.outcome != "PASS":
+        return "FAIL"
+    if not structural.pass_:
+        return structural.outcome
     if provider_outcome != "PASS":
         return provider_outcome
     if (
@@ -1215,10 +1245,6 @@ def _aggregate_outcome(
         and provider_post_edit.get("outcome") != "PASS"
     ):
         return "FAIL"
-    if identity_lock is not None and identity_lock.outcome != "PASS":
-        return "FAIL"
-    if not structural.pass_:
-        return structural.outcome
     return coherence.get("outcome", "FAIL")
 
 
@@ -1332,7 +1358,7 @@ def initialize_bundle(
     attempt_ledger = _build_initial_attempt_ledger(provenance_record)
 
     ingest = ingest_strip_provider(provider_path, probe_layout, motion_class=motion_class)
-    if ingest.outcome != "PASS" or not ingest.pass_:
+    if not _init_ingest_allowed(ingest):
         raise InitializationRejectedError(
             f"provider ingest outcome {ingest.outcome!r} — bundle not created",
             reason_code="ingest_not_pass",

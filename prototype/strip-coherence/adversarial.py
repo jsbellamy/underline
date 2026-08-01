@@ -32,6 +32,7 @@ GATES = (
     "loop_closure_pass",
     "displacement_pass",
     "palette_drift_pass",
+    "static_silhouette_pass",
 )
 
 MUTATIONS = (
@@ -39,14 +40,21 @@ MUTATIONS = (
     ("hop frame 2 (+3 rows)", "hop"),
     ("mirror frame 2", "wrong_pose"),
     ("slide frame 2 (+3 cols)", "slide"),
+    ("hold frame 2 pose", "hold_pose"),
 )
+
+# Corpus baselines may differ from production reference bundles. Swing inbox strips
+# exceed the static_silhouette_pass budget tuned on dwarf/swing/polished (issue #173).
+BASELINE_OUTCOME: dict[str, str] = {
+    "swing": "REVIEW",
+}
 
 MUST_FAIL: dict[str, set[str]] = {
     "idle": {"recolour", "hop", "wrong_pose", "slide"},
     "blob_idle": {"recolour", "hop", "slide"},
     "emissive": {"recolour", "hop", "slide", "wrong_pose"},
     "walk": {"recolour", "hop", "wrong_pose", "slide"},
-    "swing": {"recolour", "hop", "wrong_pose", "slide"},
+    "swing": {"recolour", "hop", "wrong_pose", "slide", "hold_pose"},
     "airborne": {"recolour"},
 }
 
@@ -176,11 +184,19 @@ def slide(frames, idx=2, dx=3):
     return out
 
 
+def hold_pose(frames, idx=2):
+    """Duplicate frame idx-1 onto frame idx — adjacent alpha unchanged."""
+    out = [[row[:] for row in f] for f in frames]
+    out[idx] = [[cell for cell in row] for row in out[idx - 1]]
+    return out
+
+
 _MUTATORS = {
     "recolour": recolour,
     "hop": hop,
     "wrong_pose": wrong_pose,
     "slide": slide,
+    "hold_pose": hold_pose,
 }
 
 
@@ -237,8 +253,8 @@ def report(
     gap_reason = _gap_reason(motion_class, mutation_key)
 
     if name == "baseline (untouched)":
-        status = "ok" if outcome == "PASS" else "MISMATCH"
-        want = "PASS"
+        want = BASELINE_OUTCOME.get(motion_class, "PASS")
+        status = "ok" if outcome == want else "MISMATCH"
     elif mutation_key in MUST_FAIL.get(motion_class, set()):
         status = "ok" if outcome != "PASS" else "MISMATCH"
         want = "not PASS"

@@ -3,6 +3,12 @@
 These are characterization tests, not specifications. Later wave slices are
 expected to change these numbers; any diff here must be explained in the
 changing slice's PR body rather than silently re-baselined.
+
+Issue #173 (`static_silhouette_pass`): `pass` flipped True→False for
+`06-miner-swing`, `20-axe-swing`, and `21-hammer-swing` because corpus inbox
+strips exceed the swing budget (0.86) tuned on the production reference
+`dwarf/swing/polished` worst-pair boundary. Other gates on those strips are
+unchanged; only the new UNSEPARATED gate drives REVIEW.
 """
 
 from __future__ import annotations
