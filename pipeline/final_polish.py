@@ -1471,6 +1471,18 @@ def initialize_bundle(
         canonicalize_frame(frame, frame_w=probe_layout.frame_w, frame_h=probe_layout.frame_h)
         for frame in frames
     ]
+    class_geometry = resolve_class_frame_geometry(motion_class)
+    bundle_layout = StripLayout(
+        frame_w=class_geometry.frame_w,
+        frame_h=class_geometry.frame_h,
+        frame_count=probe_layout.frame_count,
+        gutter=probe_layout.gutter,
+    )
+    canonical_frames = _embed_frames_for_manifest_layout(
+        canonical_frames,
+        motion_class=motion_class,
+        layout=bundle_layout,
+    )
 
     temp_root = bundle_root.parent / f".{bundle_root.name}.tmp"
     _cleanup_partial(temp_root)
@@ -1540,11 +1552,11 @@ def initialize_bundle(
             "schema": BUNDLE_SCHEMA,
             "motion_class": motion_class,
             "layout": {
-                "frame_w": probe_layout.frame_w,
-                "frame_h": probe_layout.frame_h,
-                "frame_count": probe_layout.frame_count,
-                "frame_order": list(range(probe_layout.frame_count)),
-                "gutter": probe_layout.gutter,
+                "frame_w": bundle_layout.frame_w,
+                "frame_h": bundle_layout.frame_h,
+                "frame_count": bundle_layout.frame_count,
+                "frame_order": list(range(bundle_layout.frame_count)),
+                "gutter": bundle_layout.gutter,
             },
             "provider": {
                 "original_filename": provider_path.name,

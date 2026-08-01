@@ -513,6 +513,35 @@ def test_check_pass_exit_0(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -
     assert "Overall  PASS" in result.stdout
 
 
+def test_check_summary_json_emits_only_dispatch_baseline_fields(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    bundle = _init_bundle(tmp_path)
+
+    result = _run_cli(capsys, ["check", str(bundle), "--summary-json"])
+
+    assert result.returncode == 0, result.stderr
+    data = json.loads(result.stdout)
+    assert set(data) == {
+        "outcome",
+        "fingerprint",
+        "frame_dimensions",
+        "identity_lock",
+        "gate_outcomes",
+    }
+    assert data["outcome"] == "PASS"
+    assert len(data["fingerprint"]) == 64
+    assert data["frame_dimensions"] == [[16, 24]]
+    assert data["identity_lock"] is None
+    assert set(data["gate_outcomes"]) == {
+        "silhouette_budget",
+        "palette_drift_pass",
+        "min_pair_cohort_pass",
+        "loop_closure_pass",
+    }
+    assert {gate["outcome"] for gate in data["gate_outcomes"].values()} == {"PASS"}
+
+
 def test_brief_json_is_read_only_and_selects_walk_questions(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
     _library_init_bundle(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="miner")

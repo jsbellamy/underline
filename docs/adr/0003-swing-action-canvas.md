@@ -55,6 +55,9 @@ not evaluate a taller canvas.
 ### Negative
 
 - Swing bundles and Release Frames now use the adopted 24×24 canvas.
+- `strip:polish init` still validates and slices the 16×24 provider acquisition
+  layout, then materializes new Draft and Polished Frames directly on the 24×24
+  swing canvas. New bundles do not require a later re-canvas migration.
 - Identity Lock swing evaluation requires 24×24 attempt Frames with the anchor
   embedded at `(4, 0)` — callers cannot pass bare 16×24 rasters for swing.
 - Strip pitch and gutter semantics for swing differ from the global default
@@ -65,3 +68,9 @@ not evaluate a taller canvas.
 Boundary clearance is assumed, not re-measured on re-authored art. If a
 re-authored swing arc still clips at 24×24, the canvas decision must be
 revisited with fresh measurements.
+
+A general `recanvas` or `migrate-layout` command is deliberately deferred. New
+bundles now materialize the class canvas during initialization, and swing is the
+only concrete migration so far. Add a migration command only when another
+existing bundle needs one, with explicit dry-run, hash, report, and Release Frame
+semantics for that use case.

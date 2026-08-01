@@ -45,6 +45,11 @@ late. Where a runtime supports subagents, run that review in one: it opens the
 artifact, answers the question, and returns text, so the artifact never enters
 the main task's context.
 
+For a compact, read-only Polish Bundle baseline, use
+`npm run --silent strip:polish -- check <bundle> --summary-json`. Reserve the
+complete `--json` payload and immutable fingerprinted report for diagnosis that
+needs fields absent from the summary.
+
 ### Final-polish agent audit
 
 For a profiled Polish Bundle, run

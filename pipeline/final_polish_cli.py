@@ -144,6 +144,18 @@ def _check_json_payload(
     return payload
 
 
+def _check_summary_json_payload(result: FinalPolishCheckResult) -> dict[str, Any]:
+    return {
+        "outcome": result.outcome,
+        "fingerprint": result.fingerprint,
+        "frame_dimensions": result.coherence["dimensions"],
+        "identity_lock": (
+            None if result.identity_lock is None else result.identity_lock.outcome
+        ),
+        "gate_outcomes": result.coherence["gate_outcomes"],
+    }
+
+
 def _init_rejection_json_payload(
     provider_path: pathlib.Path,
     motion_class: str,
@@ -319,7 +331,9 @@ def _handle_check(args: argparse.Namespace) -> int:
         print(str(exc), file=sys.stderr)
         return 2
 
-    if args.json:
+    if args.summary_json:
+        _emit_json(_check_summary_json_payload(result))
+    elif args.json:
         _emit_json(_check_json_payload(args.bundle, result))
     else:
         print(_format_check_report(args.bundle, result))
@@ -412,7 +426,15 @@ def _configure_parser(parser: argparse.ArgumentParser) -> None:
 
     check = sub.add_parser("check", help="Validate a bundle without writing")
     check.add_argument("bundle", type=pathlib.Path, help="Final-polish bundle directory")
-    check.add_argument("--json", action="store_true", help="Emit machine-readable JSON on stdout")
+    check_output = check.add_mutually_exclusive_group()
+    check_output.add_argument(
+        "--json", action="store_true", help="Emit complete machine-readable JSON on stdout"
+    )
+    check_output.add_argument(
+        "--summary-json",
+        action="store_true",
+        help="Emit compact baseline fields for agent dispatch on stdout",
+    )
 
     brief = sub.add_parser("brief", help="Read the bundle's visual audit profile")
     brief.add_argument("bundle", type=pathlib.Path, help="Final-polish bundle directory")
