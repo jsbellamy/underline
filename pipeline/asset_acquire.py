@@ -22,11 +22,12 @@ from typing import Any, Callable, Mapping
 
 from pipeline import gate_control as gc
 from pipeline import gate_evidence as ge
-from pipeline.final_polish import ATTEMPT_OUTCOMES, GENERATION_MODES, PROVENANCE_SCHEMA
+from pipeline.final_polish import ATTEMPT_OUTCOMES, GENERATION_MODES
 
 REPO_ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 LEDGER_SCHEMA = "asset-acquisition/0"
+PROVENANCE_SCHEMA = "asset-acquisition-provenance/0"
 
 Clock = Callable[[], str]
 
@@ -85,9 +86,12 @@ def allocate_asset_attempt_identity(
                 for key, value in json.loads(counters_path.read_text()).items()
             }
         ordinal = max(ledger_max, counters.get(specification_id, 0)) + 1
+        attempt_id = f"{specification_id.replace('/', '--')}--{ordinal:03d}"
+        raw_path = store_root / "raw" / f"{attempt_id}.png"
+        if raw_path.exists():
+            raise AssetAcquisitionError(f"raw bytes already recorded: {raw_path}")
         counters[specification_id] = ordinal
         counters_path.write_text(json.dumps(counters, sort_keys=True) + "\n")
-        attempt_id = f"{specification_id.replace('/', '--')}--{ordinal:03d}"
         pred = predecessor if ordinal > 1 else None
         return AssetAttemptIdentity(
             specification_id=specification_id,

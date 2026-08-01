@@ -113,7 +113,16 @@ def test_interleaved_specification_ids_get_independent_ordinal_sequences(tmp_pat
 
 @pytest.mark.parametrize(
     "field",
-    ["attempt_id", "ordinal", "predecessor_attempt_id", "generated_at", "raw_sha256", "dimensions"],
+    [
+        "attempt_id",
+        "ordinal",
+        "predecessor_attempt_id",
+        "generated_at",
+        "raw_sha256",
+        "dimensions",
+        "repository_commit",
+        "prompt_sha256",
+    ],
 )
 def test_attested_fields_are_not_accepted_from_the_caller(tmp_path: Path, field: str) -> None:
     store_root = tmp_path / "acquisition-controls"
@@ -170,6 +179,13 @@ def test_recording_into_an_occupied_raw_path_raises(tmp_path: Path) -> None:
 
     with pytest.raises(aa.AssetAcquisitionError):
         _record(tmp_path, store_root)
+
+    # A pre-occupied raw path must not burn an ordinal; clear the orphan and retry.
+    next_raw.unlink()
+    second = _record(tmp_path, store_root)
+    assert second["ordinal"] == 2
+    rows = aa.load_asset_attempts(store_root, "first-room/dwarf/swing")
+    assert [row["ordinal"] for row in rows] == [1, 2]
 
 
 # --- C5: rejections are Attempts ---------------------------------------------
