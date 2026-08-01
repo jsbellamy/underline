@@ -27,6 +27,20 @@ missing prerequisite is discovered after dispatch, the implementer returns a
 blocked report; the orchestrator repairs the dependency graph or issue scope
 before redispatching.
 
+## Writing `## Touches`
+
+Anchor at the symbol, never the file: `pipeline/strip.py :: layout_for_motion_class`
+is a manifest an implementer can resolve with `npm run agents:anchors`, while a
+bare file name silently costs it the whole module on every round trip. Prose
+anchors ("the `layout = _corpus_layout()` call preceding …") are legitimate when
+no symbol names the site, but they resolve by hand — spend them deliberately.
+
+When a slice changes how a library symbol fails — a new exception, a re-typed
+one, a new reason code — the manifest names its CLI handler
+(`pipeline/<module>_cli.py`) and that CLI's test module too. The library and the
+handler that catches it are one seam; splitting them across the manifest
+boundary is how a slice ships a library change that crashes the CLI.
+
 ## When a skill says "publish to the issue tracker"
 
 Create a new issue with `gh issue create`. Put long-form artifacts in `docs/` and

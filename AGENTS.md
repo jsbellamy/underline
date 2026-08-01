@@ -50,6 +50,22 @@ For a compact, read-only Polish Bundle baseline, use
 complete `--json` payload and immutable fingerprinted report for diagnosis that
 needs fields absent from the summary.
 
+The same rule governs source, not just artifacts. The pipeline's core modules
+run to two thousand lines each, so a whole-file read of one costs more per round
+trip than any strip PNG. An issue's `## Touches` `read:` lines are symbol-scoped
+for that reason — `pipeline/strip.py :: layout_for_motion_class` names a
+function, not a module. Resolve the whole manifest at once with
+
+```bash
+npm run --silent agents:anchors -- --issue <N>
+```
+
+which prints each anchored function, constant, or doc section as numbered
+source and lists what it could not resolve. Read those leftovers narrowly
+(grep for the symbol, then read a window around it). A whole-file read of a
+module over ~800 lines is a deliberate choice that belongs in the PR body, not
+a default.
+
 ### Final-polish agent audit
 
 For a profiled Polish Bundle, run
