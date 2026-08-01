@@ -13,8 +13,10 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from pipeline import canonical
+from pipeline.asset_pack import FIRST_ROOM_ANIMATION_POLICY
 from pipeline.cell_raster import RasterError, write_cells
 from pipeline.cell_raster import read_cells as _read_cells
+from pipeline.cell_raster import write_silhouette_gif, write_silhouette_strip
 from pipeline.gate_evidence import EvidenceError, sha256_bytes, sha256_file, write_json_immutable
 from pipeline.identity_lock import (
     IDENTITY_LOCK_NEAR_MISS_SCHEMA,
@@ -75,6 +77,14 @@ PROVENANCE_REQUIRED_FIELDS = (
 )
 
 EXPECTED_FRAME_NAMES = tuple(f"frame-{index}.png" for index in range(DEFAULT_LAYOUT.frame_count))
+SILHOUETTE_STRIP_RELATIVE_PATH = "reports/silhouette-strip.png"
+SILHOUETTE_GIF_RELATIVE_PATH = "reports/silhouette.gif"
+_MOTION_CLASS_ASSET_ID = {
+    "idle": "dwarf-idle",
+    "walk": "dwarf-walk",
+    "swing": "dwarf-swing",
+    "emissive": "lantern",
+}
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _DWARF_IDENTITY_DOC = _REPO_ROOT / "assets" / "first-room" / "dwarf" / "identity.json"
 _PROFILE_ROOT = _REPO_ROOT / "polish-profiles"
@@ -138,6 +148,14 @@ class VisibleCellDelta:
 
 
 @dataclass(frozen=True)
+class SilhouetteArtifacts:
+    strip_relative_path: str
+    strip_sha256: str
+    gif_relative_path: str
+    gif_sha256: str
+
+
+@dataclass(frozen=True)
 class FinalPolishCheckResult:
     outcome: Outcome
     provider_outcome: Outcome
@@ -153,6 +171,7 @@ class FinalPolishCheckResult:
     profile_id: str | None = None
     profile_sha256: str | None = None
     provider_post_edit: dict[str, Any] | None = None
+    silhouette_artifacts: SilhouetteArtifacts | None = None
 
 
 def _corpus_layout() -> StripLayout:
@@ -1436,6 +1455,76 @@ def initialize_bundle(
         raise
 
 
+def _layout_from_manifest(manifest: dict[str, Any]) -> StripLayout:
+    layout = manifest["layout"]
+    return StripLayout(
+        frame_w=int(layout["frame_w"]),
+        frame_h=int(layout["frame_h"]),
+        frame_count=int(layout["frame_count"]),
+        gutter=int(layout["gutter"]),
+    )
+
+
+def _animation_policy_for_manifest(manifest: dict[str, Any]) -> dict[str, Any]:
+    motion_class = str(manifest["motion_class"])
+    asset_id = _MOTION_CLASS_ASSET_ID.get(motion_class)
+    if asset_id is None:
+        raise InvalidBundleError(
+            f"no first-room animation policy for motion class {motion_class!r}",
+            reason_code="missing_animation_policy",
+        )
+    policy = FIRST_ROOM_ANIMATION_POLICY.get(asset_id)
+    if policy is None:
+        raise InvalidBundleError(
+            f"missing animation policy for asset {asset_id!r}",
+            reason_code="missing_animation_policy",
+        )
+    return policy
+
+
+def _emit_silhouette_artifacts(
+    bundle_root: Path,
+    frames: Sequence[list[list[Cell]]],
+    manifest: dict[str, Any],
+) -> SilhouetteArtifacts:
+    layout = _layout_from_manifest(manifest)
+    policy = _animation_policy_for_manifest(manifest)
+    durations_ms = policy["durations_ms"]
+    if len(durations_ms) != layout.frame_count:
+        raise InvalidBundleError(
+            "animation policy durations_ms length mismatch",
+            reason_code="animation_policy_mismatch",
+        )
+    strip_path = bundle_root / SILHOUETTE_STRIP_RELATIVE_PATH
+    gif_path = bundle_root / SILHOUETTE_GIF_RELATIVE_PATH
+    write_silhouette_strip(strip_path, frames, layout)
+    write_silhouette_gif(
+        gif_path,
+        frames,
+        durations_ms=durations_ms,
+        loop=bool(policy["loop"]),
+    )
+    return SilhouetteArtifacts(
+        strip_relative_path=SILHOUETTE_STRIP_RELATIVE_PATH,
+        strip_sha256=sha256_file(strip_path),
+        gif_relative_path=SILHOUETTE_GIF_RELATIVE_PATH,
+        gif_sha256=sha256_file(gif_path),
+    )
+
+
+def _silhouette_artifacts_report_payload(artifacts: SilhouetteArtifacts) -> dict[str, Any]:
+    return {
+        "strip": {
+            "relative_path": artifacts.strip_relative_path,
+            "sha256": artifacts.strip_sha256,
+        },
+        "gif": {
+            "relative_path": artifacts.gif_relative_path,
+            "sha256": artifacts.gif_sha256,
+        },
+    }
+
+
 def check_bundle(bundle_root: Path) -> FinalPolishCheckResult:
     """Validate provenance, logical Frames, structure, delta, and coherence."""
     manifest = _load_manifest(bundle_root)
@@ -1475,6 +1564,7 @@ def check_bundle(bundle_root: Path) -> FinalPolishCheckResult:
         provider_post_edit=provider_post_edit,
     )
     fingerprint = _fingerprint_polished_hashes(polished_hashes)
+    silhouette_artifacts = _emit_silhouette_artifacts(bundle_root, polished_frames, manifest)
 
     return FinalPolishCheckResult(
         outcome=outcome,
@@ -1495,6 +1585,7 @@ def check_bundle(bundle_root: Path) -> FinalPolishCheckResult:
             else str(manifest["polish_profile"]["sha256"])
         ),
         provider_post_edit=provider_post_edit,
+        silhouette_artifacts=silhouette_artifacts,
     )
 
 
@@ -1564,6 +1655,10 @@ def _report_payload(bundle_root: Path, result: FinalPolishCheckResult) -> dict[s
         "coherence": result.coherence,
         "outcome": result.outcome,
     }
+    if result.silhouette_artifacts is not None:
+        payload["silhouette_artifacts"] = _silhouette_artifacts_report_payload(
+            result.silhouette_artifacts
+        )
     if result.outcome == "PASS":
         payload["release_frames"] = [
             {"index": index, "sha256": digest}

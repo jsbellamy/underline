@@ -14,6 +14,7 @@ from pipeline.final_polish import (
     FinalPolishError,
     InitializationRejectedError,
     InvalidBundleError,
+    _silhouette_artifacts_report_payload,
     check_bundle,
     finalize_bundle,
     initialize_bundle,
@@ -92,6 +93,12 @@ def _identity_lock_payload(result: FinalPolishCheckResult) -> dict[str, Any] | N
     return identity_lock_report_payload(result.identity_lock)
 
 
+def _silhouette_artifacts_payload(result: FinalPolishCheckResult) -> dict[str, Any] | None:
+    if result.silhouette_artifacts is None:
+        return None
+    return _silhouette_artifacts_report_payload(result.silhouette_artifacts)
+
+
 def _check_json_payload(
     bundle_root: pathlib.Path,
     result: FinalPolishCheckResult,
@@ -126,6 +133,9 @@ def _check_json_payload(
         ),
         "outcome": result.outcome,
     }
+    silhouette_artifacts = _silhouette_artifacts_payload(result)
+    if silhouette_artifacts is not None:
+        payload["silhouette_artifacts"] = silhouette_artifacts
     if report_path is not None:
         payload["report_path"] = str(report_path.resolve())
     if release_paths is not None:
@@ -181,6 +191,11 @@ def _format_check_report(
     ]
     lines.extend(format_coherence_split_report(result.coherence))
     lines.append(f"Overall  {result.outcome}")
+    silhouette_artifacts = _silhouette_artifacts_payload(result)
+    if silhouette_artifacts is not None:
+        lines.append("Silhouette")
+        lines.append(f"  strip  {silhouette_artifacts['strip']['relative_path']}")
+        lines.append(f"  gif    {silhouette_artifacts['gif']['relative_path']}")
     if report_path is not None:
         lines.append(f"Report    {report_path.resolve()}")
     if release_paths:
