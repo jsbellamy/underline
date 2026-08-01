@@ -1,26 +1,38 @@
 {
+  "attempt_ledger": {
+    "relative_path": "provider/attempts.json",
+    "sha256": "471d0bd6c3ad53ec7d43c10a1fe9f41b92635b620fa7f43bcebea0474481ec01"
+  },
   "draft_frames": [
     {
       "index": 0,
       "relative_path": "draft/frame-0.png",
-      "sha256": "72dcd2f9de3f2da8ceec113426a98c5525111a004f789e275ed4026128a31b93"
+      "sha256": "cec70cb991edd8d5fef8d8c223a48272f6a2ca2bf3150927bea9e656cc69d4b6"
     },
     {
       "index": 1,
       "relative_path": "draft/frame-1.png",
-      "sha256": "183e7903bc694a86188e55ce25bd4924b68440ac2050ff931165363bb8f1939d"
+      "sha256": "a067b8e821583219ed11ef057d473e58d52b1a46cfbc329cb59c9abe54a12eb3"
     },
     {
       "index": 2,
       "relative_path": "draft/frame-2.png",
-      "sha256": "cf8b0b21fffec544d4b8e6aaef4b8a09587bdf6620a3a8e52633ea7045928721"
+      "sha256": "cd93e135257df285ca0fb0d4fb7cd6e98cd2c919e020efea847c48f5078d4358"
     },
     {
       "index": 3,
       "relative_path": "draft/frame-3.png",
-      "sha256": "27a4e6dbc75f4c6a7dc0ace7a1859fbcd5639fec78bb0a56443ab5baa115f618"
+      "sha256": "5feaf7c74b4af5e61a496360d37a2bf8896f9b86dc5ac6ba23774c0ed9e79fd6"
     }
   ],
+  "edit_source": {
+    "relative_path": "provider/edit-source.png",
+    "sha256": "d02514c8e4eb9a32505e4144becb5563b77d858b4aa8da81e365ad3dce90c2c0"
+  },
+  "identity_reference": {
+    "relative_path": "reference/identity.png",
+    "sha256": "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9"
+  },
   "layout": {
     "frame_count": 4,
     "frame_h": 24,
@@ -38,12 +50,16 @@
     "id": "dwarf-miner",
     "relative_path": "profile.json",
     "schema": "polish-profile/0",
-    "sha256": "0e60aee8d4a630bad6fdabc8d2525c8ae9e2cda8ceab92e37a1dd972a4fcedcf"
+    "sha256": "30534c42a253ff29b07778db26de584ce6c667248825f08b8c62d49a1169e85c"
+  },
+  "provenance": {
+    "relative_path": "provider/source.source.json",
+    "sha256": "1f1e46200bdd5755c7502111d1eb00f12a0c4f862f893daedce0f0e8136cd80f"
   },
   "provider": {
-    "original_filename": "dwarf-swing-attempt1.png",
+    "original_filename": "source.png",
     "relative_path": "provider/source.png",
-    "sha256": "73c8ddbc1e80c3dfe0803f9aa34c190bdd15011a77dd23b44121a7142fdcf1b1"
+    "sha256": "b0d774e4995acf8275dbb5467a911266b73779502e834cde2d8969a497d54430"
   },
-  "schema": "final-polish-bundle/1"
+  "schema": "final-polish-bundle/2"
 }
