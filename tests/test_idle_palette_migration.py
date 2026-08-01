@@ -21,14 +21,11 @@ IDLE_BUNDLE = ROOT / "assets" / "first-room" / "dwarf" / "idle"
 IDLE_POLISHED = IDLE_BUNDLE / "polished"
 IDENTITY_JSON = ROOT / "assets" / "first-room" / "dwarf" / "identity.json"
 IDENTITY_PNG = ROOT / "assets" / "first-room" / "dwarf" / "identity.png"
-IDENTITY_V2_PNG = ROOT / "assets" / "first-room" / "dwarf" / "identity-v2.png"
 POLISHED_ROLES_JSON = IDLE_BUNDLE / "polished-roles.json"
 MASTER_PALETTE_PATH = ROOT / "assets" / "palettes" / "first-room.json"
 
-CANONICAL_IDENTITY_SHA = "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9"
-PALETTE_EXACT_IDENTITY_SHA = (
-    "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6"
-)
+# Palette-exact since #179 collapsed the two identities onto the canonical path.
+CANONICAL_IDENTITY_SHA = "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6"
 
 PRE_SLICE_ALPHA_SHA256 = {
     0: "46be406c2de591036a943d2d5bf2962a4ea82cae62ae1a49222957da92ce2d57",
@@ -88,7 +85,7 @@ def _frame_roles_entry(doc: dict[str, object], index: int) -> dict[str, object]:
     raise AssertionError(f"missing frame {index} in polished-roles.json")
 
 
-def test_idle_polished_frames_are_palette_exact_and_frame_zero_matches_v2() -> None:
+def test_idle_polished_frames_are_palette_exact_and_frame_zero_matches_identity() -> None:
     allowed = _palette_color_set()
     for index in range(4):
         path = IDLE_POLISHED / f"frame-{index}.png"
@@ -97,7 +94,7 @@ def test_idle_polished_frames_are_palette_exact_and_frame_zero_matches_v2() -> N
             for cell in row:
                 if cell is not None:
                     assert cell in allowed
-    assert (IDLE_POLISHED / "frame-0.png").read_bytes() == IDENTITY_V2_PNG.read_bytes()
+    assert (IDLE_POLISHED / "frame-0.png").read_bytes() == IDENTITY_PNG.read_bytes()
 
 
 def test_idle_polished_frames_preserve_pre_slice_alpha_and_occupancy() -> None:
@@ -131,7 +128,7 @@ def test_idle_bundle_check_passes_after_palette_migration(tmp_path: Path) -> Non
     assert result.coherence["outcome"] == "PASS"
 
 
-def test_identity_json_idle_bundle_matches_disk_and_identity_png_stays_v1() -> None:
+def test_identity_json_idle_bundle_matches_disk_and_identity_png_is_palette_exact() -> None:
     declaration = json.loads(IDENTITY_JSON.read_text(encoding="utf-8"))
     identity_png = declaration["identity_png"]
     assert identity_png["sha256"] == CANONICAL_IDENTITY_SHA
@@ -145,4 +142,4 @@ def test_identity_json_idle_bundle_matches_disk_and_identity_png_stays_v1() -> N
 
     release_frame_0 = IDLE_BUNDLE / "release" / "frame-0.png"
     assert sha256_file(release_frame_0) == idle_bundle["release_frame_0_sha256"]
-    assert idle_bundle["release_frame_0_sha256"] == PALETTE_EXACT_IDENTITY_SHA
+    assert idle_bundle["release_frame_0_sha256"] == CANONICAL_IDENTITY_SHA

@@ -1,4 +1,9 @@
-"""Behavioral proof for pipeline.palette_quantize (issue #172)."""
+"""Behavioral proof for pipeline.palette_quantize (issue #172).
+
+The quantizer is characterized against the soft-shaded raster it was written for:
+the pre-migration dwarf identity, retired from the canonical path by #179 and
+preserved byte-for-byte as the idle draft Frame 0.
+"""
 
 from __future__ import annotations
 
@@ -18,7 +23,9 @@ from pipeline.palette_quantize import (
 )
 
 ROOT = Path(__file__).resolve().parents[1]
-IDENTITY_PNG = ROOT / "assets" / "first-room" / "dwarf" / "identity.png"
+SOFT_SHADED_IDENTITY_PNG = (
+    ROOT / "assets" / "first-room" / "dwarf" / "idle" / "draft" / "frame-0.png"
+)
 MASTER_PALETTE_PATH = ROOT / "assets" / "palettes" / "first-room.json"
 BEARD_CHEST_RECT = {"x0": 10, "x1": 13, "y0": 6, "y1": 14}
 GLOBAL_AMBER_EMISSION_COUNT = 40
@@ -27,7 +34,7 @@ LANDMARK_AMBER_CELLS = {(12, 4), (11, 16)}
 
 
 def _load_identity_cells() -> list[list[tuple[int, int, int] | None]]:
-    return read_cells(IDENTITY_PNG)
+    return read_cells(SOFT_SHADED_IDENTITY_PNG)
 
 
 def _load_palette() -> MasterPalette:

@@ -277,7 +277,7 @@
         "9,9": "earth-leather-beard"
       },
       "index": 0,
-      "source": "assets/first-room/dwarf/identity.png"
+      "source": "assets/first-room/dwarf/idle/draft/frame-0.png"
     },
     {
       "cells": {
