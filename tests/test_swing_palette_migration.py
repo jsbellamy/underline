@@ -11,6 +11,7 @@ from pipeline.final_polish import check_bundle, finalize_bundle
 from pipeline.gate_evidence import sha256_file
 from pipeline.identity_lock import evaluate_identity_lock
 from pipeline.palette_quantize import load_master_palette, quantize_cells
+from pipeline.strip import DEFAULT_LAYOUT, resolve_class_frame_geometry
 
 ROOT = Path(__file__).resolve().parents[1]
 SWING_BUNDLE = ROOT / "assets" / "first-room" / "dwarf" / "swing"
@@ -84,7 +85,11 @@ def test_swing_polished_roles_reproduce_pre_cleanup_rasters() -> None:
         assert isinstance(cells_doc, dict)
         role_assignment = _load_role_assignment(cells_doc)
         embedded = read_cells(source, size=(24, 24))
-        source_cells = [[embedded[y][x + 4] for x in range(16)] for y in range(24)]
+        origin_x, _ = resolve_class_frame_geometry("swing").canonical_origin
+        anchor_w = DEFAULT_LAYOUT.frame_w
+        source_cells = [
+            [embedded[y][origin_x + x] for x in range(anchor_w)] for y in range(24)
+        ]
         precleanup = quantize_cells(source_cells, palette, role_assignment)
         assert _cell_content_sha256(precleanup) == PRE_CLEANUP_CELL_SHA256[index]
 

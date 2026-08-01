@@ -9,7 +9,7 @@ from typing import Iterable, Sequence
 
 from pipeline.cell_raster import Cell, read_cells
 from pipeline.identity_lock import _load_palette_roles, nearest_palette_role
-from pipeline.strip import StripLayout, static_silhouette_pair_fraction
+from pipeline.strip import StripLayout, resolve_class_frame_geometry, static_silhouette_pair_fraction
 from PIL import Image
 
 CellGrid = list[list[Cell]]
@@ -362,15 +362,17 @@ def render_variant_frames(
 
 
 def _anchor_source_frames(frames: Sequence[CellGrid]) -> list[CellGrid]:
-    """Crop production swing Frames on the 24×24 canvas back to 16×24 anchor rasters."""
+    """Crop production swing Frames on the class canvas back to anchor rasters."""
     if not frames:
         return []
     width = len(frames[0][0])
     if width == SOURCE_FRAME_W:
         return [list(frame) for frame in frames]
-    if width == 24:
+    swing_geometry = resolve_class_frame_geometry("swing")
+    if width == swing_geometry.frame_w:
+        origin_x, _ = swing_geometry.canonical_origin
         return [
-            [row[4 : 4 + SOURCE_FRAME_W] for row in frame]
+            [row[origin_x : origin_x + SOURCE_FRAME_W] for row in frame]
             for frame in frames
         ]
     raise ValueError(f"unsupported swing frame width: {width}")

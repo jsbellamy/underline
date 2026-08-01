@@ -13,6 +13,7 @@ from pipeline.strip import (
     GatePolicy,
     build_runtime_acceptance_policy,
     evaluate_continuous_gate_outcome,
+    resolve_class_frame_geometry,
     validate_separated_promotions,
 )
 
@@ -139,9 +140,18 @@ def test_static_silhouette_adjacent_max_is_canvas_invariant() -> None:
     change static_silhouette_adjacent_max — no pixel of motion changed."""
     frames = _load_polished("swing")
     native_max = S.static_silhouette_adjacent_max(frames)
-    anchor_frames = [[row[4 : 4 + 16] for row in frame] for frame in frames]
-    wide_16 = _embed_in_wider_canvas(anchor_frames, canvas_w=24, left_pad=4)
-    wide_32 = _embed_in_wider_canvas(anchor_frames, canvas_w=32, left_pad=8)
+    swing_geometry = resolve_class_frame_geometry("swing")
+    origin_x, _ = swing_geometry.canonical_origin
+    anchor_w = S.DEFAULT_LAYOUT.frame_w
+    anchor_frames = [
+        [row[origin_x : origin_x + anchor_w] for row in frame] for frame in frames
+    ]
+    wide_16 = _embed_in_wider_canvas(
+        anchor_frames,
+        canvas_w=swing_geometry.frame_w,
+        left_pad=origin_x,
+    )
+    wide_32 = _embed_in_wider_canvas(anchor_frames, canvas_w=32, left_pad=origin_x * 2)
     assert S.static_silhouette_adjacent_max(wide_16) == pytest.approx(native_max, abs=TOLERANCE)
     assert S.static_silhouette_adjacent_max(wide_32) == pytest.approx(native_max, abs=TOLERANCE)
 

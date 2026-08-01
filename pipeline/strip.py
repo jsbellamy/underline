@@ -2054,6 +2054,29 @@ def resolve_class_frame_geometry(motion_class: str) -> ClassFrameGeometry:
     )
 
 
+def embed_on_class_canvas(
+    frame: list[list[Cell]],
+    *,
+    class_frame_w: int,
+    class_frame_h: int,
+    anchor_frame_w: int,
+    anchor_frame_h: int,
+    origin_dx: int,
+    origin_dy: int,
+) -> list[list[Cell]]:
+    if len(frame) == class_frame_h and len(frame[0]) == class_frame_w:
+        return frame
+    if len(frame) != anchor_frame_h or len(frame[0]) != anchor_frame_w:
+        raise ValueError("frame size does not match anchor raster for embedding")
+    embedded: list[list[Cell]] = [
+        [None for _ in range(class_frame_w)] for _ in range(class_frame_h)
+    ]
+    for y in range(anchor_frame_h):
+        for x in range(anchor_frame_w):
+            embedded[y + origin_dy][x + origin_dx] = frame[y][x]
+    return embedded
+
+
 def layout_for_motion_class(
     motion_class: str,
     *,

@@ -38,6 +38,7 @@ from pipeline.strip import (
     StripLayout,
     canonicalize_frame,
     coherence_split,
+    embed_on_class_canvas,
     ingest_strip_provider,
     load_provider_frames,
     resolve_class_frame_geometry,
@@ -188,32 +189,6 @@ def _corpus_layout() -> StripLayout:
     )
 
 
-def _embed_on_class_canvas(
-    frame: list[list[Cell]],
-    *,
-    class_frame_w: int,
-    class_frame_h: int,
-    anchor_frame_w: int,
-    anchor_frame_h: int,
-    origin_dx: int,
-    origin_dy: int,
-) -> list[list[Cell]]:
-    if len(frame) == class_frame_h and len(frame[0]) == class_frame_w:
-        return frame
-    if len(frame) != anchor_frame_h or len(frame[0]) != anchor_frame_w:
-        raise InvalidBundleError(
-            "frame size does not match anchor raster for embedding",
-            reason_code="wrong_size",
-        )
-    embedded: list[list[Cell]] = [
-        [None for _ in range(class_frame_w)] for _ in range(class_frame_h)
-    ]
-    for y in range(anchor_frame_h):
-        for x in range(anchor_frame_w):
-            embedded[y + origin_dy][x + origin_dx] = frame[y][x]
-    return embedded
-
-
 def _embed_frames_for_manifest_layout(
     frames: list[list[list[Cell]]],
     *,
@@ -227,18 +202,21 @@ def _embed_frames_for_manifest_layout(
     ):
         return frames
     geometry = resolve_class_frame_geometry(motion_class)
-    return [
-        _embed_on_class_canvas(
-            frame,
-            class_frame_w=layout.frame_w,
-            class_frame_h=layout.frame_h,
-            anchor_frame_w=anchor_layout.frame_w,
-            anchor_frame_h=anchor_layout.frame_h,
-            origin_dx=geometry.canonical_origin[0],
-            origin_dy=geometry.canonical_origin[1],
-        )
-        for frame in frames
-    ]
+    try:
+        return [
+            embed_on_class_canvas(
+                frame,
+                class_frame_w=layout.frame_w,
+                class_frame_h=layout.frame_h,
+                anchor_frame_w=anchor_layout.frame_w,
+                anchor_frame_h=anchor_layout.frame_h,
+                origin_dx=geometry.canonical_origin[0],
+                origin_dy=geometry.canonical_origin[1],
+            )
+            for frame in frames
+        ]
+    except ValueError as exc:
+        raise InvalidBundleError(str(exc), reason_code="wrong_size") from exc
 
 
 def _frame_dir(bundle_root: Path, layer: str) -> Path:
