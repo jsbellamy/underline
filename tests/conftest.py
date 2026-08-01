@@ -19,10 +19,14 @@ STRIP_COHERENCE = ROOT / "prototype" / "strip-coherence"
 # Recovering and ingesting a corpus strip is pure with respect to the PNG on
 # disk, but the suite asks for the same handful of strips about two and a half
 # times over — 105 reads across 40 distinct strips, most of the wall clock.
-# Memoize them for the test session only. The cache key carries the file's
-# mtime and size so a regenerated strip can never serve a stale result, and
-# results are deep-copied on the way out so one test cannot mutate cells that
-# a later test reads. Copying costs ~0.002s against a ~0.45s recompute.
+# Memoize them for the test session with two tiers: an in-process dict (first,
+# so a session-local hit never touches disk) backed by tests.support.strip_cache
+# (second, so a hit from another `-n auto` worker or a later per-file isolation
+# run costs a pickle load instead of a recompute). The cache key carries the
+# file's mtime and size so a regenerated strip can never serve a stale result
+# from either tier, and results are deep-copied on the way out so one test
+# cannot mutate cells that a later test reads. Copying costs ~0.002s against a
+# ~0.45s recompute.
 _STRIP_READ_CACHE: dict[Any, Any] = {}
 
 
@@ -43,8 +47,16 @@ def _memoized_strip_read(fn: Callable[..., Any]) -> Callable[..., Any]:
             tuple(sorted(kwargs.items())),
         )
         if key not in _STRIP_READ_CACHE:
-            # Raising calls stay uncached: pytest.raises cases are cheap.
-            _STRIP_READ_CACHE[key] = fn(raw_path, layout, **kwargs)
+            from tests.support import strip_cache
+
+            disk_root = strip_cache.store_root(ROOT)
+            hit, value = strip_cache.read(disk_root, key)
+            if not hit:
+                # Raising calls stay uncached: pytest.raises cases are cheap,
+                # and a raised exception must never reach strip_cache.write.
+                value = fn(raw_path, layout, **kwargs)
+                strip_cache.write(disk_root, key, value)
+            _STRIP_READ_CACHE[key] = value
         return copy.deepcopy(_STRIP_READ_CACHE[key])
 
     return wrapper
