@@ -21,10 +21,11 @@ runtime supports worktrees.
    anchor only when required. The manifest is expected scope, not a
    straitjacket: justify each out-of-manifest file in the PR body.
 3. Create `issue-<N>-<slug>` from `main`.
-4. Implement. Invoke `/tdd` explicitly, then work test-first at the seams in
-   `docs/agents/code-style.md` (that doc is the standing seam agreement). If the
-   runtime does not expose `/tdd`, follow the equivalent red-green workflow at the
-   same seams. Run focused test files during implementation; run
+4. Implement test-first at the seams in `docs/agents/code-style.md` (that doc is
+   the standing seam agreement). **Cursor:** read `.cursor/skills/tdd/SKILL.md`
+   and follow its blocking loop before any production or asset edit. **Other
+   runtimes:** invoke `/tdd`, or read `~/.claude/skills/tdd/SKILL.md`. Run
+   focused test files during implementation; run
    `npm run test:changed` before publishing — it selects the tests the diff
    against `main` actually touches (`scripts/select_changed_tests.py`) and
    widens to the whole suite whenever the mapping is ambiguous. CI

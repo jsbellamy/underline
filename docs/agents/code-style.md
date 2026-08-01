@@ -1,8 +1,9 @@
 # Code style and test seams
 
-How Underline code is structured and where its tests go. When the `/tdd` skill
-asks which seams to test, this document is the standing answer — no per-session
-seam negotiation is needed unless the work falls outside it.
+How Underline code is structured and where its tests go. When the TDD skill
+(`.cursor/skills/tdd/SKILL.md` on Cursor, `/tdd` elsewhere) asks which seams to
+test, this document is the standing answer — no per-session seam negotiation is
+needed unless the work falls outside it.
 
 The game is **TypeScript**. Python is confined to the asset pipeline. A rule
 below applies to whichever of the two it names.
