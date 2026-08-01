@@ -113,6 +113,25 @@ def test_a_comma_separated_symbol_field_yields_each_symbol() -> None:
     assert anchors[3].symbols == ("layout_for_motion_class", "embed_on_class_canvas")
 
 
+def test_a_comma_separated_bare_symbol_field_yields_each_symbol() -> None:
+    anchors = parse_touches(
+        "## Touches\n\n- read: [authority] `adr.md` :: Decision, Later — both\n"
+    )
+
+    assert anchors[0].symbols == ("Decision", "Later")
+
+
+def test_a_sidecar_anchor_resolves_to_the_whole_file() -> None:
+    anchors = parse_touches(
+        "## Touches\n\n- read: [authority] `identity.json` :: `seed_pad_px` — the pad\n"
+    )
+
+    output = render(anchors, {"identity.json": '{\n  "seed_pad_px": 4\n}\n'})
+
+    assert '    2\t  "seed_pad_px": 4' in output
+    assert "unresolved" not in output
+
+
 def test_a_note_containing_backticks_does_not_become_a_symbol() -> None:
     anchors = parse_touches(TOUCHES)
 

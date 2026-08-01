@@ -115,7 +115,10 @@ def _split_symbols_and_note(rest: str) -> tuple[tuple[str, ...], str]:
     if not symbol_field:
         return (), note.strip()
 
-    return (symbol_field,), note.strip()
+    # Bare symbol fields list headings by comma ("Decision, Limit"). An arrow
+    # path inside one component stays intact.
+    bare = tuple(part.strip() for part in symbol_field.split(",") if part.strip())
+    return bare, note.strip()
 
 
 def python_symbol_spans(source: str, names: Iterable[str]) -> tuple[Span, ...]:
@@ -212,7 +215,10 @@ def resolve_anchor(anchor: Anchor, source: str) -> tuple[tuple[Span, ...], tuple
     """Return the spans `anchor` resolves to in `source`, and the symbols it
     does not. An anchor naming no symbol resolves to the whole file."""
     line_count = len(source.splitlines())
-    if not anchor.symbols:
+    if not anchor.symbols or not anchor.path.endswith((".py", ".md")):
+        # Sidecars (identity manifests, provenance records, lock files) are
+        # small by construction, so a key anchor resolves to the file it keys
+        # into rather than to machinery for walking one.
         return (Span(name=anchor.path, start=1, end=line_count),), ()
 
     if anchor.path.endswith(".py"):
