@@ -1,12 +1,11 @@
 ---
-name: code-review-spec
-description: >-
   Spec axis for /code-review. Reviews a git diff against the originating issue,
   PRD, or spec — including visual-fidelity verdicts when assets changed.
   Spawned by the parent /code-review orchestrator with the diff, spec source,
   and visual reference set in the prompt.
-model: "composer-2.5[fast=false]"
-readonly: true
+name: code-review-spec
+model: composer-2.5[fast=false]
+description: >-
 ---
 
 ## Model (binding)

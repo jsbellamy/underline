@@ -1,12 +1,11 @@
 ---
-name: code-review-standards
-description: >-
   Standards axis for /code-review. Reviews a git diff against documented repo
   standards and the Fowler smell baseline. Spawned by the parent /code-review
   orchestrator with the diff command, commit list, standards sources, companion-
   artifact checklist, and smell baseline in the prompt.
-model: "composer-2.5[fast=false]"
-readonly: true
+name: code-review-standards
+model: composer-2.5[fast=false]
+description: >-
 ---
 
 ## Model (binding)

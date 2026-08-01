@@ -1,12 +1,11 @@
 ---
-name: gate-blind-review
-description: >-
   §10 Promotion-verification blind gate reviewer. Use proactively when a
   promotion needs review--01 or review--02 from packet panels — one invocation
   per audit, never both reviews in one session. Parent builds packet.png and
   review-input--02.json; this agent only judges visuals and returns audit fields.
-model: "composer-2.5[fast=false]"
-readonly: true
+name: gate-blind-review
+model: composer-2.5[fast=false]
+description: >-
 ---
 
 ## Model (binding)
