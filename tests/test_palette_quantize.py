@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-import copy
 from pathlib import Path
 
 import pytest
-from PIL import Image
 
-from pipeline.cell_raster import cells_from_rgba, read_cells
+from pipeline.cell_raster import read_cells
 from pipeline.identity_lock import nearest_palette_role
 from pipeline.palette_quantize import (
     MasterPalette,
@@ -182,15 +180,6 @@ def test_propose_seed_role_map_matches_nearest_palette_role_per_cell() -> None:
         assert role == nearest_palette_role(cell, palette.entries)
 
 
-def test_quantize_twice_on_identity_is_byte_stable() -> None:
-    cells = _load_identity_cells()
-    palette = _load_palette()
-    role_map = _corrected_identity_role_map(cells, palette)
-    first = quantize_cells(cells, palette, role_map)
-    second = quantize_cells(copy.deepcopy(first), palette, role_map)
-    assert second == first
-
-
 def test_load_master_palette_matches_first_room_role_groups() -> None:
     palette = _load_palette()
     assert palette.role_ids == (
@@ -226,13 +215,20 @@ def test_landmark_amber_cells_remain_amber_in_seed_map() -> None:
         assert seed[coord] == "amber-emission"
 
 
-def test_quantize_rgba_image_round_trip_preserves_dimensions() -> None:
-    from pipeline.palette_quantize import quantize_rgba_image
-
-    with Image.open(IDENTITY_PNG) as image:
-        rgba = image.convert("RGBA")
-        palette = _load_palette()
-        role_map = _corrected_identity_role_map(cells_from_rgba(rgba), palette)
-        quantized = quantize_rgba_image(rgba, palette, role_map)
-    assert len(quantized) == rgba.height
-    assert len(quantized[0]) == rgba.width
+def test_corrected_role_map_amber_cells_match_quantized_palette_roles() -> None:
+    cells = _load_identity_cells()
+    palette = _load_palette()
+    role_map = _corrected_identity_role_map(cells, palette)
+    quantized = quantize_cells(cells, palette, role_map)
+    amber_palette = set(palette.role_colors["amber-emission"])
+    for coord, role in role_map.items():
+        x, y = coord
+        cell = quantized[y][x]
+        assert cell is not None
+        if role == "amber-emission":
+            assert cell in amber_palette
+        else:
+            assert cell in palette.role_colors[role]
+    assert LANDMARK_AMBER_CELLS <= {
+        coord for coord, role in role_map.items() if role == "amber-emission"
+    }

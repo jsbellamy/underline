@@ -7,7 +7,6 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Mapping
 
-from pipeline.cell_raster import cells_from_rgba
 from pipeline.identity_lock import nearest_palette_role
 from pipeline.strip import Cell
 
@@ -17,7 +16,6 @@ __all__ = [
     "load_master_palette",
     "propose_seed_role_map",
     "quantize_cells",
-    "relative_luminance",
 ]
 
 RoleAssignment = Mapping[tuple[int, int], str]
@@ -155,12 +153,3 @@ def quantize_cells(
     if height and any(len(row) != width for row in quantized):
         raise PaletteQuantizeError("quantized grid width mismatch")
     return quantized
-
-
-def quantize_rgba_image(
-    image,
-    palette: MasterPalette,
-    role_assignment: RoleAssignment,
-):
-    """Quantize a PIL RGBA image via ``quantize_cells``."""
-    return quantize_cells(cells_from_rgba(image), palette, role_assignment)
