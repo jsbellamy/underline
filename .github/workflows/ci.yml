@@ -51,8 +51,21 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
+      - name: Report runner capacity
+        run: nproc
+
+      # Worker count defaults to the runner's CPU count, and the committed
+      # duration hints dispatch the slowest files first so the long pole never
+      # starts late.
       - name: Run every test file in isolation
         run: >-
           PYTHONPATH=. python3 scripts/run_isolated_tests.py
-          --workers 2
           --report "$RUNNER_TEMP/isolation-report.json"
+
+      - name: Upload isolation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: isolation-report
+          path: ${{ runner.temp }}/isolation-report.json
+          if-no-files-found: warn
