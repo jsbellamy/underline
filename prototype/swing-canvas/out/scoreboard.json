@@ -1,0 +1,1734 @@
+{
+  "baseline": {
+    "idle": {
+      "edge_load": {
+        "left": [
+          3,
+          0,
+          0,
+          0
+        ],
+        "right": [
+          2,
+          9,
+          4,
+          2
+        ]
+      },
+      "per_frame": [
+        {
+          "alpha_bbox": "x0-15 y1-23",
+          "boundary_columns": {
+            "left": 3,
+            "right": 2
+          },
+          "boundary_rows": {
+            "bottom": 12,
+            "top": 0
+          },
+          "occupancy": 0.698
+        },
+        {
+          "alpha_bbox": "x1-15 y1-23",
+          "boundary_columns": {
+            "left": 0,
+            "right": 9
+          },
+          "boundary_rows": {
+            "bottom": 12,
+            "top": 0
+          },
+          "occupancy": 0.701
+        },
+        {
+          "alpha_bbox": "x1-15 y1-23",
+          "boundary_columns": {
+            "left": 0,
+            "right": 4
+          },
+          "boundary_rows": {
+            "bottom": 13,
+            "top": 0
+          },
+          "occupancy": 0.677
+        },
+        {
+          "alpha_bbox": "x1-15 y1-23",
+          "boundary_columns": {
+            "left": 0,
+            "right": 2
+          },
+          "boundary_rows": {
+            "bottom": 12,
+            "top": 0
+          },
+          "occupancy": 0.688
+        }
+      ],
+      "static_silhouette_fraction": {
+        "0-1": 0.9036,
+        "1-2": 0.9557,
+        "2-3": 0.9531,
+        "3-0": 0.9844
+      }
+    },
+    "swing": {
+      "edge_load": {
+        "left": [
+          0,
+          2,
+          11,
+          7
+        ],
+        "right": [
+          0,
+          6,
+          4,
+          0
+        ]
+      },
+      "per_frame": [
+        {
+          "alpha_bbox": "x1-14 y1-23",
+          "boundary_columns": {
+            "left": 0,
+            "right": 0
+          },
+          "boundary_rows": {
+            "bottom": 8,
+            "top": 0
+          },
+          "occupancy": 0.461
+        },
+        {
+          "alpha_bbox": "x0-15 y8-23",
+          "boundary_columns": {
+            "left": 2,
+            "right": 6
+          },
+          "boundary_rows": {
+            "bottom": 9,
+            "top": 0
+          },
+          "occupancy": 0.393
+        },
+        {
+          "alpha_bbox": "x0-15 y9-23",
+          "boundary_columns": {
+            "left": 11,
+            "right": 4
+          },
+          "boundary_rows": {
+            "bottom": 11,
+            "top": 0
+          },
+          "occupancy": 0.401
+        },
+        {
+          "alpha_bbox": "x0-14 y10-23",
+          "boundary_columns": {
+            "left": 7,
+            "right": 0
+          },
+          "boundary_rows": {
+            "bottom": 11,
+            "top": 0
+          },
+          "occupancy": 0.333
+        }
+      ],
+      "static_silhouette_fraction": {
+        "0-1": 0.6823,
+        "1-2": 0.8151,
+        "2-3": 0.8646,
+        "3-0": 0.6276
+      }
+    },
+    "walk": {
+      "edge_load": {
+        "left": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "right": [
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "per_frame": [
+        {
+          "alpha_bbox": "x2-14 y7-23",
+          "boundary_columns": {
+            "left": 0,
+            "right": 0
+          },
+          "boundary_rows": {
+            "bottom": 9,
+            "top": 0
+          },
+          "occupancy": 0.396
+        },
+        {
+          "alpha_bbox": "x2-14 y7-23",
+          "boundary_columns": {
+            "left": 0,
+            "right": 0
+          },
+          "boundary_rows": {
+            "bottom": 6,
+            "top": 0
+          },
+          "occupancy": 0.391
+        },
+        {
+          "alpha_bbox": "x1-14 y7-23",
+          "boundary_columns": {
+            "left": 0,
+            "right": 0
+          },
+          "boundary_rows": {
+            "bottom": 5,
+            "top": 0
+          },
+          "occupancy": 0.367
+        },
+        {
+          "alpha_bbox": "x1-13 y7-23",
+          "boundary_columns": {
+            "left": 0,
+            "right": 0
+          },
+          "boundary_rows": {
+            "bottom": 8,
+            "top": 0
+          },
+          "occupancy": 0.393
+        }
+      ],
+      "static_silhouette_fraction": {
+        "0-1": 0.9375,
+        "1-2": 0.9349,
+        "2-3": 0.9427,
+        "3-0": 0.9193
+      }
+    }
+  },
+  "overlay_body_byte_identical": [
+    true,
+    true,
+    true,
+    false
+  ],
+  "schema": "swing-canvas-scoreboard/0",
+  "variants": {
+    "24x24": {
+      "per_frame": [
+        {
+          "alpha_bbox": "x5-18 y1-23",
+          "boundary_columns": {
+            "left": 0,
+            "right": 0
+          },
+          "boundary_rows": {
+            "bottom": 8,
+            "top": 0
+          },
+          "occupancy": 0.307
+        },
+        {
+          "alpha_bbox": "x4-19 y8-23",
+          "boundary_columns": {
+            "left": 0,
+            "right": 0
+          },
+          "boundary_rows": {
+            "bottom": 9,
+            "top": 0
+          },
+          "occupancy": 0.262
+        },
+        {
+          "alpha_bbox": "x4-19 y9-23",
+          "boundary_columns": {
+            "left": 0,
+            "right": 0
+          },
+          "boundary_rows": {
+            "bottom": 11,
+            "top": 0
+          },
+          "occupancy": 0.267
+        },
+        {
+          "alpha_bbox": "x4-18 y10-23",
+          "boundary_columns": {
+            "left": 0,
+            "right": 0
+          },
+          "boundary_rows": {
+            "bottom": 11,
+            "top": 0
+          },
+          "occupancy": 0.222
+        }
+      ],
+      "static_silhouette_fraction": {
+        "0-1": 0.7882,
+        "1-2": 0.8767,
+        "2-3": 0.9097,
+        "3-0": 0.7517
+      }
+    },
+    "32x24": {
+      "per_frame": [
+        {
+          "alpha_bbox": "x9-22 y1-23",
+          "boundary_columns": {
+            "left": 0,
+            "right": 0
+          },
+          "boundary_rows": {
+            "bottom": 8,
+            "top": 0
+          },
+          "occupancy": 0.23
+        },
+        {
+          "alpha_bbox": "x8-23 y8-23",
+          "boundary_columns": {
+            "left": 0,
+            "right": 0
+          },
+          "boundary_rows": {
+            "bottom": 9,
+            "top": 0
+          },
+          "occupancy": 0.197
+        },
+        {
+          "alpha_bbox": "x8-23 y9-23",
+          "boundary_columns": {
+            "left": 0,
+            "right": 0
+          },
+          "boundary_rows": {
+            "bottom": 11,
+            "top": 0
+          },
+          "occupancy": 0.201
+        },
+        {
+          "alpha_bbox": "x8-22 y10-23",
+          "boundary_columns": {
+            "left": 0,
+            "right": 0
+          },
+          "boundary_rows": {
+            "bottom": 11,
+            "top": 0
+          },
+          "occupancy": 0.167
+        }
+      ],
+      "static_silhouette_fraction": {
+        "0-1": 0.8411,
+        "1-2": 0.9076,
+        "2-3": 0.9323,
+        "3-0": 0.8138
+      }
+    },
+    "overlay": {
+      "per_frame": [
+        {
+          "alpha_bbox": "x5-18 y1-23",
+          "boundary_columns": {
+            "left": 0,
+            "right": 0
+          },
+          "boundary_rows": {
+            "bottom": 8,
+            "top": 0
+          },
+          "occupancy": 0.307
+        },
+        {
+          "alpha_bbox": "x4-19 y8-23",
+          "boundary_columns": {
+            "left": 0,
+            "right": 0
+          },
+          "boundary_rows": {
+            "bottom": 9,
+            "top": 0
+          },
+          "occupancy": 0.262
+        },
+        {
+          "alpha_bbox": "x4-19 y9-23",
+          "boundary_columns": {
+            "left": 0,
+            "right": 0
+          },
+          "boundary_rows": {
+            "bottom": 11,
+            "top": 0
+          },
+          "occupancy": 0.267
+        },
+        {
+          "alpha_bbox": "x4-18 y10-23",
+          "boundary_columns": {
+            "left": 0,
+            "right": 0
+          },
+          "boundary_rows": {
+            "bottom": 11,
+            "top": 0
+          },
+          "occupancy": 0.222
+        }
+      ],
+      "separation": [
+        {
+          "attachment_cell": [
+            4,
+            19
+          ],
+          "status": "ok",
+          "tool_cells": [
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              true,
+              true,
+              true,
+              false,
+              true,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              true,
+              true,
+              true,
+              false,
+              true,
+              false,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              true,
+              true,
+              false,
+              false,
+              false,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              true,
+              true,
+              false,
+              false,
+              false,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              true,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              true,
+              true,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              true,
+              true,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              true,
+              true,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              true,
+              false,
+              true,
+              false,
+              true,
+              false,
+              true,
+              true,
+              true,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              true,
+              false,
+              false,
+              true,
+              false,
+              false,
+              true,
+              false,
+              true,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ]
+          ]
+        },
+        {
+          "attachment_cell": [
+            2,
+            19
+          ],
+          "status": "ok",
+          "tool_cells": [
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              true,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              true,
+              true,
+              true,
+              false,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              true,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              true,
+              true,
+              false,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              true,
+              true,
+              false,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              true,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              true,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ]
+          ]
+        },
+        {
+          "attachment_cell": [
+            1,
+            19
+          ],
+          "status": "ok",
+          "tool_cells": [
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              true,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              true,
+              true,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              true,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              true,
+              true,
+              true,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              true,
+              true,
+              false,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              true,
+              false,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              true,
+              false,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              true,
+              false,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              true,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              true,
+              true,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ],
+            [
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false,
+              false
+            ]
+          ]
+        },
+        {
+          "attachment_cell": null,
+          "reason": "no grip seed found",
+          "status": "failed",
+          "tool_cells": []
+        }
+      ],
+      "static_silhouette_fraction": {
+        "0-1": 0.7882,
+        "1-2": 0.8767,
+        "2-3": 0.9097,
+        "3-0": 0.7517
+      }
+    }
+  }
+}
