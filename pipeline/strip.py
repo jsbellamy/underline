@@ -317,14 +317,24 @@ def build_runtime_acceptance_policy(
     )
 
 
-_LAZY_POLICY: AcceptancePolicy | None = None
+_LAZY_POLICY_CACHE: dict[tuple[pathlib.Path, pathlib.Path], AcceptancePolicy] = {}
 
 
 def _lazy_acceptance_policy() -> AcceptancePolicy:
-    global _LAZY_POLICY
-    if _LAZY_POLICY is None:
-        _LAZY_POLICY = build_runtime_acceptance_policy()
-    return _LAZY_POLICY
+    """Build (or reuse) the runtime Acceptance policy for the resolved gate-controls root.
+
+    Cached per resolved `(profiles_path, manifest_path)` pair rather than in a single
+    process-wide global, so a call under a changed `UNDERLINE_GATE_CONTROLS_ROOT`
+    re-derives instead of silently reusing a policy built from a different root.
+    """
+    key = (_default_profiles_path(), _default_manifest_path())
+    policy = _LAZY_POLICY_CACHE.get(key)
+    if policy is None:
+        policy = build_runtime_acceptance_policy(
+            profiles_path=key[0], manifest_path=key[1]
+        )
+        _LAZY_POLICY_CACHE[key] = policy
+    return policy
 
 
 def __getattr__(name: str) -> Any:

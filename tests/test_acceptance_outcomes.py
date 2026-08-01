@@ -135,6 +135,38 @@ def test_runtime_policy_rejects_missing_separated_promotion(tmp_path: Path) -> N
         )
 
 
+def test_lazy_acceptance_policy_rebuilds_per_gate_controls_root(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """C1/C6: `_lazy_acceptance_policy()` caches per resolved `(profiles_path,
+    manifest_path)` pair, not in one process-wide global — a read under a
+    changed `UNDERLINE_GATE_CONTROLS_ROOT` reflects its own root rather than
+    silently reusing whichever root was resolved first."""
+
+    def _root_with_budget(name: str, budget: float) -> Path:
+        root = tmp_path / name
+        root.mkdir()
+        profiles = json.loads(PROFILES.read_text())
+        profiles["profiles"]["idle"]["gates"]["silhouette_budget"]["budget"] = budget
+        (root / "acceptance-profiles.json").write_text(json.dumps(profiles))
+        (root / "manifest.json").write_text(MANIFEST.read_text())
+        return root
+
+    root_a = _root_with_budget("gate-controls-a", 0.11)
+    root_b = _root_with_budget("gate-controls-b", 0.22)
+
+    monkeypatch.setenv("UNDERLINE_GATE_CONTROLS_ROOT", str(root_a))
+    policy_a = S._lazy_acceptance_policy()
+    monkeypatch.setenv("UNDERLINE_GATE_CONTROLS_ROOT", str(root_b))
+    policy_b = S._lazy_acceptance_policy()
+    # Repeat read under the same (now-current) root reuses the cached policy.
+    policy_b_again = S._lazy_acceptance_policy()
+
+    assert policy_a.motion_classes["idle"].max_silhouette == 0.11
+    assert policy_b.motion_classes["idle"].max_silhouette == 0.22
+    assert policy_b_again is policy_b
+
+
 def test_recovery_failure_yields_structural_fail() -> None:
     path = ROOT / "prototype" / "strip-coherence" / "inbox" / "09-NEG-no-gutter.png"
     layout = S.StripLayout(
