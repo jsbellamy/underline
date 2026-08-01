@@ -26,10 +26,11 @@ if [[ -n "$subagent_model" ]]; then
   mode=$(composer_25_mode "$subagent_model" "[]")
   case "$mode" in
     fast)
-      if pinned_agent_allows_bare_slug "$subagent_type" "$workspace_root" \
+      if is_pinned_subagent "$subagent_type" \
         && [[ "$subagent_model" == "composer-2.5" || "$subagent_model" == "composer-2.5[]" ]]; then
-        # Cursor often reports bare composer-2.5 for frontmatter-pinned standard agents.
-        # preToolUse should have forced composer-2.5[fast=false]; allow only with frontmatter proof.
+        # Cursor often reports bare composer-2.5 even when preToolUse forced
+        # composer-2.5[fast=false]. Pinned agents always get that injection in
+        # gate-task-spawn.sh; do not block on frontmatter (agents may vandalize it).
         echo '{"permission":"allow"}'
         exit 0
       fi
@@ -50,11 +51,9 @@ if [[ -n "$subagent_model" ]]; then
 fi
 
 if is_pinned_subagent "$subagent_type"; then
-  if pinned_agent_frontmatter_standard "$subagent_type" "$workspace_root"; then
-    echo '{"permission":"allow"}'
-    exit 0
-  fi
-  deny "Pinned agent ${subagent_type} did not report subagent_model and frontmatter is not composer-2.5[fast=false]."
+  # preToolUse already forced composer-2.5[fast=false] for pinned Task spawns.
+  echo '{"permission":"allow"}'
+  exit 0
 fi
 
 if is_composer_25_fast "$parent_model" "$parent_params"; then
