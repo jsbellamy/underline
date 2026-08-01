@@ -26,6 +26,11 @@ from pipeline.strip import (
     layout_for_motion_class,
     load_provider_frames,
 )
+from tests.final_polish_harness import (
+    acquisition_store_env,
+    bundle_store_env,
+    record_store_attempt,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 INBOX = ROOT / "prototype" / "strip-coherence" / "inbox"
@@ -111,7 +116,7 @@ def _run_check_cli(
         "pipeline.final_polish.load_provider_frames",
         side_effect=lambda path, layout: load_provider_frames(ingest_source, layout),
     ):
-        return _run_cli(capsys, args, env=_bundle_store_env(bundle))
+        return _run_cli(capsys, args, env=bundle_store_env(bundle))
 
 
 def _run_npm(
@@ -133,17 +138,6 @@ def _run_npm(
     )
 
 
-def _acquisition_store_env(store_root: Path) -> dict[str, str]:
-    return {"UNDERLINE_ACQUISITION_CONTROLS_ROOT": str(store_root)}
-
-
-def _bundle_store_env(bundle: Path) -> dict[str, str] | None:
-    store_root = bundle.parent / "acquisition-controls"
-    if (store_root / "attempts.jsonl").is_file():
-        return _acquisition_store_env(store_root)
-    return None
-
-
 def _register_store_attempt_for_init(
     tmp_path: Path,
     provider_path: Path,
@@ -151,8 +145,6 @@ def _register_store_attempt_for_init(
     *,
     polish_profile: str | None = None,
 ) -> tuple[Path, Path, list[str], dict[str, str]]:
-    from pipeline import asset_acquire as aa
-
     effective_provider = _effective_provider_path(
         provider_path,
         tmp_path,
@@ -183,13 +175,19 @@ def _register_store_attempt_for_init(
             "--edit-source",
             str(padded_seed),
         ]
-    env = _acquisition_store_env(store_root)
-    with patch.dict("os.environ", env):
-        row = aa.record_asset_attempt(
-            effective_provider,
-            f"test/{motion_class}",
-            **record_kwargs,
-        )
+    env = acquisition_store_env(store_root)
+    row, provider_for_init = record_store_attempt(
+        store_root,
+        effective_provider,
+        f"test/{motion_class}",
+        motion_class=motion_class,
+        generation_mode=generation_mode,
+        acquiring_agent="pytest",
+        prompt_text="underline cli test provenance prompt",
+        repo_root=tmp_path,
+        reference_image_sha256=record_kwargs.get("reference_image_sha256"),  # type: ignore[arg-type]
+        edit_source=record_kwargs.get("edit_source"),  # type: ignore[arg-type]
+    )
     provenance_path = tmp_path / f"{effective_provider.stem}.source.json"
     provenance_kwargs: dict[str, object] = {
         "motion_class": motion_class,
@@ -206,7 +204,6 @@ def _register_store_attempt_for_init(
                 "edit_source_sha256": sha256_file(padded_seed),
             }
         )
-    provider_for_init = store_root / row["raw_path"]
     _write_animation_provenance(provider_for_init, provenance_path, **provenance_kwargs)
     return provider_for_init, provenance_path, identity_args, env
 
@@ -686,7 +683,7 @@ def test_init_existing_bundle_exit_2(tmp_path: Path, capsys: pytest.CaptureFixtu
 
 def test_check_pass_exit_0(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
-    result = _run_cli(capsys, ["check", str(bundle)], env=_bundle_store_env(bundle))
+    result = _run_cli(capsys, ["check", str(bundle)], env=bundle_store_env(bundle))
     assert result.returncode == 0, result.stderr
     assert "Overall  PASS" in result.stdout
 
@@ -696,7 +693,7 @@ def test_check_summary_json_emits_only_dispatch_baseline_fields(
 ) -> None:
     bundle = _init_bundle(tmp_path)
 
-    result = _run_cli(capsys, ["check", str(bundle), "--summary-json"], env=_bundle_store_env(bundle))
+    result = _run_cli(capsys, ["check", str(bundle), "--summary-json"], env=bundle_store_env(bundle))
 
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
@@ -770,7 +767,7 @@ def test_brief_requires_a_profiled_bundle(tmp_path: Path, capsys: pytest.Capture
 
 def test_check_json_includes_silhouette_artifacts(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
-    result = _run_cli(capsys, ["check", str(bundle), "--json"], env=_bundle_store_env(bundle))
+    result = _run_cli(capsys, ["check", str(bundle), "--json"], env=bundle_store_env(bundle))
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
     assert data["silhouette_artifacts"]["strip"]["relative_path"] == "reports/silhouette-strip.png"
@@ -809,7 +806,7 @@ def test_check_human_report_names_provider_post_edit_reason(
         "pipeline.final_polish.load_provider_frames",
         side_effect=lambda path, layout: load_provider_frames(swing_strip, layout),
     ):
-        result = _run_cli(capsys, ["check", str(bundle)], env=_bundle_store_env(bundle))
+        result = _run_cli(capsys, ["check", str(bundle)], env=bundle_store_env(bundle))
 
     assert result.returncode == 1, result.stderr
     assert "Post-edit   FAIL (edit_source_continuity_fail)" in result.stdout
@@ -820,7 +817,7 @@ def test_check_human_report_marks_provider_post_edit_not_applicable(
 ) -> None:
     bundle = _init_bundle(tmp_path)
 
-    result = _run_cli(capsys, ["check", str(bundle)], env=_bundle_store_env(bundle))
+    result = _run_cli(capsys, ["check", str(bundle)], env=bundle_store_env(bundle))
 
     assert result.returncode == 0, result.stderr
     assert "Post-edit   (n/a)" in result.stdout
@@ -831,7 +828,7 @@ def test_check_json_provider_post_edit_is_null_when_not_evaluated(
 ) -> None:
     bundle = _init_bundle(tmp_path)
 
-    result = _run_cli(capsys, ["check", str(bundle), "--json"], env=_bundle_store_env(bundle))
+    result = _run_cli(capsys, ["check", str(bundle), "--json"], env=bundle_store_env(bundle))
 
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
@@ -845,7 +842,7 @@ def test_check_fail_exit_1(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -
     x, y = _first_opaque_xy(polished)
     _set_opaque_rgb(polished, x, y, (3, 99, 200))
 
-    result = _run_cli(capsys, ["check", str(bundle)], env=_bundle_store_env(bundle))
+    result = _run_cli(capsys, ["check", str(bundle)], env=bundle_store_env(bundle))
     assert result.returncode == 1
     assert "FAIL" in result.stdout
 
@@ -856,7 +853,7 @@ def test_check_fail_json_exit_1(tmp_path: Path, capsys: pytest.CaptureFixture[st
     x, y = _first_opaque_xy(polished)
     _set_opaque_rgb(polished, x, y, (3, 99, 200))
 
-    result = _run_cli(capsys, ["check", str(bundle), "--json"], env=_bundle_store_env(bundle))
+    result = _run_cli(capsys, ["check", str(bundle), "--json"], env=bundle_store_env(bundle))
     assert result.returncode == 1
     data = json.loads(result.stdout)
     assert data["outcome"] == "FAIL"
@@ -933,7 +930,7 @@ def test_check_review_json_exit_3(tmp_path: Path, capsys) -> None:
 def test_check_invalid_bundle_exit_2(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
     (bundle / "manifest.json").unlink()
-    result = _run_cli(capsys, ["check", str(bundle)], env=_bundle_store_env(bundle))
+    result = _run_cli(capsys, ["check", str(bundle)], env=bundle_store_env(bundle))
     assert result.returncode == 2
     assert result.stderr.strip()
     assert not result.stdout.strip()
@@ -941,7 +938,7 @@ def test_check_invalid_bundle_exit_2(tmp_path: Path, capsys: pytest.CaptureFixtu
 
 def test_finalize_pass_exit_0_and_creates_release(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
-    result = _run_cli(capsys, ["finalize", str(bundle)], env=_bundle_store_env(bundle))
+    result = _run_cli(capsys, ["finalize", str(bundle)], env=bundle_store_env(bundle))
     assert result.returncode == 0, result.stderr
     assert "Report" in result.stdout
     assert "Release" in result.stdout
@@ -950,7 +947,7 @@ def test_finalize_pass_exit_0_and_creates_release(tmp_path: Path, capsys: pytest
 
 def test_finalize_pass_json_exit_0(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
-    result = _run_cli(capsys, ["finalize", str(bundle), "--json"], env=_bundle_store_env(bundle))
+    result = _run_cli(capsys, ["finalize", str(bundle), "--json"], env=bundle_store_env(bundle))
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
     assert data["outcome"] == "PASS"
@@ -965,7 +962,7 @@ def test_finalize_fail_json_exit_1(tmp_path: Path, capsys: pytest.CaptureFixture
     x, y = _first_opaque_xy(polished)
     _set_opaque_rgb(polished, x, y, (250, 1, 2))
 
-    result = _run_cli(capsys, ["finalize", str(bundle), "--json"], env=_bundle_store_env(bundle))
+    result = _run_cli(capsys, ["finalize", str(bundle), "--json"], env=bundle_store_env(bundle))
     assert result.returncode == 1
     data = json.loads(result.stdout)
     assert data["outcome"] == "FAIL"
@@ -986,7 +983,7 @@ def test_finalize_review_exit_3_records_report(tmp_path: Path, capsys) -> None:
         outcome="REVIEW",
     )
     with patch("pipeline.final_polish.ingest_strip_provider", return_value=review):
-        with patch.dict("os.environ", _bundle_store_env(bundle) or {}):
+        with patch.dict("os.environ", bundle_store_env(bundle) or {}):
             code = main(["finalize", str(bundle)])
     assert code == 3
     captured = capsys.readouterr().out
@@ -1009,7 +1006,7 @@ def test_finalize_review_json_exit_3(tmp_path: Path, capsys) -> None:
         outcome="REVIEW",
     )
     with patch("pipeline.final_polish.ingest_strip_provider", return_value=review):
-        with patch.dict("os.environ", _bundle_store_env(bundle) or {}):
+        with patch.dict("os.environ", bundle_store_env(bundle) or {}):
             code = main(["finalize", str(bundle), "--json"])
     assert code == 3
     data = json.loads(capsys.readouterr().out)
@@ -1024,7 +1021,7 @@ def test_finalize_fail_exit_1_records_report_without_release(tmp_path: Path, cap
     x, y = _first_opaque_xy(polished)
     _set_opaque_rgb(polished, x, y, (250, 1, 2))
 
-    result = _run_cli(capsys, ["finalize", str(bundle)], env=_bundle_store_env(bundle))
+    result = _run_cli(capsys, ["finalize", str(bundle)], env=bundle_store_env(bundle))
     assert result.returncode == 1
     assert "Report" in result.stdout
     assert "Release" not in result.stdout
@@ -1299,7 +1296,7 @@ def test_v2_walk_check_json_binds_sequential_attempt_evidence(tmp_path: Path, ca
 
 def test_human_report_includes_required_fields(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
-    result = _run_cli(capsys, ["check", str(bundle)], env=_bundle_store_env(bundle))
+    result = _run_cli(capsys, ["check", str(bundle)], env=bundle_store_env(bundle))
     assert result.returncode == 0, result.stderr
     stdout = result.stdout
     assert "Bundle" in stdout
@@ -1314,7 +1311,7 @@ def test_human_report_includes_required_fields(tmp_path: Path, capsys: pytest.Ca
 
 def test_json_mode_emits_single_object_with_complete_payload(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
-    result = _run_cli(capsys, ["check", str(bundle), "--json"], env=_bundle_store_env(bundle))
+    result = _run_cli(capsys, ["check", str(bundle), "--json"], env=bundle_store_env(bundle))
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
     assert data["outcome"] == "PASS"
@@ -1340,11 +1337,11 @@ def test_check_is_read_only_human_and_json(tmp_path: Path, capsys: pytest.Captur
     bundle = _init_bundle(tmp_path)
     before = _bundle_fingerprint(bundle)
 
-    human = _run_cli(capsys, ["check", str(bundle)], env=_bundle_store_env(bundle))
+    human = _run_cli(capsys, ["check", str(bundle)], env=bundle_store_env(bundle))
     assert human.returncode == 0, human.stderr
     assert _bundle_fingerprint(bundle) == before
 
-    json_result = _run_cli(capsys, ["check", str(bundle), "--json"], env=_bundle_store_env(bundle))
+    json_result = _run_cli(capsys, ["check", str(bundle), "--json"], env=bundle_store_env(bundle))
     assert json_result.returncode == 0, json_result.stderr
     assert _bundle_fingerprint(bundle) == before
 
@@ -1355,7 +1352,7 @@ def test_finalize_revalidates_and_lists_release_only_on_pass(tmp_path: Path, cap
     x, y = _first_opaque_xy(polished)
     _set_opaque_rgb(polished, x, y, (250, 1, 2))
 
-    fail = _run_cli(capsys, ["finalize", str(bundle)], env=_bundle_store_env(bundle))
+    fail = _run_cli(capsys, ["finalize", str(bundle)], env=bundle_store_env(bundle))
     assert fail.returncode == 1
     report_path = next((bundle / "reports").glob("*.json"))
     report = json.loads(report_path.read_text())
@@ -1366,7 +1363,7 @@ def test_finalize_revalidates_and_lists_release_only_on_pass(tmp_path: Path, cap
     draft = bundle / "draft" / "frame-0.png"
     polished.write_bytes(draft.read_bytes())
 
-    pass_result = _run_cli(capsys, ["finalize", str(bundle)], env=_bundle_store_env(bundle))
+    pass_result = _run_cli(capsys, ["finalize", str(bundle)], env=bundle_store_env(bundle))
     assert pass_result.returncode == 0, pass_result.stderr
     assert "Report" in pass_result.stdout
     release_paths = sorted((bundle / "release").glob("*.png"))
@@ -1396,7 +1393,7 @@ def test_direct_png_edit_accepted_without_editor(tmp_path: Path, capsys: pytest.
     palette_color = next(iter(draft_union))
     _set_opaque_rgb(polished, x, y, palette_color)
 
-    result = _run_cli(capsys, ["check", str(bundle)], env=_bundle_store_env(bundle))
+    result = _run_cli(capsys, ["check", str(bundle)], env=bundle_store_env(bundle))
     assert result.returncode == 0, result.stderr
 
 
