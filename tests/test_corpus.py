@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import os
 import pathlib
 import subprocess
 import sys
@@ -15,6 +14,21 @@ sys.path.insert(0, str(ROOT / "prototype" / "strip-coherence"))
 import corpus  # noqa: E402
 from pipeline import strip as S  # noqa: E402
 from pipeline.numeric_policy import canonical_metric  # noqa: E402
+
+
+class _CallResult:
+    """Mimics the subprocess.CompletedProcess fields the tests assert on."""
+
+    def __init__(self, returncode: int, stdout: str, stderr: str) -> None:
+        self.returncode = returncode
+        self.stdout = stdout
+        self.stderr = stderr
+
+
+def _run_corpus(capsys: pytest.CaptureFixture[str]) -> _CallResult:
+    code = corpus.main()
+    captured = capsys.readouterr()
+    return _CallResult(code, captured.out, captured.err)
 
 
 def test_evaluate_returns_pass_for_good_idle() -> None:
@@ -79,16 +93,21 @@ def test_metric_at_hard_fail_boundary_is_fail_not_review() -> None:
 
 
 @pytest.mark.slow
-def test_corpus_command_preserves_manifest_agreement() -> None:
-    env = {**os.environ, "PYTHONPATH": str(ROOT)}
-    result = subprocess.run(
-        [sys.executable, str(ROOT / "prototype/strip-coherence/corpus.py")],
+def test_corpus_command_preserves_manifest_agreement(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    result = _run_corpus(capsys)
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "scored 23/23" in result.stdout
+    assert "regressions 0" in result.stdout
+
+    npm = subprocess.run(
+        ["npm", "run", "-s", "prototype:strip:corpus"],
         cwd=ROOT,
-        env=env,
         capture_output=True,
         text=True,
         check=False,
     )
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "scored 23/23" in result.stdout
-    assert "regressions 0" in result.stdout
+    assert npm.returncode == 0, npm.stdout + npm.stderr
+    assert "scored 23/23" in npm.stdout
+    assert "regressions 0" in npm.stdout

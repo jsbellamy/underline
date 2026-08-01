@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
 import pathlib
 import shutil
 import subprocess
@@ -228,18 +227,25 @@ def test_alpha_budgets_blocks_runtime_projection_mismatch(
 
 
 @pytest.mark.slow
-def test_alpha_budgets_command_emits_fragile_claims() -> None:
-    env = {**os.environ, "PYTHONPATH": str(ROOT)}
-    result = subprocess.run(
-        [sys.executable, str(ROOT / "prototype/strip-coherence/alpha_budgets.py")],
-        cwd=ROOT,
-        env=env,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+def test_alpha_budgets_command_emits_fragile_claims(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    result = _run_alpha_budgets(ROOT / "gate-controls", capsys)
     assert result.returncode == 0, result.stdout + result.stderr
     assert "FRAGILE CLAIMS" in result.stdout
     assert "walk/silhouette_budget" in result.stdout
     assert "0.4136" in result.stdout
     assert "Separated=17  Unseparated=4  Inapplicable=3" in result.stdout
+
+    npm = subprocess.run(
+        ["npm", "run", "-s", "prototype:strip:alpha-budgets"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert npm.returncode == 0, npm.stdout + npm.stderr
+    assert "FRAGILE CLAIMS" in npm.stdout
+    assert "walk/silhouette_budget" in npm.stdout
+    assert "0.4136" in npm.stdout
+    assert "Separated=17  Unseparated=4  Inapplicable=3" in npm.stdout
