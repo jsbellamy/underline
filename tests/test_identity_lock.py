@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import hashlib
 import json
 from pathlib import Path
 
@@ -47,8 +48,8 @@ CANONICAL_IDENTITY_SHA = "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f6
 PALETTE_EXACT_IDENTITY_SHA = (
     "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6"
 )
-PRE_CLEANUP_IDENTITY_V2_SHA = (
-    "a8203c90f10f234665de5a263728f49402230085e138016a346a7b033b3cdf74"
+PRE_CLEANUP_IDENTITY_V2_CELL_SHA = (
+    "cabcc1ff3725dcb3370d0e699ef7ac1af1db5ea1a3e9e6dbee03cc08806ff2f9"
 )
 BEARD_CHEST_RECT = {"x0": 10, "x1": 13, "y0": 6, "y1": 14}
 LANDMARK_COORDS = {
@@ -719,6 +720,11 @@ def _palette_color_set() -> set[tuple[int, int, int]]:
     return colors
 
 
+def _cell_content_sha256(cells: list[list[tuple[int, int, int] | None]]) -> str:
+    payload = json.dumps(cells, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
 def test_identity_v2_is_palette_exact_with_identical_alpha_mask() -> None:
     assert sha256_file(IDENTITY_V2_PNG) == PALETTE_EXACT_IDENTITY_SHA
     allowed = _palette_color_set()
@@ -763,7 +769,7 @@ def test_identity_roles_reproduce_precleanup_raster(tmp_path: Path) -> None:
     precleanup = quantize_cells(source_cells, palette, role_assignment)
     out_path = tmp_path / "precleanup.png"
     write_cells(out_path, precleanup)
-    assert sha256_file(out_path) == PRE_CLEANUP_IDENTITY_V2_SHA
+    assert _cell_content_sha256(read_cells(out_path)) == PRE_CLEANUP_IDENTITY_V2_CELL_SHA
     committed_v2 = read_cells(IDENTITY_V2_PNG)
     diff_count = sum(
         1

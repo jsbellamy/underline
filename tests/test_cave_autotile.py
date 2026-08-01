@@ -14,6 +14,7 @@ from pipeline.cave_autotile_audit import (
     render_terraced_shaft,
     variant_for_cell,
 )
+from pipeline.cell_raster import read_cells
 from pipeline.gate_evidence import sha256_file
 from pipeline.static_asset import check_static_bundle
 
@@ -120,13 +121,14 @@ def test_terraced_shaft_render_matches_committed_audit(tmp_path: Path) -> None:
 
     committed = json.loads((BUNDLE / "reports" / "terraced-shaft-audit.json").read_text())
     # image.relative_path in the payload names the committed artifact, not the
-    # tmp_path copy this test rendered into; the digest is compared explicitly
-    # against the committed file's own sha256 rather than folded into the
-    # blanket equality below.
+    # tmp_path copy this test rendered into. Encoded PNG bytes vary by platform,
+    # so bind each report to its own artifact and compare decoded Cell content.
     assert rendered["image"]["relative_path"] == (
         "assets/first-room/cave/reports/terraced-shaft-preview.png"
     )
-    assert rendered["image"]["sha256"] == sha256_file(committed_preview)
+    assert rendered["image"]["sha256"] == sha256_file(preview)
+    assert committed["image"]["sha256"] == sha256_file(committed_preview)
+    assert read_cells(preview) == read_cells(committed_preview)
     rendered_without_image = {k: v for k, v in rendered.items() if k != "image"}
     committed_without_image = {k: v for k, v in committed.items() if k != "image"}
     assert _canonical_json(rendered_without_image) == _canonical_json(committed_without_image)
