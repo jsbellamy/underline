@@ -1089,7 +1089,7 @@ def _swing_frames() -> list[list[list[tuple[int, int, int] | None]]]:
     return [copy.deepcopy(embedded) for _ in range(4)]
 
 
-def test_swing_lock_spec_has_24x24_frame_size_and_shifted_geometry() -> None:
+def test_swing_lock_rectangles_and_landmarks_sit_on_24x24_canvas() -> None:
     spec = load_identity_lock_spec(DEFAULT_IDENTITY_LOCKS_PATH)
     validate_identity_lock_spec(spec)
     swing = spec["motion_classes"]["swing"]
@@ -1128,7 +1128,7 @@ def test_walk_motion_class_unchanged_after_swing_canvas_adoption() -> None:
     ]
 
 
-def test_frame_size_docs_scope_swing_exception() -> None:
+def test_production_docs_declare_swing_uses_24x24_action_canvas() -> None:
     art_direction = (ROOT / "docs" / "first-room-art-direction.md").read_text(
         encoding="utf-8"
     )
@@ -1147,7 +1147,7 @@ def test_frame_size_docs_scope_swing_exception() -> None:
     assert "16×24 logical pixel grid (swing: 24×24)" in strip_prompt
 
 
-def test_adr_0003_indexed_with_required_sections() -> None:
+def test_swing_action_canvas_adr_records_spike_verdict() -> None:
     adr_path = ROOT / "docs" / "adr" / "0003-swing-action-canvas.md"
     readme = (ROOT / "docs" / "adr" / "README.md").read_text(encoding="utf-8")
     text = adr_path.read_text(encoding="utf-8")
