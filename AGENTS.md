@@ -102,6 +102,7 @@ a command whose output is text:
 ```bash
 npm test                                # test suites (pytest today; TS tests as they land)
 npm run test:fast                       # same, minus the slow budget-CLI tests — inner loop only
+npm run test:changed                    # tests mapped from the diff against main — the local pre-publish gate
 npm run prototype:strip:corpus          # score inbox/ against prompts/manifest.json
 npm run prototype:strip:adversarial     # per-class mutations — gates must reject
 npm run prototype:strip:derive-budgets  # historical pre-α Budget baseline (worst-good)
@@ -109,6 +110,10 @@ npm run prototype:strip:alpha-budgets   # α=0.5 Separated Budgets + fragile cla
 npm run prototype:strip:displacement    # displacement falsification + coverage
 npm run prototype:strip:sharpness       # alignment-minimum margins, corpus-wide
 ```
+
+`.github/workflows/ci.yml` runs the full suite (`npm test`) and the per-file
+isolation sweep on every PR; `test:changed` is the fast local gate, not a
+substitute for that CI run.
 
 A claim cites the command and the row of its output that shows the fact. A claim that no command can see is not yet evidenced — say so
 rather than substituting a weaker seam.
