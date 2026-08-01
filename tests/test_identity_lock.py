@@ -204,6 +204,9 @@ def test_walk_large_occupancy_change_fails_registered_structure() -> None:
     check = result.per_frame[2].check_results["upper_body"]
     assert check["outcome"] == "FAIL"
     assert check["occupancy_difference"] == 105 / 218
+    # Re-baselined by #179: the mutation is scored against the canonical raster,
+    # whose role composition changed when it became palette-exact. The alpha mask
+    # did not change, so occupancy_difference is unchanged.
     assert check["palette_role_distance"] == pytest.approx(
         2840 / 25320,
         abs=METRIC_ABS_TOLERANCE,
@@ -223,6 +226,7 @@ def test_walk_palette_role_drift_fails_registered_structure() -> None:
     check = result.per_frame[3].check_results["upper_body"]
     assert check["outcome"] == "FAIL"
     assert check["occupancy_difference"] == 0.0
+    # Re-baselined by #179 with the palette-exact canonical raster; see above.
     assert check["palette_role_distance"] == pytest.approx(
         80 / 211,
         abs=METRIC_ABS_TOLERANCE,
@@ -362,6 +366,7 @@ def test_palette_failure_report_names_truthful_first_failure() -> None:
     assert failure["kind"] == "check"
     assert failure["id"] == "upper_body"
     assert failure["occupancy_difference"] == 0.0
+    # Re-baselined by #179 with the palette-exact canonical raster; see above.
     assert failure["palette_role_distance"] == pytest.approx(
         80 / 211,
         abs=METRIC_ABS_TOLERANCE,
