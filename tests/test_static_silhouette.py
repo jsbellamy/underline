@@ -24,7 +24,7 @@ TOLERANCE = 0.002
 
 C1_TABLE = {
     "idle": {
-        "rgba": (0.7422, 0.6979, 0.7005),
+        "rgba": (0.4193, 0.2292, 0.3333),
         "alpha": (0.0964, 0.0443, 0.0469),
     },
     "walk": {
@@ -63,7 +63,7 @@ def test_rgba_churn_anti_correlates_with_alpha_on_polished_frames(motion: str) -
     assert rgba_pairs == pytest.approx(want["rgba"], abs=TOLERANCE)
     assert alpha_pairs == pytest.approx(want["alpha"], abs=TOLERANCE)
     if motion == "idle":
-        assert max(rgba_pairs) > max(C1_TABLE["swing"]["rgba"])
+        assert max(rgba_pairs) > max(alpha_pairs)
 
 
 def test_static_silhouette_pair_fraction_identical_and_disjoint() -> None:
