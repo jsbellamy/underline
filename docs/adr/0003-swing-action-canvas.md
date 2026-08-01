@@ -49,13 +49,12 @@ not evaluate a taller canvas.
   row or the 16×24 identity anchor.
 - Per-class geometry is now exercised in production metadata and Identity Lock,
   not only in the resolver from #209.
-- The #170 measurements and rejection rationale are recorded for the re-authoring
-  wave (#211).
+- The #170 measurements and rejection rationale are retained here after the
+  24×24 production bundle landed in #219/#220.
 
 ### Negative
 
-- Swing bundles remain 16×24 until the follow-up slice re-canvasses their
-  Release Frames; this slice is data and documentation only.
+- Swing bundles and Release Frames now use the adopted 24×24 canvas.
 - Identity Lock swing evaluation requires 24×24 attempt Frames with the anchor
   embedded at `(4, 0)` — callers cannot pass bare 16×24 rasters for swing.
 - Strip pitch and gutter semantics for swing differ from the global default

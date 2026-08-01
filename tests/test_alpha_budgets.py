@@ -14,8 +14,8 @@ import pytest
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "prototype" / "strip-coherence"))
 
+from pipeline.numeric_policy import canonical_metric  # noqa: E402
 from pipeline.strip import ALPHA, derive_separated_budget  # noqa: E402
-from numeric_policy import canonical_metric  # noqa: E402
 import alpha_budgets as ab  # noqa: E402
 
 

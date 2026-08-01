@@ -15,7 +15,7 @@ workflow), edit `AGENTS.md` or the docs it routes to, not this file.
 
 - For issue implementation, spawn a general-purpose subagent pinned to
   **Sonnet at high effort** and tell it to read and follow
-  `.agents/issue-implementer.md`. Never override the model upward and never run
+  `docs/agents/issue-implementer.md`. Never override the model upward and never run
   it above high effort. The provider-neutral file is the single source of truth
   for the workflow; the model pin exists only in this Claude-only instruction
   layer so other runtimes cannot discover a Sonnet-pinned agent definition.
@@ -30,5 +30,6 @@ workflow), edit `AGENTS.md` or the docs it routes to, not this file.
 
 - If `gh` is not on `PATH`, it is at `/opt/homebrew/bin/gh`.
 - The asset pipeline needs Python 3 with Pillow and NumPy (`requirements.txt`).
-  Until it is promoted under `pipeline/`, it also resolves recovery primitives
-  from a sibling checkout, so it will not run from a standalone clone.
+  It runs from a standalone clone: grid-recovery primitives are vendored in
+  `pipeline/recovery.py`, and `.github/workflows/ci.yml` proves it by running the
+  suite from a bare checkout plus `pip install -r requirements.txt`.

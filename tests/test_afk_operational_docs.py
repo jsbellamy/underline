@@ -33,10 +33,10 @@ CANONICAL_COMMANDS = (
     "gate-control:verify",
 )
 
-DEPRECATED_SHIM_BASENAMES = (
-    "gate_control.py",
-    "gate_control_acquire.py",
-    "numeric_policy.py",
+RETIRED_SHIM_PATHS = (
+    "prototype/strip-coherence/gate_control.py",
+    "prototype/strip-coherence/gate_control_acquire.py",
+    "prototype/strip-coherence/numeric_policy.py",
 )
 
 WAVE_A_AWAIT_PHRASES = (
@@ -93,6 +93,24 @@ def test_afk_spec_no_wave_a_await_activation_language() -> None:
     assert "out of scope" in lowered or "out of this map" in lowered
 
 
+def test_afk_spec_marks_alpha_budgets_landed_and_defines_static_review() -> None:
+    text = AFK_SPEC.read_text()
+    assert "Wave B — Land α-Budgets in runtime (**complete**)" in text
+    assert "Runtime `MOTION_CLASSES` hold the landed α-Budgets" in text
+    rubric = text.split("## 10. Agent Review-band rubric")[1].split(
+        "### Immutable Review packet"
+    )[0]
+    assert "`static_silhouette_pass`" in rubric
+    assert "Gate-control specification or Promotion" in text
+    assert "as a target" in text
+    matrix = text.split("## 6. Acceptance profile matrix")[1].split(
+        "## 7. Isolation verdict amendments"
+    )[0]
+    assert "`swing/static_silhouette_pass`" in matrix
+    for motion_class in ("idle", "blob_idle", "emissive", "walk", "airborne"):
+        assert f"`{motion_class}/static_silhouette_pass`" in matrix
+
+
 def test_readme_documents_canonical_gate_control_commands_in_order() -> None:
     text = README.read_text()
     package = PACKAGE_JSON.read_text()
@@ -111,20 +129,13 @@ def test_afk_spec_documents_canonical_commands_not_prototype_scorer() -> None:
     assert "prototype/strip-coherence/gate_control.py" not in operator_section
 
 
-def test_afk_spec_names_three_deprecated_shims_in_shim_section() -> None:
-    text = AFK_SPEC.read_text()
-    shim_section = text.split("## 12. Commands")[1].split("### Deprecated compatibility shims")[1].split("### Historical")[0]
-    for basename in DEPRECATED_SHIM_BASENAMES:
-        assert basename in shim_section
-    assert "no announced removal date" in shim_section.lower()
-
-
-def test_strip_readme_names_three_deprecated_shims_without_removal_date() -> None:
-    text = STRIP_README.read_text()
-    for basename in DEPRECATED_SHIM_BASENAMES:
-        assert basename in text
-    assert "deprecated" in text.lower()
-    assert "no announced removal" in text.lower() or "no announced removal date" in text.lower()
+def test_operational_docs_do_not_advertise_retired_shims() -> None:
+    for path in (AFK_SPEC, STRIP_README):
+        text = path.read_text()
+        for shim_path in RETIRED_SHIM_PATHS:
+            assert shim_path not in text
+    for shim_path in RETIRED_SHIM_PATHS:
+        assert not (ROOT / shim_path).exists()
 
 
 def test_afk_spec_documents_exactly_two_bat_flap_adversarial_gaps() -> None:

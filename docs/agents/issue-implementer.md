@@ -32,14 +32,18 @@ runtime supports worktrees.
    (`.github/workflows/ci.yml`) owns the full suite and the per-file isolation
    sweep on every PR, so `test:changed` is the local gate, not a substitute for
    CI passing.
-   - **TypeScript changes** — `npm run typecheck` green before publishing. Keep
+   - **TypeScript changes** — `npm run typecheck` green before publishing. No
+     TypeScript exists yet, so the script does not exist either: the slice that
+     lands `src/` adds it to `package.json`. Keep
      the event vocabulary append-only, the snapshot serializable, and randomness
      in seeded streams so a pinned seed reproduces exact numbers.
    - **Asset pipeline changes** to gates, slicing, or budgets are governed by
      `docs/strip-acquisition-contract.md`. A number in `MOTION_CLASSES` and the
      same number in the contract move together, in the same commit, or the change
-     is incomplete. Re-derive with `npm run prototype:strip:derive-budgets` and
-     cite its output — never hand-edit a measured table.
+     is incomplete. Re-derive with `npm run prototype:strip:alpha-budgets` — the
+     runtime oracle — and cite its output; never hand-edit a measured table.
+     `npm run prototype:strip:derive-budgets` is the historical pre-α baseline
+     only, not evidence for a production Budget change.
    - **Characterization diffs** (`tests/test_gates_characterization.py`) are
      never silently re-baselined. If your change moves a pinned number, explain
      which change moved it and why, in the PR body.
@@ -54,8 +58,8 @@ runtime supports worktrees.
    issue's Proof mapping with specific evidence: a command and the row of its
    output that shows the fact, or a code location. Every claim in this repo is
    provable by a command that emits text — `npm test`,
-   `npm run prototype:strip:corpus`, `:adversarial`, `:derive-budgets`,
-   `:displacement`, `:sharpness`. If a claim is not visible to any of them, say so
+   `npm run prototype:strip:corpus`, `:adversarial`, `:alpha-budgets`,
+   `:derive-budgets`, `:displacement`, `:sharpness`. If a claim is not visible to any of them, say so
    in the row rather than substituting a weaker proof.
    If a claim cannot be evidenced at all, stop — do not open a completion PR.
    If a claim is falsified by what you found while implementing, flag it for
@@ -119,9 +123,10 @@ runtime supports worktrees.
   multi-root root, not your worktree. Set shell `cwd` to the worktree root. Never
   write under a sibling checkout or the primary multi-root workspace root when it
   is not this worktree.
-- The pipeline temporarily resolves recovery primitives from a sibling checkout.
-  Read them freely; never edit another repo from an Underline issue. If a
-  primitive needs to change, stop and report it as a cross-repo blocker.
+- Grid-recovery primitives are vendored in `pipeline/recovery.py`; the repo needs
+  no sibling checkout to run. Never edit that copy in place — behaviour changes
+  belong upstream in Nightglass and are re-vendored. If a primitive needs to
+  change, stop and report it as a cross-repo blocker.
 - Simulation and gates stay deterministic: same input, same output. Time and RNG
   are injected; no wall-clock and no ordering-dependent results.
 - An issue body labeled **interim** is deliberate: build the interim as specified

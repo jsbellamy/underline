@@ -36,7 +36,8 @@ That document is the single source of truth for the implementer workflow.
   production change cites the red command that failed first.
 - Apply step 4 pipeline rules: gates, budgets, `docs/strip-acquisition-contract.md`,
   characterization baselines, adversarial mutations.
-- TypeScript changes require `npm run typecheck` green before publish.
+- TypeScript changes require `npm run typecheck` green before publish (no
+  TypeScript exists yet; the slice landing `src/` adds that script).
 - Build the companion-artifact checklist from `## Touches` and issue Contract;
   complete every synchronized surface before opening the PR.
 

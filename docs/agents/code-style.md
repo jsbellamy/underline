@@ -78,7 +78,8 @@ Test at these public boundaries, nowhere internal.
 
 ### TypeScript
 
-- Strict TypeScript; `npm run typecheck` green before publishing.
+- Strict TypeScript; `npm run typecheck` green before publishing. No TypeScript
+  exists yet — the slice that lands `src/` adds that script to `package.json`.
 - Invalid commands throw — never silently no-op.
 - The event vocabulary is append-only: add event types, never rename or repurpose
   one, so recorded fixtures and the presentation mapping stay valid.

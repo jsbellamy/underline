@@ -4,22 +4,26 @@
 
 **Answer:** **GO — mechanism and numbers, inside a documented envelope.**
 
-Coherence gating works. On a 23-sample corpus (19 good strips across 6 motion classes,
-4 negative controls) every control is caught by the gate that should catch it, and
-every good strip passes. The gates are:
+Coherence gating works. On a 23-sample corpus (18 PASS strips across 6 motion
+classes, 5 negative controls) every control is caught by the gate that should
+catch it, and every good strip passes. The gates are:
 
 | gate | reads | catches |
 |------|-------|---------|
 | `silhouette_budget` | occupancy flips, adjacent frames | motion beyond the class budget |
 | `palette_drift_pass` | per-frame colour histograms | recolour |
 | `min_pair_cohort_pass` | closest frame pair | "is this one subject?" — wholesale identity drift |
+| `loop_closure_pass` | final-to-first occupancy | discontinuous loop closure |
 | `displacement_pass` | best-alignment shift vectors | a frame translated (hop/slide) |
+| `static_silhouette_pass` | adjacent opaque-union overlap | recolour without action motion |
 | `baseline_row_stable` | declared anchor from frame 0 | subject leaving the ground |
 
-Budgets are **per motion class**, derived gate-agnostically from manifest-good strips —
-see [`docs/strip-acquisition-contract.md`](../../docs/strip-acquisition-contract.md),
-which is the authority. The mechanism and derivation rule are ported; re-derive the
-constants when production strips change.
+Budgets are **per motion class**, derived gate-agnostically from manifest-good
+strips plus the contract's one named legacy idle baseline
+(`miner-idle-strip.png`) — see
+[`docs/strip-acquisition-contract.md`](../../docs/strip-acquisition-contract.md),
+which is the authority. The mechanism and derivation rule are ported; re-run the
+production α-Budget oracle when production strips change.
 
 **The consumer is Underline, the mining game.** Recovery primitives are vendored from
 Nightglass in `pipeline/recovery.py` only; its frozen animation contract does not
@@ -346,7 +350,8 @@ npm run prototype:strip:smoke        # synthetic pass/fail fixtures
 npm run strip:ingest                 # gate strip PNG (--motion-class required)
 npm run prototype:strip:adversarial  # per-class mutations — gates must reject
 npm run prototype:strip:corpus       # score inbox/ against prompts/manifest.json
-npm run prototype:strip:derive-budgets  # per-class worst-good → budgets
+npm run prototype:strip:derive-budgets  # historical pre-α worst-good baseline
+npm run prototype:strip:alpha-budgets   # production runtime oracle
 npm run prototype:strip:displacement # antisymmetric displacement falsification + coverage
 npm run prototype:strip:sharpness    # alignment-minimum margins, corpus-wide
 npm test                             # pytest
