@@ -385,7 +385,11 @@ def _handle_finalize(args: argparse.Namespace) -> int:
 
 def _handle_seed(args: argparse.Namespace) -> int:
     try:
-        meta = build_identity_seed(args.identity_declaration, args.out)
+        meta = build_identity_seed(
+            args.identity_declaration,
+            args.out,
+            motion_class=args.motion_class,
+        )
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2
@@ -466,6 +470,13 @@ def _configure_parser(parser: argparse.ArgumentParser) -> None:
         type=pathlib.Path,
         required=True,
         help="Output edit-source strip PNG (padded seed when seed_pad_px declared)",
+    )
+    seed.add_argument(
+        "--motion-class",
+        help=(
+            "Motion class for action-canvas geometry (swing: 24-Cell interior); "
+            "omit for the 16-Cell uniform-pad seed"
+        ),
     )
     seed.add_argument("--json", action="store_true", help="Emit machine-readable JSON on stdout")
 
