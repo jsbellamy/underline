@@ -46,10 +46,21 @@ from pipeline.strip import (
     layout_for_motion_class,
     load_provider_frames,
 )
+from tests.final_polish_harness import (
+    acquisition_store_env,
+    bundle_store_env_context,
+    record_store_attempt,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 INBOX = ROOT / "prototype" / "strip-coherence" / "inbox"
 PASS_STRIP = INBOX / "01-miner-idle.png"
+_IDLE_STORE_ATTEMPT_KWARGS = {
+    "motion_class": "idle",
+    "generation_mode": "text-to-image",
+    "acquiring_agent": "pytest",
+    "prompt_text": "underline test provenance prompt",
+}
 FAIL_STRIP = INBOX / "08-NEG-identity-drift.png"
 WALK_STRIP = INBOX / "05-miner-walk.png"
 SWING_STRIP = INBOX / "06-miner-swing.png"
@@ -346,30 +357,13 @@ def _provenance_for(
     return provenance_path
 
 
-def _acquisition_store_env(store_root: Path) -> dict[str, str]:
-    return {"UNDERLINE_ACQUISITION_CONTROLS_ROOT": str(store_root)}
-
-
-def _bundle_store_root(bundle: Path) -> Path | None:
-    store_root = bundle.parent / "acquisition-controls"
-    if (store_root / "attempts.jsonl").is_file():
-        return store_root
-    return None
-
-
 def _check_bundle(bundle: Path) -> FinalPolishCheckResult:
-    store_root = _bundle_store_root(bundle)
-    if store_root is None:
-        return polish_check_bundle(bundle)
-    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+    with bundle_store_env_context(bundle):
         return polish_check_bundle(bundle)
 
 
 def _finalize_bundle(bundle: Path) -> Path:
-    store_root = _bundle_store_root(bundle)
-    if store_root is None:
-        return polish_finalize_bundle(bundle)
-    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+    with bundle_store_env_context(bundle):
         return polish_finalize_bundle(bundle)
 
 
@@ -385,8 +379,6 @@ def _init_bundle(
     identity_reference: Path | None = None,
     edit_source: Path | None = None,
 ) -> None:
-    from pipeline import asset_acquire as aa
-
     effective_provider = provider_path
     if polish_profile == "dwarf-miner":
         effective_provider = _effective_dwarf_miner_provider(
@@ -415,12 +407,18 @@ def _init_bundle(
         padded_seed = _padded_edit_source_seed(tmp_path, motion_class)
         record_kwargs["reference_image_sha256"] = CANONICAL_IDENTITY_SHA
         record_kwargs["edit_source"] = padded_seed
-    with patch.dict("os.environ", _acquisition_store_env(store_root)):
-        row = aa.record_asset_attempt(
-            effective_provider,
-            specification_id,
-            **record_kwargs,
-        )
+    row, provider_for_init = record_store_attempt(
+        store_root,
+        effective_provider,
+        specification_id,
+        motion_class=motion_class,
+        generation_mode=generation_mode,
+        acquiring_agent="pytest",
+        prompt_text="underline test provenance prompt",
+        repo_root=tmp_path,
+        reference_image_sha256=record_kwargs.get("reference_image_sha256"),  # type: ignore[arg-type]
+        edit_source=record_kwargs.get("edit_source"),  # type: ignore[arg-type]
+    )
     if provenance_path is None:
         provenance_path = tmp_path / f"{effective_provider.stem}.source.json"
     provenance_kwargs: dict[str, object] = {
@@ -438,7 +436,6 @@ def _init_bundle(
                 "edit_source_sha256": sha256_file(padded_seed),
             }
         )
-    provider_for_init = store_root / row["raw_path"]
     _write_animation_provenance(provider_for_init, provenance_path, **provenance_kwargs)
     ingest_source = (
         _dwarf_miner_ingest_source(provider_path, motion_class)
@@ -464,7 +461,7 @@ def _init_bundle(
                 "pipeline.final_polish.load_provider_frames",
                 return_value=base_frames,
             ),
-            patch.dict("os.environ", _acquisition_store_env(store_root)),
+            patch.dict("os.environ", acquisition_store_env(store_root)),
         ):
             initialize_bundle(
                 provider_for_init,
@@ -473,7 +470,7 @@ def _init_bundle(
                 **init_kwargs,
             )
         return
-    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+    with patch.dict("os.environ", acquisition_store_env(store_root)):
         initialize_bundle(
             provider_for_init,
             motion_class,
@@ -486,14 +483,8 @@ def _check_bundle_slicing_from(
     bundle: Path,
     ingest_source: Path,
 ) -> FinalPolishCheckResult:
-    store_root = _bundle_store_root(bundle)
-    env_patch = (
-        patch.dict("os.environ", _acquisition_store_env(store_root))
-        if store_root is not None
-        else patch.dict("os.environ", {}, clear=False)
-    )
     with (
-        env_patch,
+        bundle_store_env_context(bundle),
         patch(
             "pipeline.final_polish.load_provider_frames",
             side_effect=lambda path, layout: load_provider_frames(ingest_source, layout),
@@ -2042,41 +2033,11 @@ def _write_attempt_ledger(bundle: Path, attempts: list[dict[str, object]]) -> No
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
 
-def _record_store_attempt(
-    tmp_path: Path,
-    store_root: Path,
-    *,
-    specification_id: str = "test/idle",
-    outcome: str = "accepted",
-    rejection_reason: str | None = None,
-    provider_path: Path = PASS_STRIP,
-):
-    from pipeline import asset_acquire as aa
-
-    with patch.dict("os.environ", _acquisition_store_env(store_root)):
-        return aa.record_asset_attempt(
-            provider_path,
-            specification_id,
-            motion_class="idle",
-            generation_mode="text-to-image",
-            acquiring_agent="pytest",
-            prompt_text="underline test provenance prompt",
-            outcome=outcome,
-            rejection_reason=rejection_reason,
-            repo_root=tmp_path,
-        )
-
 
 def test_valid_sequential_attempt_ledger_passes_check(tmp_path: Path) -> None:
     store_root = tmp_path / "acquisition-controls"
-    _record_store_attempt(
-        tmp_path,
-        store_root,
-        outcome="rejected",
-        rejection_reason="palette_drift",
-    )
-    accepted = _record_store_attempt(tmp_path, store_root)
-    provider = store_root / accepted["raw_path"]
+    record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS, outcome="rejected", rejection_reason="palette_drift")
+    accepted, provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS)
     provenance_path = tmp_path / "provenance.json"
     _write_animation_provenance(
         provider,
@@ -2086,7 +2047,7 @@ def test_valid_sequential_attempt_ledger_passes_check(tmp_path: Path) -> None:
         predecessor_attempt_id=accepted["predecessor_attempt_id"],
     )
     bundle = tmp_path / "bundle"
-    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+    with patch.dict("os.environ", acquisition_store_env(store_root)):
         initialize_bundle(provider, "idle", bundle, provenance_sidecar=provenance_path)
     assert _check_bundle(bundle).outcome == "PASS"
     ledger = json.loads((bundle / "provider" / "attempts.json").read_text())
@@ -2097,14 +2058,8 @@ def test_rejected_attempt_ledger_with_identity_lock_near_miss_detail_passes(
     tmp_path: Path,
 ) -> None:
     store_root = tmp_path / "acquisition-controls"
-    rejected = _record_store_attempt(
-        tmp_path,
-        store_root,
-        outcome="rejected",
-        rejection_reason="identity_lock",
-    )
-    accepted = _record_store_attempt(tmp_path, store_root)
-    provider = store_root / accepted["raw_path"]
+    rejected, rejected_provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS, outcome="rejected", rejection_reason="identity_lock")
+    accepted, provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS)
     provenance_path = tmp_path / "provenance.json"
     _write_animation_provenance(
         provider,
@@ -2114,7 +2069,7 @@ def test_rejected_attempt_ledger_with_identity_lock_near_miss_detail_passes(
         predecessor_attempt_id=accepted["predecessor_attempt_id"],
     )
     bundle = tmp_path / "bundle"
-    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+    with patch.dict("os.environ", acquisition_store_env(store_root)):
         initialize_bundle(provider, "idle", bundle, provenance_sidecar=provenance_path)
     provenance = json.loads(provenance_path.read_text())
     _write_attempt_ledger(
@@ -2167,14 +2122,8 @@ def test_malformed_rejection_detail_fails_closed(
     reason_code: str,
 ) -> None:
     store_root = tmp_path / "acquisition-controls"
-    rejected = _record_store_attempt(
-        tmp_path,
-        store_root,
-        outcome="rejected",
-        rejection_reason="identity_lock",
-    )
-    accepted = _record_store_attempt(tmp_path, store_root)
-    provider = store_root / accepted["raw_path"]
+    rejected, rejected_provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS, outcome="rejected", rejection_reason="identity_lock")
+    accepted, provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS)
     provenance_path = tmp_path / "provenance.json"
     _write_animation_provenance(
         provider,
@@ -2184,7 +2133,7 @@ def test_malformed_rejection_detail_fails_closed(
         predecessor_attempt_id=accepted["predecessor_attempt_id"],
     )
     bundle = tmp_path / "bundle"
-    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+    with patch.dict("os.environ", acquisition_store_env(store_root)):
         initialize_bundle(provider, "idle", bundle, provenance_sidecar=provenance_path)
     provenance = json.loads(provenance_path.read_text())
     _write_attempt_ledger(
@@ -2688,20 +2637,9 @@ def test_check_silhouette_emission_does_not_change_gate_outcomes(tmp_path: Path)
 
 def test_initialize_projects_attempt_ledger_from_attested_store(tmp_path: Path) -> None:
     store_root = tmp_path / "acquisition-controls"
-    first = _record_store_attempt(
-        tmp_path,
-        store_root,
-        outcome="rejected",
-        rejection_reason="palette_drift",
-    )
-    second = _record_store_attempt(
-        tmp_path,
-        store_root,
-        outcome="rejected",
-        rejection_reason="identity_lock",
-    )
-    third = _record_store_attempt(tmp_path, store_root)
-    provider = store_root / third["raw_path"]
+    first, _ = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS, outcome="rejected", rejection_reason="palette_drift")
+    second, _ = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS, outcome="rejected", rejection_reason="identity_lock")
+    third, provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS)
     provenance_path = tmp_path / "provenance.json"
     _write_animation_provenance(
         provider,
@@ -2711,7 +2649,7 @@ def test_initialize_projects_attempt_ledger_from_attested_store(tmp_path: Path) 
         predecessor_attempt_id=third["predecessor_attempt_id"],
     )
     bundle = tmp_path / "bundle"
-    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+    with patch.dict("os.environ", acquisition_store_env(store_root)):
         initialize_bundle(provider, "idle", bundle, provenance_sidecar=provenance_path)
     ledger = json.loads((bundle / "provider" / "attempts.json").read_text())
     assert len(ledger["attempts"]) == 3
@@ -2744,22 +2682,16 @@ def test_initialize_rejects_unregistered_attempts(
     message: str,
 ) -> None:
     store_root = tmp_path / "acquisition-controls"
-    row = _record_store_attempt(tmp_path, store_root)
-    provider = store_root / row["raw_path"]
+    row, provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS)
     provenance_path = tmp_path / "provenance.json"
     attempt_id = row["attempt_id"]
     predecessor = row["predecessor_attempt_id"]
     motion_class = "idle"
     if setup == "selected_rejected":
-        rejected = _record_store_attempt(
-            tmp_path,
-            store_root,
-            outcome="rejected",
-            rejection_reason="palette_drift",
-        )
+        rejected, rejected_provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS, outcome="rejected", rejection_reason="palette_drift")
         attempt_id = rejected["attempt_id"]
         predecessor = rejected["predecessor_attempt_id"]
-        provider = store_root / rejected["raw_path"]
+        provider = rejected_provider
     _write_animation_provenance(
         provider,
         provenance_path,
@@ -2810,7 +2742,7 @@ def test_initialize_rejects_unregistered_attempts(
             json.dumps(store_provenance, indent=2, sort_keys=True) + "\n"
         )
     bundle = tmp_path / "bundle"
-    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+    with patch.dict("os.environ", acquisition_store_env(store_root)):
         with pytest.raises(InitializationRejectedError) as exc:
             initialize_bundle(provider, motion_class, bundle, provenance_sidecar=provenance_path)
     assert exc.value.reason_code == "attempt_not_registered"
@@ -2820,17 +2752,21 @@ def test_initialize_rejects_unregistered_attempts(
 def test_initialize_projects_complete_store_chain(tmp_path: Path) -> None:
     store_root = tmp_path / "acquisition-controls"
     rows = [
-        _record_store_attempt(
-            tmp_path,
+        record_store_attempt(
             store_root,
+            PASS_STRIP,
+            "test/idle",
+            repo_root=tmp_path,
+            **_IDLE_STORE_ATTEMPT_KWARGS,
             outcome="rejected",
             rejection_reason="palette_drift",
-        )
+        )[0]
         for _ in range(3)
     ]
-    accepted = _record_store_attempt(tmp_path, store_root)
+    accepted, provider = record_store_attempt(
+        store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS
+    )
     rows.append(accepted)
-    provider = store_root / accepted["raw_path"]
     provenance_path = tmp_path / "provenance.json"
     _write_animation_provenance(
         provider,
@@ -2840,7 +2776,7 @@ def test_initialize_projects_complete_store_chain(tmp_path: Path) -> None:
         predecessor_attempt_id=accepted["predecessor_attempt_id"],
     )
     bundle = tmp_path / "bundle"
-    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+    with patch.dict("os.environ", acquisition_store_env(store_root)):
         initialize_bundle(provider, "idle", bundle, provenance_sidecar=provenance_path)
     ledger = json.loads((bundle / "provider" / "attempts.json").read_text())
     assert len(ledger["attempts"]) == 4
@@ -2848,9 +2784,10 @@ def test_initialize_projects_complete_store_chain(tmp_path: Path) -> None:
 
 def test_initialize_rejects_when_store_chain_cannot_satisfy_ledger_rules(tmp_path: Path) -> None:
     store_root = tmp_path / "acquisition-controls"
-    _record_store_attempt(tmp_path, store_root, outcome="accepted")
-    second = _record_store_attempt(tmp_path, store_root)
-    provider = store_root / second["raw_path"]
+    record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS, outcome="accepted")
+    second, provider = record_store_attempt(
+        store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS
+    )
     provenance_path = tmp_path / "provenance.json"
     _write_animation_provenance(
         provider,
@@ -2860,7 +2797,7 @@ def test_initialize_rejects_when_store_chain_cannot_satisfy_ledger_rules(tmp_pat
         predecessor_attempt_id=second["predecessor_attempt_id"],
     )
     bundle = tmp_path / "bundle"
-    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+    with patch.dict("os.environ", acquisition_store_env(store_root)):
         with pytest.raises(InitializationRejectedError) as exc:
             initialize_bundle(provider, "idle", bundle, provenance_sidecar=provenance_path)
     assert exc.value.reason_code == "attempt_not_registered"
@@ -2868,14 +2805,8 @@ def test_initialize_rejects_when_store_chain_cannot_satisfy_ledger_rules(tmp_pat
 
 def test_check_rejects_hand_edited_attempt_ledger(tmp_path: Path) -> None:
     store_root = tmp_path / "acquisition-controls"
-    _record_store_attempt(
-        tmp_path,
-        store_root,
-        outcome="rejected",
-        rejection_reason="palette_drift",
-    )
-    accepted = _record_store_attempt(tmp_path, store_root)
-    provider = store_root / accepted["raw_path"]
+    record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS, outcome="rejected", rejection_reason="palette_drift")
+    accepted, provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS)
     provenance_path = tmp_path / "provenance.json"
     _write_animation_provenance(
         provider,
@@ -2885,7 +2816,7 @@ def test_check_rejects_hand_edited_attempt_ledger(tmp_path: Path) -> None:
         predecessor_attempt_id=accepted["predecessor_attempt_id"],
     )
     bundle = tmp_path / "bundle"
-    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+    with patch.dict("os.environ", acquisition_store_env(store_root)):
         initialize_bundle(provider, "idle", bundle, provenance_sidecar=provenance_path)
     ledger = json.loads((bundle / "provider" / "attempts.json").read_text())
     del ledger["attempts"][0]
@@ -2897,14 +2828,8 @@ def test_check_rejects_hand_edited_attempt_ledger(tmp_path: Path) -> None:
 
 def test_check_rejects_predecessor_rewrite_not_in_store(tmp_path: Path) -> None:
     store_root = tmp_path / "acquisition-controls"
-    _record_store_attempt(
-        tmp_path,
-        store_root,
-        outcome="rejected",
-        rejection_reason="palette_drift",
-    )
-    accepted = _record_store_attempt(tmp_path, store_root)
-    provider = store_root / accepted["raw_path"]
+    record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS, outcome="rejected", rejection_reason="palette_drift")
+    accepted, provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS)
     provenance_path = tmp_path / "provenance.json"
     _write_animation_provenance(
         provider,
@@ -2914,7 +2839,7 @@ def test_check_rejects_predecessor_rewrite_not_in_store(tmp_path: Path) -> None:
         predecessor_attempt_id=accepted["predecessor_attempt_id"],
     )
     bundle = tmp_path / "bundle"
-    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+    with patch.dict("os.environ", acquisition_store_env(store_root)):
         initialize_bundle(provider, "idle", bundle, provenance_sidecar=provenance_path)
     ledger = json.loads((bundle / "provider" / "attempts.json").read_text())
     ledger["attempts"][-1]["predecessor_attempt_id"] = "dwarf-swing--002"
@@ -2948,7 +2873,7 @@ def test_legacy_allowlist_drops_when_provider_digest_changes(tmp_path: Path) -> 
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
     shutil.rmtree(store_root)
 
-    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+    with patch.dict("os.environ", acquisition_store_env(store_root)):
         with pytest.raises(InvalidBundleError) as exc:
             _check_bundle(bundle)
     assert exc.value.reason_code == "attempt_not_registered"
@@ -2969,7 +2894,7 @@ def test_legacy_allowlist_grandfathers_checked_in_bundles(tmp_path: Path) -> Non
 
     bundle = _init_passing_bundle(tmp_path)
     shutil.rmtree(tmp_path / "acquisition-controls")
-    with patch.dict("os.environ", _acquisition_store_env(tmp_path / "acquisition-controls")):
+    with patch.dict("os.environ", acquisition_store_env(tmp_path / "acquisition-controls")):
         with pytest.raises(InvalidBundleError) as exc:
             _check_bundle(bundle)
     assert exc.value.reason_code == "attempt_not_registered"
@@ -2977,8 +2902,7 @@ def test_legacy_allowlist_grandfathers_checked_in_bundles(tmp_path: Path) -> Non
 
 def test_attestation_report_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     store_root = tmp_path / "acquisition-controls"
-    row = _record_store_attempt(tmp_path, store_root)
-    provider = store_root / row["raw_path"]
+    row, provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS)
     provenance_path = tmp_path / "provenance.json"
     _write_animation_provenance(
         provider,
@@ -2988,7 +2912,7 @@ def test_attestation_report_payloads(tmp_path: Path, capsys: pytest.CaptureFixtu
         predecessor_attempt_id=row["predecessor_attempt_id"],
     )
     bundle = tmp_path / "bundle"
-    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+    with patch.dict("os.environ", acquisition_store_env(store_root)):
         initialize_bundle(provider, "idle", bundle, provenance_sidecar=provenance_path)
         result = _check_bundle(bundle)
     assert result.attestation is not None
@@ -3001,7 +2925,7 @@ def test_attestation_report_payloads(tmp_path: Path, capsys: pytest.CaptureFixtu
     assert report["attestation"]["attempt_id"] == row["attempt_id"]
     assert report["attestation"]["store_path"] == "attempts.jsonl"
 
-    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+    with patch.dict("os.environ", acquisition_store_env(store_root)):
         code = final_polish_cli_main(["check", str(bundle), "--summary-json"])
     assert code == 0
     attested_summary = json.loads(capsys.readouterr().out)
