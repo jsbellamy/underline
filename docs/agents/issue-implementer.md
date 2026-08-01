@@ -24,8 +24,13 @@ runtime supports worktrees.
 4. Implement. Invoke `/tdd` explicitly, then work test-first at the seams in
    `docs/agents/code-style.md` (that doc is the standing seam agreement). If the
    runtime does not expose `/tdd`, follow the equivalent red-green workflow at the
-   same seams. Run focused test files during implementation; run the full
-   `npm test` suite before publishing.
+   same seams. Run focused test files during implementation; run
+   `npm run test:changed` before publishing — it selects the tests the diff
+   against `main` actually touches (`scripts/select_changed_tests.py`) and
+   widens to the whole suite whenever the mapping is ambiguous. CI
+   (`.github/workflows/ci.yml`) owns the full suite and the per-file isolation
+   sweep on every PR, so `test:changed` is the local gate, not a substitute for
+   CI passing.
    - **TypeScript changes** — `npm run typecheck` green before publishing. Keep
      the event vocabulary append-only, the snapshot serializable, and randomness
      in seeded streams so a pinned seed reproduces exact numbers.

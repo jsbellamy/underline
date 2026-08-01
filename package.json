@@ -5,6 +5,7 @@
   "scripts": {
     "test": "PYTHONPATH=. python3 -m pytest -q",
     "test:fast": "PYTHONPATH=. python3 -m pytest -q -m 'not slow'",
+    "test:changed": "PYTHONPATH=. python3 scripts/select_changed_tests.py",
     "prototype:strip": "PYTHONPATH=. python3 prototype/strip-coherence/tui.py",
     "prototype:strip:smoke": "PYTHONPATH=. python3 prototype/strip-coherence/smoke.py",
     "strip:ingest": "PYTHONPATH=. python3 -m pipeline.ingest_strip",
