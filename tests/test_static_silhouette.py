@@ -32,7 +32,7 @@ C1_TABLE = {
         "alpha": (0.1472, 0.1582, 0.1401),
     },
     "swing": {
-        "rgba": (0.4844, 0.3646, 0.3177),
+        "rgba": (0.3229, 0.2431, 0.2118),
         "alpha": (0.5422, 0.3777, 0.3114),
     },
 }
@@ -139,8 +139,9 @@ def test_static_silhouette_adjacent_max_is_canvas_invariant() -> None:
     change static_silhouette_adjacent_max — no pixel of motion changed."""
     frames = _load_polished("swing")
     native_max = S.static_silhouette_adjacent_max(frames)
-    wide_16 = _embed_in_wider_canvas(frames, canvas_w=24, left_pad=4)
-    wide_32 = _embed_in_wider_canvas(frames, canvas_w=32, left_pad=8)
+    anchor_frames = [[row[4 : 4 + 16] for row in frame] for frame in frames]
+    wide_16 = _embed_in_wider_canvas(anchor_frames, canvas_w=24, left_pad=4)
+    wide_32 = _embed_in_wider_canvas(anchor_frames, canvas_w=32, left_pad=8)
     assert S.static_silhouette_adjacent_max(wide_16) == pytest.approx(native_max, abs=TOLERANCE)
     assert S.static_silhouette_adjacent_max(wide_32) == pytest.approx(native_max, abs=TOLERANCE)
 

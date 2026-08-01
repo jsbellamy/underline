@@ -361,15 +361,33 @@ def render_variant_frames(
     raise ValueError(f"unknown variant: {variant}")
 
 
+def _anchor_source_frames(frames: Sequence[CellGrid]) -> list[CellGrid]:
+    """Crop production swing Frames on the 24×24 canvas back to 16×24 anchor rasters."""
+    if not frames:
+        return []
+    width = len(frames[0][0])
+    if width == SOURCE_FRAME_W:
+        return [list(frame) for frame in frames]
+    if width == 24:
+        return [
+            [row[4 : 4 + SOURCE_FRAME_W] for row in frame]
+            for frame in frames
+        ]
+    raise ValueError(f"unsupported swing frame width: {width}")
+
+
 def load_motion_frames(
     assets_root: Path,
     motion: str,
 ) -> list[CellGrid]:
     bundle = assets_root / "first-room" / "dwarf" / motion / "polished"
-    return [
+    frames = [
         read_cells(bundle / f"frame-{index}.png")
         for index in range(StripLayout().frame_count)
     ]
+    if motion == "swing":
+        return _anchor_source_frames(frames)
+    return frames
 
 
 def measure_motion_baseline(

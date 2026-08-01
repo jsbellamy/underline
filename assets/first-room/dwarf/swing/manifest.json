@@ -3,22 +3,22 @@
     {
       "index": 0,
       "relative_path": "draft/frame-0.png",
-      "sha256": "72dcd2f9de3f2da8ceec113426a98c5525111a004f789e275ed4026128a31b93"
+      "sha256": "45752ffdd3ac5aec72284011d146fba51ef993ff7441009846d15fc8df8a6253"
     },
     {
       "index": 1,
       "relative_path": "draft/frame-1.png",
-      "sha256": "183e7903bc694a86188e55ce25bd4924b68440ac2050ff931165363bb8f1939d"
+      "sha256": "1bf5cbf1a6bb8d014f5cc2d734878d6fa13c1633c6aaa21b97ff4a5e9e0b1e35"
     },
     {
       "index": 2,
       "relative_path": "draft/frame-2.png",
-      "sha256": "cf8b0b21fffec544d4b8e6aaef4b8a09587bdf6620a3a8e52633ea7045928721"
+      "sha256": "8ffca2ca07744ebc223691667fd9c592ed63a6c9347f9e75e53eea1b829c867e"
     },
     {
       "index": 3,
       "relative_path": "draft/frame-3.png",
-      "sha256": "27a4e6dbc75f4c6a7dc0ace7a1859fbcd5639fec78bb0a56443ab5baa115f618"
+      "sha256": "915e152cf62d0e4e9eae0d78bf95fdceaf0da43ef980289ec12673f867ff189f"
     }
   ],
   "layout": {
@@ -30,7 +30,7 @@
       2,
       3
     ],
-    "frame_w": 16,
+    "frame_w": 24,
     "gutter": 2
   },
   "motion_class": "swing",
