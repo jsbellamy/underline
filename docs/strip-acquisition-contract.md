@@ -104,7 +104,7 @@ that falsify the thinnest claims directly (see **Next corpus priority** below).
 | `emissive` | 3 | 03, 14, 15 |
 | `airborne` | 3 | 04, 16, 17 |
 | `walk` | 3 | 05, 18, 19 |
-| `swing` | 3 | 06, 20, 21 (`contract_expect: REVIEW` on `static_silhouette_pass`; still manifest-good for silhouette/drift derivation) |
+| `swing` | 3 | 06, 20, 21 (`contract_expect: PASS`; all three pass `static_silhouette_pass` at the re-tuned 0.88 budget, issue #208) |
 
 ## Separation check (C6)
 
@@ -259,32 +259,55 @@ On **`16-moth-flap`** and **`17-wisp-float`**, hop and slide trip **`displacemen
 `facing: fixed` classes (`walk`, `swing`), silhouette already rejects mirror.
 
 On **`swing`**, **`hold_pose`** trips **`static_silhouette_pass`** (adjacent alpha
-frozen). Corpus inbox baselines (`06-miner-swing` at **0.91**) exceed the budget
-tuned on production reference `dwarf/swing/polished` (**0.86** worst-pair) and yield
-**`REVIEW`** on the untouched baseline — documented in `adversarial.BASELINE_OUTCOME`.
+frozen, metric forced to `1.0`) — the untouched corpus baseline (`06-miner-swing`)
+now PASSes under the re-tuned budget (issue #208); `hold_pose` remains the REVIEW
+evidence, not the baseline itself. `adversarial.BASELINE_OUTCOME` is empty.
 
 ## Static silhouette gate (`static_silhouette_pass`)
 
 RGBA churn anti-correlates with real motion on soft-shaded sources (idle churns more
-in RGBA than swing). The metric is **alpha-only**: for an adjacent Frame pair,
-`static_silhouette_fraction = 1 − (Cells whose opacity differs) / (frame_w × frame_h)`.
-The strip metric is the **maximum** over adjacent pairs — the stillest transition
-governs. `evaluate_continuous_gate_outcome` applies ceiling semantics:
-`metric <= budget → PASS`; above budget on an `UNSEPARATED` gate yields **`REVIEW`**.
+in RGBA than swing). The metric is **alpha-only** and normalized by the **union of
+opaque Cells** — the same convention as `cell_diff`, `cell_diff_motion`,
+`_silhouette_diff_at_shift`, and `silhouette_diff` (issue #208; the metric formerly
+divided by raw frame area, which made it depend on canvas size — the same reference
+swing Frames scored 0.6823/0.8151/0.8646 at 16×24 but 0.8411/0.9076/0.9323 at 32×24
+with no pixel of motion changed):
+`static_silhouette_pair_fraction = 1 − changed / union_opaque`, where `union_opaque`
+counts Cells opaque in either Frame and `changed` counts Cells whose opacity differs
+(`1.0` when `union_opaque == 0`). The strip metric is the **maximum** over adjacent
+pairs — the stillest transition governs; it never wraps. `evaluate_continuous_gate_outcome`
+applies ceiling semantics: `metric <= budget → PASS`; above budget on an `UNSEPARATED`
+gate yields **`REVIEW`**.
 
 | Class | Status | Budget | Notes |
 |-------|--------|--------|-------|
-| `swing` | **UNSEPARATED** | **0.86** | reference polished worst-pair sits on boundary |
+| `swing` | **UNSEPARATED** | **0.88** | re-tuned for union normalization (#208); 21-hammer-swing tightest known-good at 0.8373, 0.043 headroom |
 | `idle`, `blob_idle`, `walk`, `airborne`, `emissive` | **INAPPLICABLE** | — | no budget derived for the class |
+
+Corpus separation at budget 0.88 (`npm run prototype:strip:corpus`):
+
+| Strip | union metric | verdict |
+|-------|---------------|---------|
+| `23-NEG-swing-identity` | 0.5219 | PASS (negative control; other gates still trip) |
+| `06-miner-swing` | 0.5811 | PASS |
+| production `dwarf/swing/polished` (reference) | 0.6886 | PASS |
+| `20-axe-swing` | 0.7812 | PASS |
+| `21-hammer-swing` | 0.8373 | PASS — tightest known-good, 0.043 headroom |
 
 Reference and prototype anchors (production bundles, not corpus strips):
 
-| Strip | Per-pair static fraction | vs budget 0.86 |
+| Strip | Per-pair static fraction | vs budget 0.88 |
 |-------|--------------------------|----------------|
-| `dwarf/swing/polished` (reference) | 0.68, 0.82, **0.86** | PASS at boundary |
-| Cell-authored swing prototype | 0.82, 0.90, **0.92** | REVIEW |
-| walk (polished) | 0.94, 0.93, 0.94 | INAPPLICABLE |
-| idle (polished) | 0.90, 0.96, 0.95 | INAPPLICABLE |
+| `dwarf/swing/polished` (reference) | 0.4578, 0.6223, **0.6886** | PASS |
+| walk (polished) | 0.8528, 0.8418, 0.8599 | INAPPLICABLE |
+| idle (polished) | 0.8711, 0.9377, 0.9336 | INAPPLICABLE |
+
+The provider Strip previously documented here as "Cell-authored swing prototype"
+(0.82, 0.90, 0.92 area-normalized) is alpha-mask-identical to the Polished reference
+since the #178 palette-exact migration locked Polished alpha to Draft alpha; measured
+under union normalization it now matches the reference row above (0.6886, PASS), not
+a separate REVIEW anchor. `tests/test_adversarial.py::test_swing_hold_pose_trips_static_silhouette`
+is this budget's REVIEW evidence.
 
 ## Antisymmetric displacement gate (`displacement_pass`)
 

@@ -146,7 +146,10 @@ def test_swing_bundle_check_passes_with_palette_exact_identity_lock(tmp_path: Pa
     assert result.identity_lock.identity_sha256 == PALETTE_EXACT_IDENTITY_SHA
     static_gate = result.coherence.get("gate_outcomes", {}).get("static_silhouette_pass")
     assert static_gate is not None
-    assert static_gate["outcome"] == "REVIEW"
+    # Union normalization (issue #208) plus the re-tuned 0.88 budget: the
+    # production reference (worst-pair 0.6886) now PASSes, not the REVIEW the
+    # old area-normalized 0.86 boundary produced.
+    assert static_gate["outcome"] == "PASS"
     assert static_gate["acceptance_status"] == "UNSEPARATED"
     lock = evaluate_identity_lock(
         [read_cells(SWING_POLISHED / f"frame-{index}.png") for index in range(4)],

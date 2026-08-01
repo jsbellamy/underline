@@ -14,6 +14,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "prototype" / "swing-canvas"))
 
 import canvas  # noqa: E402
+from pipeline import strip as S
 
 SCOREBOARD_PATH = ROOT / "prototype" / "swing-canvas" / "out" / "scoreboard.json"
 
@@ -49,6 +50,17 @@ def test_static_silhouette_fraction_hand_worked() -> None:
     b = _grid([".#", "#."])
     assert canvas.static_silhouette_fraction(a, b) == 0.0
     assert canvas.static_silhouette_fraction(a, a) == 1.0
+
+
+def test_static_silhouette_fraction_has_no_second_implementation() -> None:
+    """C3: canvas.py imports the fixed production metric rather than carrying
+    its own second, area-normalized copy (#208)."""
+    assert canvas.static_silhouette_fraction is S.static_silhouette_pair_fraction
+
+
+def test_adjacent_pairs_excludes_wrap() -> None:
+    """Swing is loops: false, so (3, 0) is not a playback transition (#208)."""
+    assert canvas.ADJACENT_PAIRS == ((0, 1), (1, 2), (2, 3))
 
 
 def test_expand_canvas_preserves_body_origin() -> None:
@@ -127,10 +139,14 @@ def test_scoreboard_variants_include_all_candidates(scoreboard: dict[str, object
     assert set(variants) == {"24x24", "32x24", "overlay"}
     for variant in variants.values():
         assert len(variant["per_frame"]) == 4
-        assert set(variant["static_silhouette_fraction"]) == {"0-1", "1-2", "2-3", "3-0"}
+        assert set(variant["static_silhouette_fraction"]) == {"0-1", "1-2", "2-3"}
     overlay = variants["overlay"]
     assert len(overlay["separation"]) == 4
-    assert overlay["separation"][3]["status"] == "failed"
+    # Frame 3's grip seed now resolves (was "failed" pre-#178): the dwarf-swing
+    # palette-exact identity migration (issue #178) changed the polished Frames
+    # this prototype reads, independent of #208's static-silhouette fix. Not
+    # this issue's claim; recorded as an observed side effect of regenerating.
+    assert overlay["separation"][3]["status"] == "ok"
 
 
 def test_24x24_clears_boundary_columns(scoreboard: dict[str, object]) -> None:

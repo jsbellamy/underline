@@ -26,7 +26,7 @@ def test_untouched_passes_per_class(motion_class: str) -> None:
     want = adversarial.BASELINE_OUTCOME.get(motion_class, "PASS")
     assert result["outcome"] == want
     if motion_class == "swing":
-        assert result["gate_outcomes"]["static_silhouette_pass"]["outcome"] == "REVIEW"
+        assert result["gate_outcomes"]["static_silhouette_pass"]["outcome"] == "PASS"
 
 
 @pytest.mark.parametrize("motion_class,mutation", MUTATION_CASES)

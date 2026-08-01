@@ -72,7 +72,14 @@ Gate's Budget; the caveat is recorded on the row and does not block α allocatio
 | `idle/min_pair_cohort_pass` | 0.0420 | **0.07** | 0.07 | 0 | 0.0280 | none | open above Budget |
 | `walk/min_pair_cohort_pass` | 0.1429 | **0.17** | 0.17 | 0 | 0.0271 | none | open above Budget |
 | `emissive/min_pair_cohort_pass` | 0.0989 | **0.12** | 0.12 | 0 | 0.0211 | none | open above Budget |
-| `swing/static_silhouette_pass` | 0.8646 | **0.86** | 0.86 | 0 | −0.0046 | none | open above Budget |
+| `swing/static_silhouette_pass` | 0.6886 | **0.88** | 0.86 | +0.02 | 0.1914 | none | open above Budget |
+
+`static_silhouette_pass` is tuned against the single production reference bundle
+(`assets/first-room/dwarf/swing/polished`), not the corpus battery
+`prototype:strip:alpha-budgets` reproduces — its `G` is that bundle's worst adjacent
+pair, not a Manifest-good cohort maximum. Re-derived for union normalization
+(issue #208; see `docs/strip-acquisition-contract.md` § Static silhouette gate for
+the corpus separation table).
 
 ## Inapplicable pairs
 

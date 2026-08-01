@@ -276,9 +276,9 @@
         },
         "static_silhouette_pass": {
           "status": "UNSEPARATED",
-          "budget": 0.86,
+          "budget": 0.88,
           "evidence_attempt": "assets/first-room/dwarf/swing/polished",
-          "rationale": "alpha-only adjacent stillness ceiling; reference polished worst-pair 0.86 at budget boundary; cell-authored prototype worst-pair 0.92 yields REVIEW"
+          "rationale": "alpha-only adjacent stillness ceiling, normalized by union-opaque Cells (#208; was frame area, which made the metric canvas-size dependent). Re-tuned against the corpus this now scores correctly: 23-NEG-swing-identity 0.5219, 06-miner-swing 0.5811, production dwarf/swing/polished (reference) 0.6886, 20-axe-swing 0.7812, 21-hammer-swing 0.8373 (tightest known-good, 0.043 headroom below budget) all PASS at 0.88; hold-pose mutation (tests/test_adversarial.py::test_swing_hold_pose_trips_static_silhouette) still yields REVIEW at metric 1.0"
         }
       }
     }

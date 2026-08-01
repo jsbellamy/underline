@@ -25,15 +25,15 @@ TOLERANCE = 0.002
 C1_TABLE = {
     "idle": {
         "rgba": (0.4193, 0.2292, 0.3333),
-        "alpha": (0.0964, 0.0443, 0.0469),
+        "alpha": (0.1289, 0.0623, 0.0664),
     },
     "walk": {
         "rgba": (0.3438, 0.2656, 0.2917),
-        "alpha": (0.0625, 0.0651, 0.0573),
+        "alpha": (0.1472, 0.1582, 0.1401),
     },
     "swing": {
         "rgba": (0.4844, 0.3646, 0.3177),
-        "alpha": (0.3177, 0.1849, 0.1354),
+        "alpha": (0.5422, 0.3777, 0.3114),
     },
 }
 
@@ -82,6 +82,31 @@ def test_static_silhouette_pair_fraction_identical_and_disjoint() -> None:
     assert S.static_silhouette_pair_fraction(full_opaque, full_transparent) == 0.0
 
 
+def test_static_silhouette_pair_fraction_zero_union_returns_one() -> None:
+    all_transparent = [[None, None], [None, None]]
+    assert S.static_silhouette_pair_fraction(all_transparent, all_transparent) == 1.0
+
+
+def test_static_silhouette_pair_fraction_normalizes_by_union_not_area() -> None:
+    """C2: matches the union-normalized convention of cell_diff / silhouette_diff.
+
+    Two Cells occupied only in `a`, one only in `b`: union_opaque = 3, all three
+    differ in occupancy status relative to the other frame, so changed = 3 and
+    the pair fraction is 0.0 regardless of the surrounding canvas area.
+    """
+    a = [[(1, 1, 1), (2, 2, 2), None, None]]
+    b = [[None, None, (3, 3, 3), None]]
+    assert S.static_silhouette_pair_fraction(a, b) == 0.0
+
+
+def test_static_silhouette_pair_fraction_disjoint_opaque_regions_partial() -> None:
+    # union_opaque = 3 (columns 0,1,2), changed = 2 (columns 0,1 flip), column 2
+    # matches (opaque in both) -> 1 - 2/3 = 0.3333
+    a = [[(1, 1, 1), (2, 2, 2), (3, 3, 3), None]]
+    b = [[None, None, (3, 3, 3), None]]
+    assert S.static_silhouette_pair_fraction(a, b) == pytest.approx(0.3333, abs=TOLERANCE)
+
+
 def test_static_silhouette_adjacent_max_uses_stillest_transition() -> None:
     frames = [
         [[(1, 1, 1), None], [None, (2, 2, 2)]],
@@ -95,11 +120,36 @@ def test_static_silhouette_adjacent_max_uses_stillest_transition() -> None:
     assert S.static_silhouette_adjacent_max(frames) == max(pair_fracs)
 
 
+def _embed_in_wider_canvas(
+    frames: list[list[list[S.Cell]]], *, canvas_w: int, left_pad: int
+) -> list[list[list[S.Cell]]]:
+    frame_h = len(frames[0])
+    out = []
+    for frame in frames:
+        canvas: list[list[S.Cell]] = [[None] * canvas_w for _ in range(frame_h)]
+        for y, row in enumerate(frame):
+            for x, cell in enumerate(row):
+                canvas[y][left_pad + x] = cell
+        out.append(canvas)
+    return out
+
+
+def test_static_silhouette_adjacent_max_is_canvas_invariant() -> None:
+    """C1/C6: re-canvassing at a wider width and fixed column offset must not
+    change static_silhouette_adjacent_max — no pixel of motion changed."""
+    frames = _load_polished("swing")
+    native_max = S.static_silhouette_adjacent_max(frames)
+    wide_16 = _embed_in_wider_canvas(frames, canvas_w=24, left_pad=4)
+    wide_32 = _embed_in_wider_canvas(frames, canvas_w=32, left_pad=8)
+    assert S.static_silhouette_adjacent_max(wide_16) == pytest.approx(native_max, abs=TOLERANCE)
+    assert S.static_silhouette_adjacent_max(wide_32) == pytest.approx(native_max, abs=TOLERANCE)
+
+
 def test_swing_profile_registers_unseparated_budget() -> None:
     doc = json.loads(PROFILES.read_text())
     gate = doc["profiles"]["swing"]["gates"]["static_silhouette_pass"]
     assert gate["status"] == "UNSEPARATED"
-    assert gate["budget"] == 0.86
+    assert gate["budget"] == 0.88
     assert "hard_fail" not in gate
     assert "active_promotion" not in gate
 
@@ -107,28 +157,45 @@ def test_swing_profile_registers_unseparated_budget() -> None:
         profiles_path=PROFILES,
         manifest_path=MANIFEST,
     )
-    assert policy.for_class("swing").max_static_silhouette == 0.86
+    assert policy.for_class("swing").max_static_silhouette == 0.88
 
 
 def test_unseparated_static_silhouette_boundary_and_review() -> None:
-    policy = GatePolicy(status="UNSEPARATED", budget=0.86, hard_fail=None)
-    assert evaluate_continuous_gate_outcome(policy, 0.86) == "PASS"
+    policy = GatePolicy(status="UNSEPARATED", budget=0.88, hard_fail=None)
+    assert evaluate_continuous_gate_outcome(policy, 0.88) == "PASS"
     assert evaluate_continuous_gate_outcome(policy, 0.95) == "REVIEW"
 
 
 def test_reference_swing_polished_per_pair_table() -> None:
+    """C1/C4: union-normalized per-pair table for the production reference.
+
+    Re-canvassing the same reference Frames at 16x24, 24x24, and 32x24 scores
+    0.4578/0.6223/0.6886 under union normalization on every canvas (C1) — this
+    is the 16x24 shipped-Frame row of that table.
+    """
     frames = _load_polished("swing")
     pairs = [
         S.static_silhouette_pair_fraction(frames[i], frames[i + 1])
         for i in range(len(frames) - 1)
     ]
-    assert pairs == pytest.approx((0.6823, 0.8151, 0.8646), abs=TOLERANCE)
-    assert round(max(pairs), 2) == 0.86
-    policy = GatePolicy(status="UNSEPARATED", budget=0.86, hard_fail=None)
-    assert evaluate_continuous_gate_outcome(policy, 0.86) == "PASS"
+    assert pairs == pytest.approx((0.4578, 0.6223, 0.6886), abs=TOLERANCE)
+    assert round(max(pairs), 2) == 0.69
+    policy = GatePolicy(status="UNSEPARATED", budget=0.88, hard_fail=None)
+    assert evaluate_continuous_gate_outcome(policy, max(pairs)) == "PASS"
 
 
-def test_cell_authored_swing_prototype_yields_review() -> None:
+def test_cell_authored_swing_prototype_matches_production_after_identity_lock() -> None:
+    """C4 separation table, re-derived (issue #208 wants fresh measurement, not
+    the issue's own table carried verbatim — see C5's derivation rule).
+
+    The provider Strip this test measures predates the #178 palette-exact
+    migration's alpha-mask contract: Polished Frames now share the Draft alpha
+    mask exactly (`docs/strip-acquisition-contract.md` § final polish, point 2),
+    and this metric is alpha-only. So the provider and the Polished reference
+    now measure identically — both PASS at 0.88, not the 0.93 REVIEW the issue's
+    table describes. `test_swing_hold_pose_trips_static_silhouette`
+    (`tests/test_adversarial.py`) remains the REVIEW evidence for this budget.
+    """
     layout = S.DEFAULT_LAYOUT
     provider = S.load_provider_frames(
         DWARF / "swing" / "provider" / "source.png",
@@ -138,12 +205,12 @@ def test_cell_authored_swing_prototype_yields_review() -> None:
         S.static_silhouette_pair_fraction(provider[i], provider[i + 1])
         for i in range(len(provider) - 1)
     ]
-    assert pairs == pytest.approx((0.8227, 0.8968, 0.9244), abs=TOLERANCE)
-    assert round(max(pairs), 2) == 0.92
+    assert pairs == pytest.approx((0.4578, 0.6223, 0.6886), abs=TOLERANCE)
+    assert round(max(pairs), 2) == 0.69
     result = S.coherence_split(provider, motion_class="swing")
     gate = result["gate_outcomes"]["static_silhouette_pass"]
-    assert gate["outcome"] == "REVIEW"
-    assert gate["metric"] > 0.86
+    assert gate["outcome"] == "PASS"
+    assert gate["metric"] == pytest.approx(0.6886, abs=TOLERANCE)
 
 
 def test_validate_separated_promotions_requires_no_promotion_for_static_silhouette() -> None:

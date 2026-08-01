@@ -1531,18 +1531,29 @@ def static_silhouette_pair_fraction(
     a: list[list[Cell]],
     b: list[list[Cell]],
 ) -> float:
-    """Fraction of cells whose opacity is unchanged between two frames."""
+    """Fraction of cells whose opacity is unchanged between two frames.
+
+    Normalized by the union of Cells opaque in either Frame, matching the
+    convention shared by `cell_diff`, `cell_diff_motion`, `_silhouette_diff_at_shift`,
+    and `silhouette_diff` — not by raw frame area, which makes the metric depend
+    on canvas size (#208).
+    """
     frame_h = len(a)
     frame_w = len(a[0]) if a else 0
-    total = frame_w * frame_h
-    if total == 0:
-        return 1.0
     changed = 0
+    union_opaque = 0
     for y in range(frame_h):
         for x in range(frame_w):
-            if (a[y][x] is None) != (b[y][x] is None):
+            a_opaque = a[y][x] is not None
+            b_opaque = b[y][x] is not None
+            if not a_opaque and not b_opaque:
+                continue
+            union_opaque += 1
+            if a_opaque != b_opaque:
                 changed += 1
-    return round(1.0 - changed / total, 4)
+    if union_opaque == 0:
+        return 1.0
+    return round(1.0 - changed / union_opaque, 4)
 
 
 def static_silhouette_adjacent_max(frames: list[list[list[Cell]]]) -> float:
