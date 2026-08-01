@@ -1,0 +1,32 @@
+{
+  "attempts": [
+    {
+      "attempt_id": "dwarf-swing--001",
+      "outcome": "rejected",
+      "predecessor_attempt_id": null,
+      "prompt_sha256": "d69802003471d8102ba66e8211f076088c36e1226ec4e7569e948892fe265310",
+      "raw_sha256": "1acef53ea865c12b3ab7f38dd7e2d55d57877233683605f4948a52baf67bebd1",
+      "rejection_reason": "provider_clipping",
+      "selected": false
+    },
+    {
+      "attempt_id": "dwarf-swing--002",
+      "outcome": "rejected",
+      "predecessor_attempt_id": "dwarf-swing--001",
+      "prompt_sha256": "d69802003471d8102ba66e8211f076088c36e1226ec4e7569e948892fe265310",
+      "raw_sha256": "ed3930789d066faa40b5bfc3a5b744091194130c015c87622ef6da76bec9129c",
+      "rejection_reason": "pitch_fail",
+      "selected": false
+    },
+    {
+      "attempt_id": "dwarf-swing--003",
+      "outcome": "accepted",
+      "predecessor_attempt_id": "dwarf-swing--002",
+      "prompt_sha256": "d69802003471d8102ba66e8211f076088c36e1226ec4e7569e948892fe265310",
+      "raw_sha256": "34bedd2042d92f5af7a345264e9c7150267325eb1e34ab0dc470f42ebc09ef97",
+      "rejection_reason": null,
+      "selected": true
+    }
+  ],
+  "schema": "animation-attempt-ledger/0"
+}
