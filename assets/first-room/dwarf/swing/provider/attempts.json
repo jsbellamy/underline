@@ -1,0 +1,32 @@
+{
+  "attempts": [
+    {
+      "attempt_id": "dwarf-swing--001",
+      "outcome": "rejected",
+      "predecessor_attempt_id": null,
+      "prompt_sha256": "c5483f646c2c29748948cf6de4fd9c4f3ff6e83634f5b1aecf792d4110f98338",
+      "raw_sha256": "2e4bf1b04519b54ec785eae8895a4ea7c5d056055f7a20d2fb631fec8143ac84",
+      "rejection_reason": "provider_downscale: output 1536x1024 vs swing seed canvas 2432x1152",
+      "selected": false
+    },
+    {
+      "attempt_id": "dwarf-swing--002",
+      "outcome": "rejected",
+      "predecessor_attempt_id": "dwarf-swing--001",
+      "prompt_sha256": "c5483f646c2c29748948cf6de4fd9c4f3ff6e83634f5b1aecf792d4110f98338",
+      "raw_sha256": "7d61ad74f3d86bd7d03b2dccb9b4fbfa1e29d30c206cbe12400e3adf19d55fa0",
+      "rejection_reason": "provider_downscale: output 1536x1024 vs swing seed canvas 2432x1152",
+      "selected": false
+    },
+    {
+      "attempt_id": "dwarf-swing--004",
+      "outcome": "accepted",
+      "predecessor_attempt_id": "dwarf-swing--002",
+      "prompt_sha256": "c5483f646c2c29748948cf6de4fd9c4f3ff6e83634f5b1aecf792d4110f98338",
+      "raw_sha256": "9e27501162ebc930deace70b46c124bc730e78940b5cf14a402140fb87d28cc8",
+      "rejection_reason": null,
+      "selected": true
+    }
+  ],
+  "schema": "animation-attempt-ledger/0"
+}

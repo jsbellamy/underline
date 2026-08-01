@@ -245,7 +245,7 @@ def _write_pack(root: Path, doc: dict[str, object] | None = None) -> Path:
 DWARF_RELEASE_FRAMES: tuple[tuple[str, str, int, int, int], ...] = (
     ("dwarf-idle", "idle", 268, 23, 268),
     ("dwarf-walk", "walk", 152, 20, 152),
-    ("dwarf-swing", "swing", 177, 19, 177),
+    ("dwarf-swing", "swing", 214, 25, 214),
 )
 
 

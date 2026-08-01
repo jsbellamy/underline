@@ -2,72 +2,78 @@
   "schema": "polish-visual-audit/0",
   "bundle": "assets/first-room/dwarf/swing",
   "profile_id": "dwarf-miner",
-  "profile_sha256": "0e60aee8d4a630bad6fdabc8d2525c8ae9e2cda8ceab92e37a1dd972a4fcedcf",
+  "profile_sha256": "31c12e73db71d4168bd7b44cb823fd574abed24bf3bb0ffeed7479a3f2d55a75",
   "motion_class": "swing",
   "inspection": {
     "native_scale": true,
     "nearest_neighbor_enlargement": true,
     "composites": [
-      "inspected release Frames at 24×24 native",
-      "inspected 8× nearest-neighbor composite of polished Frames",
-      "cross-checked beside assets/first-room/dwarf/identity.png and idle release Frames"
+      "inspected release Frames at 24\u00d724 native",
+      "inspected 8\u00d7 nearest-neighbor composite of polished Frames",
+      "cross-checked beside assets/first-room/dwarf/identity.png, idle provider source, and idle release Frames"
     ]
   },
   "machine_check": {
     "command": "npm run strip:polish -- check assets/first-room/dwarf/swing --json",
     "outcome": "PASS",
-    "fingerprint": "3bcc86581abdabf943d89b9b5c36eddf5ffae25c873f76ccaf34d3584661499e",
-    "visible_cell_edits": 610,
-    "edit_summary": "Interim mechanical re-canvas of the palette-exact 16×24 swing pose onto 24×24 at column 4; no subject pixels changed. Identity Lock PASS at canonical origin (4, 0). Approved 24×24 swing art is deferred to the re-authoring wave — this bundle is padding only, not final art direction."
+    "fingerprint": "01d923585e0f1a10784212a826f92baf0a6b3619a0cc3d518b1b4c9528ab8897",
+    "visible_cell_edits": 837,
+    "edit_summary": "Identity-locked image-edit swing from idle provider detail on the 24\u00d724 action canvas; palette-exact polish onto the Master Palette with canonical lock-region colors preserved."
   },
   "answers": [
     {
       "id": "identity_anchors",
       "question": "Are short/broad proportions, beard mass, the oversized blue lamp helmet, green clothing, belt and buckle, gloves, boots, and pickaxe legible and temporally consistent whenever the pose exposes them?",
       "verdict": "PASS",
-      "rationale": "The padded 24×24 Frames preserve the same dwarf identity masses and pickaxe legibility as the pre-re-canvas pose; nothing was redrawn or reframed."
+      "rationale": "Idle-provider construction preserved in locked regions; swing arc edits arms, pickaxe, and torso lean only outside helmet/face, belt-core, and boot anchors."
+    },
+    {
+      "id": "identity_lock_pass",
+      "question": "Does the machine-readable check report show automatic Identity Lock PASS for every Frame before you judge exposed identity outside the locked regions?",
+      "verdict": "PASS",
+      "rationale": "check_bundle reports identity_lock.outcome PASS on all four Frames."
     },
     {
       "id": "black_eye_no_sclera",
       "question": "When the eye is exposed, is it a single black Cell with no white sclera?",
       "verdict": "PASS",
-      "rationale": "Frames 0–2 still expose a single near-black eye Cell with no white sclera; Frame 3 still occludes the eye during the forward contact lean."
+      "rationale": "Frames 0\u20132 expose a single dark-outline eye Cell; Frame 3 occludes during contact lean."
     },
     {
       "id": "native_scale_separation",
       "question": "At native scale, are face/beard, beard/torso, hands/handle, legs/torso, and boots/ground separated rather than accidentally melding at same-value contacts?",
       "verdict": "PASS",
-      "rationale": "Transparent padding did not merge any contacts; native 24×24 separation matches the embedded 16×24 pose."
+      "rationale": "Provider-detail shading separates masses at native 24\u00d724; grip and handle remain distinct."
     },
     {
       "id": "palette_lighting_outline",
       "question": "Do Master Palette roles, upper-left local light, and selective warm-dark outline remain stable across Frames?",
       "verdict": "PASS",
-      "rationale": "Palette-exact polished Cells are unchanged by the re-canvas; only transparent margin was added."
+      "rationale": "Polished Frames are palette-exact with stable role hues across the one-shot arc."
     },
     {
       "id": "temporal_consistency",
       "question": "Do identity accents and intentional outlines remain stable across Frames without one-Frame decorative flicker?",
       "verdict": "PASS",
-      "rationale": "No Cells were edited; the one-shot arc is identical to the pre-re-canvas sequence."
+      "rationale": "Helmet lamp, buckle, and boot anchors stay stable; motion is confined to permitted regions."
     },
     {
       "id": "readable_anticipation",
       "question": "Does the swing sequence show readable anticipation before the strike?",
       "verdict": "PASS",
-      "rationale": "Frame 0 still shows the same raised pickaxe anticipation before the downswing."
+      "rationale": "Frame 0 raises the pickaxe behind and above the helmet before the downswing."
     },
     {
       "id": "continuous_pickaxe_arc",
       "question": "Does the pickaxe preserve a clear, continuous action arc across the one-shot sequence?",
       "verdict": "PASS",
-      "rationale": "The embedded arc is unchanged; wider canvas adds margin only."
+      "rationale": "Pickaxe head traces anticipation \u2192 head height \u2192 forward cross \u2192 ground contact without discontinuity."
     },
     {
       "id": "hand_handle_separation",
       "question": "Is the gripping hand distinguishable from the pickaxe handle at native scale?",
       "verdict": "PASS",
-      "rationale": "Grip separation is unchanged at native 24×24."
+      "rationale": "Glove and handle values remain separable at native scale in all Frames."
     },
     {
       "id": "planted_boots",
@@ -79,17 +85,82 @@
       "id": "contact_readability_frame3",
       "question": "At Frame 3, is mining contact readable without losing hand, tool, or boot separation?",
       "verdict": "PASS",
-      "rationale": "Frame 3 contact readability is unchanged from the embedded pose; known swing readability limits are out of scope for this interim re-canvas."
+      "rationale": "Frame 3 alone shows forward ground-level pickaxe contact with boots and grip still separated."
     }
   ],
   "explicit_confirmations": {
     "identity_stable_vs_identity_png": "PASS",
+    "idle_provider_construction_match": "PASS",
     "same_pickaxe_tool_as_idle": "PASS",
     "boots_planted_all_frames": "PASS",
     "frame3_only_contact": "PASS",
     "no_scenery_or_effect_cells": "PASS",
-    "interim_re_canvas_not_final_art": "PASS — mechanical padding of the 16×24 pose; re-authoring wave owns approved 24×24 swing art",
+    "provider_raster_unmodified": "PASS",
+    "per_frame_opaque_bbox": [
+      {
+        "frame": 0,
+        "x0": 5,
+        "x1": 18,
+        "y0": 1,
+        "y1": 23
+      },
+      {
+        "frame": 1,
+        "x0": 4,
+        "x1": 18,
+        "y0": 1,
+        "y1": 23
+      },
+      {
+        "frame": 2,
+        "x0": 4,
+        "x1": 19,
+        "y0": 1,
+        "y1": 23
+      },
+      {
+        "frame": 3,
+        "x0": 6,
+        "x1": 18,
+        "y0": 1,
+        "y1": 23
+      }
+    ],
+    "arc_uses_columns_outside_4_19": "PASS \u2014 no Frame extends subject Cells beyond column 19; arc fits within embedded 16-Cell interior",
+    "boundary_column_load": [
+      {
+        "frame": 0,
+        "column_0": 0,
+        "column_23": 0
+      },
+      {
+        "frame": 1,
+        "column_0": 0,
+        "column_23": 0
+      },
+      {
+        "frame": 2,
+        "column_0": 0,
+        "column_23": 0
+      },
+      {
+        "frame": 3,
+        "column_0": 0,
+        "column_23": 0
+      }
+    ],
     "cross_animation_cohort_idle": "PASS"
+  },
+  "hash_bindings": {
+    "identity_png_sha256": "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6",
+    "idle_provider_sha256": "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3",
+    "check_report_fingerprint": "01d923585e0f1a10784212a826f92baf0a6b3619a0cc3d518b1b4c9528ab8897",
+    "release_frame_sha256": [
+      "2ae3890d6be6cabad1dd3851240371744dbd09091aaefefdcaa5176395469a0d",
+      "1c09e12168340b458ea78d42da77fcea861e91231b1b3b886139d297933a7cab",
+      "463570eaa2f3fbcdbe33cf54c979e9602287a091bb5579e7bf102156a993dd60",
+      "4ba4ec6f0263b98a836ad5d9c64cac90b0fdb3d441329b9eb4752578598c7ada"
+    ]
   },
   "uncertain_count": 0,
   "overall": "PASS"

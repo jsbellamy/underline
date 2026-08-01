@@ -60,95 +60,116 @@ FRAME_COUNT = DEFAULT_LAYOUT.frame_count
 
 SWING_24X24_ALPHA_BBOX = (
     (5, 18, 1, 23),
-    (4, 19, 8, 23),
-    (4, 19, 9, 23),
-    (4, 18, 10, 23),
+    (4, 18, 1, 23),
+    (4, 19, 1, 23),
+    (6, 18, 1, 23),
 )
-SWING_OPAQUE_COUNTS = (177, 151, 154, 128)
-SWING_PRE_SLICE_RGB_MULTISSETS = (
+SWING_OPAQUE_COUNTS = (214, 216, 220, 187)
+SWING_POLISHED_RGB_MULTISSETS = (
     {
-        (17, 16, 24): 18,
-        (25, 58, 50): 16,
-        (29, 23, 32): 21,
-        (29, 59, 80): 7,
-        (40, 91, 67): 5,
-        (43, 34, 48): 8,
-        (59, 34, 27): 25,
-        (59, 47, 58): 27,
-        (66, 128, 90): 2,
-        (74, 59, 72): 5,
-        (78, 141, 160): 1,
-        (98, 55, 34): 14,
-        (108, 61, 49): 3,
-        (120, 58, 24): 10,
+        (17, 16, 24): 46,
+        (23, 104, 115): 1,
+        (25, 58, 50): 12,
+        (29, 23, 32): 11,
+        (29, 59, 80): 9,
+        (40, 91, 67): 10,
+        (43, 34, 48): 3,
+        (47, 96, 117): 8,
+        (59, 34, 27): 33,
+        (66, 128, 90): 9,
+        (74, 59, 72): 1,
+        (78, 141, 160): 9,
+        (98, 55, 34): 9,
+        (98, 81, 93): 4,
+        (120, 58, 24): 13,
         (120, 166, 99): 1,
         (128, 106, 115): 1,
-        (147, 86, 49): 7,
-        (165, 140, 145): 1,
-        (200, 123, 67): 5,
-    },
-    {
-        (17, 16, 24): 20,
-        (25, 58, 50): 20,
-        (29, 23, 32): 11,
-        (29, 59, 80): 3,
-        (40, 91, 67): 6,
-        (43, 34, 48): 7,
-        (47, 96, 117): 2,
-        (59, 34, 27): 18,
-        (59, 47, 58): 20,
-        (66, 128, 90): 2,
-        (74, 59, 72): 2,
-        (78, 141, 160): 3,
-        (98, 55, 34): 17,
-        (108, 61, 49): 2,
-        (120, 58, 24): 5,
-        (120, 166, 99): 1,
-        (128, 106, 115): 2,
-        (147, 86, 49): 6,
-        (164, 95, 70): 1,
-        (190, 98, 34): 1,
-        (200, 123, 67): 2,
-    },
-    {
-        (17, 16, 24): 25,
-        (25, 58, 50): 20,
-        (29, 23, 32): 3,
-        (29, 59, 80): 1,
-        (40, 91, 67): 4,
-        (43, 34, 48): 5,
-        (47, 96, 117): 1,
-        (59, 34, 27): 28,
-        (59, 47, 58): 23,
-        (66, 128, 90): 3,
-        (74, 59, 72): 1,
-        (78, 141, 160): 3,
-        (98, 55, 34): 12,
-        (108, 61, 49): 2,
-        (120, 58, 24): 7,
-        (120, 166, 99): 4,
-        (147, 86, 49): 8,
-        (164, 95, 70): 1,
+        (143, 196, 197): 2,
+        (147, 86, 49): 9,
         (165, 140, 145): 2,
-        (200, 123, 67): 1,
+        (190, 98, 34): 3,
+        (200, 123, 67): 5,
+        (240, 163, 58): 8,
+        (243, 188, 130): 4,
+        (255, 214, 107): 1,
     },
     {
-        (17, 16, 24): 16,
-        (25, 58, 50): 14,
-        (29, 23, 32): 9,
-        (29, 59, 80): 2,
-        (40, 91, 67): 7,
-        (43, 34, 48): 1,
-        (59, 34, 27): 25,
-        (59, 47, 58): 22,
-        (66, 128, 90): 1,
-        (98, 55, 34): 13,
-        (108, 61, 49): 2,
-        (120, 58, 24): 5,
-        (120, 166, 99): 2,
-        (147, 86, 49): 5,
-        (164, 95, 70): 1,
-        (200, 123, 67): 3,
+        (17, 16, 24): 46,
+        (23, 104, 115): 1,
+        (25, 58, 50): 13,
+        (29, 23, 32): 11,
+        (29, 59, 80): 9,
+        (40, 91, 67): 9,
+        (43, 34, 48): 2,
+        (47, 96, 117): 9,
+        (59, 34, 27): 35,
+        (66, 128, 90): 5,
+        (74, 59, 72): 1,
+        (78, 141, 160): 11,
+        (98, 55, 34): 9,
+        (98, 81, 93): 4,
+        (120, 58, 24): 17,
+        (120, 166, 99): 1,
+        (128, 106, 115): 1,
+        (143, 196, 197): 2,
+        (147, 86, 49): 9,
+        (190, 98, 34): 3,
+        (200, 123, 67): 4,
+        (240, 163, 58): 7,
+        (243, 188, 130): 5,
+        (255, 214, 107): 2,
+    },
+    {
+        (17, 16, 24): 45,
+        (18, 58, 71): 1,
+        (23, 104, 115): 2,
+        (25, 58, 50): 13,
+        (29, 23, 32): 12,
+        (29, 59, 80): 11,
+        (40, 91, 67): 9,
+        (43, 34, 48): 2,
+        (47, 96, 117): 11,
+        (59, 34, 27): 35,
+        (66, 128, 90): 7,
+        (74, 59, 72): 1,
+        (78, 141, 160): 11,
+        (98, 55, 34): 9,
+        (98, 81, 93): 3,
+        (120, 58, 24): 16,
+        (143, 196, 197): 2,
+        (147, 86, 49): 9,
+        (165, 140, 145): 5,
+        (190, 98, 34): 3,
+        (200, 123, 67): 4,
+        (240, 163, 58): 6,
+        (243, 188, 130): 2,
+        (255, 214, 107): 1,
+    },
+    {
+        (17, 16, 24): 36,
+        (23, 104, 115): 2,
+        (25, 58, 50): 11,
+        (29, 23, 32): 11,
+        (29, 59, 80): 10,
+        (40, 91, 67): 6,
+        (43, 34, 48): 2,
+        (47, 96, 117): 9,
+        (59, 34, 27): 32,
+        (59, 47, 58): 1,
+        (66, 128, 90): 3,
+        (74, 59, 72): 2,
+        (78, 141, 160): 11,
+        (98, 55, 34): 9,
+        (98, 81, 93): 1,
+        (120, 58, 24): 9,
+        (128, 106, 115): 3,
+        (143, 196, 197): 2,
+        (147, 86, 49): 9,
+        (190, 98, 34): 4,
+        (200, 123, 67): 4,
+        (240, 163, 58): 6,
+        (243, 188, 130): 2,
+        (255, 214, 107): 2,
     },
 )
 
@@ -826,16 +847,16 @@ def test_schema_v2_swing_check_rejects_legacy_provenance_geometry(tmp_path: Path
     assert exc.value.reason_code == "invalid_provenance"
 
 
-def test_schema_v1_swing_check_accepts_legacy_provenance_geometry(tmp_path: Path) -> None:
-    bundle = tmp_path / "swing-v1"
+def test_schema_v2_swing_check_accepts_native_provenance_geometry(tmp_path: Path) -> None:
+    bundle = tmp_path / "swing-v2"
     shutil.copytree(SWING_BUNDLE, bundle)
     provenance_path = bundle / "provider" / "source.source.json"
     provenance = json.loads(provenance_path.read_text())
-    assert provenance["item_geometry"]["frame_w"] == 16
+    assert provenance["item_geometry"]["frame_w"] == 24
     result = check_bundle(bundle)
     assert result.outcome == "PASS"
     manifest = json.loads((bundle / "manifest.json").read_text())
-    assert manifest["schema"] == BUNDLE_SCHEMA_LEGACY_1
+    assert manifest["schema"] == BUNDLE_SCHEMA
 
 
 def test_existing_destination_is_preserved(tmp_path: Path) -> None:
@@ -1918,22 +1939,28 @@ def test_production_swing_polished_frames_are_24x24_with_zero_boundary_load() ->
         assert _swing_boundary_column_load(cells) == (0, 0)
 
 
-def test_production_swing_polished_frames_preserve_pre_slice_subject_pixels() -> None:
+def test_production_swing_polished_frames_match_release_rgb_multisets() -> None:
     for index in range(FRAME_COUNT):
         cells = read_cells(SWING_POLISHED / f"frame-{index}.png", size=(24, 24))
         assert sum(1 for row in cells for cell in row if cell is not None) == SWING_OPAQUE_COUNTS[index]
-        assert dict(_swing_opaque_rgb_multiset(cells)) == SWING_PRE_SLICE_RGB_MULTISSETS[index]
+        assert dict(_swing_opaque_rgb_multiset(cells)) == SWING_POLISHED_RGB_MULTISSETS[index]
 
 
-def test_production_swing_audit_records_interim_re_canvas_status() -> None:
+def test_production_swing_audit_records_identity_locked_replacement() -> None:
     audit = json.loads((SWING_BUNDLE / "reports" / "audit.json").read_text(encoding="utf-8"))
     summary = audit["machine_check"]["edit_summary"]
-    assert "interim" in summary.lower()
-    assert "re-canvas" in summary.lower()
-    assert "re-author" in summary.lower()
+    assert "image-edit" in summary.lower()
+    assert "identity" in summary.lower()
+    assert "interim" not in summary.lower()
+    assert "re-canvas" not in summary.lower()
     assert audit["uncertain_count"] == 0
     assert audit["overall"] == "PASS"
     assert all(answer["verdict"] != "UNCERTAIN" for answer in audit["answers"])
+    confirmations = audit["explicit_confirmations"]
+    assert confirmations["provider_raster_unmodified"] == "PASS"
+    assert confirmations["idle_provider_construction_match"] == "PASS"
+    assert "per_frame_opaque_bbox" in confirmations
+    assert "boundary_column_load" in confirmations
 
 
 def test_dwarf_swing_check_exposes_identity_lock_report(tmp_path: Path) -> None:

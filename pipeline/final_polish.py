@@ -1359,7 +1359,7 @@ def _verify_provider_post_edit(
         provider_path,
         edit_source_path,
         motion_class=str(manifest["motion_class"]),
-        layout=_corpus_layout(),
+        layout=_probe_layout_for_manifest(manifest),
     )
     payload = provider_post_edit_report_payload(result)
     if result.reason_code == "provider_magenta_wipe":

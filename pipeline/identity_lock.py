@@ -1521,6 +1521,49 @@ def evaluate_edit_source_continuity(
     )
 
 
+def _load_edit_source_frames_for_continuity(
+    edit_source_path: Path,
+    probe: Any,
+) -> list[list[list[Cell]]] | None:
+    """Recover edit-source Frames, stripping dwarf ``seed_pad_px`` border when needed."""
+    from pipeline.strip import load_provider_frames
+
+    frames = load_provider_frames(edit_source_path, probe)
+    if frames is not None:
+        return frames
+
+    identity_path = _REPO_ROOT / "assets" / "first-room" / "dwarf" / "identity.json"
+    if not identity_path.is_file():
+        return None
+    try:
+        declaration = json.loads(identity_path.read_text(encoding="utf-8"))
+        seed_pad_px = declaration.get("seed_pad_px")
+        if seed_pad_px is None:
+            return None
+        pad_px = _parse_seed_pad_px(seed_pad_px)
+    except (OSError, json.JSONDecodeError, IdentityLockError):
+        return None
+
+    try:
+        with Image.open(edit_source_path) as image:
+            width, height = image.size
+            if width <= 2 * pad_px or height <= 2 * pad_px:
+                return None
+            interior = image.crop((pad_px, pad_px, width - pad_px, height - pad_px))
+    except UnidentifiedImageError:
+        return None
+
+    buffer = BytesIO()
+    interior.save(buffer, format="PNG")
+    buffer.seek(0)
+    interior_path = Path(f"{edit_source_path}.interior.png")
+    try:
+        interior_path.write_bytes(buffer.getvalue())
+        return load_provider_frames(interior_path, probe)
+    finally:
+        interior_path.unlink(missing_ok=True)
+
+
 def evaluate_provider_post_edit(
     provider_path: Path,
     edit_source_path: Path,
@@ -1572,7 +1615,7 @@ def evaluate_provider_post_edit(
             margin_cells=0,
         )
     provider_raw = load_provider_frames(provider_path, probe)
-    edit_raw = load_provider_frames(edit_source_path, probe)
+    edit_raw = _load_edit_source_frames_for_continuity(edit_source_path, probe)
     if provider_raw is None or edit_raw is None:
         return ProviderPostEditResult(
             outcome="FAIL",

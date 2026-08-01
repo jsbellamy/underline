@@ -33,8 +33,8 @@ C1_TABLE = {
         "alpha": (0.1472, 0.1582, 0.1401),
     },
     "swing": {
-        "rgba": (0.3229, 0.2431, 0.2118),
-        "alpha": (0.5422, 0.3777, 0.3114),
+        "rgba": (0.1562, 0.1372, 0.1667),
+        "alpha": (0.2008, 0.1603, 0.3042),
     },
 }
 
@@ -180,17 +180,16 @@ def test_unseparated_static_silhouette_boundary_and_review() -> None:
 def test_reference_swing_polished_per_pair_table() -> None:
     """C1/C4: union-normalized per-pair table for the production reference.
 
-    Re-canvassing the same reference Frames at 16x24, 24x24, and 32x24 scores
-    0.4578/0.6223/0.6886 under union normalization on every canvas (C1) — this
-    is the 16x24 shipped-Frame row of that table.
+    Issue #127 replaced the interim padded swing with a native 24×24 identity-locked
+    edit; per-pair static silhouette is higher because frames share more alpha.
     """
     frames = _load_polished("swing")
     pairs = [
         S.static_silhouette_pair_fraction(frames[i], frames[i + 1])
         for i in range(len(frames) - 1)
     ]
-    assert pairs == pytest.approx((0.4578, 0.6223, 0.6886), abs=TOLERANCE)
-    assert round(max(pairs), 2) == 0.69
+    assert pairs == pytest.approx((0.7992, 0.8397, 0.6958), abs=TOLERANCE)
+    assert round(max(pairs), 2) == 0.84
     policy = GatePolicy(status="UNSEPARATED", budget=0.88, hard_fail=None)
     assert evaluate_continuous_gate_outcome(policy, max(pairs)) == "PASS"
 
@@ -216,12 +215,12 @@ def test_cell_authored_swing_prototype_matches_production_after_identity_lock() 
         S.static_silhouette_pair_fraction(provider[i], provider[i + 1])
         for i in range(len(provider) - 1)
     ]
-    assert pairs == pytest.approx((0.4578, 0.6223, 0.6886), abs=TOLERANCE)
-    assert round(max(pairs), 2) == 0.69
+    assert pairs == pytest.approx((0.7992, 0.8397, 0.6958), abs=TOLERANCE)
+    assert round(max(pairs), 2) == 0.84
     result = S.coherence_split(provider, motion_class="swing")
     gate = result["gate_outcomes"]["static_silhouette_pass"]
     assert gate["outcome"] == "PASS"
-    assert gate["metric"] == pytest.approx(0.6886, abs=TOLERANCE)
+    assert gate["metric"] == pytest.approx(0.8397, abs=TOLERANCE)
 
 
 def test_validate_separated_promotions_requires_no_promotion_for_static_silhouette() -> None:

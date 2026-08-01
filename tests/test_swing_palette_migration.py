@@ -24,10 +24,10 @@ PALETTE_EXACT_IDENTITY_SHA = (
 )
 
 PRE_CLEANUP_CELL_SHA256 = {
-    0: "778ba92bb3f37fae1f92affd6d4f5ef55fb0d6afecc59ac93267154bc1ffcaad",
-    1: "caae16c357f9ef0d38e47f53ab60fdecfdd13558a7f7123e77b05b94a237287e",
-    2: "4110a7d28318475777382c8075f24e0e883434d704100dbfb10b860599593c5b",
-    3: "13df7373b0dcfbe92191a8cb50cfc6ab0009958236c81b5f03d8740ca595788e",
+    0: "60ffd44e29f677d9016b8edc158bdf1dbd2be0062968096b9731a73854c111f7",
+    1: "cd1021b90db3029246d5851b33f12497c04fb94f2a7ae7697586cfca2cc96721",
+    2: "674b238b76287724a1baa8ff12a4ca0222e76ff64824d44db794b25ffd233b49",
+    3: "4dba333aced85fa463b6a986197433f491116bd8ef9d260f1b53807912182e45",
 }
 
 
@@ -105,8 +105,7 @@ def test_swing_bundle_check_passes_with_palette_exact_identity_lock(tmp_path: Pa
     static_gate = result.coherence.get("gate_outcomes", {}).get("static_silhouette_pass")
     assert static_gate is not None
     # Union normalization (issue #208) plus the re-tuned 0.88 budget: the
-    # production reference (worst-pair 0.6886) now PASSes, not the REVIEW the
-    # old area-normalized 0.86 boundary produced.
+    # production reference (worst-pair 0.8397 after #127) now PASSes.
     assert static_gate["outcome"] == "PASS"
     assert static_gate["acceptance_status"] == "UNSEPARATED"
     lock = evaluate_identity_lock(
