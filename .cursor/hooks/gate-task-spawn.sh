@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Gate Task spawns: deny fast models and force explicit composer-2.5[fast=false].
+# Gate Task spawns: rewrite every Composer 2.5 Task to composer-2.5[fast=false].
+# preToolUse is the only hook that can change the model; never deny here.
 set -euo pipefail
 
 script_dir=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -19,16 +20,6 @@ inline_model=$(echo "$input" | jq -r '.tool_input.model // empty')
 parent_model=$(echo "$input" | jq -r '.model // empty')
 parent_params=$(echo "$input" | jq -c '.model_params // []')
 
-deny_task() {
-  local detail="$1"
-  jq -n --arg d "$detail" '{
-    permission: "deny",
-    user_message: ("Task blocked: Composer 2.5 fast mode is disabled. " + $d),
-    agent_message: ("Never spawn subagents on Composer 2.5 fast. Use composer-2.5[fast=false] or a non-Composer model. " + $d)
-  }'
-  exit 0
-}
-
 allow_task_with_model() {
   local model="$1"
   local message="$2"
@@ -40,45 +31,38 @@ allow_task_with_model() {
   exit 0
 }
 
+# Pinned agents always get an explicit standard slug (frontmatter alone is not enough).
 if is_pinned_subagent "$subagent_type"; then
-  if [[ -n "$inline_model" ]] && is_composer_25_fast "$inline_model" "[]"; then
-    deny_task "Pinned subagent ${subagent_type} cannot use inline fast model ${inline_model}."
+  if [[ "$inline_model" == "$COMPOSER_25_STANDARD_MODEL" ]]; then
+    echo '{"permission":"allow"}'
+    exit 0
   fi
   allow_task_with_model "$COMPOSER_25_STANDARD_MODEL" \
-    "Forced ${COMPOSER_25_STANDARD_MODEL} for pinned subagent ${subagent_type}."
+    "Rewrote Task model to ${COMPOSER_25_STANDARD_MODEL} for pinned subagent ${subagent_type}."
 fi
 
 if [[ -n "$inline_model" ]]; then
-  if is_explicit_composer_25_fast "$inline_model"; then
-    deny_task "Inline Task model was ${inline_model}."
-  fi
-
-  if is_bare_composer_25_slug "$inline_model"; then
-    allow_task_with_model "$COMPOSER_25_STANDARD_MODEL" \
-      "Rewrote bare inline Task model ${inline_model} to ${COMPOSER_25_STANDARD_MODEL}."
-  fi
-
-  inline_mode=$(composer_25_mode "$inline_model" "[]")
-  case "$inline_mode" in
-    standard)
-      echo '{"permission":"allow"}'
-      exit 0
+  case "$(composer_25_mode "$inline_model" "[]")" in
+    fast)
+      allow_task_with_model "$COMPOSER_25_STANDARD_MODEL" \
+        "Rewrote inline Task model ${inline_model} to ${COMPOSER_25_STANDARD_MODEL}."
       ;;
-    other)
-      echo '{"permission":"allow"}'
-      exit 0
+    standard)
+      if [[ "$inline_model" == "$COMPOSER_25_STANDARD_MODEL" ]]; then
+        echo '{"permission":"allow"}'
+      else
+        allow_task_with_model "$COMPOSER_25_STANDARD_MODEL" \
+          "Normalized inline Task model ${inline_model} to ${COMPOSER_25_STANDARD_MODEL}."
+      fi
       ;;
     *)
-      allow_task_with_model "$COMPOSER_25_STANDARD_MODEL" \
-        "Rewrote ambiguous inline Task model ${inline_model} to ${COMPOSER_25_STANDARD_MODEL}."
+      echo '{"permission":"allow"}'
       ;;
   esac
+  exit 0
 fi
 
-if is_composer_25_fast "$parent_model" "$parent_params"; then
-  deny_task "Parent chat is on Composer 2.5 fast; subagents would inherit it."
-fi
-
+# No inline model: inherit path. Composer parents (fast or standard) → force standard.
 if is_composer_25_family "$parent_model" "$parent_params"; then
   allow_task_with_model "$COMPOSER_25_STANDARD_MODEL" \
     "Injected ${COMPOSER_25_STANDARD_MODEL} because Task had no inline model on a Composer parent."
