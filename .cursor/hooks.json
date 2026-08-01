@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "hooks": {
+    "beforeSubmitPrompt": [
+      {
+        "command": ".cursor/hooks/deny-fast-composer-chat.sh",
+        "matcher": "UserPromptSubmit",
+        "failClosed": true
+      }
+    ],
+    "preToolUse": [
+      {
+        "command": ".cursor/hooks/gate-task-spawn.sh",
+        "matcher": "Task",
+        "failClosed": true
+      }
+    ],
+    "subagentStart": [
+      {
+        "command": ".cursor/hooks/deny-fast-subagents.sh",
+        "failClosed": true
+      }
+    ]
+  }
+}
