@@ -24,6 +24,7 @@ from pipeline.strip import (
     StripLayout,
     ingest_strip_provider,
     layout_for_motion_class,
+    load_provider_frames,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -36,7 +37,14 @@ LANTERN_STRIP = INBOX / "14-lantern-flicker.png"
 IDENTITY_PNG = ROOT / "assets" / "first-room" / "dwarf" / "identity.png"
 IDENTITY_JSON = ROOT / "assets" / "first-room" / "dwarf" / "identity.json"
 IDLE_SEED_STRIP = ROOT / "assets" / "first-room" / "dwarf" / "idle" / "provider" / "source.png"
-from tests.test_final_polish import _swing_provider_strip  # noqa: E402
+from tests.test_final_polish import (
+    _dwarf_miner_ingest_source,
+    _effective_dwarf_miner_provider,
+    _padded_inbox_provider,
+    _swing_provider_on_edit_canvas,
+    _swing_provider_strip,
+    _walk_provider_on_edit_canvas,
+)
 
 CANONICAL_IDENTITY_SHA = "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6"
 GENERATION_SOURCE_SHA256 = "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3"
@@ -78,6 +86,23 @@ def _run_cli(capsys: pytest.CaptureFixture[str], args: list[str]) -> _CliResult:
     returncode = main(args)
     captured = capsys.readouterr()
     return _CliResult(returncode=returncode, stdout=captured.out, stderr=captured.err)
+
+
+def _run_check_cli(
+    capsys: pytest.CaptureFixture[str],
+    bundle: Path,
+    ingest_source: Path,
+    *,
+    json_mode: bool = True,
+) -> _CliResult:
+    args = ["check", str(bundle)]
+    if json_mode:
+        args.append("--json")
+    with patch(
+        "pipeline.final_polish.load_provider_frames",
+        side_effect=lambda path, layout: load_provider_frames(ingest_source, layout),
+    ):
+        return _run_cli(capsys, args)
 
 
 def _run_npm(args: list[str]) -> subprocess.CompletedProcess[str]:
@@ -152,6 +177,18 @@ def _write_animation_provenance(
     )
 
 
+def _effective_provider_path(
+    provider_path: Path,
+    tmp_path: Path,
+    motion_class: str,
+    *,
+    polish_profile: str | None = None,
+) -> Path:
+    if polish_profile == "dwarf-miner":
+        return _effective_dwarf_miner_provider(provider_path, tmp_path, motion_class)
+    return provider_path
+
+
 def _provenance_args(
     tmp_path: Path,
     provider_path: Path,
@@ -159,7 +196,13 @@ def _provenance_args(
     *,
     polish_profile: str | None = None,
 ) -> list[str]:
-    provenance_path = tmp_path / f"{provider_path.stem}.source.json"
+    effective_provider = _effective_provider_path(
+        provider_path,
+        tmp_path,
+        motion_class,
+        polish_profile=polish_profile,
+    )
+    provenance_path = tmp_path / f"{effective_provider.stem}.source.json"
     kwargs: dict[str, object] = {"motion_class": motion_class}
     identity_args: list[str] = []
     if polish_profile == "dwarf-miner" and motion_class in {"walk", "swing"}:
@@ -177,7 +220,7 @@ def _provenance_args(
             "--edit-source",
             str(padded_seed),
         ]
-    _write_animation_provenance(provider_path, provenance_path, **kwargs)
+    _write_animation_provenance(effective_provider, provenance_path, **kwargs)
     return ["--provenance", str(provenance_path), *identity_args]
 
 
@@ -190,9 +233,15 @@ def _init_cli_args(
     polish_profile: str | None = None,
     json_mode: bool = False,
 ) -> list[str]:
+    effective_provider = _effective_provider_path(
+        provider_path,
+        tmp_path,
+        motion_class,
+        polish_profile=polish_profile,
+    )
     args = [
         "init",
-        str(provider_path),
+        str(effective_provider),
         "--motion-class",
         motion_class,
         "--out",
@@ -219,6 +268,12 @@ def _library_init_bundle(
     *,
     polish_profile: str | None = None,
 ) -> None:
+    effective_provider = _effective_provider_path(
+        provider_path,
+        tmp_path,
+        motion_class,
+        polish_profile=polish_profile,
+    )
     provenance_args = _provenance_args(
         tmp_path,
         provider_path,
@@ -228,14 +283,43 @@ def _library_init_bundle(
     provenance_path = Path(provenance_args[1])
     identity = Path(provenance_args[3]) if len(provenance_args) > 3 else None
     edit = Path(provenance_args[5]) if len(provenance_args) > 5 else None
+    ingest_source = (
+        _dwarf_miner_ingest_source(provider_path, motion_class)
+        if polish_profile == "dwarf-miner" and effective_provider != provider_path
+        else effective_provider
+    )
+    probe_layout = layout_for_motion_class(motion_class, margin_cells=0)
+    init_kwargs = {
+        "provenance_sidecar": provenance_path,
+        "polish_profile": polish_profile,
+        "identity_reference": identity,
+        "edit_source": edit,
+    }
+    if ingest_source != effective_provider:
+        base_ingest = ingest_strip_provider(ingest_source, probe_layout, motion_class=motion_class)
+        base_frames = load_provider_frames(ingest_source, probe_layout)
+        with (
+            patch(
+                "pipeline.final_polish.ingest_strip_provider",
+                return_value=base_ingest,
+            ),
+            patch(
+                "pipeline.final_polish.load_provider_frames",
+                return_value=base_frames,
+            ),
+        ):
+            initialize_bundle(
+                effective_provider,
+                motion_class,
+                bundle,
+                **init_kwargs,
+            )
+        return
     initialize_bundle(
-        provider_path,
+        effective_provider,
         motion_class,
         bundle,
-        provenance_sidecar=provenance_path,
-        polish_profile=polish_profile,
-        identity_reference=identity,
-        edit_source=edit,
+        **init_kwargs,
     )
 
 
@@ -408,15 +492,50 @@ def test_brief_json_selects_production_profile_motion_questions(
     provenance = Path(provenance_path[1])
     identity = Path(provenance_path[3]) if len(provenance_path) > 3 else None
     edit = Path(provenance_path[5]) if len(provenance_path) > 5 else None
-    initialize_bundle(
+    effective_provider = _effective_provider_path(
         strip,
+        tmp_path,
         motion_class,
-        bundle,
-        provenance_sidecar=provenance,
         polish_profile=profile_id,
-        identity_reference=identity,
-        edit_source=edit,
     )
+    ingest_source = (
+        _dwarf_miner_ingest_source(strip, motion_class)
+        if profile_id == "dwarf-miner" and effective_provider != strip
+        else effective_provider
+    )
+    probe_layout = layout_for_motion_class(motion_class, margin_cells=0)
+    init_kwargs = {
+        "provenance_sidecar": provenance,
+        "polish_profile": profile_id,
+        "identity_reference": identity,
+        "edit_source": edit,
+    }
+    if ingest_source != effective_provider:
+        base_ingest = ingest_strip_provider(ingest_source, probe_layout, motion_class=motion_class)
+        base_frames = load_provider_frames(ingest_source, probe_layout)
+        with (
+            patch(
+                "pipeline.final_polish.ingest_strip_provider",
+                return_value=base_ingest,
+            ),
+            patch(
+                "pipeline.final_polish.load_provider_frames",
+                return_value=base_frames,
+            ),
+        ):
+            initialize_bundle(
+                effective_provider,
+                motion_class,
+                bundle,
+                **init_kwargs,
+            )
+    else:
+        initialize_bundle(
+            effective_provider,
+            motion_class,
+            bundle,
+            **init_kwargs,
+        )
     before = _bundle_fingerprint(bundle)
 
     result = _run_cli(capsys, ["brief", str(bundle), "--json"])
@@ -625,9 +744,10 @@ def test_check_json_includes_silhouette_artifacts(tmp_path: Path, capsys: pytest
 
 def test_check_json_reports_provider_post_edit(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
-    _library_init_bundle(_swing_provider_strip(tmp_path), "swing", bundle, tmp_path, polish_profile="dwarf-miner")
+    swing_strip = _swing_provider_strip(tmp_path)
+    _library_init_bundle(swing_strip, "swing", bundle, tmp_path, polish_profile="dwarf-miner")
 
-    result = _run_cli(capsys, ["check", str(bundle), "--json"])
+    result = _run_check_cli(capsys, bundle, swing_strip)
 
     assert result.returncode == 1, result.stderr
     data = json.loads(result.stdout)
@@ -643,9 +763,14 @@ def test_check_human_report_names_provider_post_edit_reason(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     bundle = tmp_path / "bundle"
-    _library_init_bundle(_swing_provider_strip(tmp_path), "swing", bundle, tmp_path, polish_profile="dwarf-miner")
+    swing_strip = _swing_provider_strip(tmp_path)
+    _library_init_bundle(swing_strip, "swing", bundle, tmp_path, polish_profile="dwarf-miner")
 
-    result = _run_cli(capsys, ["check", str(bundle)])
+    with patch(
+        "pipeline.final_polish.load_provider_frames",
+        side_effect=lambda path, layout: load_provider_frames(swing_strip, layout),
+    ):
+        result = _run_cli(capsys, ["check", str(bundle)])
 
     assert result.returncode == 1, result.stderr
     assert "Post-edit   FAIL (edit_source_continuity_fail)" in result.stdout
@@ -1109,7 +1234,7 @@ def test_v2_walk_check_json_binds_sequential_attempt_evidence(tmp_path: Path, ca
     assert selected[0]["prompt_sha256"] == provenance["prompt_sha256"]
     assert selected[0]["raw_sha256"] == provenance["raw_sha256"]
 
-    result = _run_cli(capsys, ["check", str(bundle), "--json"])
+    result = _run_check_cli(capsys, bundle, WALK_STRIP)
     assert result.returncode == 1, result.stderr
     data = json.loads(result.stdout)
     assert data["identity_lock"] is not None
