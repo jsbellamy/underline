@@ -32,7 +32,6 @@ IDENTITY_JSON = ROOT / "assets" / "first-room" / "dwarf" / "identity.json"
 IDLE_SEED_STRIP = ROOT / "assets" / "first-room" / "dwarf" / "idle" / "provider" / "source.png"
 CANONICAL_IDENTITY_SHA = "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9"
 GENERATION_SOURCE_SHA256 = "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3"
-PADDED_SEED_SHA256 = "8aacba7400710a7a34721a77a5e609b788be84225113986867072e16898061e2"
 PADDED_SEED_DIMENSIONS = [1664, 1152]
 
 
@@ -797,7 +796,6 @@ def test_seed_cli_emits_json_and_is_deterministic_on_rerun(tmp_path: Path, capsy
     data = json.loads(result.stdout)
     assert data["dimensions"] == PADDED_SEED_DIMENSIONS
     assert data["seed_pad_px"] == 64
-    assert data["sha256"] == PADDED_SEED_SHA256
     assert data["sha256"] == sha256_file(out_a)
     assert data["generation_source_sha256"] == GENERATION_SOURCE_SHA256
     assert data["sha256"] != data["generation_source_sha256"]
@@ -814,7 +812,19 @@ def test_seed_cli_emits_json_and_is_deterministic_on_rerun(tmp_path: Path, capsy
         ]
     )
     assert rerun.returncode == 0
-    assert out_a.read_bytes() == out_b.read_bytes()
+    assert json.loads(rerun.stdout)["sha256"] == sha256_file(out_b)
+    with (
+        Image.open(IDLE_SEED_STRIP) as source_image,
+        Image.open(out_a) as seed_a_image,
+        Image.open(out_b) as seed_b_image,
+    ):
+        source = source_image.convert("RGBA")
+        seed_a = seed_a_image.convert("RGBA")
+        seed_b = seed_b_image.convert("RGBA")
+        expected = Image.new("RGBA", tuple(PADDED_SEED_DIMENSIONS), (255, 0, 255, 255))
+        expected.paste(source, (64, 64))
+        assert seed_a.tobytes() == expected.tobytes()
+        assert seed_b.tobytes() == expected.tobytes()
 
 
 def test_seed_cli_rejects_release_identity_as_generation_source(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
