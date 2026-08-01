@@ -104,7 +104,7 @@ that falsify the thinnest claims directly (see **Next corpus priority** below).
 | `emissive` | 3 | 03, 14, 15 |
 | `airborne` | 3 | 04, 16, 17 |
 | `walk` | 3 | 05, 18, 19 |
-| `swing` | 3 | 06, 20, 21 |
+| `swing` | 3 | 06, 20, 21 (`contract_expect: REVIEW` on `static_silhouette_pass`; still manifest-good for silhouette/drift derivation) |
 
 ## Separation check (C6)
 

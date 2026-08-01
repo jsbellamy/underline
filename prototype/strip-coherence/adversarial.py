@@ -185,7 +185,7 @@ def slide(frames, idx=2, dx=3):
 
 
 def hold_pose(frames, idx=2):
-    """Copy frame idx-1 onto frame idx — silhouette frozen, colours may differ."""
+    """Duplicate frame idx-1 onto frame idx — adjacent alpha unchanged."""
     out = [[row[:] for row in f] for f in frames]
     out[idx] = [[cell for cell in row] for row in out[idx - 1]]
     return out

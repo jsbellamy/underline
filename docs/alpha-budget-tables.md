@@ -72,6 +72,7 @@ Gate's Budget; the caveat is recorded on the row and does not block α allocatio
 | `idle/min_pair_cohort_pass` | 0.0420 | **0.07** | 0.07 | 0 | 0.0280 | none | open above Budget |
 | `walk/min_pair_cohort_pass` | 0.1429 | **0.17** | 0.17 | 0 | 0.0271 | none | open above Budget |
 | `emissive/min_pair_cohort_pass` | 0.0989 | **0.12** | 0.12 | 0 | 0.0211 | none | open above Budget |
+| `swing/static_silhouette_pass` | 0.8646 | **0.86** | 0.86 | 0 | −0.0046 | none | open above Budget |
 
 ## Inapplicable pairs
 
@@ -80,6 +81,11 @@ Gate's Budget; the caveat is recorded on the row and does not block α allocatio
 | `airborne/silhouette_budget` | class property `max_silhouette=None` (not grounded) |
 | `swing/loop_closure_pass` | one-shot swing; `loops=false` |
 | `swing/min_pair_cohort_pass` | one-shot swing; `max_min_pair=None` |
+| `idle/static_silhouette_pass` | no budget derived for the class |
+| `blob_idle/static_silhouette_pass` | no budget derived for the class |
+| `walk/static_silhouette_pass` | no budget derived for the class |
+| `airborne/static_silhouette_pass` | no budget derived for the class |
+| `emissive/static_silhouette_pass` | no budget derived for the class |
 
 Structural `baseline_row_stable` remains Separated without a provider Gate control
 and is outside the α table. Airborne `displacement_pass` is **Unseparated** (binary /
