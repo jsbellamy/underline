@@ -1,36 +1,33 @@
 {
-  "schema": "gate-control-provenance/0",
-  "specification_id": "first-room/dwarf/walk",
-  "attempt_id": "dwarf-walk--001",
-  "generator": "cursor-image-gen",
-  "prompt_text": "TRUE chunky pixel art animation Strip only. Four WALK Frames of exactly the SAME right-facing DWARF MINER shown in the supplied identity reference, in one horizontal row.\n\nExact 16\u00d724 logical Frames rendered as crisp square Cells; four Frames; two magenta #FF00FF logical gutter Cells; flat magenta keyed background; no labels, margins, extra rows, anti-aliasing, blur, gradients, or dithering.\n\nCopy the reference identity: same short broad proportions, rust beard shape, oversized blue lamp helmet, centered amber lamp, black eye Cell without white sclera, green tunic, gloves, leather belt and buckle, broad boots, and compact heavy pickaxe behind the shoulder. Use only the first-room Master Palette.\n\nStandard in-place four-step walk: Frame 0 contact, Frame 1 down, Frame 2 pass, Frame 3 up. Alternating legs and boots must remain separable from each other and the torso. The dwarf stays horizontally registered; runtime moves the actor. Preserve upper-body mass and all identity anchors while allowing a one-Cell vertical bob. Frame 3 leads cleanly to Frame 0.\n\nWarm rugged storybook pixel art, selective warm-dark outline, neutral upper-left local light. Intended read: heavy deliberate dwarf stride, not a light human jog.\n",
-  "prompt": "TRUE chunky pixel art animation Strip only. Four WALK Frames of exactly the SAME right-facing DWARF MINER shown in the supplied identity reference, in one horizontal row.\n\nExact 16\u00d724 logical Frames rendered as crisp square Cells; four Frames; two magenta #FF00FF logical gutter Cells; flat magenta keyed background; no labels, margins, extra rows, anti-aliasing, blur, gradients, or dithering.\n\nCopy the reference identity: same short broad proportions, rust beard shape, oversized blue lamp helmet, centered amber lamp, black eye Cell without white sclera, green tunic, gloves, leather belt and buckle, broad boots, and compact heavy pickaxe behind the shoulder. Use only the first-room Master Palette.\n\nStandard in-place four-step walk: Frame 0 contact, Frame 1 down, Frame 2 pass, Frame 3 up. Alternating legs and boots must remain separable from each other and the torso. The dwarf stays horizontally registered; runtime moves the actor. Preserve upper-body mass and all identity anchors while allowing a one-Cell vertical bob. Frame 3 leads cleanly to Frame 0.\n\nWarm rugged storybook pixel art, selective warm-dark outline, neutral upper-left local light. Intended read: heavy deliberate dwarf stride, not a light human jog.\n",
-  "prompt_sha256": "2e0b118c5827fd8da1dab5387344f1717b4736e1977d681d1c2ac140aad71de3",
-  "reference_image_sha256": [
-    "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9"
-  ],
-  "generated_at": "2026-07-27T22:30:00+00:00",
-  "acquiring_agent": "cursor-agent-issue-110",
-  "repository_commit": "87d3df920ddeba61795f4d8bd7c5b2d7095e5d0f",
-  "raw_path": "assets/first-room/dwarf/walk/provider/source.png",
-  "raw_sha256": "8031d7fce82650a2c3b87a318ebfc5264cc51869b8024a05e541589f673904c3",
-  "media_type": "image/png",
+  "acquiring_agent": "cursor-agent-issue-126",
+  "attempt_id": "dwarf-walk--002",
   "dimensions": [
     1536,
     1024
   ],
-  "master_palette_id": "first-room",
-  "motion_class": "walk",
-  "polish_profile": "dwarf-miner",
+  "edit_source_sha256": "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3",
+  "generated_at": "2026-07-27T23:30:00+00:00",
+  "generation_mode": "image-edit",
+  "generator": "cursor-image-gen",
   "item_geometry": {
-    "frame_w": 16,
-    "frame_h": 24,
     "frame_count": 4,
+    "frame_h": 24,
+    "frame_w": 16,
     "gutter": 2
   },
-  "asset_kind": "animation-strip",
-  "provider": {
-    "generator": "cursor-image-gen",
-    "model": "cursor-image-gen"
-  }
+  "master_palette_id": "first-room",
+  "media_type": "image/png",
+  "model": "cursor-image-gen",
+  "motion_class": "walk",
+  "predecessor_attempt_id": "dwarf-walk--001",
+  "prompt_sha256": "42d1a8ce528aadc03d5f218352d7c43702b8a5f9058bea51ce49758f6312d41e",
+  "prompt_text": "IMAGE EDIT ONLY \u2014 do not redraw or reinterpret the character. The supplied edit canvas contains four identical copies of the canonical right-facing dwarf miner. Keep the canvas, four-Frame row, logical grid, magenta Gutters, and character construction.\n\nCreate a four-Frame in-place WALK by changing only the legs and boots below the locked upper-body region. The canonical rectangle x=0..15, y=1..18 must remain exact Cell-for-Cell RGBA in each Frame, with only one whole-region vertical offset of -1, 0, or +1 Cell. Do not repaint, restyle, simplify, rescale, or add detail to the helmet, lamp, face, black eye, beard, torso, belt, buckle, gloves, arms, or shoulder pickaxe.\n\nFrame 0: contact pose, front boot forward and rear boot back.\nFrame 1: down pose, both knees compressed, upper-body lock shifted down by one Cell.\nFrame 2: passing pose, legs crossing cleanly with separate boot masses.\nFrame 3: up pose, opposite leg advancing, upper-body lock shifted up by one Cell.\n\nThe dwarf remains horizontally registered; runtime translates the actor. Legs and boots remain separable from each other and the torso. Frame 3 leads cleanly to Frame 0. The stride reads heavy and deliberate, not like a tall human jog.\n\nExact 16\u00d724 logical Frames rendered as crisp flat square Cells; four Frames; two full magenta #FF00FF logical Gutter Cells; one horizontal row; no margins, labels, extra rows, anti-aliasing, blur, gradients, or dithering. Preserve canonical subject colors in locked Cells; newly edited subject Cells use only the first-room Master Palette and never transport magenta.\n\nIntended read: the exact idle dwarf has started walking; only his lower-body pose and one-Cell vertical weight shift changed.",
+  "raw_path": "source.png",
+  "raw_sha256": "562b9de2bf2b8af9af484ede5d83e5e978b7d451daef7083f2b7ae73c18f0580",
+  "reference_image_sha256": [
+    "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9"
+  ],
+  "repository_commit": "e65fb8dbca6252c524fdcb7cde36f4065f1a337c",
+  "schema": "animation-strip-provenance/0",
+  "specification_id": "first-room/dwarf/walk"
 }

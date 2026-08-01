@@ -1,0 +1,23 @@
+{
+  "attempts": [
+    {
+      "attempt_id": "dwarf-walk--001",
+      "outcome": "rejected",
+      "predecessor_attempt_id": null,
+      "prompt_sha256": "42d1a8ce528aadc03d5f218352d7c43702b8a5f9058bea51ce49758f6312d41e",
+      "raw_sha256": "692f7b17e85d31f2462e1a4129b86c309aff9c6a61a2213213d8f2d993009105",
+      "rejection_reason": "provider_clipping",
+      "selected": false
+    },
+    {
+      "attempt_id": "dwarf-walk--002",
+      "outcome": "accepted",
+      "predecessor_attempt_id": "dwarf-walk--001",
+      "prompt_sha256": "42d1a8ce528aadc03d5f218352d7c43702b8a5f9058bea51ce49758f6312d41e",
+      "raw_sha256": "562b9de2bf2b8af9af484ede5d83e5e978b7d451daef7083f2b7ae73c18f0580",
+      "rejection_reason": null,
+      "selected": true
+    }
+  ],
+  "schema": "animation-attempt-ledger/0"
+}
