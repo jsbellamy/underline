@@ -10,6 +10,7 @@ import pytest
 from PIL import Image
 
 from pipeline.asset_pack import (
+    FIRST_ROOM_ANIMATION_POLICY,
     PACK_SCHEMA,
     TERRACED_SHAFT_PREVIEW_SCENE,
     AssetPackError,
@@ -22,7 +23,6 @@ from pipeline.asset_pack import (
 )
 from pipeline.cell_raster import cells_from_rgba
 from pipeline.gate_evidence import sha256_bytes, sha256_file
-from pipeline.static_asset import _palette_rgb_set
 
 ROOT = Path(__file__).resolve().parents[1]
 PALETTE_PATH = ROOT / "assets" / "palettes" / "first-room.json"
@@ -258,8 +258,17 @@ def _copy_repo_release(root: Path, anim: str, frame: str) -> str:
     return rel
 
 
+def _master_palette_rgb_set() -> frozenset[tuple[int, int, int]]:
+    doc = json.loads(PALETTE_PATH.read_text(encoding="utf-8"))
+    colors: set[tuple[int, int, int]] = set()
+    for group in doc["role_groups"]:
+        for hex_color in group["colors"]:
+            colors.add(tuple(int(hex_color[index : index + 2], 16) for index in (1, 3, 5)))
+    return frozenset(colors)
+
+
 def _frame_palette_stats(rel_path: str) -> tuple[int, int, int]:
-    allowed = _palette_rgb_set(json.loads(PALETTE_PATH.read_text(encoding="utf-8")))
+    allowed = _master_palette_rgb_set()
     with Image.open(ROOT / rel_path) as image:
         cells = cells_from_rgba(image)
     opaque = 0
@@ -293,18 +302,11 @@ def _write_dwarf_palette_violation_pack(root: Path) -> Path:
             "facing": "right",
             "runtime_mirror": True,
         }
-        if asset_id == "dwarf-idle":
-            row.update({"loop": True, "durations_ms": [200, 200, 200, 200]})
-        elif asset_id == "dwarf-walk":
-            row.update({"loop": True, "durations_ms": [125, 125, 125, 125]})
-        else:
-            row.update(
-                {
-                    "loop": False,
-                    "durations_ms": [150, 80, 60, 180],
-                    "contact_frame": 3,
-                }
-            )
+        policy = FIRST_ROOM_ANIMATION_POLICY[asset_id]
+        row["loop"] = policy["loop"]
+        row["durations_ms"] = list(policy["durations_ms"])
+        if policy["contact_frame"] is not None:
+            row["contact_frame"] = policy["contact_frame"]
         assets.append(row)
     doc = {
         "schema": PACK_SCHEMA,
