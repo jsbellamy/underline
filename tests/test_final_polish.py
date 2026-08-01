@@ -718,12 +718,19 @@ def test_review_strip_creates_nothing(tmp_path: Path) -> None:
     assert not bundle.exists()
 
 
-def test_init_allows_unseparated_only_review_for_swing(tmp_path: Path) -> None:
+def test_init_materializes_swing_frames_on_the_motion_class_canvas(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
     _init_bundle(SWING_STRIP, "swing", bundle, tmp_path, polish_profile="dwarf-miner")
-    assert bundle.exists()
+
     manifest = json.loads((bundle / "manifest.json").read_text())
     assert manifest["motion_class"] == "swing"
+    assert manifest["layout"]["frame_w"] == 24
+    assert manifest["layout"]["frame_h"] == 24
+    for layer in ("draft", "polished"):
+        for index in range(FRAME_COUNT):
+            cells = read_cells(bundle / layer / f"frame-{index}.png")
+            assert (len(cells[0]), len(cells)) == (24, 24)
+            assert all(cell is None for row in cells for cell in row[:4])
 
 
 def test_existing_destination_is_preserved(tmp_path: Path) -> None:

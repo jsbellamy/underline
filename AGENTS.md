@@ -45,6 +45,11 @@ late. Where a runtime supports subagents, run that review in one: it opens the
 artifact, answers the question, and returns text, so the artifact never enters
 the main task's context.
 
+For a compact, read-only Polish Bundle baseline, use
+`npm run --silent strip:polish -- check <bundle> --summary-json`. Reserve the
+complete `--json` payload and immutable fingerprinted report for diagnosis that
+needs fields absent from the summary.
+
 ### Final-polish agent audit
 
 For a profiled Polish Bundle, run
@@ -136,3 +141,9 @@ Cursor, the orchestrator spawns `issue-implementer-code` or
 rules are preloaded there. The orchestrator independently owns the acceptance
 gate — green tests and a scope-matching file list are necessary but never
 sufficient.
+
+When a slice requires before/after Polish Bundle proof, the orchestrator passes
+the bundle path and expected delta, not a copied report. The implementer records
+the baseline from its own worktree and commit using the shared process in
+`docs/agents/issue-implementer.md`; this prevents dispatch evidence from drifting
+from the code the implementer actually received.

@@ -10,6 +10,23 @@ Issues, PRDs, and wayfinder maps for this project live as **GitHub issues** on
   files under `docs/` and are **linked** from the issue body, not pasted in.
 - Comments and conversation history are GitHub issue comments.
 
+## Dependency correctness
+
+Every agent-ready issue has a `## Blocked by` section. Express a prerequisite as
+both a native GitHub blocking edge and a human-readable `Blocked by: #N` line;
+use `Blocked by: none` when there is no predecessor.
+
+Split a prerequisite into its own blocking issue when it changes a different
+system boundary or makes an advertised asset-only slice require pipeline code.
+Do not hide such work in a prose “pipeline prerequisites” section. A single
+combined issue is appropriate only when its Contract, Proof, slice type, and
+`## Touches` honestly include both the prerequisite and the dependent change.
+
+An orchestrator dispatches only when every blocking issue is closed. If a
+missing prerequisite is discovered after dispatch, the implementer returns a
+blocked report; the orchestrator repairs the dependency graph or issue scope
+before redispatching.
+
 ## When a skill says "publish to the issue tracker"
 
 Create a new issue with `gh issue create`. Put long-form artifacts in `docs/` and
@@ -35,7 +52,7 @@ use rather than silently reusing a different label.
   - Attach: `gh api repos/jsbellamy/underline/issues/<map>/sub_issues -F sub_issue_id=<child_id>`
     where `<child_id>` is the child's REST id (`gh api repos/jsbellamy/underline/issues/<n> --jq .id`).
   - List children: `gh api repos/jsbellamy/underline/issues/<map>/sub_issues`.
-- **Blocking**: wire native issue dependencies, and keep a human-readable
+- **Blocking**: wire native issue dependencies as described above, and keep a human-readable
   `Blocked by: #N, #N` line near the top of the body for agents that read the
   body rather than the API. A ticket is unblocked when every blocker is closed.
   (Sub-issues give the parent its completion rollup, but do not express blocking

@@ -20,7 +20,23 @@ runtime supports worktrees.
    join, and `pattern` as an example rather than a specification. Expand beyond an
    anchor only when required. The manifest is expected scope, not a
    straitjacket: justify each out-of-manifest file in the PR body.
+   Resolve `## Blocked by` before creating the branch. Every named predecessor
+   must be closed; if the issue depends on pipeline behavior that is not present,
+   it is a hard blocker rather than implementation archaeology. Stop with a
+   blocked report instead of silently absorbing that prerequisite into an asset
+   slice. A combined code slice is valid only when its Contract and `## Touches`
+   explicitly include the prerequisite behavior and files.
 3. Create `issue-<N>-<slug>` from `main`.
+   For every before/after Polish Bundle Proof, record the exact starting revision
+   with `git rev-parse HEAD`, then run this read-only baseline in the worktree:
+
+   ```bash
+   npm run --silent strip:polish -- check <bundle> --summary-json
+   ```
+
+   Keep the revision and complete summary output as pre-slice evidence. Treat an
+   envelope baseline as an expected comparison only; the worktree-local result
+   is authoritative.
 4. Implement test-first at the seams in `docs/agents/code-style.md` (that doc is
    the standing seam agreement). **Cursor:** read `.cursor/skills/tdd/SKILL.md`
    and follow its blocking loop before any production or asset edit. **Other
@@ -52,6 +68,11 @@ runtime supports worktrees.
    - Do not add good corpus strips to strengthen a separation claim; under the
      current derivation rule they can only widen budgets toward the fixed
      controls.
+   - **Discovery checkpoint** — within 10 agent turns after loading the issue,
+     either run the first red-capable command or return a structured discovery
+     blocker. The blocker names the missing seam or prerequisite, evidence
+     inspected, and the smallest next issue or issue edit that would unblock the
+     slice. Do not continue open-ended grep/read loops past this checkpoint.
 5. Before publishing, make a **completion matrix** with columns `Claim`,
    `Verdict`, and `Evidence`, containing one row per Contract claim ID without
    paraphrasing the claim or copying its Proof mapping. For each row, satisfy the
