@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 import pytest
 from PIL import Image
 
 from pipeline.asset_pack import (
+    FIRST_ROOM_ANIMATION_POLICY,
     PACK_SCHEMA,
     TERRACED_SHAFT_PREVIEW_SCENE,
     AssetPackError,
@@ -19,6 +21,7 @@ from pipeline.asset_pack import (
     render_pack_preview,
     serialize_preview_scene,
 )
+from pipeline.cell_raster import cells_from_rgba
 from pipeline.gate_evidence import sha256_bytes, sha256_file
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -239,6 +242,86 @@ def _write_pack(root: Path, doc: dict[str, object] | None = None) -> Path:
     return path
 
 
+DWARF_RELEASE_FRAMES: tuple[tuple[str, str, int, int, int], ...] = (
+    ("dwarf-idle", "idle", 268, 255, 0),
+    ("dwarf-walk", "walk", 152, 152, 0),
+    ("dwarf-swing", "swing", 177, 176, 0),
+)
+
+
+def _copy_repo_release(root: Path, anim: str, frame: str) -> str:
+    rel = f"assets/first-room/dwarf/{anim}/release/{frame}.png"
+    dest = root / rel
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    if not dest.exists():
+        shutil.copy2(ROOT / rel, dest)
+    return rel
+
+
+def _master_palette_rgb_set() -> frozenset[tuple[int, int, int]]:
+    doc = json.loads(PALETTE_PATH.read_text(encoding="utf-8"))
+    colors: set[tuple[int, int, int]] = set()
+    for group in doc["role_groups"]:
+        for hex_color in group["colors"]:
+            colors.add(tuple(int(hex_color[index : index + 2], 16) for index in (1, 3, 5)))
+    return frozenset(colors)
+
+
+def _frame_palette_stats(rel_path: str) -> tuple[int, int, int]:
+    allowed = _master_palette_rgb_set()
+    with Image.open(ROOT / rel_path) as image:
+        cells = cells_from_rgba(image)
+    opaque = 0
+    colors: set[tuple[int, int, int]] = set()
+    in_palette = 0
+    for row in cells:
+        for cell in row:
+            if cell is None:
+                continue
+            opaque += 1
+            colors.add(cell)
+            if cell in allowed:
+                in_palette += 1
+    return opaque, len(colors), in_palette
+
+
+def _write_dwarf_palette_violation_pack(root: Path) -> Path:
+    """Minimal asset-pack/0 manifest binding real dwarf release frame-0 PNGs."""
+    _ensure_repo_palette(root)
+    assets: list[dict[str, object]] = []
+    for asset_id, anim, _opaque, _unique, _in_palette in DWARF_RELEASE_FRAMES:
+        report_digest = _write_report(root, f"reports/{asset_id}.json", _animation_report())
+        rel = _copy_repo_release(root, anim, "frame-0")
+        digest = sha256_file(root / rel)
+        row: dict[str, object] = {
+            "id": asset_id,
+            "kind": "animation",
+            "bundle_path": f"assets/first-room/dwarf/{anim}",
+            "final_report": {"path": f"reports/{asset_id}.json", "sha256": report_digest},
+            "releases": [{"path": rel, "sha256": digest}],
+            "facing": "right",
+            "runtime_mirror": True,
+        }
+        policy = FIRST_ROOM_ANIMATION_POLICY[asset_id]
+        row["loop"] = policy["loop"]
+        row["durations_ms"] = list(policy["durations_ms"])
+        if policy["contact_frame"] is not None:
+            row["contact_frame"] = policy["contact_frame"]
+        assets.append(row)
+    doc = {
+        "schema": PACK_SCHEMA,
+        "id": "first-room",
+        "master_palette": {
+            "path": "assets/palettes/first-room.json",
+            "sha256": PALETTE_SHA,
+        },
+        "viewport": [320, 180],
+        "assets": assets,
+        "preview_scene": TERRACED_SHAFT_PREVIEW_SCENE,
+    }
+    return _write_pack(root, doc)
+
+
 # --- C1 schema ---
 
 
@@ -350,6 +433,24 @@ def test_metadata_policy_rejects_release_hash_mismatch(tmp_path: Path) -> None:
     doc = _pack_doc(tmp_path)
     doc["assets"][0]["releases"][0]["sha256"] = "0" * 64
     _assert_check_fails(tmp_path, doc, "release hash")
+
+
+def test_dwarf_release_frames_violate_master_palette(tmp_path: Path) -> None:
+    """Characterization of a known defect (#171): dwarf release frames use off-palette colours.
+
+    Every checked-in dwarf release frame-0 has zero opaque Cells in the Master Palette.
+    Issue #179 should invert this test to expect PASS — do not delete it when migrating.
+    """
+    for asset_id, anim, expected_opaque, expected_unique, expected_in_palette in DWARF_RELEASE_FRAMES:
+        rel = f"assets/first-room/dwarf/{anim}/release/frame-0.png"
+        opaque, unique, in_palette = _frame_palette_stats(rel)
+        assert opaque == expected_opaque, asset_id
+        assert unique == expected_unique, asset_id
+        assert in_palette == expected_in_palette, asset_id
+
+    result = check_asset_pack(_write_dwarf_palette_violation_pack(tmp_path), repo_root=tmp_path)
+    assert not result.valid
+    assert "palette_violation" in result.reason_codes
 
 
 def test_metadata_policy_rejects_palette_violation(tmp_path: Path) -> None:
