@@ -175,6 +175,12 @@ The self-contained provenance and working context connecting one accepted
 provider Strip to its Draft, Polished, and Release Frames.
 _Avoid_: polish workspace, edit session
 
+**Pre-attestation acquisition**:
+A Polish Bundle whose provider bytes were acquired before attested intake, so
+its Attempt cannot be attested from the store and its `attestation.state` is
+`legacy`; it is digest-pinned in `acquisition-controls/legacy-bundles.json`.
+_Avoid_: legacy bundle, grandfathered asset, unattested asset
+
 **Polish profile**:
 A versioned, hash-bound set of fixed visual questions, editing rules, and
 Motion-class overrides that tells an agent what finished art must preserve.

@@ -524,8 +524,9 @@ evidence model, add Gates, or change Budgets.
    edit source) and a `Post-edit` line in the human report. Failed lock/baseline/clipping/pitch
    requires another Attempt. See
    `prompts/production/animation-strip.md` § Dwarf-miner walk and swing. Existing
-   unprofiled `/0` and profiled `/1` bundles remain valid for `check` and
-   `finalize` under legacy rules; `/2` `check` validates provenance
+   unprofiled `/1` bundles remain valid for `check` and `finalize` under legacy
+   rules (see [ADR 0004](adr/0004-pre-attestation-acquisitions.md)); `/2`
+   `check` validates provenance
    `item_geometry` against the Motion class layout (16×24 for non-swing classes,
    24×24 for swing).
 2. The four Polished Frames remain exact `16×24` RGBA (swing: `24×24`) with binary alpha, exact

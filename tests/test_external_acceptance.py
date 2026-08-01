@@ -115,7 +115,7 @@ def test_discovery_finds_top_level_and_nested_bundles_but_skips_non_bundles(
     _write_manifest(assets_root / "not-a-bundle" / "manifest.json", "asset-pack/0")
     # A bundle nested a level deeper than the top-level ones.
     _write_manifest(
-        assets_root / "group" / "nested-bundle" / "manifest.json", "final-polish-bundle/0"
+        assets_root / "group" / "nested-bundle" / "manifest.json", "final-polish-bundle/1"
     )
 
     bundles = discover_bundles(assets_root)

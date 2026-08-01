@@ -858,15 +858,28 @@ def test_unknown_profile_creates_no_partial_bundle(tmp_path: Path) -> None:
     assert not bundle.exists()
 
 
-def test_existing_v0_bundle_remains_check_compatible(tmp_path: Path) -> None:
+def test_existing_v1_bundle_remains_check_compatible(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
     manifest_path = bundle / "manifest.json"
     manifest = json.loads(manifest_path.read_text())
-    manifest["schema"] = "final-polish-bundle/0"
+    manifest["schema"] = "final-polish-bundle/1"
     manifest.pop("polish_profile")
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
     assert _check_bundle(bundle).outcome == "PASS"
+
+
+def test_v0_bundle_is_rejected(tmp_path: Path) -> None:
+    bundle = _init_passing_bundle(tmp_path)
+    manifest_path = bundle / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["schema"] = "final-polish-bundle/0"
+    manifest.pop("polish_profile", None)
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+
+    with pytest.raises(InvalidBundleError) as exc:
+        _check_bundle(bundle)
+    assert exc.value.reason_code == "invalid_manifest"
 
 
 def test_check_and_final_report_bind_embedded_profile(tmp_path: Path) -> None:
