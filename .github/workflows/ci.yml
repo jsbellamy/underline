@@ -76,9 +76,9 @@ jobs:
           fi
           stale=$(jq -r '(.stale_hint_files // []) | join(", ")' "$report")
           if [ -n "$stale" ]; then
-            echo "::notice title=Isolation hint drift::Measured duration exceeded 2x the recorded hint for: $stale. Regenerate scripts/isolation-durations.json (see its _source note)."
+            echo "::notice title=Isolation hint drift::Measured duration exceeded scripts/run_isolated_tests.py's STALE_HINT_RATIO for: $stale. Regenerate scripts/isolation-durations.json (see its _source note)."
           else
-            echo "No isolation hint drift: every measured duration was within 2x its scripts/isolation-durations.json hint."
+            echo "No isolation hint drift: every measured duration was within scripts/run_isolated_tests.py's STALE_HINT_RATIO of its scripts/isolation-durations.json hint."
           fi
 
       - name: Upload isolation report

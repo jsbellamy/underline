@@ -8,6 +8,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from scripts.run_isolated_tests import STALE_HINT_RATIO
+
 ROOT = Path(__file__).resolve().parents[1]
 RUNNER = ROOT / "scripts" / "run_isolated_tests.py"
 
@@ -108,7 +110,7 @@ def test_hint_accuracy_is_reported_without_affecting_outcome_or_schedule(
         encoding="utf-8",
     )
 
-    _, report = _run_isolation(
+    result, report = _run_isolation(
         tmp_path,
         files,
         workers=1,
@@ -116,7 +118,9 @@ def test_hint_accuracy_is_reported_without_affecting_outcome_or_schedule(
     )
 
     # C2: reporting only -- the schedule still follows the hints themselves
-    # (largest recorded hint dispatched first), and the outcome is unaffected.
+    # (largest recorded hint dispatched first), the outcome is unaffected, and
+    # the process still exits 0.
+    assert result.returncode == 0, result.stdout + result.stderr
     assert report["schedule"] == ["test_timed_1.py", "test_timed_0.py"]
     assert report["outcome"] == "PASS"
 
@@ -124,7 +128,7 @@ def test_hint_accuracy_is_reported_without_affecting_outcome_or_schedule(
     stale_row = by_name["test_timed_0.py"]
     accurate_row = by_name["test_timed_1.py"]
     assert stale_row["hint_s"] == 0.001
-    assert stale_row["hint_ratio"] > 2.0
+    assert stale_row["hint_ratio"] > STALE_HINT_RATIO
     assert accurate_row["hint_s"] == 10.0
     assert accurate_row["hint_ratio"] < 1.0
 
@@ -141,15 +145,16 @@ def test_accurate_hints_report_no_stale_files(tmp_path: Path) -> None:
         encoding="utf-8",
     )
 
-    _, report = _run_isolation(
+    result, report = _run_isolation(
         tmp_path,
         files,
         workers=1,
         extra_args=["--durations", str(durations)],
     )
 
+    assert result.returncode == 0, result.stdout + result.stderr
     assert report["stale_hint_files"] == []
-    assert all(row["hint_ratio"] < 2.0 for row in report["files"])
+    assert all(row["hint_ratio"] < STALE_HINT_RATIO for row in report["files"])
 
 
 def test_worker_count_defaults_to_the_available_cpus_and_runs_files_concurrently(

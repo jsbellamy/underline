@@ -16,6 +16,10 @@ from typing import Sequence
 
 DEFAULT_DURATIONS = Path(__file__).resolve().parent / "isolation-durations.json"
 
+# A measured duration beyond this multiple of its recorded hint marks the hint
+# stale (C3). Advisory only -- never affects scheduling, exit code, or outcome.
+STALE_HINT_RATIO = 2.0
+
 
 @dataclass(frozen=True)
 class IsolationResult:
@@ -150,11 +154,12 @@ def _report_payload(
     ratios: list[float] = []
     stale_hint_files: list[str] = []
     for result in results:
+        name = Path(result.path).name
         hint_s, hint_ratio = _hint_ratio(result, durations)
         if hint_ratio is not None:
             ratios.append(hint_ratio)
-            if hint_ratio > 2.0:
-                stale_hint_files.append(Path(result.path).name)
+            if hint_ratio > STALE_HINT_RATIO:
+                stale_hint_files.append(name)
         file_rows.append(
             {
                 "path": result.path,
