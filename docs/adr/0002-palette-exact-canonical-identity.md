@@ -1,8 +1,9 @@
-# ADR 0002: Palette-exact canonical identity (expand)
+# ADR 0002: Palette-exact canonical identity (expand–contract)
 
 ## Status
 
-Accepted (2026-07-31)
+Accepted (2026-07-31). Contracted (2026-08-01, issue #179): the expand phase is
+complete and only the palette-exact identity remains.
 
 ## Context
 
@@ -30,27 +31,47 @@ Run an **expand–contract** migration:
    `palette_exact_identity` entry in `identity-locks.json` (schema
    `identity-lock/2`). The v1 `db68353f…` binding and all current
    `evaluate_identity_lock` callers remain unchanged.
-2. **Contract (later issue):** Repoint consumers from v1 to v2 and retire the
-   soft-shaded raster.
+2. **Contract (#176–#179):** Requantize the idle, walk, and swing bundles onto
+   the palette-exact identity, then collapse the two identities: the v2 bytes
+   move onto the canonical path `assets/first-room/dwarf/identity.png`,
+   `identity-locks.json` and `identity.json` bind that single digest, and the
+   soft-shaded raster is retired. The canonical path and its 16×24 Frame size are
+   unchanged; only its bytes and digest differ.
 
-`identity-v2.png` is produced by `pipeline.palette_quantize` with the committed
-role map, then hand-corrected for isolated colour islands, broken outlines, and
-collapsed value ramps. The role map reproduces the pre-cleanup raster exactly;
-the hand-cleanup delta is the diff between that raster and the committed v2 PNG.
+The soft-shaded raster is not archived under a second name. It survives as
+provenance in the idle bundle's draft Frame 0, which is the quantization input
+`identity-roles.json` was authored against and is still the source the role map's
+reproduction proof runs on.
+
+`assets/first-room/dwarf/idle/provider/source.png` is deliberately **not**
+requantized. It is the image-edit generation base, not a Release asset, and
+`_verify_release` does not inspect it; `identity.json`'s `notes` records this so
+the next acquisition agent does not assume it is palette-exact.
+
+The palette-exact raster (added as `identity-v2.png` by the expand phase, now
+committed at `identity.png`) is produced by `pipeline.palette_quantize` with the
+committed role map, then hand-corrected for isolated colour islands, broken
+outlines, and collapsed value ramps. The role map reproduces the pre-cleanup
+raster exactly; the hand-cleanup delta is the diff between that raster and the
+committed PNG.
 
 ## Consequences
 
 ### Positive
 
-- Palette conformance is machine-checkable on the v2 raster without disturbing
-  walk/swing Identity Lock evaluation against v1.
+- Palette conformance is machine-checkable on the canonical raster, and the
+  dwarf Release Frames verify clean against the Master Palette.
 - The committed role map makes quantization reproducible and reviewable.
-- Expand–contract limits blast radius: v1 callers keep working until contract.
+- Expand–contract limited the blast radius: v1 callers kept working until every
+  bundle had migrated, and the collapse touched no Release Frame bytes.
 
 ### Negative
 
-- Two canonical rasters coexist until contract; agents must not confuse them.
+- Two canonical rasters coexisted between expand and contract; agents working in
+  that window had to keep them apart.
 - Hand cleanup is expected and must be re-audited if the role map changes.
+- The canonical digest changed, so any evidence recorded against `db68353f…`
+  predates the contract and must be read as history.
 
 ### Runtime mirroring
 

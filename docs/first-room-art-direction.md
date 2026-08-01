@@ -98,6 +98,10 @@ different roles:
 | `assets/first-room/dwarf/idle/provider/source.png` | Edit source — provider generation canvas (four identical idle Frames) |
 | `assets/first-room/dwarf/identity.png` | Post-ingest identity anchor — Identity Lock evidence only (16×24) |
 
+The identity anchor is palette-exact against the Master Palette (ADR 0002). The
+edit source is **not**, and is not meant to be: it is a provider generation
+canvas, never a Release asset, so palette verification does not inspect it.
+
 Copy the edit source with `strip:polish seed` against
 `assets/first-room/dwarf/identity.json` (applies `seed_pad_px: 64` magenta
 border). Provenance `edit_source_sha256` must equal the padded seed digest from

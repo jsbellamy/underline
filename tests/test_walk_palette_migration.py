@@ -21,7 +21,6 @@ ROOT = Path(__file__).resolve().parents[1]
 WALK_BUNDLE = ROOT / "assets" / "first-room" / "dwarf" / "walk"
 WALK_POLISHED = WALK_BUNDLE / "polished"
 POLISHED_ROLES_JSON = WALK_BUNDLE / "polished-roles.json"
-IDENTITY_V2_PNG = ROOT / "assets" / "first-room" / "dwarf" / "identity-v2.png"
 MASTER_PALETTE_PATH = ROOT / "assets" / "palettes" / "first-room.json"
 
 PALETTE_EXACT_IDENTITY_SHA = (

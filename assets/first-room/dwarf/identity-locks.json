@@ -1,13 +1,13 @@
 {
   "schema": "identity-lock/2",
-  "identity_sha256": "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9",
+  "identity_sha256": "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6",
   "frame_size": [16, 24],
   "master_palette": {
     "relative_path": "assets/palettes/first-room.json",
     "sha256": "b21e2a2a85cf8e25c1cbdc69f8f0ffc4cfda7dc7f1f0a451ef7ed9d1fa7d6041"
   },
   "palette_exact_identity": {
-    "relative_path": "assets/first-room/dwarf/identity-v2.png",
+    "relative_path": "assets/first-room/dwarf/identity.png",
     "identity_sha256": "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6",
     "role_map_relative_path": "assets/first-room/dwarf/identity-roles.json",
     "frame_size": [16, 24]

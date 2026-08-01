@@ -38,17 +38,18 @@ from pipeline.palette_quantize import load_master_palette, quantize_cells
 
 ROOT = Path(__file__).resolve().parents[1]
 IDENTITY_PNG = ROOT / "assets" / "first-room" / "dwarf" / "identity.png"
-IDENTITY_V2_PNG = ROOT / "assets" / "first-room" / "dwarf" / "identity-v2.png"
 IDENTITY_ROLES_JSON = ROOT / "assets" / "first-room" / "dwarf" / "identity-roles.json"
 IDENTITY_JSON = ROOT / "assets" / "first-room" / "dwarf" / "identity.json"
 IDLE_PROVIDER_SOURCE = (
     ROOT / "assets" / "first-room" / "dwarf" / "idle" / "provider" / "source.png"
 )
-CANONICAL_IDENTITY_SHA = "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9"
-PALETTE_EXACT_IDENTITY_SHA = (
-    "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6"
+# The retired soft-shaded identity survives untouched as the idle draft Frame 0;
+# it is the quantization input the committed role map was authored against (#179).
+SOFT_SHADED_SOURCE_PNG = (
+    ROOT / "assets" / "first-room" / "dwarf" / "idle" / "draft" / "frame-0.png"
 )
-PRE_CLEANUP_IDENTITY_V2_CELL_SHA = (
+CANONICAL_IDENTITY_SHA = "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6"
+PRE_CLEANUP_IDENTITY_CELL_SHA = (
     "cabcc1ff3725dcb3370d0e699ef7ac1af1db5ea1a3e9e6dbee03cc08806ff2f9"
 )
 BEARD_CHEST_RECT = {"x0": 10, "x1": 13, "y0": 6, "y1": 14}
@@ -87,8 +88,8 @@ def test_schema_validates_structural_policy_palette_landmarks_and_grounded_ancho
     assert spec["identity_sha256"] == CANONICAL_IDENTITY_SHA
     assert spec["frame_size"] == [16, 24]
     palette_exact = spec["palette_exact_identity"]
-    assert palette_exact["identity_sha256"] == PALETTE_EXACT_IDENTITY_SHA
-    assert palette_exact["relative_path"] == "assets/first-room/dwarf/identity-v2.png"
+    assert palette_exact["identity_sha256"] == CANONICAL_IDENTITY_SHA
+    assert palette_exact["relative_path"] == "assets/first-room/dwarf/identity.png"
     assert (
         palette_exact["role_map_relative_path"]
         == "assets/first-room/dwarf/identity-roles.json"
@@ -203,8 +204,11 @@ def test_walk_large_occupancy_change_fails_registered_structure() -> None:
     check = result.per_frame[2].check_results["upper_body"]
     assert check["outcome"] == "FAIL"
     assert check["occupancy_difference"] == 105 / 218
+    # Re-baselined by #179: the mutation is scored against the canonical raster,
+    # whose role composition changed when it became palette-exact. The alpha mask
+    # did not change, so occupancy_difference is unchanged.
     assert check["palette_role_distance"] == pytest.approx(
-        2663 / 25320,
+        2840 / 25320,
         abs=METRIC_ABS_TOLERANCE,
     )
 
@@ -222,8 +226,9 @@ def test_walk_palette_role_drift_fails_registered_structure() -> None:
     check = result.per_frame[3].check_results["upper_body"]
     assert check["outcome"] == "FAIL"
     assert check["occupancy_difference"] == 0.0
+    # Re-baselined by #179 with the palette-exact canonical raster; see above.
     assert check["palette_role_distance"] == pytest.approx(
-        79 / 211,
+        80 / 211,
         abs=METRIC_ABS_TOLERANCE,
     )
 
@@ -361,8 +366,9 @@ def test_palette_failure_report_names_truthful_first_failure() -> None:
     assert failure["kind"] == "check"
     assert failure["id"] == "upper_body"
     assert failure["occupancy_difference"] == 0.0
+    # Re-baselined by #179 with the palette-exact canonical raster; see above.
     assert failure["palette_role_distance"] == pytest.approx(
-        79 / 211,
+        80 / 211,
         abs=METRIC_ABS_TOLERANCE,
     )
     assert payload["per_frame"][0]["first_mismatch"] is None
@@ -725,36 +731,39 @@ def _cell_content_sha256(cells: list[list[tuple[int, int, int] | None]]) -> str:
     return hashlib.sha256(payload).hexdigest()
 
 
-def test_identity_v2_is_palette_exact_with_identical_alpha_mask() -> None:
-    assert sha256_file(IDENTITY_V2_PNG) == PALETTE_EXACT_IDENTITY_SHA
+def test_canonical_identity_is_palette_exact_and_keeps_the_retired_alpha_mask() -> None:
+    assert sha256_file(IDENTITY_PNG) == CANONICAL_IDENTITY_SHA
     allowed = _palette_color_set()
-    v2_cells = read_cells(IDENTITY_V2_PNG)
-    for row in v2_cells:
+    canonical_cells = read_cells(IDENTITY_PNG)
+    for row in canonical_cells:
         for cell in row:
             if cell is not None:
                 assert cell in allowed
-    with Image.open(IDENTITY_PNG) as v1_image, Image.open(IDENTITY_V2_PNG) as v2_image:
-        v1_alpha = np.asarray(v1_image.convert("RGBA"))[:, :, 3]
-        v2_alpha = np.asarray(v2_image.convert("RGBA"))[:, :, 3]
-    assert np.array_equal(v1_alpha, v2_alpha)
+    with (
+        Image.open(SOFT_SHADED_SOURCE_PNG) as retired_image,
+        Image.open(IDENTITY_PNG) as canonical_image,
+    ):
+        retired_alpha = np.asarray(retired_image.convert("RGBA"))[:, :, 3]
+        canonical_alpha = np.asarray(canonical_image.convert("RGBA"))[:, :, 3]
+    assert np.array_equal(retired_alpha, canonical_alpha)
 
 
-def test_identity_v2_landmark_roles_match_lock_spec() -> None:
-    v2_cells = read_cells(IDENTITY_V2_PNG)
+def test_canonical_identity_landmark_roles_match_lock_spec() -> None:
+    canonical_cells = read_cells(IDENTITY_PNG)
     palette = load_master_palette(MASTER_PALETTE_PATH)
     for landmark_id, (x, y) in LANDMARK_COORDS.items():
-        cell = v2_cells[y][x]
+        cell = canonical_cells[y][x]
         assert cell is not None
         assert nearest_palette_role(cell, palette.entries) == LANDMARK_ROLES[landmark_id]
 
 
-def test_identity_v2_beard_cluster_excludes_amber_except_landmarks() -> None:
-    v2_cells = read_cells(IDENTITY_V2_PNG)
+def test_canonical_identity_beard_cluster_excludes_amber_except_landmarks() -> None:
+    canonical_cells = read_cells(IDENTITY_PNG)
     palette = load_master_palette(MASTER_PALETTE_PATH)
     landmark_cells = set(LANDMARK_COORDS.values())
     for x in range(BEARD_CHEST_RECT["x0"], BEARD_CHEST_RECT["x1"] + 1):
         for y in range(BEARD_CHEST_RECT["y0"], BEARD_CHEST_RECT["y1"] + 1):
-            cell = v2_cells[y][x]
+            cell = canonical_cells[y][x]
             if cell is None:
                 continue
             role = nearest_palette_role(cell, palette.entries)
@@ -764,24 +773,24 @@ def test_identity_v2_beard_cluster_excludes_amber_except_landmarks() -> None:
 
 def test_identity_roles_reproduce_precleanup_raster(tmp_path: Path) -> None:
     role_assignment = _load_identity_role_assignment()
-    source_cells = read_cells(IDENTITY_PNG)
+    source_cells = read_cells(SOFT_SHADED_SOURCE_PNG)
     palette = load_master_palette(MASTER_PALETTE_PATH)
     precleanup = quantize_cells(source_cells, palette, role_assignment)
     out_path = tmp_path / "precleanup.png"
     write_cells(out_path, precleanup)
-    assert _cell_content_sha256(read_cells(out_path)) == PRE_CLEANUP_IDENTITY_V2_CELL_SHA
-    committed_v2 = read_cells(IDENTITY_V2_PNG)
+    assert _cell_content_sha256(read_cells(out_path)) == PRE_CLEANUP_IDENTITY_CELL_SHA
+    committed_identity = read_cells(IDENTITY_PNG)
     diff_count = sum(
         1
         for y in range(24)
         for x in range(16)
-        if precleanup[y][x] != committed_v2[y][x]
+        if precleanup[y][x] != committed_identity[y][x]
     )
     # Hand cleanup: (5,4) cyan helmet island, (12,7) and (8,12) isolated skin in beard.
     assert diff_count == 3
 
 
-def test_evaluate_identity_lock_v1_resolution_unchanged() -> None:
+def test_evaluate_identity_lock_resolves_the_single_canonical_identity() -> None:
     frames = _canonical_frames()
     walk = evaluate_identity_lock(frames, "walk")
     swing = evaluate_identity_lock(frames, "swing")
@@ -847,6 +856,6 @@ def test_adr_0002_indexed_with_required_sections() -> None:
     for section in ("## Status", "## Context", "## Decision", "## Consequences"):
         assert section in text
     assert "expand–contract" in text
-    assert "db68353f" in text
+    assert "Contracted" in text
     assert "amber-emission" in text
     assert "mirroring" in text

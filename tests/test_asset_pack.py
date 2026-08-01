@@ -436,10 +436,12 @@ def test_metadata_policy_rejects_release_hash_mismatch(tmp_path: Path) -> None:
 
 
 def test_dwarf_release_frames_violate_master_palette(tmp_path: Path) -> None:
-    """Characterization of dwarf release frame-0 palette membership (#171, #176–#178).
+    """Characterization of dwarf release frame-0 palette membership (#171, #176–#179).
 
-    Idle, walk, and swing are palette-exact after their migration slices. The bound
-    pack now passes palette verification; issue #179 retires the off-palette v1 identity.
+    The defect this test was written to pin — dwarf Release Frames carrying colours
+    outside the Master Palette — is repaired. #176, #177, and #178 requantized the
+    idle, walk, and swing bundles, and #179 retired the off-palette identity that
+    seeded them, so a pack binding the real Release Frames now verifies clean.
     """
     for asset_id, anim, expected_opaque, expected_unique, expected_in_palette in DWARF_RELEASE_FRAMES:
         rel = f"assets/first-room/dwarf/{anim}/release/frame-0.png"

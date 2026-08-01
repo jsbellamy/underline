@@ -19,7 +19,7 @@
   },
   "identity_png": {
     "relative_path": "assets/first-room/dwarf/identity.png",
-    "sha256": "db68353f559053abc4d77e8916d1db8a242f4f50eb4a1ef0d4b1f65c4bf650c9",
+    "sha256": "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6",
     "source": "assets/first-room/dwarf/idle/release/frame-0.png"
   },
   "generation_source": {
@@ -41,5 +41,5 @@
     "walk",
     "swing"
   ],
-  "notes": "Walk and swing image-edit uses TWO files. (1) generation_source = assets/first-room/dwarf/idle/provider/source.png — the provider transport strip with four identical idle Frames; seed via `npm run strip:polish -- seed --identity-declaration assets/first-room/dwarf/identity.json --out <seed.png>` (applies seed_pad_px: 64 magenta border around the generation_source interior) and submit <seed.png> as the image-edit base (edit_source_sha256 must equal the padded seed digest from seed --json, not raw generation_source.sha256; init/check verify that transform). (2) identity_png = assets/first-room/dwarf/identity.png — the 16x24 post-ingest Release anchor for Identity Lock only; bind as --identity-reference, never upscale into a generation canvas. The seed command does NOT take identity.png as input. After generation, do not paint Identity Lock or flat identity colors into provider/source.png (nor wipe magenta / shift Frames) to force Gate PASS — regenerate until lock and baseline pass on the unmodified provider Attempt."
+  "notes": "Walk and swing image-edit uses TWO files. (1) generation_source = assets/first-room/dwarf/idle/provider/source.png — the provider transport strip with four identical idle Frames; seed via `npm run strip:polish -- seed --identity-declaration assets/first-room/dwarf/identity.json --out <seed.png>` (applies seed_pad_px: 64 magenta border around the generation_source interior) and submit <seed.png> as the image-edit base (edit_source_sha256 must equal the padded seed digest from seed --json, not raw generation_source.sha256; init/check verify that transform). generation_source is deliberately NOT palette-exact: the palette migration (#176-#179) requantized identity_png and the Release Frames onto the Master Palette but left this provider raster off-palette, because it is the image-edit generation base rather than a Release asset and _verify_release never inspects it. Do not assume it conforms to assets/palettes/first-room.json, and do not requantize it to make it match identity_png. (2) identity_png = assets/first-room/dwarf/identity.png — the 16x24 post-ingest Release anchor for Identity Lock only; bind as --identity-reference, never upscale into a generation canvas. The seed command does NOT take identity.png as input. After generation, do not paint Identity Lock or flat identity colors into provider/source.png (nor wipe magenta / shift Frames) to force Gate PASS — regenerate until lock and baseline pass on the unmodified provider Attempt."
 }
