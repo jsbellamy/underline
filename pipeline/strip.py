@@ -69,6 +69,7 @@ _GATE_BUDGET_ATTR = {
     "loop_closure_pass": "max_loop",
     "palette_drift_pass": "max_drift",
     "min_pair_cohort_pass": "max_min_pair",
+    "static_silhouette_pass": "max_static_silhouette",
 }
 
 
@@ -90,6 +91,7 @@ class ClassBudget:
     loops: bool
     facing: Facing
     min_alignment_sharpness: float | None = None
+    max_static_silhouette: float | None = None
 
 
 @dataclass(frozen=True)
@@ -281,6 +283,7 @@ def build_runtime_acceptance_policy(
             "max_loop": None,
             "max_drift": None,
             "max_min_pair": None,
+            "max_static_silhouette": None,
         }
         for gate_name, gate in profile_gates.items():
             class_policies[gate_name] = GatePolicy(
@@ -300,6 +303,7 @@ def build_runtime_acceptance_policy(
             max_loop=budget_kwargs["max_loop"],
             max_drift=budget_kwargs["max_drift"],
             max_min_pair=budget_kwargs["max_min_pair"],
+            max_static_silhouette=budget_kwargs["max_static_silhouette"],
             grounded=meta["grounded"],
             loops=meta["loops"],
             facing=meta["facing"],
@@ -1067,6 +1071,12 @@ def coherence_split(
     pairwise = silhouette_pairwise(q, anchor=sil_anchor)
     adjacent_max = max((row["frac"] for row in adjacent), default=0.0)
 
+    static_silhouette_adjacent: list[dict[str, Any]] = []
+    for i in range(len(q) - 1):
+        frac = static_silhouette_pair_fraction(q[i], q[i + 1])
+        static_silhouette_adjacent.append({"pair": [i, i + 1], "frac": frac})
+    static_silhouette_max = static_silhouette_adjacent_max(q)
+
     silhouette_budget: bool | None = None
     if max_silhouette_diff is not None:
         silhouette_budget = all(
@@ -1112,6 +1122,12 @@ def coherence_split(
     ):
         gate_outcomes["min_pair_cohort_pass"] = _gate_outcome_record(
             min_pair_policy, pairwise["min_pair"]
+        )
+
+    static_policy = gate_policies.get("static_silhouette_pass")
+    if static_policy is not None and static_policy.status != "INAPPLICABLE":
+        gate_outcomes["static_silhouette_pass"] = _gate_outcome_record(
+            static_policy, static_silhouette_max
         )
 
     disp_policy = gate_policies.get("displacement_pass")
@@ -1160,6 +1176,8 @@ def coherence_split(
         "silhouette_adjacent_max": adjacent_max,
         "silhouette_pairwise": pairwise,
         "silhouette_budget": silhouette_budget,
+        "static_silhouette_adjacent": static_silhouette_adjacent,
+        "static_silhouette_adjacent_max": static_silhouette_max,
         "min_pair_cohort_pass": min_pair_cohort_pass,
         "loop_closure": loop,
         "loop_closure_pass": loop_closure_pass,
@@ -1176,6 +1194,7 @@ def coherence_split(
             "loop": max_loop_diff,
             "palette_drift": max_palette_drift,
             "min_pair": max_min_pair,
+            "static_silhouette": budget.max_static_silhouette,
             "min_alignment_sharpness": budget.min_alignment_sharpness,
         },
         "gate_outcomes": gate_outcomes,
@@ -1496,6 +1515,34 @@ def cell_diff(
             if a_cell != b_cell:
                 changed += 1
     return changed, union_opaque
+
+
+def static_silhouette_pair_fraction(
+    a: list[list[Cell]],
+    b: list[list[Cell]],
+) -> float:
+    """Fraction of cells whose opacity is unchanged between two frames."""
+    frame_h = len(a)
+    frame_w = len(a[0]) if a else 0
+    total = frame_w * frame_h
+    if total == 0:
+        return 1.0
+    changed = 0
+    for y in range(frame_h):
+        for x in range(frame_w):
+            if (a[y][x] is None) != (b[y][x] is None):
+                changed += 1
+    return round(1.0 - changed / total, 4)
+
+
+def static_silhouette_adjacent_max(frames: list[list[list[Cell]]]) -> float:
+    """Maximum stillness fraction across adjacent frame pairs."""
+    if len(frames) < 2:
+        return 1.0
+    return max(
+        static_silhouette_pair_fraction(frames[i], frames[i + 1])
+        for i in range(len(frames) - 1)
+    )
 
 
 def ingest_strip(
