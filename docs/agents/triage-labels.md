@@ -17,3 +17,12 @@ table.
 Labels marked "not yet" have not been created on `jsbellamy/underline`. Create
 one with `gh label create <name> --repo jsbellamy/underline` on first use rather
 than substituting a different label.
+
+## CI-behavior labels
+
+Not a triage role: this label changes what `.github/workflows/ci.yml` does on
+a PR, rather than routing the issue itself.
+
+| Label | Exists? | Meaning |
+| --- | --- | --- |
+| `evaluator-change` | yes | Declares that this PR's `external-acceptance` job divergence (main's verdict vs. the candidate branch's own verdict for a bundle) is a deliberate evaluator change, not an asset PR silently changing its own judge. The job reports the divergence as an annotation and passes instead of failing (issue #232, C3). |
