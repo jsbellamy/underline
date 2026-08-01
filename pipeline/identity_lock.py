@@ -1642,7 +1642,6 @@ def _parse_seed_pad_px(raw: object) -> int:
 
 
 _ANCHOR_FRAME_W = 16
-_ANCHOR_FRAME_H = 24
 _DEFAULT_FRAME_COUNT = 4
 
 
@@ -1705,10 +1704,13 @@ def magenta_pad_generation_source_png(
 ) -> bytes:
     """Return a PNG whose border ring is exact transport magenta and interior matches source."""
     pad_px = _parse_seed_pad_px(seed_pad_px)
+    widen = False
+    if motion_class is not None:
+        geometry = resolve_class_frame_geometry(motion_class)
+        widen = geometry.frame_w > _ANCHOR_FRAME_W
     interior_bytes = (
         _widened_action_canvas_interior_png_bytes(generation_source_png_bytes, motion_class)
-        if motion_class is not None
-        and resolve_class_frame_geometry(motion_class).frame_w > _ANCHOR_FRAME_W
+        if widen
         else generation_source_png_bytes
     )
     try:
