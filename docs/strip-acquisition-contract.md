@@ -479,7 +479,9 @@ evidence model, add Gates, or change Budgets.
    `check_bundle` hard-rejects a magenta-wiped provider relative to
    `provider/edit-source.png` with `provider_magenta_wipe`, and reports
    edit-source lock continuity under `provider_post_edit` (FAIL → overall FAIL
-   via `edit_source_continuity_fail`). Failed lock/baseline/clipping/pitch
+   via `edit_source_continuity_fail`). `check` surfaces that verdict without
+   writing: `provider_post_edit` in `--json` (`null` when the bundle declares no
+   edit source) and a `Post-edit` line in the human report. Failed lock/baseline/clipping/pitch
    requires another Attempt. See
    `prompts/production/animation-strip.md` § Dwarf-miner walk and swing. Existing
    unprofiled `/0` and profiled
