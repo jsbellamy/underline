@@ -1240,3 +1240,139 @@ def test_cli_has_no_aseprite_dependency() -> None:
     source = inspect.getsource(cli)
     assert "aseprite" not in source.lower()
     assert "Aseprite" not in source
+
+
+# --- C7: `strip:polish acquire` CLI surface ----------------------------------
+
+
+def _acquire_candidate(tmp_path: Path, tag: int = 0) -> Path:
+    path = tmp_path / "candidate.png"
+    Image.new("RGBA", (24, 32), (tag % 256, 10, 20, 255)).save(path)
+    return path
+
+
+def _acquire_prompt(tmp_path: Path) -> Path:
+    path = tmp_path / "prompt.txt"
+    path.write_text("swing the pick")
+    return path
+
+
+def test_acquire_json_payload_has_the_contract_keys(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    store_root = tmp_path / "acquisition-controls"
+    candidate = _acquire_candidate(tmp_path)
+    prompt = _acquire_prompt(tmp_path)
+    with patch.dict("os.environ", {"UNDERLINE_ACQUISITION_CONTROLS_ROOT": str(store_root)}):
+        result = _run_cli(
+            capsys,
+            [
+                "acquire",
+                str(candidate),
+                "--specification-id",
+                "first-room/dwarf/swing",
+                "--motion-class",
+                "swing",
+                "--generation-mode",
+                "image-edit",
+                "--prompt-file",
+                str(prompt),
+                "--json",
+            ],
+        )
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert set(payload) == {
+        "attempt_id",
+        "ordinal",
+        "predecessor_attempt_id",
+        "outcome",
+        "raw_path",
+        "raw_sha256",
+        "dimensions",
+        "provenance_path",
+    }
+    assert payload["attempt_id"] == "first-room--dwarf--swing--001"
+    assert payload["outcome"] == "accepted"
+    assert (store_root / payload["raw_path"]).is_file()
+    assert (store_root / payload["provenance_path"]).is_file()
+
+
+def test_acquire_reject_records_rejected_outcome_and_exits_zero(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    store_root = tmp_path / "acquisition-controls"
+    candidate = _acquire_candidate(tmp_path)
+    prompt = _acquire_prompt(tmp_path)
+    with patch.dict("os.environ", {"UNDERLINE_ACQUISITION_CONTROLS_ROOT": str(store_root)}):
+        result = _run_cli(
+            capsys,
+            [
+                "acquire",
+                str(candidate),
+                "--specification-id",
+                "first-room/dwarf/swing",
+                "--motion-class",
+                "swing",
+                "--generation-mode",
+                "image-edit",
+                "--prompt-file",
+                str(prompt),
+                "--reject",
+                "silhouette failed",
+                "--json",
+            ],
+        )
+    assert result.returncode == 0, result.stderr
+    payload = json.loads(result.stdout)
+    assert payload["outcome"] == "rejected"
+
+
+def test_acquire_exits_two_on_asset_acquisition_error(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    store_root = tmp_path / "acquisition-controls"
+    candidate = _acquire_candidate(tmp_path)
+    prompt = _acquire_prompt(tmp_path)
+    with patch.dict("os.environ", {"UNDERLINE_ACQUISITION_CONTROLS_ROOT": str(store_root)}):
+        result = _run_cli(
+            capsys,
+            [
+                "acquire",
+                str(candidate),
+                "--specification-id",
+                "first-room/dwarf/swing",
+                "--motion-class",
+                "swing",
+                "--generation-mode",
+                "unknown-mode",
+                "--prompt-file",
+                str(prompt),
+                "--json",
+            ],
+        )
+    assert result.returncode == 2
+    assert result.stderr.strip() != ""
+
+
+def test_acquire_attempt_id_is_not_a_recognized_flag(tmp_path: Path) -> None:
+    candidate = _acquire_candidate(tmp_path)
+    prompt = _acquire_prompt(tmp_path)
+    with pytest.raises(SystemExit) as excinfo:
+        main(
+            [
+                "acquire",
+                str(candidate),
+                "--specification-id",
+                "first-room/dwarf/swing",
+                "--motion-class",
+                "swing",
+                "--generation-mode",
+                "image-edit",
+                "--prompt-file",
+                str(prompt),
+                "--attempt-id",
+                "not-allowed",
+            ]
+        )
+    assert excinfo.value.code == 2

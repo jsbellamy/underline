@@ -8,6 +8,7 @@ import pathlib
 import sys
 from typing import Any
 
+from pipeline.asset_acquire import AssetAcquisitionError, record_asset_attempt
 from pipeline.final_polish import (
     BundleExistsError,
     FinalPolishCheckResult,
@@ -20,6 +21,7 @@ from pipeline.final_polish import (
     initialize_bundle,
     load_polish_brief,
 )
+from pipeline.gate_evidence import sha256_file
 from pipeline.identity_lock import build_identity_seed, identity_lock_report_payload
 from pipeline.strip import (
     DEFAULT_LAYOUT,
@@ -402,6 +404,64 @@ def _handle_seed(args: argparse.Namespace) -> int:
     return 0
 
 
+_ACQUIRE_ACQUIRING_AGENT = "cursor-agent"
+
+
+def _acquire_json_payload(row: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "attempt_id": row["attempt_id"],
+        "ordinal": row["ordinal"],
+        "predecessor_attempt_id": row["predecessor_attempt_id"],
+        "outcome": row["outcome"],
+        "raw_path": row["raw_path"],
+        "raw_sha256": row["raw_sha256"],
+        "dimensions": row["dimensions"],
+        "provenance_path": row["provenance_path"],
+    }
+
+
+def _format_acquire_report(row: dict[str, Any]) -> str:
+    dimensions = row["dimensions"]
+    lines = [
+        f"Attempt      {row['attempt_id']}",
+        f"Ordinal      {row['ordinal']}",
+        f"Predecessor  {row['predecessor_attempt_id'] or '(none)'}",
+        f"Outcome      {row['outcome']}",
+        f"Raw          {row['raw_path']}",
+        f"SHA-256      {row['raw_sha256']}",
+        f"Dimensions   {dimensions[0]}x{dimensions[1]}",
+        f"Provenance   {row['provenance_path']}",
+    ]
+    return "\n".join(lines)
+
+
+def _handle_acquire(args: argparse.Namespace) -> int:
+    try:
+        row = record_asset_attempt(
+            args.candidate,
+            args.specification_id,
+            motion_class=args.motion_class,
+            generation_mode=args.generation_mode,
+            acquiring_agent=_ACQUIRE_ACQUIRING_AGENT,
+            prompt_path=args.prompt_file,
+            edit_source=args.edit_source,
+            reference_image_sha256=(
+                sha256_file(args.identity_reference) if args.identity_reference else None
+            ),
+            outcome="rejected" if args.reject else "accepted",
+            rejection_reason=args.reject,
+        )
+    except AssetAcquisitionError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+
+    if args.json:
+        _emit_json(_acquire_json_payload(row))
+    else:
+        print(_format_acquire_report(row))
+    return 0
+
+
 def _configure_parser(parser: argparse.ArgumentParser) -> None:
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -480,6 +540,50 @@ def _configure_parser(parser: argparse.ArgumentParser) -> None:
     )
     seed.add_argument("--json", action="store_true", help="Emit machine-readable JSON on stdout")
 
+    acquire = sub.add_parser(
+        "acquire",
+        help="Record an attested asset-acquisition Attempt in acquisition-controls/",
+    )
+    acquire.add_argument("candidate", type=pathlib.Path, help="Candidate PNG bytes")
+    acquire.add_argument(
+        "--specification-id",
+        dest="specification_id",
+        required=True,
+        help="Bundle's slash-delimited asset path, e.g. first-room/dwarf/swing",
+    )
+    acquire.add_argument("--motion-class", required=True, help="Motion class for the Attempt")
+    acquire.add_argument(
+        "--generation-mode",
+        dest="generation_mode",
+        required=True,
+        help="text-to-image or image-edit",
+    )
+    acquire.add_argument(
+        "--prompt-file",
+        dest="prompt_file",
+        type=pathlib.Path,
+        required=True,
+        help="Prompt text file hashed into the provenance record",
+    )
+    acquire.add_argument(
+        "--edit-source",
+        dest="edit_source",
+        type=pathlib.Path,
+        help="Seed strip PNG for image-edit generation",
+    )
+    acquire.add_argument(
+        "--identity-reference",
+        dest="identity_reference",
+        type=pathlib.Path,
+        help="Canonical identity PNG hashed into reference_image_sha256",
+    )
+    acquire.add_argument(
+        "--reject",
+        metavar="REASON",
+        help="Record this Attempt as rejected with the given reason",
+    )
+    acquire.add_argument("--json", action="store_true", help="Emit machine-readable JSON on stdout")
+
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
@@ -498,6 +602,8 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_finalize(args)
     if args.command == "seed":
         return _handle_seed(args)
+    if args.command == "acquire":
+        return _handle_acquire(args)
     parser.print_help()
     return 2
 
