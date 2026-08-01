@@ -158,14 +158,30 @@ def test_swing_bundle_check_passes_with_palette_exact_identity_lock(tmp_path: Pa
     assert lock.identity_sha256 == PALETTE_EXACT_IDENTITY_SHA
 
 
-def test_swing_finalize_rebinds_release_and_report() -> None:
-    report_path = finalize_bundle(SWING_BUNDLE)
+def _strip_finalize_outputs(bundle: Path) -> None:
+    """Remove immutable finalize outputs so finalize_bundle can rewrite them."""
+    reports = bundle / "reports"
+    if reports.is_dir():
+        for path in reports.iterdir():
+            if path.name != "audit.json":
+                path.unlink()
+    release = bundle / "release"
+    if release.is_dir():
+        for path in release.iterdir():
+            path.unlink()
+
+
+def test_swing_finalize_rebinds_release_and_report(tmp_path: Path) -> None:
+    bundle = tmp_path / "swing"
+    shutil.copytree(SWING_BUNDLE, bundle)
+    _strip_finalize_outputs(bundle)
+    report_path = finalize_bundle(bundle)
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert report["outcome"] == "PASS"
     assert report["identity_lock"]["outcome"] == "PASS"
     assert report["identity_lock"]["identity_sha256"] == PALETTE_EXACT_IDENTITY_SHA
     for index in range(4):
-        release_path = SWING_BUNDLE / "release" / f"frame-{index}.png"
-        polished_path = SWING_POLISHED / f"frame-{index}.png"
+        release_path = bundle / "release" / f"frame-{index}.png"
+        polished_path = bundle / "polished" / f"frame-{index}.png"
         assert release_path.is_file()
         assert sha256_file(release_path) == sha256_file(polished_path)
