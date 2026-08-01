@@ -9,6 +9,26 @@ from __future__ import annotations
 
 from scripts.select_changed_tests import Selection, select_test_files
 
+_ACQUISITION_CONTROL_COMPANIONS = (
+    "tests/test_asset_acquire.py",
+    "tests/test_final_polish.py",
+    "tests/test_final_polish_cli.py",
+)
+
+_FINAL_POLISH_HARNESS_CONSUMERS = (
+    "tests/test_final_polish.py",
+    "tests/test_final_polish_cli.py",
+)
+
+_PR_240_CHANGED_PATHS = (
+    "acquisition-controls/legacy-bundles.json",
+    "docs/strip-acquisition-contract.md",
+    "pipeline/final_polish.py",
+    "pipeline/final_polish_cli.py",
+    "tests/test_final_polish.py",
+    "tests/test_final_polish_cli.py",
+)
+
 
 def test_no_changed_files_selects_nothing() -> None:
     result = select_test_files([], existing_tests=set())
@@ -175,3 +195,80 @@ def test_multiple_mapped_changes_selection_is_deduped_and_sorted() -> None:
 
     assert result.kind == "selected"
     assert result.files == ("tests/test_asset_pack.py", "tests/test_strip.py")
+
+
+def test_a_changed_legacy_bundles_json_selects_acquisition_control_companions() -> None:
+    result = select_test_files(
+        ["acquisition-controls/legacy-bundles.json"],
+        existing_tests=set(_ACQUISITION_CONTROL_COMPANIONS),
+    )
+
+    assert result.kind == "selected"
+    assert result.files == _ACQUISITION_CONTROL_COMPANIONS
+
+
+def test_a_changed_attempts_jsonl_selects_acquisition_control_companions() -> None:
+    result = select_test_files(
+        ["acquisition-controls/attempts.jsonl"],
+        existing_tests=set(_ACQUISITION_CONTROL_COMPANIONS),
+    )
+
+    assert result.kind == "selected"
+    assert result.files == _ACQUISITION_CONTROL_COMPANIONS
+
+
+def test_a_changed_acquisition_control_markdown_selects_companions() -> None:
+    result = select_test_files(
+        ["acquisition-controls/readme.md"],
+        existing_tests=set(_ACQUISITION_CONTROL_COMPANIONS),
+    )
+
+    assert result.kind == "selected"
+    assert result.files == _ACQUISITION_CONTROL_COMPANIONS
+
+
+def test_acquisition_control_companions_dedupe_with_other_mapped_changes() -> None:
+    result = select_test_files(
+        ["acquisition-controls/legacy-bundles.json", "pipeline/strip.py"],
+        existing_tests={
+            *_ACQUISITION_CONTROL_COMPANIONS,
+            "tests/test_strip.py",
+        },
+    )
+
+    assert result.kind == "selected"
+    assert result.files == (
+        "tests/test_asset_acquire.py",
+        "tests/test_final_polish.py",
+        "tests/test_final_polish_cli.py",
+        "tests/test_strip.py",
+    )
+
+
+def test_a_changed_final_polish_harness_selects_its_consumers() -> None:
+    result = select_test_files(
+        ["tests/final_polish_harness.py"],
+        existing_tests=set(_FINAL_POLISH_HARNESS_CONSUMERS),
+    )
+
+    assert result.kind == "selected"
+    assert result.files == _FINAL_POLISH_HARNESS_CONSUMERS
+
+
+def test_pr_240_changed_paths_select_companions_without_widening() -> None:
+    result = select_test_files(
+        list(_PR_240_CHANGED_PATHS),
+        existing_tests={
+            *_ACQUISITION_CONTROL_COMPANIONS,
+            "tests/test_strip.py",
+        },
+        test_sources={
+            "tests/test_final_polish.py": (
+                'text = (ROOT / "docs" / "strip-acquisition-contract.md").read_text()'
+            ),
+            "tests/test_strip.py": "from pipeline.strip import coherence_report",
+        },
+    )
+
+    assert result.kind == "selected"
+    assert result.files == _ACQUISITION_CONTROL_COMPANIONS

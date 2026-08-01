@@ -33,6 +33,19 @@ _WHOLE_SUITE_PATHS = {
 # outright (C2 row 3).
 _WHOLE_SUITE_DIRS = {"assets", "gate-controls"}
 
+# Companion suites for acquisition-control data (issue #241 C1).
+_ACQUISITION_CONTROL_COMPANION_TESTS = (
+    "tests/test_asset_acquire.py",
+    "tests/test_final_polish.py",
+    "tests/test_final_polish_cli.py",
+)
+
+# Consumers of the shared final-polish harness (issue #241 C2).
+_FINAL_POLISH_HARNESS_CONSUMER_TESTS = (
+    "tests/test_final_polish.py",
+    "tests/test_final_polish_cli.py",
+)
+
 # Changed paths that are prose rather than code: any Markdown file, plus
 # anything under these directories. A doc has no module to map to, so it
 # selects the tests that actually read it (see `_tests_reading_doc`) instead
@@ -132,6 +145,14 @@ def select_test_files(
             and path.suffix == ".py"
         ):
             selected.add(posix)
+            continue
+
+        if path.parts and path.parts[0] == "acquisition-controls":
+            selected.update(set(_ACQUISITION_CONTROL_COMPANION_TESTS) & existing)
+            continue
+
+        if posix == "tests/final_polish_harness.py":
+            selected.update(set(_FINAL_POLISH_HARNESS_CONSUMER_TESTS) & existing)
             continue
 
         if _is_documentation(path):
