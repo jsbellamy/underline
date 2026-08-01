@@ -461,8 +461,11 @@ def _bundle_master_palette_rgb_set(bundle_root: Path) -> set[tuple[int, int, int
         return set()
     try:
         doc = json.loads(sidecar.read_text(encoding="utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
-        return set()
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise InvalidBundleError(
+            f"invalid provider provenance sidecar: {sidecar}",
+            reason_code="invalid_provenance",
+        ) from exc
     palette_id = doc.get("master_palette_id")
     if not isinstance(palette_id, str) or not palette_id:
         return set()

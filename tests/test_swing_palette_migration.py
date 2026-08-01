@@ -141,6 +141,10 @@ def test_swing_bundle_check_passes_with_palette_exact_identity_lock() -> None:
     assert result.identity_lock is not None
     assert result.identity_lock.outcome == "PASS"
     assert result.identity_lock.identity_sha256 == PALETTE_EXACT_IDENTITY_SHA
+    static_gate = result.coherence.get("gate_outcomes", {}).get("static_silhouette_pass")
+    assert static_gate is not None
+    assert static_gate["outcome"] == "REVIEW"
+    assert static_gate["acceptance_status"] == "UNSEPARATED"
     lock = evaluate_identity_lock(
         [read_cells(SWING_POLISHED / f"frame-{index}.png") for index in range(4)],
         "swing",
