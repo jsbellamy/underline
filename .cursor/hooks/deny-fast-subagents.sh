@@ -25,6 +25,10 @@ if [[ -n "$subagent_model" ]]; then
   mode=$(composer_25_mode "$subagent_model" "[]")
   case "$mode" in
     fast)
+      if is_pinned_subagent "$subagent_type" && is_bare_composer_25_slug "$subagent_model"; then
+        echo '{"permission":"allow"}'
+        exit 0
+      fi
       deny "Resolved subagent_model was ${subagent_model}."
       ;;
     standard)

@@ -54,3 +54,16 @@ is_composer_25_standard() {
 is_pinned_subagent() {
   [[ "$1" =~ ^(code-review-standards|code-review-spec|issue-implementer-code|issue-implementer-asset|gate-blind-review)$ ]]
 }
+
+# Cursor subagentStart often reports bare composer-2.5 even when agent frontmatter
+# pins composer-2.5[fast=false] and runtime runs standard mode.
+is_bare_composer_25_slug() {
+  case "$1" in
+    composer-2.5 | composer-2.5[])
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
