@@ -50,6 +50,16 @@ def test_a_changed_prototype_module_selects_its_test_and_split_variants() -> Non
     assert result.files == ("tests/test_corpus.py",)
 
 
+def test_a_changed_script_selects_its_test() -> None:
+    result = select_test_files(
+        ["scripts/select_changed_tests.py"],
+        existing_tests={"tests/test_select_changed_tests.py", "tests/test_corpus.py"},
+    )
+
+    assert result.kind == "selected"
+    assert result.files == ("tests/test_select_changed_tests.py",)
+
+
 def test_a_changed_conftest_selects_the_whole_suite() -> None:
     result = select_test_files(["tests/conftest.py"], existing_tests=set())
 

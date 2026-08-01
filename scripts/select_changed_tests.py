@@ -59,7 +59,7 @@ def _mapped_module_name(path: pathlib.PurePosixPath) -> str | None:
     """Return the module stem `path` maps to under C2 rows 1-2, or None if
     `path` does not match either shape."""
     parts = path.parts
-    if len(parts) == 2 and parts[0] == "pipeline" and path.suffix == ".py":
+    if len(parts) == 2 and parts[0] in {"pipeline", "scripts"} and path.suffix == ".py":
         return path.stem
     if len(parts) == 3 and parts[0] == "prototype" and path.suffix == ".py":
         return path.stem
