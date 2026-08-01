@@ -909,7 +909,7 @@ def test_validate_identity_lock_spec_rejects_lock_outside_class_frame() -> None:
         validate_identity_lock_spec(spec)
 
 
-def test_palette_exact_identity_validates_against_anchor_not_class_frame() -> None:
+def test_palette_exact_identity_rejects_anchor_size_mismatch() -> None:
     spec = _minimal_v2_spec(
         motion_classes={
             "wide_walk": {
@@ -927,7 +927,11 @@ def test_palette_exact_identity_validates_against_anchor_not_class_frame() -> No
             }
         }
     )
-    validate_identity_lock_spec(spec)
+    palette_exact = spec["palette_exact_identity"]
+    assert isinstance(palette_exact, dict)
+    palette_exact["frame_size"] = [24, 24]
+    with pytest.raises(IdentityLockError, match="anchor frame_size"):
+        validate_identity_lock_spec(spec)
 
 
 def test_evaluate_identity_lock_with_canonical_origin_embeds_anchor(

@@ -279,16 +279,6 @@ def _validate_palette_exact_identity_entry(
 
 
 def _anchor_frame_size(doc: Mapping[str, Any]) -> tuple[int, int]:
-    if doc.get("schema") == IDENTITY_LOCK_SCHEMA_V2:
-        entry = doc.get("palette_exact_identity")
-        if isinstance(entry, dict):
-            frame_size = entry.get("frame_size")
-            if (
-                isinstance(frame_size, list)
-                and len(frame_size) == 2
-                and all(isinstance(axis, int) and axis > 0 for axis in frame_size)
-            ):
-                return int(frame_size[0]), int(frame_size[1])
     frame_size = doc.get("frame_size")
     if (
         not isinstance(frame_size, list)
@@ -318,25 +308,23 @@ def _resolve_lock_frame_geometry(
                 "positive integer array"
             )
         frame_w, frame_h = int(class_frame_size[0]), int(class_frame_size[1])
-    else:
         try:
             geometry = resolve_class_frame_geometry(motion_class)
         except ValueError:
-            frame_w, frame_h = default_frame_w, default_frame_h
+            origin_dx, origin_dy = 0, 0
         else:
-            frame_w, frame_h = geometry.frame_w, geometry.frame_h
+            origin_dx, origin_dy = geometry.canonical_origin
+        return frame_w, frame_h, origin_dx, origin_dy
 
     try:
         geometry = resolve_class_frame_geometry(motion_class)
     except ValueError:
-        origin_dx, origin_dy = 0, 0
-    else:
-        origin_dx, origin_dy = geometry.canonical_origin
-    return frame_w, frame_h, origin_dx, origin_dy
+        return default_frame_w, default_frame_h, 0, 0
+    return geometry.frame_w, geometry.frame_h, *geometry.canonical_origin
 
 
 def _canonical_cell_at(
-    canonical: list[list[Cell]],
+    anchor_cells: list[list[Cell]],
     x: int,
     y: int,
     *,
@@ -345,13 +333,13 @@ def _canonical_cell_at(
 ) -> Cell:
     anchor_x = x - origin_dx
     anchor_y = y - origin_dy
-    anchor_h = len(canonical)
-    anchor_w = len(canonical[0]) if canonical else 0
+    anchor_h = len(anchor_cells)
+    anchor_w = len(anchor_cells[0]) if anchor_cells else 0
     if anchor_x < 0 or anchor_y < 0 or anchor_x >= anchor_w or anchor_y >= anchor_h:
         raise IdentityLockError(
             f"canonical read outside anchor raster at ({anchor_x}, {anchor_y})"
         )
-    return canonical[anchor_y][anchor_x]
+    return anchor_cells[anchor_y][anchor_x]
 
 
 def validate_identity_lock_spec(doc: Mapping[str, Any], *, spec_path: Path | None = None) -> None:
