@@ -1604,14 +1604,17 @@ def check_bundle(bundle_root: Path) -> FinalPolishCheckResult:
     )
     delta = _visible_cell_delta(draft_frames, polished_frames)
     coherence = coherence_split(polished_frames, motion_class=manifest["motion_class"])
+    polished_roles_path = bundle_root / "polished-roles.json"
+    palette_exact_lock = polished_roles_path.is_file()
     identity_lock: IdentityLockResult | None = None
-    if (
-        manifest.get("schema") == BUNDLE_SCHEMA
-        and identity_lock_applies(profile_id, str(manifest["motion_class"]))
+    if identity_lock_applies(profile_id, str(manifest["motion_class"])) and (
+        manifest.get("schema") == BUNDLE_SCHEMA or palette_exact_lock
     ):
         identity_lock = evaluate_identity_lock(
             polished_frames,
             str(manifest["motion_class"]),
+            palette_exact=palette_exact_lock,
+            polished_roles_path=polished_roles_path if palette_exact_lock else None,
         )
     outcome = _aggregate_outcome(
         provider_outcome=provider_outcome,

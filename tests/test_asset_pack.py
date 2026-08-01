@@ -244,7 +244,7 @@ def _write_pack(root: Path, doc: dict[str, object] | None = None) -> Path:
 
 DWARF_RELEASE_FRAMES: tuple[tuple[str, str, int, int, int], ...] = (
     ("dwarf-idle", "idle", 268, 23, 268),
-    ("dwarf-walk", "walk", 152, 152, 0),
+    ("dwarf-walk", "walk", 152, 20, 152),
     ("dwarf-swing", "swing", 177, 176, 0),
 )
 
@@ -436,10 +436,10 @@ def test_metadata_policy_rejects_release_hash_mismatch(tmp_path: Path) -> None:
 
 
 def test_dwarf_release_frames_violate_master_palette(tmp_path: Path) -> None:
-    """Characterization of dwarf release frame-0 palette membership (#171, #176, #179).
+    """Characterization of dwarf release frame-0 palette membership (#171, #176, #177, #179).
 
-    Idle is palette-exact after issue #176; walk and swing remain off-palette until their
-    migration slices. Issue #179 should invert the remaining violations to PASS.
+    Idle is palette-exact after #176; walk after #177; swing remains off-palette until
+    its migration slice. Issue #179 should invert the remaining violations to PASS.
     """
     for asset_id, anim, expected_opaque, expected_unique, expected_in_palette in DWARF_RELEASE_FRAMES:
         rel = f"assets/first-room/dwarf/{anim}/release/frame-0.png"
