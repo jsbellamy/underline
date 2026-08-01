@@ -89,7 +89,11 @@ def test_report_records_per_file_duration_and_total_wall_time(tmp_path: Path) ->
     # Each probe sleeps 0.3s, so its process cannot have taken less than that.
     assert all(row["duration_s"] >= 0.3 for row in rows)
     # Serialised by workers=1, so the wall clock covers both files end to end.
-    assert report["wall_s"] >= sum(row["duration_s"] for row in rows)
+    # Each reported value is rounded to milliseconds independently.
+    rounding_tolerance_s = 0.001 * (len(rows) + 1)
+    assert report["wall_s"] + rounding_tolerance_s >= sum(
+        row["duration_s"] for row in rows
+    )
 
 
 def test_worker_count_defaults_to_the_available_cpus_and_runs_files_concurrently(
@@ -106,7 +110,7 @@ def test_worker_count_defaults_to_the_available_cpus_and_runs_files_concurrently
 
     _, report = _run_isolation(tmp_path, files, workers=None)
 
-    assert report["workers"] == cpus
+    assert report["workers"] == min(cpus, len(files))
     if cpus > 1:
         # Four 0.5s probes cannot finish in under a second unless they overlap.
         assert report["max_concurrency_observed"] > 1

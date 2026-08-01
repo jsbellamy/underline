@@ -175,8 +175,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     files = list(args.files) or sorted(Path("tests").glob("test_*.py"))
     # Each subprocess is a single-process pytest run, so one worker per core
-    # saturates the machine without oversubscribing it.
-    workers = args.workers if args.workers is not None else (os.cpu_count() or 1)
+    # saturates the machine without oversubscribing it. Do not report or create
+    # more automatic workers than there are files available to run.
+    workers = args.workers
+    if workers is None:
+        workers = min(os.cpu_count() or 1, max(1, len(files)))
     started = time.monotonic()
     results, max_observed, schedule = run_isolated_files(
         files,
