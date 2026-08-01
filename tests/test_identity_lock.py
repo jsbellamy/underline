@@ -753,12 +753,12 @@ def test_canonical_identity_landmark_roles_match_lock_spec() -> None:
 
 
 def test_canonical_identity_beard_cluster_excludes_amber_except_landmarks() -> None:
-    v2_cells = read_cells(IDENTITY_PNG)
+    canonical_cells = read_cells(IDENTITY_PNG)
     palette = load_master_palette(MASTER_PALETTE_PATH)
     landmark_cells = set(LANDMARK_COORDS.values())
     for x in range(BEARD_CHEST_RECT["x0"], BEARD_CHEST_RECT["x1"] + 1):
         for y in range(BEARD_CHEST_RECT["y0"], BEARD_CHEST_RECT["y1"] + 1):
-            cell = v2_cells[y][x]
+            cell = canonical_cells[y][x]
             if cell is None:
                 continue
             role = nearest_palette_role(cell, palette.entries)
