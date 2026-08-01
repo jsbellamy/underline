@@ -137,8 +137,10 @@ def test_walk_polished_roles_reproduce_pre_cleanup_rasters() -> None:
         assert _cell_content_sha256(precleanup) == PRE_CLEANUP_CELL_SHA256[index]
 
 
-def test_walk_bundle_check_passes_with_palette_exact_identity_lock() -> None:
-    result = check_bundle(WALK_BUNDLE)
+def test_walk_bundle_check_passes_with_palette_exact_identity_lock(tmp_path: Path) -> None:
+    bundle = tmp_path / "dwarf-walk"
+    shutil.copytree(WALK_BUNDLE, bundle)
+    result = check_bundle(bundle)
     assert result.outcome == "PASS"
     assert result.identity_lock is not None
     assert result.identity_lock.outcome == "PASS"
