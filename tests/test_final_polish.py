@@ -5,6 +5,7 @@ from __future__ import annotations
 import inspect
 import json
 import shutil
+from collections import Counter
 from pathlib import Path
 from unittest.mock import patch
 
@@ -13,6 +14,7 @@ from PIL import Image
 
 import adversarial
 from pipeline import strip as S
+from pipeline.cell_raster import read_cells
 from pipeline.final_polish import (
     ATTEMPT_LEDGER_SCHEMA,
     BUNDLE_SCHEMA,
@@ -45,8 +47,104 @@ IDENTITY_JSON = ROOT / "assets" / "first-room" / "dwarf" / "identity.json"
 IDLE_SEED_STRIP = ROOT / "assets" / "first-room" / "dwarf" / "idle" / "provider" / "source.png"
 CANONICAL_IDENTITY_SHA = "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6"
 DWARF_IDLE_BUNDLE = ROOT / "assets" / "first-room" / "dwarf" / "idle"
+SWING_BUNDLE = ROOT / "assets" / "first-room" / "dwarf" / "swing"
+SWING_POLISHED = SWING_BUNDLE / "polished"
 LOGICAL_SIZE = (DEFAULT_LAYOUT.frame_w, DEFAULT_LAYOUT.frame_h)
 FRAME_COUNT = DEFAULT_LAYOUT.frame_count
+
+SWING_24X24_ALPHA_BBOX = (
+    (5, 18, 1, 23),
+    (4, 19, 8, 23),
+    (4, 19, 9, 23),
+    (4, 18, 10, 23),
+)
+SWING_OPAQUE_COUNTS = (177, 151, 154, 128)
+SWING_PRE_SLICE_RGB_MULTISSETS = (
+    {
+        (17, 16, 24): 18,
+        (25, 58, 50): 16,
+        (29, 23, 32): 21,
+        (29, 59, 80): 7,
+        (40, 91, 67): 5,
+        (43, 34, 48): 8,
+        (59, 34, 27): 25,
+        (59, 47, 58): 27,
+        (66, 128, 90): 2,
+        (74, 59, 72): 5,
+        (78, 141, 160): 1,
+        (98, 55, 34): 14,
+        (108, 61, 49): 3,
+        (120, 58, 24): 10,
+        (120, 166, 99): 1,
+        (128, 106, 115): 1,
+        (147, 86, 49): 7,
+        (165, 140, 145): 1,
+        (200, 123, 67): 5,
+    },
+    {
+        (17, 16, 24): 20,
+        (25, 58, 50): 20,
+        (29, 23, 32): 11,
+        (29, 59, 80): 3,
+        (40, 91, 67): 6,
+        (43, 34, 48): 7,
+        (47, 96, 117): 2,
+        (59, 34, 27): 18,
+        (59, 47, 58): 20,
+        (66, 128, 90): 2,
+        (74, 59, 72): 2,
+        (78, 141, 160): 3,
+        (98, 55, 34): 17,
+        (108, 61, 49): 2,
+        (120, 58, 24): 5,
+        (120, 166, 99): 1,
+        (128, 106, 115): 2,
+        (147, 86, 49): 6,
+        (164, 95, 70): 1,
+        (190, 98, 34): 1,
+        (200, 123, 67): 2,
+    },
+    {
+        (17, 16, 24): 25,
+        (25, 58, 50): 20,
+        (29, 23, 32): 3,
+        (29, 59, 80): 1,
+        (40, 91, 67): 4,
+        (43, 34, 48): 5,
+        (47, 96, 117): 1,
+        (59, 34, 27): 28,
+        (59, 47, 58): 23,
+        (66, 128, 90): 3,
+        (74, 59, 72): 1,
+        (78, 141, 160): 3,
+        (98, 55, 34): 12,
+        (108, 61, 49): 2,
+        (120, 58, 24): 7,
+        (120, 166, 99): 4,
+        (147, 86, 49): 8,
+        (164, 95, 70): 1,
+        (165, 140, 145): 2,
+        (200, 123, 67): 1,
+    },
+    {
+        (17, 16, 24): 16,
+        (25, 58, 50): 14,
+        (29, 23, 32): 9,
+        (29, 59, 80): 2,
+        (40, 91, 67): 7,
+        (43, 34, 48): 1,
+        (59, 34, 27): 25,
+        (59, 47, 58): 22,
+        (66, 128, 90): 1,
+        (98, 55, 34): 13,
+        (108, 61, 49): 2,
+        (120, 58, 24): 5,
+        (120, 166, 99): 2,
+        (147, 86, 49): 5,
+        (164, 95, 70): 1,
+        (200, 123, 67): 3,
+    },
+)
 
 
 def _corpus_layout() -> StripLayout:
@@ -1556,6 +1654,54 @@ def test_dwarf_walk_check_exposes_identity_lock_report(tmp_path: Path) -> None:
     assert result.identity_lock is not None
     assert result.identity_lock.motion_class == "walk"
     assert len(result.identity_lock.per_frame) == FRAME_COUNT
+
+
+def _swing_opaque_rgb_multiset(cells: list[list[tuple[int, int, int] | None]]) -> Counter[tuple[int, int, int]]:
+    return Counter(cell for row in cells for cell in row if cell is not None)
+
+
+def _swing_alpha_bbox(cells: list[list[tuple[int, int, int] | None]]) -> tuple[int, int, int, int]:
+    xs: list[int] = []
+    ys: list[int] = []
+    for y, row in enumerate(cells):
+        for x, cell in enumerate(row):
+            if cell is not None:
+                xs.append(x)
+                ys.append(y)
+    return min(xs), max(xs), min(ys), max(ys)
+
+
+def _swing_boundary_column_load(cells: list[list[tuple[int, int, int] | None]]) -> tuple[int, int]:
+    width = len(cells[0])
+    left = sum(1 for row in cells if row[0] is not None)
+    right = sum(1 for row in cells if row[width - 1] is not None)
+    return left, right
+
+
+def test_production_swing_polished_frames_are_24x24_with_zero_boundary_load() -> None:
+    for index in range(FRAME_COUNT):
+        path = SWING_POLISHED / f"frame-{index}.png"
+        cells = read_cells(path, size=(24, 24))
+        assert _swing_alpha_bbox(cells) == SWING_24X24_ALPHA_BBOX[index]
+        assert _swing_boundary_column_load(cells) == (0, 0)
+
+
+def test_production_swing_polished_frames_preserve_pre_slice_subject_pixels() -> None:
+    for index in range(FRAME_COUNT):
+        cells = read_cells(SWING_POLISHED / f"frame-{index}.png", size=(24, 24))
+        assert sum(1 for row in cells for cell in row if cell is not None) == SWING_OPAQUE_COUNTS[index]
+        assert dict(_swing_opaque_rgb_multiset(cells)) == SWING_PRE_SLICE_RGB_MULTISSETS[index]
+
+
+def test_production_swing_audit_records_interim_re_canvas_status() -> None:
+    audit = json.loads((SWING_BUNDLE / "reports" / "audit.json").read_text(encoding="utf-8"))
+    summary = audit["machine_check"]["edit_summary"]
+    assert "interim" in summary.lower()
+    assert "re-canvas" in summary.lower()
+    assert "re-author" in summary.lower()
+    assert audit["uncertain_count"] == 0
+    assert audit["overall"] == "PASS"
+    assert all(answer["verdict"] != "UNCERTAIN" for answer in audit["answers"])
 
 
 def test_dwarf_swing_check_exposes_identity_lock_report(tmp_path: Path) -> None:

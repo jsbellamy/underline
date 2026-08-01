@@ -16,7 +16,7 @@ from PIL import Image, UnidentifiedImageError
 from pipeline import canonical
 from pipeline.cell_raster import cells_from_rgba
 from pipeline.gate_evidence import sha256_bytes, sha256_file
-from pipeline.strip import Cell, resolve_class_frame_geometry
+from pipeline.strip import Cell, embed_on_class_canvas, resolve_class_frame_geometry
 
 IDENTITY_LOCK_SCHEMA = "identity-lock/1"
 IDENTITY_LOCK_SCHEMA_V2 = "identity-lock/2"
@@ -333,19 +333,18 @@ def _embed_on_class_canvas(
     origin_dx: int,
     origin_dy: int,
 ) -> list[list[Cell]]:
-    if len(frame) == class_frame_h and len(frame[0]) == class_frame_w:
-        return frame
-    if len(frame) != anchor_frame_h or len(frame[0]) != anchor_frame_w:
-        raise IdentityLockError(
-            "attempt frame size does not match Identity Lock frame_size"
+    try:
+        return embed_on_class_canvas(
+            frame,
+            class_frame_w=class_frame_w,
+            class_frame_h=class_frame_h,
+            anchor_frame_w=anchor_frame_w,
+            anchor_frame_h=anchor_frame_h,
+            origin_dx=origin_dx,
+            origin_dy=origin_dy,
         )
-    embedded: list[list[Cell]] = [
-        [None for _ in range(class_frame_w)] for _ in range(class_frame_h)
-    ]
-    for y in range(anchor_frame_h):
-        for x in range(anchor_frame_w):
-            embedded[y + origin_dy][x + origin_dx] = frame[y][x]
-    return embedded
+    except ValueError as exc:
+        raise IdentityLockError(str(exc)) from exc
 
 
 def _canonical_cell_at(

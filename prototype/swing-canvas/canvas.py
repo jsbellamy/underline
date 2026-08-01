@@ -9,7 +9,7 @@ from typing import Iterable, Sequence
 
 from pipeline.cell_raster import Cell, read_cells
 from pipeline.identity_lock import _load_palette_roles, nearest_palette_role
-from pipeline.strip import StripLayout, static_silhouette_pair_fraction
+from pipeline.strip import StripLayout, resolve_class_frame_geometry, static_silhouette_pair_fraction
 from PIL import Image
 
 CellGrid = list[list[Cell]]
@@ -361,15 +361,35 @@ def render_variant_frames(
     raise ValueError(f"unknown variant: {variant}")
 
 
+def _anchor_source_frames(frames: Sequence[CellGrid]) -> list[CellGrid]:
+    """Crop production swing Frames on the class canvas back to anchor rasters."""
+    if not frames:
+        return []
+    width = len(frames[0][0])
+    if width == SOURCE_FRAME_W:
+        return [list(frame) for frame in frames]
+    swing_geometry = resolve_class_frame_geometry("swing")
+    if width == swing_geometry.frame_w:
+        origin_x, _ = swing_geometry.canonical_origin
+        return [
+            [row[origin_x : origin_x + SOURCE_FRAME_W] for row in frame]
+            for frame in frames
+        ]
+    raise ValueError(f"unsupported swing frame width: {width}")
+
+
 def load_motion_frames(
     assets_root: Path,
     motion: str,
 ) -> list[CellGrid]:
     bundle = assets_root / "first-room" / "dwarf" / motion / "polished"
-    return [
+    frames = [
         read_cells(bundle / f"frame-{index}.png")
         for index in range(StripLayout().frame_count)
     ]
+    if motion == "swing":
+        return _anchor_source_frames(frames)
+    return frames
 
 
 def measure_motion_baseline(
