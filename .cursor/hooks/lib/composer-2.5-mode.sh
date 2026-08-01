@@ -2,7 +2,11 @@
 # Classify Composer 2.5 model slugs and model_params for hook gating.
 # Sourced by other hook scripts; not executed directly.
 
+# Human/doc label for the standard pin (model picker, log messages).
 readonly COMPOSER_25_STANDARD_MODEL='composer-2.5[fast=false]'
+# Task API slug + params — the only spawnable standard-mode shape.
+readonly COMPOSER_25_API_SLUG='composer-2.5'
+readonly COMPOSER_25_STANDARD_PARAMS='[{"id":"fast","value":"false"}]'
 
 composer_25_mode() {
   local slug="${1:-}"
@@ -60,6 +64,13 @@ is_composer_25_family() {
   esac
 }
 
+# True when tool_input already uses the spawnable standard pin (slug + fast=false param).
+task_input_is_standard_composer_25() {
+  local model="${1:-}"
+  local params="${2:-[]}"
+  [[ "$model" == "$COMPOSER_25_API_SLUG" ]] && is_composer_25_standard "$model" "$params"
+}
+
 is_pinned_subagent() {
   [[ "$1" =~ ^(code-review-standards|code-review-spec|issue-implementer-code|issue-implementer-asset|gate-blind-review)$ ]]
 }
@@ -83,7 +94,7 @@ pinned_agent_frontmatter_standard() {
     return 1
   fi
 
-  if grep -Eiq '^[[:space:]]*model:[[:space:]]*"?composer-2\.5\[fast=false\]"?' "$agent_file"; then
+  if grep -Eiq '^[[:space:]]*model:[[:space:]]*"?composer-2\.5(\[fast=false\])?"?$' "$agent_file"; then
     return 0
   fi
 
