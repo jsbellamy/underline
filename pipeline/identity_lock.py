@@ -27,9 +27,6 @@ DEFAULT_IDENTITY_LOCKS_PATH = (
     _REPO_ROOT / "assets" / "first-room" / "dwarf" / "identity-locks.json"
 )
 DEFAULT_IDENTITY_PATH = _REPO_ROOT / "assets" / "first-room" / "dwarf" / "identity.png"
-DEFAULT_IDENTITY_V2_PATH = (
-    _REPO_ROOT / "assets" / "first-room" / "dwarf" / "identity-v2.png"
-)
 TRANSPORT_MAGENTA = (255, 0, 255)
 # Idle-provider transport uses soft near-magenta; #159 wiped to exact #FF00FF (~0.6).
 MAGENTA_WIPE_MIN_PROVIDER_FRACTION = 0.05

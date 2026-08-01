@@ -771,6 +771,7 @@ def test_identity_roles_reproduce_precleanup_raster(tmp_path: Path) -> None:
         for x in range(16)
         if precleanup[y][x] != committed_v2[y][x]
     )
+    # Hand cleanup: (5,4) cyan helmet island, (12,7) and (8,12) isolated skin in beard.
     assert diff_count == 3
 
 
