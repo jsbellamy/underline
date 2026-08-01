@@ -15,9 +15,9 @@
   "machine_check": {
     "command": "npm run strip:polish -- check assets/first-room/dwarf/walk --json",
     "outcome": "PASS",
-    "fingerprint": "3d6cd808a6912bb003aef3186d4ceb406bfa03de5aae69e81006fc92b8b1791a",
-    "visible_cell_edits": 0,
-    "edit_summary": "No Cell edits required; provider ingest and structural checks passed on first attempt."
+    "fingerprint": "e25e7335bd59a60af13034154a1b8ffabaa0a700edd1f875fd9fc53f06e236d3",
+    "visible_cell_edits": 152,
+    "edit_summary": "Palette-exact requantization onto the Master Palette with committed polished-roles.json; alpha masks unchanged. Identity Lock PASS against identity-v2."
   },
   "answers": [
     {
@@ -25,6 +25,12 @@
       "question": "Are short/broad proportions, beard mass, the oversized blue lamp helmet, green clothing, belt and buckle, gloves, boots, and pickaxe legible and temporally consistent whenever the pose exposes them?",
       "verdict": "PASS",
       "rationale": "Short/broad dwarf proportions, large rust beard mass, oversized blue lamp helmet with centered amber lamp, green tunic, leather belt with amber buckle, gloves, broad boots, and shoulder pickaxe remain legible and consistent across all four walk Frames whenever exposed."
+    },
+    {
+      "id": "identity_lock_pass",
+      "question": "Does the machine-readable check report show automatic Identity Lock PASS for every Frame before you judge exposed identity outside the locked regions?",
+      "verdict": "PASS",
+      "rationale": "strip:polish check reports identity_lock PASS bound to identity-v2 (sha256 7495a733\u2026); palette-exact role conformance in the upper_body lock region passes all four Frames."
     },
     {
       "id": "black_eye_no_sclera",
@@ -42,7 +48,7 @@
       "id": "palette_lighting_outline",
       "question": "Do Master Palette roles, upper-left local light, and selective warm-dark outline remain stable across Frames?",
       "verdict": "PASS",
-      "rationale": "Warm-dark selective outline, upper-left local highlights on helmet/beard, and role hues (blue metal, green cloth, earth/beard, amber accents) stay stable across the loop within the draft palette."
+      "rationale": "Warm-dark selective outline, upper-left local highlights, and Master Palette role hues (blue metal, green cloth, earth/beard, amber accents) stay stable across the loop; every opaque Cell is an exact palette colour after #177 migration."
     },
     {
       "id": "temporal_consistency",
@@ -120,7 +126,7 @@
         "id": "palette_roles",
         "question": "Do Master Palette roles remain the same character?",
         "verdict": "PASS",
-        "rationale": "Blue metal, green cloth, rust beard, amber accents, and earth boot roles match identity.png and idle release Frames."
+        "rationale": "Blue metal, green cloth, rust beard, amber accents, and earth boot roles match identity-v2 and idle release Frames; all opaque Cells are Master Palette exact."
       }
     ]
   },

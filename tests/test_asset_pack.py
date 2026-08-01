@@ -244,7 +244,7 @@ def _write_pack(root: Path, doc: dict[str, object] | None = None) -> Path:
 
 DWARF_RELEASE_FRAMES: tuple[tuple[str, str, int, int, int], ...] = (
     ("dwarf-idle", "idle", 268, 255, 0),
-    ("dwarf-walk", "walk", 152, 152, 0),
+    ("dwarf-walk", "walk", 152, 20, 152),
     ("dwarf-swing", "swing", 177, 176, 0),
 )
 
@@ -436,10 +436,10 @@ def test_metadata_policy_rejects_release_hash_mismatch(tmp_path: Path) -> None:
 
 
 def test_dwarf_release_frames_violate_master_palette(tmp_path: Path) -> None:
-    """Characterization of a known defect (#171): dwarf release frames use off-palette colours.
+    """Characterization of dwarf release palette conformance (#171, #177).
 
-    Every checked-in dwarf release frame-0 has zero opaque Cells in the Master Palette.
-    Issue #179 should invert this test to expect PASS — do not delete it when migrating.
+    Idle and swing remain off-palette until their migration slices land; walk is
+    palette-exact as of #177. Issue #179 should invert the remaining rows to PASS.
     """
     for asset_id, anim, expected_opaque, expected_unique, expected_in_palette in DWARF_RELEASE_FRAMES:
         rel = f"assets/first-room/dwarf/{anim}/release/frame-0.png"

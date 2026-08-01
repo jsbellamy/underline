@@ -18,6 +18,7 @@ from pipeline.cell_raster import RasterError, write_cells
 from pipeline.cell_raster import read_cells as _read_cells
 from pipeline.cell_raster import write_silhouette_gif, write_silhouette_strip
 from pipeline.gate_evidence import EvidenceError, sha256_bytes, sha256_file, write_json_immutable
+from pipeline.palette_quantize import load_master_palette
 from pipeline.identity_lock import (
     IDENTITY_LOCK_NEAR_MISS_SCHEMA,
     IdentityLockError,
@@ -453,12 +454,38 @@ def _collect_draft_palette(draft_frames: list[list[list[Cell]]]) -> set[tuple[in
     return palette
 
 
+def _bundle_master_palette_rgb_set(bundle_root: Path) -> set[tuple[int, int, int]]:
+    """Master Palette colours bound by the provider provenance sidecar, if any."""
+    sidecar = bundle_root / "provider" / "source.source.json"
+    if not sidecar.is_file():
+        return set()
+    try:
+        doc = json.loads(sidecar.read_text(encoding="utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return set()
+    palette_id = doc.get("master_palette_id")
+    if not isinstance(palette_id, str) or not palette_id:
+        return set()
+    palette_path = _REPO_ROOT / "assets" / "palettes" / f"{palette_id}.json"
+    if not palette_path.is_file():
+        return set()
+    master = load_master_palette(palette_path)
+    colors: set[tuple[int, int, int]] = set()
+    for role_colors in master.role_colors.values():
+        colors.update(role_colors)
+    return colors
+
+
 def _structural_check(
     draft_frames: list[list[list[Cell]]],
     polished_frames: list[list[list[Cell]]],
+    *,
+    extra_allowed_palette: set[tuple[int, int, int]] | None = None,
 ) -> StructuralCheckResult:
     violations: list[StructuralViolation] = []
     allowed_palette = _collect_draft_palette(draft_frames)
+    if extra_allowed_palette:
+        allowed_palette |= extra_allowed_palette
 
     for frame_index, (draft, polished) in enumerate(zip(draft_frames, polished_frames)):
         for y, (draft_row, polished_row) in enumerate(zip(draft, polished)):
@@ -1570,17 +1597,24 @@ def check_bundle(bundle_root: Path) -> FinalPolishCheckResult:
     polished_hashes = _ordered_frame_hashes(bundle_root, "polished")
     provider_sha256 = sha256_file(_provider_path(bundle_root))
 
-    structural = _structural_check(draft_frames, polished_frames)
+    structural = _structural_check(
+        draft_frames,
+        polished_frames,
+        extra_allowed_palette=_bundle_master_palette_rgb_set(bundle_root),
+    )
     delta = _visible_cell_delta(draft_frames, polished_frames)
     coherence = coherence_split(polished_frames, motion_class=manifest["motion_class"])
+    polished_roles_path = bundle_root / "polished-roles.json"
+    palette_exact_lock = polished_roles_path.is_file()
     identity_lock: IdentityLockResult | None = None
-    if (
-        manifest.get("schema") == BUNDLE_SCHEMA
-        and identity_lock_applies(profile_id, str(manifest["motion_class"]))
+    if identity_lock_applies(profile_id, str(manifest["motion_class"])) and (
+        manifest.get("schema") == BUNDLE_SCHEMA or palette_exact_lock
     ):
         identity_lock = evaluate_identity_lock(
             polished_frames,
             str(manifest["motion_class"]),
+            palette_exact=palette_exact_lock,
+            polished_roles_path=polished_roles_path if palette_exact_lock else None,
         )
     outcome = _aggregate_outcome(
         provider_outcome=provider_outcome,

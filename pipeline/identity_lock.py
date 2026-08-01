@@ -485,6 +485,19 @@ def _first_occupancy_mismatch(
     return None
 
 
+def _role_at(
+    coord: tuple[int, int],
+    cell: Cell,
+    role_map: Mapping[tuple[int, int], str] | None,
+    palette_entries: Sequence[tuple[str, tuple[int, int, int]]],
+) -> str | None:
+    if cell is None:
+        return None
+    if role_map is not None:
+        return role_map.get(coord)
+    return nearest_palette_role(cell, palette_entries)
+
+
 def _compare_structural_lock(
     canonical: list[list[Cell]],
     attempt: list[list[Cell]],
@@ -492,6 +505,10 @@ def _compare_structural_lock(
     offset: tuple[int, int],
     palette_entries: Sequence[tuple[str, tuple[int, int, int]]],
     palette_roles: Sequence[str],
+    *,
+    canonical_role_map: Mapping[tuple[int, int], str] | None = None,
+    attempt_role_map: Mapping[tuple[int, int], str] | None = None,
+    palette_exact_roles: bool = False,
 ) -> tuple[dict[str, Any], IdentityLockMismatch | None]:
     rectangle = lock["rectangle"]
     dx, dy = offset
@@ -502,7 +519,7 @@ def _compare_structural_lock(
     canonical_opaque = 0
     attempt_opaque = 0
 
-    for _, _, canonical_cell, attempt_cell in _registered_cells(
+    for x, y, canonical_cell, attempt_cell in _registered_cells(
         canonical,
         attempt,
         rectangle,
@@ -513,8 +530,18 @@ def _compare_structural_lock(
         attempt_present = attempt_cell is not None
         occupancy_union += int(canonical_present or attempt_present)
         occupancy_changes += int(canonical_present != attempt_present)
-        canonical_role = nearest_palette_role(canonical_cell, palette_entries)
-        attempt_role = nearest_palette_role(attempt_cell, palette_entries)
+        canonical_role = _role_at(
+            (x, y),
+            canonical_cell,
+            canonical_role_map,
+            palette_entries,
+        )
+        attempt_role = _role_at(
+            (x + dx, y + dy),
+            attempt_cell,
+            attempt_role_map,
+            palette_entries,
+        )
         if canonical_role is not None:
             canonical_counts[canonical_role] += 1
             canonical_opaque += 1
@@ -543,10 +570,13 @@ def _compare_structural_lock(
             )
             for role in palette_roles
         )
-        passed = (
-            occupancy_difference <= float(lock["max_occupancy_difference"])
-            and palette_role_distance <= float(lock["max_palette_role_distance"])
-        )
+        if palette_exact_roles:
+            passed = palette_role_distance <= float(lock["max_palette_role_distance"])
+        else:
+            passed = (
+                occupancy_difference <= float(lock["max_occupancy_difference"])
+                and palette_role_distance <= float(lock["max_palette_role_distance"])
+            )
     else:
         passed = occupancy_difference == 0.0
 
@@ -716,6 +746,10 @@ def _find_frame_offsets(
     landmarks: Sequence[Mapping[str, Any]],
     palette_entries: Sequence[tuple[str, tuple[int, int, int]]],
     palette_roles: Sequence[str],
+    *,
+    canonical_role_map: Mapping[tuple[int, int], str] | None = None,
+    attempt_role_map: Mapping[tuple[int, int], str] | None = None,
+    palette_exact_roles: bool = False,
 ) -> tuple[
     dict[str, tuple[int, int]],
     dict[str, Outcome],
@@ -762,6 +796,9 @@ def _find_frame_offsets(
                 offsets[lock["id"]],
                 palette_entries,
                 palette_roles,
+                canonical_role_map=canonical_role_map,
+                attempt_role_map=attempt_role_map,
+                palette_exact_roles=palette_exact_roles,
             )
             check_results[lock["id"]] = check
             if check["outcome"] == "FAIL":
@@ -867,12 +904,82 @@ def _find_frame_offsets(
     )
 
 
+def _load_cells_role_map(cells_doc: Mapping[str, str]) -> dict[tuple[int, int], str]:
+    assignment: dict[tuple[int, int], str] = {}
+    for key, role in cells_doc.items():
+        if not isinstance(key, str) or not isinstance(role, str):
+            raise IdentityLockError("role map cells must map coordinate strings to roles")
+        x_text, y_text = key.split(",", maxsplit=1)
+        assignment[(int(x_text), int(y_text))] = role
+    return assignment
+
+
+def load_polished_roles_maps(
+    path: Path,
+    *,
+    frame_count: int,
+) -> tuple[dict[tuple[int, int], str], ...]:
+    """Load per-Frame committed role maps from ``polished-roles/0``."""
+    if not path.is_file():
+        raise IdentityLockError(f"missing polished role map: {path}")
+    try:
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise IdentityLockError(f"invalid polished role map JSON: {path}") from exc
+    if not isinstance(doc, dict) or doc.get("schema") != "polished-roles/0":
+        raise IdentityLockError("polished role map must use schema polished-roles/0")
+    frames = doc.get("frames")
+    if not isinstance(frames, list):
+        raise IdentityLockError("polished role map requires frames array")
+    by_index: dict[int, dict[tuple[int, int], str]] = {}
+    for entry in frames:
+        if not isinstance(entry, dict):
+            raise IdentityLockError("polished role map frame entry must be an object")
+        index = entry.get("index")
+        cells = entry.get("cells")
+        if not isinstance(index, int) or not isinstance(cells, dict):
+            raise IdentityLockError("polished role map frame requires index and cells")
+        by_index[index] = _load_cells_role_map(cells)
+    missing = [index for index in range(frame_count) if index not in by_index]
+    if missing:
+        raise IdentityLockError(
+            f"polished role map missing frame indices: {missing}"
+        )
+    return tuple(by_index[index] for index in range(frame_count))
+
+
+def _resolve_palette_exact_identity(
+    spec: Mapping[str, Any],
+) -> tuple[Path, str, dict[tuple[int, int], str]]:
+    if spec.get("schema") != IDENTITY_LOCK_SCHEMA_V2:
+        raise IdentityLockError(
+            "palette-exact Identity Lock requires identity-lock/2 spec"
+        )
+    entry = spec.get("palette_exact_identity")
+    if not isinstance(entry, dict):
+        raise IdentityLockError("palette_exact_identity must be an object")
+    validated = _validate_palette_exact_identity_entry(
+        entry,
+        frame_w=int(spec["frame_size"][0]),
+        frame_h=int(spec["frame_size"][1]),
+    )
+    identity_path = _REPO_ROOT / str(validated["relative_path"])
+    role_map_path = _REPO_ROOT / str(validated["role_map_relative_path"])
+    role_doc = json.loads(role_map_path.read_text(encoding="utf-8"))
+    cells = role_doc.get("cells")
+    if not isinstance(cells, dict):
+        raise IdentityLockError("identity role map requires cells object")
+    return identity_path, str(validated["identity_sha256"]), _load_cells_role_map(cells)
+
+
 def evaluate_identity_lock(
     frames: Sequence[Sequence[Sequence[Cell]]],
     motion_class: str,
     *,
     spec_path: Path = DEFAULT_IDENTITY_LOCKS_PATH,
     identity_path: Path = DEFAULT_IDENTITY_PATH,
+    palette_exact: bool = False,
+    polished_roles_path: Path | None = None,
 ) -> IdentityLockResult:
     spec = load_identity_lock_spec(spec_path)
     motion_doc = spec["motion_classes"].get(motion_class)
@@ -882,8 +989,23 @@ def evaluate_identity_lock(
         )
 
     frame_size = (int(spec["frame_size"][0]), int(spec["frame_size"][1]))
+    canonical_role_map: dict[tuple[int, int], str] | None = None
+    per_frame_role_maps: tuple[dict[tuple[int, int], str], ...] | None = None
+    bound_identity_sha = str(spec["identity_sha256"])
+    if palette_exact:
+        identity_path, bound_identity_sha, canonical_role_map = _resolve_palette_exact_identity(
+            spec
+        )
+        if polished_roles_path is None:
+            raise IdentityLockError(
+                "palette-exact Identity Lock requires polished-roles.json"
+            )
+        per_frame_role_maps = load_polished_roles_maps(
+            polished_roles_path,
+            frame_count=len(frames),
+        )
     canonical = load_canonical_cells(identity_path, frame_size)
-    if sha256_file(identity_path) != spec["identity_sha256"]:
+    if sha256_file(identity_path) != bound_identity_sha:
         raise IdentityLockError(
             "evaluated identity image does not match bound identity_sha256"
         )
@@ -893,6 +1015,7 @@ def evaluate_identity_lock(
     ]
     constraints = motion_doc.get("relational_constraints", []) or []
     landmarks = motion_doc.get("landmarks", []) or []
+    effective_landmarks = [] if palette_exact else landmarks
     palette_path = _resolve_bound_repo_file(
         spec["master_palette"],
         label="master_palette",
@@ -921,9 +1044,16 @@ def evaluate_identity_lock(
             list(attempt),
             locks,
             constraints,
-            landmarks,
+            effective_landmarks,
             palette_entries,
             palette_roles,
+            canonical_role_map=canonical_role_map,
+            attempt_role_map=(
+                None
+                if per_frame_role_maps is None
+                else per_frame_role_maps[frame_index]
+            ),
+            palette_exact_roles=palette_exact,
         )
         failure = _first_failure(check_results, landmark_results)
         per_frame.append(
@@ -944,7 +1074,7 @@ def evaluate_identity_lock(
     outcome: Outcome = "PASS" if overall_failure is None else "FAIL"
     return IdentityLockResult(
         outcome=outcome,
-        identity_sha256=str(spec["identity_sha256"]),
+        identity_sha256=bound_identity_sha,
         lock_spec_sha256=sha256_file(spec_path),
         motion_class=motion_class,
         per_frame=tuple(per_frame),
