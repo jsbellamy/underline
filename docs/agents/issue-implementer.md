@@ -125,14 +125,16 @@ runtime supports worktrees.
      directory; do not write `review--*.json` yet.
    - **Cursor:** invoke the `gate-blind-review` subagent once per promotion for
      review 1 (pass only `packet.png` and the §10 question/panel/metric/Budget/C
-     from the issue or spec). Write `review--01.json` from its output via
-     `write_audit_record`.
+     from the issue or spec). Spawn by subagent name only — standard pin
+     `composer-2.5[fast=false]` per `docs/agents/cursor-composer-pin.md`. Write
+     `review--01.json` from its output via `write_audit_record`.
    - Build `review-input--02.json` mechanically with
      `blinded_packet_for_second_review` / `write_second_review_input` (not
      delegated to the review subagent).
    - **Cursor:** invoke `gate-blind-review` again in a **fresh** session for
-     review 2 (only `review-input--02.json` and `packet.png`). Write
-     `review--02.json` and run `validate_review_dir` until `"ok": true`.
+     review 2 (only `review-input--02.json` and `packet.png`). Spawn by subagent
+     name only — same standard pin. Write `review--02.json` and run
+     `validate_review_dir` until `"ok": true`.
    - **Non-Cursor:** spawn an equivalent isolated visual reviewer per audit at
      the pin in `.claude/CLAUDE.md`; same blindness rules.
    Never author both audits in one subagent session.
@@ -212,6 +214,6 @@ runtime supports worktrees.
   and leave the replacement to the named later issue.
 - Do not modify another issue's scope, work directly on `main`, or merge the pull
   request yourself.
-- On **Cursor**, blind gate reviews use the `gate-blind-review` subagent (model
-  pinned in `.cursor/agents/gate-blind-review.md`). On other runtimes, follow
-  `.claude/CLAUDE.md` for the blind-review pin.
+- On **Cursor**, blind gate reviews use the `gate-blind-review` subagent
+  (standard pin `composer-2.5[fast=false]` — `docs/agents/cursor-composer-pin.md`).
+  On other runtimes, follow `.claude/CLAUDE.md` for the blind-review pin.

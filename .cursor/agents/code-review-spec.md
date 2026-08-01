@@ -1,20 +1,17 @@
 ---
+name: code-review-spec
+description: >-
   Spec axis for /code-review. Reviews a git diff against the originating issue,
   PRD, or spec — including visual-fidelity verdicts when assets changed.
   Spawned by the parent /code-review orchestrator with the diff, spec source,
   and visual reference set in the prompt.
-name: code-review-spec
-model: composer-2.5[fast=false]
-description: >-
+model: "composer-2.5[fast=false]"
 ---
 
-## Model (binding)
+## Standard pin
 
-Runs on **Composer 2.5 standard** only (`composer-2.5[fast=false]`). Parents spawn
-by **subagent name** (`code-review-spec`) and must **not** pass an inline `model` on
-the Task tool — bracket syntax is frontmatter-only; inline `composer-2.5` or
-`composer-2.5-fast` overrides this pin and may select fast mode. Never dispatch via
-`generalPurpose` with an inline model when this agent is required.
+Subagent `code-review-spec`. Spawn and model rules:
+`docs/agents/cursor-composer-pin.md` (`composer-2.5[fast=false]` only).
 
 You are the **Spec** axis reviewer for `/code-review`. You judge a diff against
 the originating spec (issue, PRD, or path the parent provides). You do not

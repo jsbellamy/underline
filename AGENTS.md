@@ -35,6 +35,12 @@ which labels this repo has actually created.
 This is a single-context project with `CONTEXT.md` at the root and architectural
 decisions under `docs/adr/`. See `docs/agents/domain.md`.
 
+### Cursor Composer pin
+
+On Cursor, every Composer 2.5 session and subagent uses the **standard pin**
+`composer-2.5[fast=false]` only. Orchestrator spawn rules:
+`docs/agents/cursor-composer-pin.md`.
+
 ### Reading discipline
 
 Read the report, not the render.
@@ -120,13 +126,15 @@ breach is a documented-standard violation, not a judgement call.
 Promotion-verification issues that write `gate-controls/reviews/*/review--*.json`
 need two **blinded** visual audits before `/code-review` — see
 `docs/agents/issue-implementer.md` step 7. On Cursor, delegate each audit to the
-`gate-blind-review` subagent (`.cursor/agents/gate-blind-review.md`).
+`gate-blind-review` subagent (`.cursor/agents/gate-blind-review.md`). Standard
+pin: `docs/agents/cursor-composer-pin.md`.
 
 ### Code review (Cursor)
 
 On Cursor, `/code-review` spawns `code-review-standards` and `code-review-spec`
 (`.cursor/agents/code-review-standards.md`, `.cursor/agents/code-review-spec.md`)
-for the Standards and Spec axes — Composer 2.5 non-fast is pinned in frontmatter.
+for the Standards and Spec axes — standard pin `composer-2.5[fast=false]` per
+`docs/agents/cursor-composer-pin.md`.
 
 ### Evidence
 
@@ -169,3 +177,7 @@ Cursor, the orchestrator spawns `issue-implementer-code` or
 rules are preloaded there. The orchestrator independently owns the acceptance
 gate — green tests and a scope-matching file list are necessary but never
 sufficient.
+
+**Cursor orchestrators:** parent chat and Task spawn rules for Composer 2.5 live
+in `docs/agents/cursor-composer-pin.md` — use `composer-2.5[fast=false]` only;
+spawn by subagent name with no inline `model`.
