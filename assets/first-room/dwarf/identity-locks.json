@@ -46,10 +46,11 @@
       ]
     },
     "swing": {
+      "frame_size": [24, 24],
       "locks": [
         {
           "id": "helmet_face",
-          "rectangle": { "x0": 5, "x1": 12, "y0": 1, "y1": 10 },
+          "rectangle": { "x0": 9, "x1": 16, "y0": 1, "y1": 10 },
           "permitted_offsets": {
             "dx": [-1, 0, 1],
             "dy": [-1, 0, 1]
@@ -60,7 +61,7 @@
         },
         {
           "id": "belt_core",
-          "rectangle": { "x0": 4, "x1": 12, "y0": 15, "y1": 18 },
+          "rectangle": { "x0": 8, "x1": 16, "y0": 15, "y1": 18 },
           "permitted_offsets": {
             "dx": [-1, 0, 1],
             "dy": [0, 1]
@@ -71,7 +72,7 @@
         },
         {
           "id": "boots",
-          "rectangle": { "x0": 3, "x1": 14, "y0": 21, "y1": 23 },
+          "rectangle": { "x0": 7, "x1": 18, "y0": 21, "y1": 23 },
           "permitted_offsets": [[0, 0]],
           "comparison": "exact-occupancy"
         }
@@ -79,19 +80,19 @@
       "landmarks": [
         {
           "id": "lamp",
-          "canonical": [12, 4],
+          "canonical": [16, 4],
           "palette_role": "amber-emission",
           "max_distance": 2
         },
         {
           "id": "eye",
-          "canonical": [10, 7],
+          "canonical": [14, 7],
           "palette_role": "dark-outline",
           "max_distance": 1
         },
         {
           "id": "buckle",
-          "canonical": [11, 16],
+          "canonical": [15, 16],
           "palette_role": "amber-emission",
           "max_distance": 2
         }

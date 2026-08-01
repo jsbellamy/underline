@@ -19,8 +19,8 @@ scale, lighting, and the approved room composition.
 
 ## Player miner
 
-- Animation **Frames** are 16×24 logical Cells, authored facing right and
-  mirrored at runtime for left-facing poses.
+- Animation **Frames** are 16×24 logical Cells (swing uses a 24×24 action
+  canvas), authored facing right and mirrored at runtime for left-facing poses.
 - Short, broad, heavily bearded dwarf miner.
 - Oversized blue lamp helmet, green work clothes, thick gloves, sturdy boots,
   belt and buckle, and a weighty pickaxe.

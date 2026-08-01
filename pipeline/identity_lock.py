@@ -323,6 +323,31 @@ def _resolve_lock_frame_geometry(
     return geometry.frame_w, geometry.frame_h, *geometry.canonical_origin
 
 
+def _embed_on_class_canvas(
+    frame: list[list[Cell]],
+    *,
+    class_frame_w: int,
+    class_frame_h: int,
+    anchor_frame_w: int,
+    anchor_frame_h: int,
+    origin_dx: int,
+    origin_dy: int,
+) -> list[list[Cell]]:
+    if len(frame) == class_frame_h and len(frame[0]) == class_frame_w:
+        return frame
+    if len(frame) != anchor_frame_h or len(frame[0]) != anchor_frame_w:
+        raise IdentityLockError(
+            "attempt frame size does not match Identity Lock frame_size"
+        )
+    embedded: list[list[Cell]] = [
+        [None for _ in range(class_frame_w)] for _ in range(class_frame_h)
+    ]
+    for y in range(anchor_frame_h):
+        for x in range(anchor_frame_w):
+            embedded[y + origin_dy][x + origin_dx] = frame[y][x]
+    return embedded
+
+
 def _canonical_cell_at(
     anchor_cells: list[list[Cell]],
     x: int,
@@ -583,6 +608,16 @@ def _role_at(
     return nearest_palette_role(cell, palette_entries)
 
 
+def _anchor_role_coord(
+    canvas_x: int,
+    canvas_y: int,
+    *,
+    origin_dx: int,
+    origin_dy: int,
+) -> tuple[int, int]:
+    return (canvas_x - origin_dx, canvas_y - origin_dy)
+
+
 def _compare_structural_lock(
     canonical: list[list[Cell]],
     attempt: list[list[Cell]],
@@ -628,7 +663,12 @@ def _compare_structural_lock(
             palette_entries,
         )
         attempt_role = _role_at(
-            (x + dx, y + dy),
+            _anchor_role_coord(
+                x + dx,
+                y + dy,
+                origin_dx=origin_dx,
+                origin_dy=origin_dy,
+            ),
             attempt_cell,
             attempt_role_map,
             palette_entries,
@@ -683,7 +723,12 @@ def _compare_structural_lock(
                 if attempt_cell is None:
                     continue
                 attempt_role = _role_at(
-                    (x + dx, y + dy),
+                    _anchor_role_coord(
+                        x + dx,
+                        y + dy,
+                        origin_dx=origin_dx,
+                        origin_dy=origin_dy,
+                    ),
                     attempt_cell,
                     attempt_role_map,
                     palette_entries,
@@ -1186,12 +1231,15 @@ def evaluate_identity_lock(
     overall_mismatch: IdentityLockMismatch | None = None
 
     for frame_index, attempt in enumerate(frames):
-        if len(attempt) != frame_size[1] or any(
-            len(row) != frame_size[0] for row in attempt
-        ):
-            raise IdentityLockError(
-                "attempt frame size does not match Identity Lock frame_size"
-            )
+        attempt = _embed_on_class_canvas(
+            list(attempt),
+            class_frame_w=frame_size[0],
+            class_frame_h=frame_size[1],
+            anchor_frame_w=anchor_frame_size[0],
+            anchor_frame_h=anchor_frame_size[1],
+            origin_dx=origin_dx,
+            origin_dy=origin_dy,
+        )
         (
             offsets,
             anchor_results,
@@ -1391,7 +1439,16 @@ def evaluate_edit_source_continuity(
             f"motion class {motion_class!r} has no Identity Lock rules"
         )
 
-    frame_size = (int(spec["frame_size"][0]), int(spec["frame_size"][1]))
+    doc_frame_w = int(spec["frame_size"][0])
+    doc_frame_h = int(spec["frame_size"][1])
+    class_frame_w, class_frame_h, origin_dx, origin_dy = _resolve_lock_frame_geometry(
+        motion_class,
+        motion_doc,
+        default_frame_w=doc_frame_w,
+        default_frame_h=doc_frame_h,
+    )
+    frame_size = (class_frame_w, class_frame_h)
+    anchor_frame_size = _anchor_frame_size(spec)
     locks = [
         _validate_lock_row(lock, where=f"motion_classes.{motion_class}")
         for lock in motion_doc["locks"]
@@ -1408,20 +1465,25 @@ def evaluate_edit_source_continuity(
     overall_failure: dict[str, Any] | None = None
     overall_mismatch: IdentityLockMismatch | None = None
     for frame_index, attempt in enumerate(provider_frames):
-        if len(attempt) != frame_size[1] or any(
-            len(row) != frame_size[0] for row in attempt
-        ):
-            raise IdentityLockError(
-                "provider frame size does not match Identity Lock frame_size"
-            )
         source_index = min(frame_index, len(edit_source_frames) - 1)
-        canonical = list(edit_source_frames[source_index])
-        if len(canonical) != frame_size[1] or any(
-            len(row) != frame_size[0] for row in canonical
-        ):
-            raise IdentityLockError(
-                "edit-source frame size does not match Identity Lock frame_size"
-            )
+        canonical = _embed_on_class_canvas(
+            list(edit_source_frames[source_index]),
+            class_frame_w=frame_size[0],
+            class_frame_h=frame_size[1],
+            anchor_frame_w=anchor_frame_size[0],
+            anchor_frame_h=anchor_frame_size[1],
+            origin_dx=origin_dx,
+            origin_dy=origin_dy,
+        )
+        attempt = _embed_on_class_canvas(
+            list(attempt),
+            class_frame_w=frame_size[0],
+            class_frame_h=frame_size[1],
+            anchor_frame_w=anchor_frame_size[0],
+            anchor_frame_h=anchor_frame_size[1],
+            origin_dx=origin_dx,
+            origin_dy=origin_dy,
+        )
         (
             _offsets,
             _anchor_results,

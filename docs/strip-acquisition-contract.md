@@ -509,7 +509,7 @@ evidence model, add Gates, or change Budgets.
    `prompts/production/animation-strip.md` § Dwarf-miner walk and swing. Existing
    unprofiled `/0` and profiled
    `/1` bundles remain valid for `check` and `finalize` under legacy rules.
-2. The four Polished Frames remain exact `16×24` RGBA with binary alpha, exact
+2. The four Polished Frames remain exact `16×24` RGBA (swing: `24×24`) with binary alpha, exact
    per-Frame Draft alpha masks, and opaque RGB values drawn only from the
    combined Draft palette (only RGB may differ from Draft; alpha is locked).
 3. **`brief`** is read-only: for a profiled bundle, it reports the profile

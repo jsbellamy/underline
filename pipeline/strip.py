@@ -170,9 +170,9 @@ _CLASS_META: dict[str, dict[str, Any]] = {
         "loops": False,
         "facing": "fixed",
         "min_alignment_sharpness": None,
-        "frame_w": 16,
+        "frame_w": 24,
         "frame_h": 24,
-        "canonical_origin": (0, 0),
+        "canonical_origin": (4, 0),
     },
     "airborne": {
         "grounded": False,

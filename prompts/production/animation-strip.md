@@ -22,7 +22,7 @@ Every production animation Strip must declare and honor:
 | Property | Value |
 |----------|-------|
 | Frame count | 4 |
-| Frame size | 16×24 logical Cells |
+| Frame size | 16×24 logical Cells (swing: 24×24) |
 | Facing | Right (runtime mirrors for left) |
 | Gutter | 2 full magenta logical Cells between each Frame |
 | Background key | Flat magenta `#FF00FF` everywhere outside Frames and gutters |
@@ -34,7 +34,7 @@ blur, gradient, or dithering within a Cell.
 
 ## Provider canvas safe inset (clipping)
 
-The logical Strip geometry above (16×24 Frames, gutter=2 magenta Cells) defines
+The logical Strip geometry above (16×24 Frames — swing 24×24 — gutter=2 magenta Cells) defines
 **recovery slicing** — it is not the full provider canvas margin.
 
 When submitting to an image **provider**, keep the subject — dwarf, tools, and
@@ -203,7 +203,7 @@ horizontal row, facing RIGHT.
 Canvas: very wide panoramic strip — aspect ratio roughly 3:1. Four frames fill
 most of the width.
 
-Each frame on an exact 16×24 logical pixel grid rendered large — every logical
+Each frame on an exact 16×24 logical pixel grid (swing: 24×24) rendered large — every logical
 pixel is one clean flat square block. No anti-aliasing, blur, gradient, or
 dithering.
 
