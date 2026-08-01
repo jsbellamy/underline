@@ -141,9 +141,3 @@ Cursor, the orchestrator spawns `issue-implementer-code` or
 rules are preloaded there. The orchestrator independently owns the acceptance
 gate — green tests and a scope-matching file list are necessary but never
 sufficient.
-
-When a slice requires before/after Polish Bundle proof, the orchestrator passes
-the bundle path and expected delta, not a copied report. The implementer records
-the baseline from its own worktree and commit using the shared process in
-`docs/agents/issue-implementer.md`; this prevents dispatch evidence from drifting
-from the code the implementer actually received.

@@ -12,9 +12,9 @@ Issues, PRDs, and wayfinder maps for this project live as **GitHub issues** on
 
 ## Dependency correctness
 
-Every agent-ready issue has a `## Blocked by` section. Express a prerequisite as
-both a native GitHub blocking edge and a human-readable `Blocked by: #N` line;
-use `Blocked by: none` when there is no predecessor.
+Every agent-ready issue has a `## Blocked by` section. Express predecessors once
+in that section as `blocked_by: [numbers]`, omitting the field when there are
+none, and mirror those predecessors as native GitHub blocking edges.
 
 Split a prerequisite into its own blocking issue when it changes a different
 system boundary or makes an advertised asset-only slice require pipeline code.
@@ -52,9 +52,9 @@ use rather than silently reusing a different label.
   - Attach: `gh api repos/jsbellamy/underline/issues/<map>/sub_issues -F sub_issue_id=<child_id>`
     where `<child_id>` is the child's REST id (`gh api repos/jsbellamy/underline/issues/<n> --jq .id`).
   - List children: `gh api repos/jsbellamy/underline/issues/<map>/sub_issues`.
-- **Blocking**: wire native issue dependencies as described above, and keep a human-readable
-  `Blocked by: #N, #N` line near the top of the body for agents that read the
-  body rather than the API. A ticket is unblocked when every blocker is closed.
+- **Blocking**: wire native issue dependencies as described above and mirror
+  them in the issue's `## Blocked by` `blocked_by: [numbers]` field. A ticket is
+  unblocked when every blocker is closed.
   (Sub-issues give the parent its completion rollup, but do not express blocking
   between siblings.)
   - Add a blocker: `gh api repos/jsbellamy/underline/issues/<N>/dependencies/blocked_by -F issue_id=<blocker REST id>`
@@ -62,7 +62,7 @@ use rather than silently reusing a different label.
     a string and the API returns 422. The REST id comes from
     `gh api repos/jsbellamy/underline/issues/<M> -q .id`.)
 - **Frontier**: the map's open sub-issues that are unblocked (every native
-  blocker closed; the `Blocked by:` body line is the human-readable companion)
+  blocker closed; the `## Blocked by` field is the body companion)
   and unclaimed (no assignee); lowest number wins.
 - **Claim**: assign the ticket to the driving dev before any work —
   `gh issue edit <n> --add-assignee @me`. An open, unassigned sub-issue is unclaimed.
