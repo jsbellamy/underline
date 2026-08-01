@@ -32,11 +32,14 @@ from pipeline.strip import (  # noqa: E402
     derive_separated_budget,
 )
 
-GC_ROOT = pathlib.Path(
-    os.environ.get("UNDERLINE_GATE_CONTROLS_ROOT", ROOT / "gate-controls")
-)
-GC_MANIFEST = GC_ROOT / "manifest.json"
-ACCEPTANCE_PROFILES = GC_ROOT / "acceptance-profiles.json"
+def _resolve_gate_controls_root(gate_controls: pathlib.Path | None) -> pathlib.Path:
+    """Resolve the gate-controls root: the given path, else the environment default."""
+    if gate_controls is not None:
+        return gate_controls
+    return pathlib.Path(
+        os.environ.get("UNDERLINE_GATE_CONTROLS_ROOT", ROOT / "gate-controls")
+    )
+
 
 GATE_METRIC_KEY = {
     "silhouette_budget": "sil",
@@ -53,9 +56,11 @@ RUNTIME_BUDGET_ATTR = {
 }
 
 
-def _load_acceptance_profiles() -> dict[tuple[str, str], dict]:
+def _load_acceptance_profiles(
+    acceptance_profiles: pathlib.Path,
+) -> dict[tuple[str, str], dict]:
     """(motion_class, gate) → profile row (status, budget, hard_fail, …)."""
-    profiles = json.loads(ACCEPTANCE_PROFILES.read_text())["profiles"]
+    profiles = json.loads(acceptance_profiles.read_text())["profiles"]
     rows: dict[tuple[str, str], dict] = {}
     for motion_class, profile in profiles.items():
         for gate, row in profile["gates"].items():
@@ -65,10 +70,13 @@ def _load_acceptance_profiles() -> dict[tuple[str, str], dict]:
     return rows
 
 
-def _load_acceptance_status() -> dict[tuple[str, str], str]:
+def _load_acceptance_status(
+    acceptance_profiles: pathlib.Path,
+) -> dict[tuple[str, str], str]:
     """Build (motion_class, gate) → SEPARATED|UNSEPARATED|INAPPLICABLE."""
     return {
-        pair: row["status"] for pair, row in _load_acceptance_profiles().items()
+        pair: row["status"]
+        for pair, row in _load_acceptance_profiles(acceptance_profiles).items()
     }
 
 
@@ -110,11 +118,12 @@ def _worst_good_by_class() -> dict[str, dict[str, tuple[str, float]]]:
 
 def _separated_control_context(
     manifest_path: pathlib.Path,
+    acceptance_profiles: pathlib.Path,
 ) -> dict[tuple[str, str], dict[str, Any]]:
     """(motion_class, gate) → control metric and display metadata for derivation."""
     manifest = json.loads(manifest_path.read_text())
     promotions = {p["id"]: p for p in manifest["promotions"]}
-    profiles = _load_acceptance_profiles()
+    profiles = _load_acceptance_profiles(acceptance_profiles)
     out: dict[tuple[str, str], dict[str, Any]] = {}
     for (motion_class, gate), row in profiles.items():
         if row.get("status") != "SEPARATED":
@@ -225,15 +234,19 @@ def _assert_runtime_equivalence(
         raise SystemExit("\n".join(lines))
 
 
-def main() -> int:
+def main(gate_controls: pathlib.Path | None = None) -> int:
+    gc_root = _resolve_gate_controls_root(gate_controls)
+    gc_manifest = gc_root / "manifest.json"
+    acceptance_profiles = gc_root / "acceptance-profiles.json"
+
     policy = S.build_runtime_acceptance_policy(
-        profiles_path=ACCEPTANCE_PROFILES,
-        manifest_path=GC_MANIFEST,
+        profiles_path=acceptance_profiles,
+        manifest_path=gc_manifest,
     )
-    profiles = _load_acceptance_profiles()
-    status = _load_acceptance_status()
+    profiles = _load_acceptance_profiles(acceptance_profiles)
+    status = _load_acceptance_status(acceptance_profiles)
     worst = _worst_good_by_class()
-    controls = _separated_control_context(GC_MANIFEST)
+    controls = _separated_control_context(gc_manifest, acceptance_profiles)
 
     print(f"α-Budget derivation (α = {ALPHA})")
     print("Budget = ceil₄(G + α·(C − G)) for Separated pairs")

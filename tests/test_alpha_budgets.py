@@ -16,22 +16,40 @@ sys.path.insert(0, str(ROOT / "prototype" / "strip-coherence"))
 
 from pipeline.strip import ALPHA, derive_separated_budget  # noqa: E402
 from numeric_policy import canonical_metric  # noqa: E402
+import alpha_budgets as ab  # noqa: E402
 
 
-def _run_alpha_budgets(gate_controls: pathlib.Path) -> subprocess.CompletedProcess[str]:
-    env = {
-        **os.environ,
-        "PYTHONPATH": str(ROOT),
-        "UNDERLINE_GATE_CONTROLS_ROOT": str(gate_controls),
-    }
-    return subprocess.run(
-        [sys.executable, str(ROOT / "prototype/strip-coherence/alpha_budgets.py")],
-        cwd=ROOT,
-        env=env,
-        capture_output=True,
-        text=True,
-        check=False,
-    )
+class _CallResult:
+    """Mimics the subprocess.CompletedProcess fields the tests assert on."""
+
+    def __init__(self, returncode: int, stdout: str, stderr: str) -> None:
+        self.returncode = returncode
+        self.stdout = stdout
+        self.stderr = stderr
+
+
+def _run_alpha_budgets(
+    gate_controls: pathlib.Path, capsys: pytest.CaptureFixture[str]
+) -> _CallResult:
+    """In-process equivalent of spawning `alpha_budgets.py` as a child process.
+
+    Shares the session strip-read memoization installed by conftest.py instead of
+    spawning a child process that can't see it. `alpha_budgets.main` never catches
+    its own failures, so a blocked call surfaces as an uncaught `SystemExit` (the
+    script's own explicit checks) or `ValueError` (checks inside `pipeline.strip`
+    propagating up) — both map to the nonzero exit code a spawned process would
+    have produced, with the failure text carried on the exception itself rather
+    than a printed traceback.
+    """
+    try:
+        code = ab.main(gate_controls=gate_controls)
+    except (SystemExit, ValueError) as exc:
+        captured = capsys.readouterr()
+        message = exc.code if isinstance(exc, SystemExit) else None
+        text = message if isinstance(message, str) else str(exc)
+        return _CallResult(1, captured.out, captured.err + text)
+    captured = capsys.readouterr()
+    return _CallResult(code, captured.out, captured.err)
 
 
 def _gate_controls_copy(tmp_path: pathlib.Path) -> pathlib.Path:
@@ -63,7 +81,7 @@ def test_derive_separated_budget_matches_issue_28_tightest_pairs() -> None:
 
 
 def test_alpha_budgets_blocks_when_required_separated_promotion_not_active(
-    tmp_path: pathlib.Path,
+    tmp_path: pathlib.Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     gate_controls = _gate_controls_copy(tmp_path)
     manifest_path = gate_controls / "manifest.json"
@@ -73,14 +91,14 @@ def test_alpha_budgets_blocks_when_required_separated_promotion_not_active(
             promo["status"] = "PENDING_VERIFICATION"
             break
     manifest_path.write_text(json.dumps(doc, indent=2) + "\n")
-    result = _run_alpha_budgets(gate_controls)
+    result = _run_alpha_budgets(gate_controls, capsys)
     assert result.returncode != 0
     assert "not ACTIVE" in result.stdout + result.stderr
     assert "promo--walk--loop_closure_pass" in result.stdout + result.stderr
 
 
 def test_alpha_budgets_blocks_when_promotion_invalidated(
-    tmp_path: pathlib.Path,
+    tmp_path: pathlib.Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     gate_controls = _gate_controls_copy(tmp_path)
     manifest_path = gate_controls / "manifest.json"
@@ -90,27 +108,29 @@ def test_alpha_budgets_blocks_when_promotion_invalidated(
             promo["status"] = "INVALIDATED"
             break
     manifest_path.write_text(json.dumps(doc, indent=2) + "\n")
-    result = _run_alpha_budgets(gate_controls)
+    result = _run_alpha_budgets(gate_controls, capsys)
     assert result.returncode != 0
     assert "not ACTIVE" in result.stdout + result.stderr
 
 
 def test_alpha_budgets_blocks_when_profile_row_missing(
-    tmp_path: pathlib.Path,
+    tmp_path: pathlib.Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     gate_controls = _gate_controls_copy(tmp_path)
     profiles_path = gate_controls / "acceptance-profiles.json"
     doc = json.loads(profiles_path.read_text())
     del doc["profiles"]["walk"]["gates"]["loop_closure_pass"]
     profiles_path.write_text(json.dumps(doc, indent=2) + "\n")
-    result = _run_alpha_budgets(gate_controls)
+    result = _run_alpha_budgets(gate_controls, capsys)
     assert result.returncode != 0
     assert "missing Acceptance status for walk/loop_closure_pass" in (
         result.stdout + result.stderr
     )
 
 
-def test_alpha_budgets_blocks_missing_promotion(tmp_path: pathlib.Path) -> None:
+def test_alpha_budgets_blocks_missing_promotion(
+    tmp_path: pathlib.Path, capsys: pytest.CaptureFixture[str]
+) -> None:
     gate_controls = _gate_controls_copy(tmp_path)
     manifest_path = gate_controls / "manifest.json"
     doc = json.loads(manifest_path.read_text())
@@ -120,14 +140,14 @@ def test_alpha_budgets_blocks_missing_promotion(tmp_path: pathlib.Path) -> None:
         if promo["id"] != "promo--walk--loop_closure_pass"
     ]
     manifest_path.write_text(json.dumps(doc, indent=2) + "\n")
-    result = _run_alpha_budgets(gate_controls)
+    result = _run_alpha_budgets(gate_controls, capsys)
     assert result.returncode != 0
     output = result.stdout + result.stderr
     assert "missing Promotion" in output or "not ACTIVE" in output
 
 
 def test_alpha_budgets_blocks_mismatched_promotion_reference(
-    tmp_path: pathlib.Path,
+    tmp_path: pathlib.Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     gate_controls = _gate_controls_copy(tmp_path)
     profiles_path = gate_controls / "acceptance-profiles.json"
@@ -136,13 +156,13 @@ def test_alpha_budgets_blocks_mismatched_promotion_reference(
         "promo--walk--silhouette_budget"
     )
     profiles_path.write_text(json.dumps(doc, indent=2) + "\n")
-    result = _run_alpha_budgets(gate_controls)
+    result = _run_alpha_budgets(gate_controls, capsys)
     assert result.returncode != 0
     assert "alternate Promotion" in result.stdout + result.stderr
 
 
 def test_alpha_budgets_blocks_invalid_measurement_evidence(
-    tmp_path: pathlib.Path,
+    tmp_path: pathlib.Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     gate_controls = _gate_controls_copy(tmp_path)
     manifest_path = gate_controls / "manifest.json"
@@ -155,7 +175,7 @@ def test_alpha_budgets_blocks_invalid_measurement_evidence(
             promo["measurement_path"] = bad_rel
             break
     manifest_path.write_text(json.dumps(doc, indent=2) + "\n")
-    result = _run_alpha_budgets(gate_controls)
+    result = _run_alpha_budgets(gate_controls, capsys)
     bad_path.unlink(missing_ok=True)
     assert result.returncode != 0
     assert "invalid Measurement evidence" in result.stdout + result.stderr
@@ -195,14 +215,14 @@ def test_alpha_budgets_blocks_invalid_measurement_evidence(
     ],
 )
 def test_alpha_budgets_blocks_runtime_projection_mismatch(
-    tmp_path: pathlib.Path, mutator, needle: str
+    tmp_path: pathlib.Path, mutator, needle: str, capsys: pytest.CaptureFixture[str]
 ) -> None:
     gate_controls = _gate_controls_copy(tmp_path)
     profiles_path = gate_controls / "acceptance-profiles.json"
     doc = json.loads(profiles_path.read_text())
     mutator(doc)
     profiles_path.write_text(json.dumps(doc, indent=2) + "\n")
-    result = _run_alpha_budgets(gate_controls)
+    result = _run_alpha_budgets(gate_controls, capsys)
     assert result.returncode != 0
     assert needle in result.stdout + result.stderr
 
