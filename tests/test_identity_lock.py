@@ -125,11 +125,32 @@ def test_schema_validates_structural_policy_palette_landmarks_and_grounded_ancho
     ]
     assert spec["motion_classes"]["walk"]["landmarks"] == expected_landmarks
     swing = spec["motion_classes"]["swing"]
+    assert swing["frame_size"] == [24, 24]
     assert swing["locks"][0]["id"] == "helmet_face"
     assert swing["locks"][0]["comparison"] == "registered-structure"
     assert swing["locks"][2]["comparison"] == "exact-occupancy"
     assert swing["locks"][2]["permitted_offsets"] == [[0, 0]]
-    assert swing["landmarks"] == expected_landmarks
+    swing_landmarks = [
+        {
+            "id": "lamp",
+            "canonical": [16, 4],
+            "palette_role": "amber-emission",
+            "max_distance": 2,
+        },
+        {
+            "id": "eye",
+            "canonical": [14, 7],
+            "palette_role": "dark-outline",
+            "max_distance": 1,
+        },
+        {
+            "id": "buckle",
+            "canonical": [15, 16],
+            "palette_role": "amber-emission",
+            "max_distance": 2,
+        },
+    ]
+    assert swing["landmarks"] == swing_landmarks
 
 
 def test_palette_role_ties_resolve_by_palette_file_order() -> None:
@@ -237,28 +258,30 @@ def test_swing_permitted_anchor_motion_passes() -> None:
     canonical = load_canonical_cells(IDENTITY_PNG, (16, 24))
     frames: list[list[list[tuple[int, int, int] | None]]] = []
     for _ in range(4):
-        shifted = copy.deepcopy(canonical)
-        for y in range(1, 11):
-            for x in range(5, 13):
-                shifted[y - 1][x] = canonical[y][x]
+        shifted = _embed_canonical_on_swing_canvas(canonical)
+        for y in range(2, 12):
+            for x in range(9, 17):
+                shifted[y - 1][x] = canonical[y - SWING_CANONICAL_ORIGIN[1]][
+                    x - SWING_CANONICAL_ORIGIN[0]
+                ]
         frames.append(shifted)
     result = evaluate_identity_lock(frames, "swing")
     assert result.outcome == "PASS"
 
 
 def test_swing_registered_anchor_allows_non_identical_rgb() -> None:
-    frames = _canonical_frames()
-    _set_cell(frames, 0, 7, 4, (47, 96, 117))
+    frames = _swing_frames()
+    _set_cell(frames, 0, 11, 4, (47, 96, 117))
     result = evaluate_identity_lock(frames, "swing")
     assert result.outcome == "PASS"
     assert result.per_frame[0].check_results["helmet_face"]["palette_role_distance"] == 0.0
 
 
 def test_swing_boot_rgb_change_passes_exact_occupancy() -> None:
-    frames = _canonical_frames()
-    original = frames[0][23][4]
+    frames = _swing_frames()
+    original = frames[0][23][8]
     assert original is not None
-    _set_cell(frames, 0, 4, 23, (original[0] ^ 1, original[1], original[2]))
+    _set_cell(frames, 0, 8, 23, (original[0] ^ 1, original[1], original[2]))
     result = evaluate_identity_lock(frames, "swing")
     assert result.outcome == "PASS"
     boots = result.per_frame[0].check_results["boots"]
@@ -268,12 +291,12 @@ def test_swing_boot_rgb_change_passes_exact_occupancy() -> None:
 
 def test_swing_boot_occupancy_change_fails() -> None:
     canonical = load_canonical_cells(IDENTITY_PNG, (16, 24))
-    frames = _canonical_frames()
+    frames = _swing_frames()
     for y in range(21, 24):
         for x in range(3, 15):
             cell = canonical[y][x]
             if cell is not None:
-                _set_cell(frames, 0, x, y, None)
+                _set_cell(frames, 0, x + SWING_CANONICAL_ORIGIN[0], y, None)
                 break
         else:
             continue
@@ -286,9 +309,9 @@ def test_swing_boot_occupancy_change_fails() -> None:
 
 
 def test_missing_eye_landmark_fails() -> None:
-    frames = _canonical_frames()
+    frames = _swing_frames()
     for y in range(6, 9):
-        for x in range(9, 12):
+        for x in range(13, 16):
             if frames[0][y][x] is not None:
                 _set_cell(frames, 0, x, y, (240, 163, 58))
     result = evaluate_identity_lock(frames, "swing")
@@ -302,23 +325,23 @@ def test_missing_eye_landmark_fails() -> None:
 
 
 def test_swing_excess_offset_fails() -> None:
-    frames = _canonical_frames()
+    frames = _swing_frames()
     for frame_index in range(4):
-        for y in range(1, 11):
-            for x in range(5, 13):
+        for y in range(2, 12):
+            for x in range(9, 17):
                 frames[frame_index][y][x] = frames[frame_index][y - 2][x]
     result = evaluate_identity_lock(frames, "swing")
     assert result.outcome == "FAIL"
 
 
 def test_swing_scale_relation_change_fails() -> None:
-    frames = _canonical_frames()
+    frames = _swing_frames()
     for frame_index in range(4):
-        for y in range(1, 11):
-            for x in range(5, 13):
+        for y in range(2, 12):
+            for x in range(9, 17):
                 frames[frame_index][y][x] = frames[frame_index][y - 1][x]
         for y in range(15, 19):
-            for x in range(4, 13):
+            for x in range(8, 17):
                 frames[frame_index][y][x] = frames[frame_index][y + 2][x]
     result = evaluate_identity_lock(frames, "swing")
     assert result.outcome == "FAIL"
@@ -793,7 +816,7 @@ def test_identity_roles_reproduce_precleanup_raster(tmp_path: Path) -> None:
 def test_evaluate_identity_lock_resolves_the_single_canonical_identity() -> None:
     frames = _canonical_frames()
     walk = evaluate_identity_lock(frames, "walk")
-    swing = evaluate_identity_lock(frames, "swing")
+    swing = evaluate_identity_lock(_swing_frames(), "swing")
     assert walk.outcome == "PASS"
     assert swing.outcome == "PASS"
     assert walk.identity_sha256 == CANONICAL_IDENTITY_SHA
@@ -1028,6 +1051,114 @@ def test_canonical_read_outside_anchor_raises_identity_lock_error(
             "synthetic_wide",
             spec_path=spec_path,
         )
+
+
+SWING_FRAME_SIZE = (24, 24)
+SWING_CANONICAL_ORIGIN = (4, 0)
+SWING_SHIFTED_RECTANGLES = {
+    "helmet_face": {"x0": 9, "x1": 16, "y0": 1, "y1": 10},
+    "belt_core": {"x0": 8, "x1": 16, "y0": 15, "y1": 18},
+    "boots": {"x0": 7, "x1": 18, "y0": 21, "y1": 23},
+}
+SWING_SHIFTED_LANDMARKS = {
+    "lamp": [16, 4],
+    "eye": [14, 7],
+    "buckle": [15, 16],
+}
+
+
+def _embed_canonical_on_swing_canvas(
+    canonical: list[list[tuple[int, int, int] | None]],
+    *,
+    origin_dx: int = SWING_CANONICAL_ORIGIN[0],
+    origin_dy: int = SWING_CANONICAL_ORIGIN[1],
+) -> list[list[tuple[int, int, int] | None]]:
+    frame_w, frame_h = SWING_FRAME_SIZE
+    wide_frame: list[list[tuple[int, int, int] | None]] = [
+        [None for _ in range(frame_w)] for _ in range(frame_h)
+    ]
+    for y in range(frame_h):
+        for x in range(16):
+            wide_frame[y][x + origin_dx] = canonical[y][x]
+    return wide_frame
+
+
+def _swing_frames() -> list[list[list[tuple[int, int, int] | None]]]:
+    canonical = load_canonical_cells(IDENTITY_PNG, (16, 24))
+    embedded = _embed_canonical_on_swing_canvas(canonical)
+    return [copy.deepcopy(embedded) for _ in range(4)]
+
+
+def test_swing_lock_spec_has_24x24_frame_size_and_shifted_geometry() -> None:
+    spec = load_identity_lock_spec(DEFAULT_IDENTITY_LOCKS_PATH)
+    validate_identity_lock_spec(spec)
+    swing = spec["motion_classes"]["swing"]
+    assert swing["frame_size"] == [24, 24]
+    by_id = {lock["id"]: lock for lock in swing["locks"]}
+    for lock_id, rectangle in SWING_SHIFTED_RECTANGLES.items():
+        assert by_id[lock_id]["rectangle"] == rectangle
+    landmarks = {entry["id"]: entry["canonical"] for entry in swing["landmarks"]}
+    assert landmarks == SWING_SHIFTED_LANDMARKS
+
+
+def test_walk_motion_class_unchanged_after_swing_canvas_adoption() -> None:
+    spec = load_identity_lock_spec(DEFAULT_IDENTITY_LOCKS_PATH)
+    walk = spec["motion_classes"]["walk"]
+    assert "frame_size" not in walk
+    assert walk["locks"][0]["rectangle"] == {"x0": 0, "x1": 15, "y0": 1, "y1": 18}
+    assert walk["landmarks"] == [
+        {
+            "id": "lamp",
+            "canonical": [12, 4],
+            "palette_role": "amber-emission",
+            "max_distance": 2,
+        },
+        {
+            "id": "eye",
+            "canonical": [10, 7],
+            "palette_role": "dark-outline",
+            "max_distance": 1,
+        },
+        {
+            "id": "buckle",
+            "canonical": [11, 16],
+            "palette_role": "amber-emission",
+            "max_distance": 2,
+        },
+    ]
+
+
+def test_frame_size_docs_scope_swing_exception() -> None:
+    art_direction = (ROOT / "docs" / "first-room-art-direction.md").read_text(
+        encoding="utf-8"
+    )
+    assert "16×24 logical Cells (swing uses a 24×24 action" in art_direction
+
+    contract = (ROOT / "docs" / "strip-acquisition-contract.md").read_text(
+        encoding="utf-8"
+    )
+    assert "exact `16×24` RGBA (swing: `24×24`)" in contract
+
+    strip_prompt = (ROOT / "prompts" / "production" / "animation-strip.md").read_text(
+        encoding="utf-8"
+    )
+    assert "16×24 logical Cells (swing: 24×24)" in strip_prompt
+    assert "16×24 Frames — swing 24×24" in strip_prompt
+    assert "16×24 logical pixel grid (swing: 24×24)" in strip_prompt
+
+
+def test_adr_0003_indexed_with_required_sections() -> None:
+    adr_path = ROOT / "docs" / "adr" / "0003-swing-action-canvas.md"
+    readme = (ROOT / "docs" / "adr" / "README.md").read_text(encoding="utf-8")
+    text = adr_path.read_text(encoding="utf-8")
+    assert adr_path.is_file()
+    assert "0003-swing-action-canvas.md" in readme
+    for section in ("## Status", "## Context", "## Decision", "## Consequences"):
+        assert section in text
+    assert "24×24" in text
+    assert "32×24" in text
+    assert "overlay" in text
+    assert "by construction" in text.lower()
 
 
 def test_adr_0002_indexed_with_required_sections() -> None:

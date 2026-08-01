@@ -16,6 +16,7 @@ not delete history.
 |-----|-------|
 | [0001](0001-two-scale-mining-grid.md) | Two-scale mining grid (16×16 Rendering Tile + 32×32 Mineable Block) |
 | [0002](0002-palette-exact-canonical-identity.md) | Palette-exact canonical identity (expand–contract migration, contracted) |
+| [0003](0003-swing-action-canvas.md) | Swing action canvas (24×24, canonical origin at column 4) |
 
 Earlier decisions settled only in `docs/strip-acquisition-contract.md` or
 `prototype/strip-coherence/NOTES.md` should be promoted here when they start
