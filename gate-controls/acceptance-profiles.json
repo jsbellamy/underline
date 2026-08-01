@@ -38,6 +38,11 @@
           "budget": 0.07,
           "evidence_attempt": "idle--min_pair_cohort_pass--016",
           "rationale": "best near-miss 0.0698 still passes under four-place ceiling quantization"
+        },
+        "static_silhouette_pass": {
+          "status": "INAPPLICABLE",
+          "budget": null,
+          "note": "no budget has been derived for the class"
         }
       }
     },
@@ -80,6 +85,11 @@
           "hard_fail": 0.1371,
           "active_promotion": "promo--blob_idle--min_pair_cohort_pass",
           "control_attempt": "blob_idle--min_pair_cohort_pass--005"
+        },
+        "static_silhouette_pass": {
+          "status": "INAPPLICABLE",
+          "budget": null,
+          "note": "no budget has been derived for the class"
         }
       }
     },
@@ -121,6 +131,11 @@
           "budget": 0.12,
           "evidence_attempt": "emissive--min_pair_cohort_pass--006",
           "rationale": "best near-miss couples min-pair and silhouette failures at shared flame-motion geometry"
+        },
+        "static_silhouette_pass": {
+          "status": "INAPPLICABLE",
+          "budget": null,
+          "note": "no budget has been derived for the class"
         }
       }
     },
@@ -162,6 +177,11 @@
           "budget": 0.17,
           "evidence_attempt": "walk--min_pair_cohort_pass--003",
           "rationale": "shared 0.17 f3↔f0 boundary formally incompatible with isolating from loop_closure_pass"
+        },
+        "static_silhouette_pass": {
+          "status": "INAPPLICABLE",
+          "budget": null,
+          "note": "no budget has been derived for the class"
         }
       }
     },
@@ -210,6 +230,11 @@
           "budget": null,
           "hard_fail": null,
           "rationale": "class-applicable binary Gate; undecidable on measured airborne Strips (sharpness floor) so no isolatable control; when None caveat, when False agent Review, when True pass"
+        },
+        "static_silhouette_pass": {
+          "status": "INAPPLICABLE",
+          "budget": null,
+          "note": "no budget has been derived for the class"
         }
       }
     },
@@ -248,6 +273,10 @@
           "status": "INAPPLICABLE",
           "budget": null,
           "note": "one-shot swing; max_min_pair=None"
+        },
+        "static_silhouette_pass": {
+          "status": "UNSEPARATED",
+          "budget": 0.86
         }
       }
     }

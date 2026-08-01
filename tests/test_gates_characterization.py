@@ -28,24 +28,24 @@ MOTION_CLASS = {
 }
 
 PINNED = {
-    "01-miner-idle": {"pass": True, "worst_sil": 0.095, "loop": 0.147, "drift": 0.073},
-    "02-slime-idle": {"pass": True, "worst_sil": 0.337, "loop": 0.330, "drift": 0.141},
-    "03-torch-flicker": {"pass": True, "worst_sil": 0.160, "loop": 0.130, "drift": 0.145},
-    "04-bat-flap": {"pass": True, "worst_sil": 0.644, "loop": 0.653, "drift": 0.145},
-    "05-miner-walk": {"pass": True, "worst_sil": 0.398, "loop": 0.143, "drift": 0.117},
-    "06-miner-swing": {"pass": True, "worst_sil": 0.565, "loop": 0.550, "drift": 0.179},
-    "07-NEG-palette-drift": {"pass": False, "worst_sil": 0.057, "loop": 0.043, "drift": 0.279},
-    "08-NEG-identity-drift": {"pass": False, "worst_sil": 0.602, "loop": 0.482, "drift": 0.218},
-    "22-NEG-airborne-identity": {"pass": False, "worst_sil": 0.652, "loop": 0.663, "drift": 0.636},
-    "23-NEG-swing-identity": {"pass": False, "worst_sil": 0.624, "loop": 0.624, "drift": 0.244},
-    "10-guard-idle": {"pass": True, "worst_sil": 0.024, "loop": 0.015, "drift": 0.077},
-    "11-dwarf-idle": {"pass": True, "worst_sil": 0.108, "loop": 0.000, "drift": 0.115},
-    "12-jelly-idle": {"pass": True, "worst_sil": 0.264, "loop": 0.202, "drift": 0.124},
-    "14-lantern-flicker": {"pass": True, "worst_sil": 0.115, "loop": 0.099, "drift": 0.073},
-    "17-wisp-float": {"pass": True, "worst_sil": 0.402, "loop": 0.461, "drift": 0.068},
-    "19-scout-walk": {"pass": True, "worst_sil": 0.099, "loop": 0.084, "drift": 0.033},
-    "20-axe-swing": {"pass": True, "worst_sil": 0.492, "loop": 0.522, "drift": 0.174},
-    "21-hammer-swing": {"pass": True, "worst_sil": 0.359, "loop": 0.388, "drift": 0.124},
+    "01-miner-idle": {"pass": True, "worst_sil": 0.095, "loop": 0.147, "drift": 0.073, "static_sil": 0.9911},
+    "02-slime-idle": {"pass": True, "worst_sil": 0.337, "loop": 0.330, "drift": 0.141, "static_sil": 0.9598},
+    "03-torch-flicker": {"pass": True, "worst_sil": 0.160, "loop": 0.130, "drift": 0.145, "static_sil": 0.9702},
+    "04-bat-flap": {"pass": True, "worst_sil": 0.644, "loop": 0.653, "drift": 0.145, "static_sil": 0.9462},
+    "05-miner-walk": {"pass": True, "worst_sil": 0.398, "loop": 0.143, "drift": 0.117, "static_sil": 0.9549},
+    "06-miner-swing": {"pass": False, "worst_sil": 0.565, "loop": 0.550, "drift": 0.179, "static_sil": 0.9099},
+    "07-NEG-palette-drift": {"pass": False, "worst_sil": 0.057, "loop": 0.043, "drift": 0.279, "static_sil": 0.9971},
+    "08-NEG-identity-drift": {"pass": False, "worst_sil": 0.602, "loop": 0.482, "drift": 0.218, "static_sil": 0.7812},
+    "22-NEG-airborne-identity": {"pass": False, "worst_sil": 0.652, "loop": 0.663, "drift": 0.636, "static_sil": 0.891},
+    "23-NEG-swing-identity": {"pass": False, "worst_sil": 0.624, "loop": 0.624, "drift": 0.244, "static_sil": 0.8051},
+    "10-guard-idle": {"pass": True, "worst_sil": 0.024, "loop": 0.015, "drift": 0.077, "static_sil": 1.0},
+    "11-dwarf-idle": {"pass": True, "worst_sil": 0.108, "loop": 0.000, "drift": 0.115, "static_sil": 0.9985},
+    "12-jelly-idle": {"pass": True, "worst_sil": 0.264, "loop": 0.202, "drift": 0.124, "static_sil": 0.9747},
+    "14-lantern-flicker": {"pass": True, "worst_sil": 0.115, "loop": 0.099, "drift": 0.073, "static_sil": 0.9855},
+    "17-wisp-float": {"pass": True, "worst_sil": 0.402, "loop": 0.461, "drift": 0.068, "static_sil": 0.9695},
+    "19-scout-walk": {"pass": True, "worst_sil": 0.099, "loop": 0.084, "drift": 0.033, "static_sil": 0.9811},
+    "20-axe-swing": {"pass": False, "worst_sil": 0.492, "loop": 0.522, "drift": 0.174, "static_sil": 0.9491},
+    "21-hammer-swing": {"pass": False, "worst_sil": 0.359, "loop": 0.388, "drift": 0.124, "static_sil": 0.9608},
 }
 
 DERIVED_BUDGETS = {
@@ -65,6 +65,7 @@ GATES = (
     "loop_closure_pass",
     "displacement_pass",
     "palette_drift_pass",
+    "static_silhouette_pass",
 )
 
 
@@ -79,12 +80,13 @@ def _corpus_layout() -> S.StripLayout:
     )
 
 
-def _metrics(result: S.IngestResult) -> tuple[bool, float, float, float]:
+def _metrics(result: S.IngestResult) -> tuple[bool, float, float, float, float]:
     coh = result.coherence
     worst_sil = max((r["frac"] for r in coh.get("silhouette_adjacent", [])), default=0.0)
     loop = (coh.get("loop_closure") or {}).get("frac", 0.0)
     drift = coh.get("worst_palette_drift", 0.0)
-    return result.pass_, worst_sil, loop, drift
+    static_sil = coh.get("static_silhouette_adjacent_max", 0.0)
+    return result.pass_, worst_sil, loop, drift, static_sil
 
 
 def _close(got: float, want: float) -> bool:
@@ -100,12 +102,15 @@ def test_ingest_strip_provider_characterization(sample_id: str) -> None:
         path, _corpus_layout(), motion_class=MOTION_CLASS[sample_id]
     )
     want = PINNED[sample_id]
-    got_pass, got_sil, got_loop, got_drift = _metrics(result)
+    got_pass, got_sil, got_loop, got_drift, got_static_sil = _metrics(result)
 
     assert got_pass == want["pass"], sample_id
     assert _close(got_sil, want["worst_sil"]), f"{sample_id} sil {got_sil} != {want['worst_sil']}"
     assert _close(got_loop, want["loop"]), f"{sample_id} loop {got_loop} != {want['loop']}"
     assert _close(got_drift, want["drift"]), f"{sample_id} drift {got_drift} != {want['drift']}"
+    assert _close(got_static_sil, want["static_sil"]), (
+        f"{sample_id} static_sil {got_static_sil} != {want['static_sil']}"
+    )
 
 
 def test_unknown_motion_class_raises() -> None:
