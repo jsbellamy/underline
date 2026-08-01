@@ -14,12 +14,16 @@ import pytest
 from scripts.extract_anchors import (
     Anchor,
     Span,
+    forecast_test_selection,
+    format_test_impact,
     main,
     markdown_section_span,
     parse_touches,
     python_symbol_spans,
     render,
+    write_paths_from_anchors,
 )
+from scripts.select_changed_tests import Selection, select_test_files
 
 MODULE = '''"""A module docstring."""
 
@@ -168,6 +172,159 @@ def test_a_create_entry_is_kept_without_requiring_an_anchor() -> None:
             note="prove the new seam",
         ),
     )
+
+
+_ACQUISITION_CONTROL_COMPANIONS = (
+    "tests/test_asset_acquire.py",
+    "tests/test_final_polish.py",
+    "tests/test_final_polish_cli.py",
+)
+
+_ISSUE_233_WRITE_PATHS = (
+    "acquisition-controls/legacy-bundles.json",
+    "pipeline/final_polish.py",
+    "pipeline/final_polish_cli.py",
+)
+
+
+def test_write_paths_exclude_read_roles_and_dedupe_modify_paths() -> None:
+    anchors = parse_touches(
+        "## Touches\n\n"
+        "- modify: `pipeline/final_polish.py` :: `initialize_bundle` — init\n"
+        "- modify: `pipeline/final_polish.py` :: `check_bundle` — check\n"
+        "- read: [authority] `pipeline/asset_acquire.py` :: `load_asset_attempts` — store\n"
+        "- create: `acquisition-controls/legacy-bundles.json` — allowlist\n"
+    )
+
+    assert write_paths_from_anchors(anchors) == (
+        "acquisition-controls/legacy-bundles.json",
+        "pipeline/final_polish.py",
+    )
+
+
+def test_forecast_selected_lists_sorted_test_paths() -> None:
+    anchors = parse_touches(
+        "## Touches\n\n"
+        "- modify: `scripts/extract_anchors.py` :: `render` — forecast\n"
+        "- modify: `tests/test_extract_anchors.py` :: `test_forecast_selected_lists_sorted_test_paths` — pin\n"
+    )
+    existing = {
+        "tests/test_extract_anchors.py",
+        "tests/test_select_changed_tests.py",
+    }
+
+    selection = forecast_test_selection(anchors, existing)
+
+    assert selection == select_test_files(
+        ["scripts/extract_anchors.py", "tests/test_extract_anchors.py"],
+        existing,
+    )
+    assert selection.kind == "selected"
+    assert selection.files == ("tests/test_extract_anchors.py",)
+
+
+def test_forecast_whole_suite_reports_the_selector_reason() -> None:
+    anchors = parse_touches(
+        "## Touches\n\n- create: `mystery/new-control.json` — unknown top-level file\n"
+    )
+
+    selection = forecast_test_selection(anchors, set(_ACQUISITION_CONTROL_COMPANIONS))
+
+    assert selection.kind == "whole_suite"
+    assert "no mapping rule" in selection.reason
+
+
+def test_forecast_nothing_when_the_manifest_has_only_read_paths() -> None:
+    anchors = parse_touches(
+        "## Touches\n\n"
+        "- read: [authority] `scripts/select_changed_tests.py` :: `select_test_files` — mapping\n"
+    )
+
+    selection = forecast_test_selection(anchors, {"tests/test_select_changed_tests.py"})
+
+    assert selection == Selection(kind="nothing", reason="no changed files")
+
+
+def test_format_test_impact_selected_lists_sorted_paths() -> None:
+    output = format_test_impact(
+        Selection(
+            kind="selected",
+            reason="mapped from the changed-file set",
+            files=("tests/test_b.py", "tests/test_a.py"),
+        )
+    )
+
+    assert "--- planned test selection: selected" in output
+    assert "tests/test_a.py" in output
+    assert "tests/test_b.py" in output
+    assert output.index("tests/test_a.py") < output.index("tests/test_b.py")
+
+
+def test_format_test_impact_whole_suite_includes_the_reason() -> None:
+    reason = (
+        "mystery/new-control.json has no mapping rule, "
+        "so the selection widens to the whole suite"
+    )
+    output = format_test_impact(Selection(kind="whole_suite", reason=reason))
+
+    assert "--- planned test selection: whole_suite" in output
+    assert reason in output
+
+
+def test_format_test_impact_nothing_includes_the_reason() -> None:
+    output = format_test_impact(Selection(kind="nothing", reason="no changed files"))
+
+    assert "--- planned test selection: nothing" in output
+    assert "no changed files" in output
+
+
+def test_render_appends_a_read_only_test_impact_forecast() -> None:
+    anchors = parse_touches(
+        "## Touches\n\n"
+        "- modify: `scripts/extract_anchors.py` :: `render` — forecast\n"
+    )
+    existing = {"tests/test_extract_anchors.py", "tests/test_select_changed_tests.py"}
+    source = 'def render() -> str:\n    return ""\n'
+
+    output = render(
+        anchors,
+        {"scripts/extract_anchors.py": source},
+        test_impact=forecast_test_selection(anchors, existing),
+    )
+
+    assert "=== modify scripts/extract_anchors.py :: render" in output
+    assert "--- planned test selection: selected" in output
+    assert "tests/test_extract_anchors.py" in output
+
+
+def test_a_create_path_participates_in_the_forecast_before_it_exists() -> None:
+    anchors = parse_touches(
+        "## Touches\n\n"
+        "- create: `acquisition-controls/legacy-bundles.json` — C5 allowlist\n"
+    )
+
+    selection = forecast_test_selection(anchors, set(_ACQUISITION_CONTROL_COMPANIONS))
+
+    assert selection.kind == "selected"
+    assert selection.files == _ACQUISITION_CONTROL_COMPANIONS
+
+
+def test_issue_233_representative_write_set_selects_acquisition_companions() -> None:
+    selection = select_test_files(
+        list(_ISSUE_233_WRITE_PATHS),
+        existing_tests={
+            *_ACQUISITION_CONTROL_COMPANIONS,
+            "tests/test_strip.py",
+        },
+        test_sources={
+            "tests/test_final_polish.py": (
+                'text = (ROOT / "docs" / "strip-acquisition-contract.md").read_text()'
+            ),
+        },
+    )
+
+    assert selection.kind == "selected"
+    assert selection.files == _ACQUISITION_CONTROL_COMPANIONS
 
 
 def test_a_note_containing_backticks_does_not_become_a_symbol() -> None:

@@ -186,6 +186,49 @@ def test_issue_tracker_points_to_asset_slice_constraint() -> None:
     assert "docs/agents/issue-implementer.md" in normalized
 
 
+def test_issue_tracker_requires_anchor_preflight_test_impact_inspection() -> None:
+    text = ISSUE_TRACKER.read_text()
+    touches = text.split("## Writing `## Touches`")[1].split("## When a skill")[0]
+    normalized = _collapse_whitespace(touches)
+    assert "planned test selection" in normalized
+    assert "npm run agents:anchors" in normalized or "agents:anchors" in normalized
+    assert "companion" in normalized.lower()
+
+
+def test_issue_tracker_requires_focused_proof_and_test_changed_gate() -> None:
+    text = ISSUE_TRACKER.read_text()
+    touches = text.split("## Writing `## Touches`")[1].split("## When a skill")[0]
+    normalized = _collapse_whitespace(touches)
+    assert "test:changed" in normalized
+    assert "focused" in normalized.lower() or "per-claim" in normalized.lower()
+    assert "CI" in touches or "ci" in normalized.lower()
+
+
+def test_issue_implementer_step4_runs_focused_proof_tests_before_test_changed() -> None:
+    text = ISSUE_IMPLEMENTER.read_text()
+    step4 = text.split("4. Implement test-first")[1].split("5. Before publishing")[0]
+    normalized = _collapse_whitespace(step4)
+    assert "focused" in normalized.lower() or "Proof" in step4
+    assert "test:changed" in normalized
+    assert "tail" in normalized.lower()
+
+
+def test_issue_implementer_step4_forbids_truncating_diagnostic_test_output() -> None:
+    text = ISSUE_IMPLEMENTER.read_text()
+    step4 = text.split("4. Implement test-first")[1].split("5. Before publishing")[0]
+    normalized = _collapse_whitespace(step4)
+    assert "traceback" in normalized.lower()
+    assert "tail" in normalized.lower()
+
+
+def test_issue_implementer_completion_matrix_records_whole_suite_selector_reason() -> None:
+    text = ISSUE_IMPLEMENTER.read_text()
+    step5 = text.split("5. Before publishing")[1].split("6. Commit only")[0]
+    normalized = _collapse_whitespace(step5)
+    assert "whole_suite" in normalized or "whole suite" in normalized.lower()
+    assert "selector reason" in normalized.lower() or "selection widens" in normalized.lower()
+
+
 def test_agents_md_names_completion_and_asset_slice_rules() -> None:
     text = AGENTS_MD.read_text()
     normalized = _collapse_whitespace(text)

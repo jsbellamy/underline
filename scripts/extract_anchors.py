@@ -23,7 +23,12 @@ import sys
 from dataclasses import dataclass
 from typing import Iterable, Mapping, Sequence
 
+from scripts.select_changed_tests import Selection, select_test_files
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
+TESTS_DIR = ROOT / "tests"
+
+_WRITE_ROLES = frozenset({"modify", "create", "add", "delete"})
 
 _ANCHOR = re.compile(
     r"^-\s+(?P<role>read|modify|create|add|delete)\s*:\s*"
@@ -100,6 +105,55 @@ def parse_touches(issue_body: str) -> tuple[Anchor, ...]:
         )
 
     return tuple(anchors)
+
+
+def write_paths_from_anchors(anchors: Sequence[Anchor]) -> tuple[str, ...]:
+    """Return the sorted, deduplicated write paths declared in `anchors`.
+
+    `read:` entries are context only; `modify:`, `create:`, `add:`, and
+    `delete:` entries are the planned change set the local gate forecasts.
+    """
+    return tuple(
+        sorted({anchor.path for anchor in anchors if anchor.role in _WRITE_ROLES})
+    )
+
+
+def forecast_test_selection(
+    anchors: Sequence[Anchor],
+    existing_tests: Iterable[str],
+    test_sources: Mapping[str, str] | None = None,
+) -> Selection:
+    """Forecast which tests the manifest write set would select.
+
+    Read-only: reuses `select_test_files` and never inspects git or the working
+    tree diff.
+    """
+    return select_test_files(
+        write_paths_from_anchors(anchors),
+        existing_tests,
+        test_sources,
+    )
+
+
+def format_test_impact(selection: Selection) -> str:
+    """Render the deterministic planned-test-selection footer section."""
+    lines = [f"--- planned test selection: {selection.kind}"]
+    if selection.kind == "selected":
+        lines.extend(f"      {path}" for path in sorted(selection.files))
+    else:
+        lines.append(f"      {selection.reason}")
+    return "\n".join(lines)
+
+
+def _existing_test_files(tests_dir: pathlib.Path, root: pathlib.Path) -> set[str]:
+    return {p.relative_to(root).as_posix() for p in tests_dir.glob("test_*.py")}
+
+
+def _test_sources(tests_dir: pathlib.Path, root: pathlib.Path) -> dict[str, str]:
+    return {
+        p.relative_to(root).as_posix(): p.read_text(encoding="utf-8")
+        for p in tests_dir.glob("test_*.py")
+    }
 
 
 def _split_symbols_and_note(rest: str) -> tuple[tuple[str, ...], str]:
@@ -272,6 +326,7 @@ def render(
     sources: Mapping[str, str],
     *,
     unavailable: Mapping[str, str] | None = None,
+    test_impact: Selection | None = None,
 ) -> str:
     """Render every anchor as numbered source under a heading naming it."""
     blocks: list[str] = []
@@ -310,6 +365,8 @@ def render(
     if misses:
         footer.append("--- unresolved text anchors or entries without readable source:")
         footer.extend(f"      {miss}" for miss in misses)
+    if test_impact is not None:
+        footer.append(format_test_impact(test_impact))
 
     return "\n".join([*blocks, *footer])
 
@@ -388,7 +445,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 1
 
     sources, unavailable = _load_sources(anchors)
-    print(render(anchors, sources, unavailable=unavailable))
+    existing = _existing_test_files(TESTS_DIR, ROOT)
+    test_impact = forecast_test_selection(
+        anchors, existing, _test_sources(TESTS_DIR, ROOT)
+    )
+    print(render(anchors, sources, unavailable=unavailable, test_impact=test_impact))
     return 0
 
 

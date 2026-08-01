@@ -49,6 +49,22 @@ catches it are one seam; splitting them across the manifest boundary is how a
 slice ships a library change that crashes the CLI even when the exception type
 itself did not change.
 
+Before publishing an agent-ready issue, run
+`npm run --silent agents:anchors -- --issue <N>` and inspect the appended
+`planned test selection` section. It forecasts the local `test:changed` gate
+from the manifest's `modify:`, `create:`, `add:`, and `delete:` paths only —
+`read:` paths are context, not planned changes. When the forecast is `selected`,
+every listed companion suite belongs in `## Touches` as `modify:` or `read:`.
+When it is `whole_suite`, either narrow the write set, add the missing companion
+tests to the manifest, or state in `## Proof` that whole-suite local evidence is
+deliberate. Do not publish a manifest whose forecast surprises you at dispatch.
+
+Each Contract claim's `## Proof` mapping names its focused test node, test file,
+or non-test evidence command. Required local validation is stated once as
+`npm run test:changed`. Include `npm test` only when the issue deliberately
+requires whole-suite local evidence; CI (`.github/workflows/ci.yml`) remains
+owner of the unconditional full suite on every PR.
+
 ## When a skill says "publish to the issue tracker"
 
 Create a new issue with `gh issue create`. Put long-form artifacts in `docs/` and
