@@ -844,6 +844,7 @@ def _validate_animation_provenance_record(
                 expected_edit_source_sha = expected_image_edit_source_sha256(
                     identity_doc,
                     root=_REPO_ROOT,
+                    motion_class=motion_class,
                 )
             except IdentityLockError as exc:
                 reject(str(exc), "missing_identity_authority")

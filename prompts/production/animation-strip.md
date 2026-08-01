@@ -27,7 +27,7 @@ Every production animation Strip must declare and honor:
 | Gutter | 2 full magenta logical Cells between each Frame |
 | Background key | Flat magenta `#FF00FF` everywhere outside Frames and gutters |
 | Layout | One horizontal row — no margins, labels, numbers, or extra rows |
-| Pitch | `frame_w + gutter` = 18 logical Cells stride (16 + 2) |
+| Pitch | `frame_w + gutter` logical Cells stride — 18 for 16×24 classes (16 + 2), 26 for swing (24 + 2) |
 
 Logical Cells are flat square blocks at provider scale — no anti-aliasing,
 blur, gradient, or dithering within a Cell.
@@ -111,18 +111,26 @@ does **not** upscale `identity.png`, and does **not** construct a four-copy stri
 ```bash
 npm run strip:polish -- seed \
   --identity-declaration assets/first-room/dwarf/identity.json \
-  --out <seed.png> [--json]
+  --motion-class swing --out <seed.png> [--json]
 ```
+
+For walk and every 16×24 Motion class, omit `--motion-class` — the command
+emits the uniform magenta-pad seed byte-for-byte as before. For swing, pass
+`--motion-class swing` to build a 24-Cell-wide action canvas: each idle Frame
+block from `generation_source` is copied pixel-exact into columns 4–19 of a
+24-Cell Frame (canonical origin `(4, 0)`), with exact `#FF00FF` in the four
+magenta Cell columns on each side — the arc's room for the provider edit.
 
 This command:
 
 1. Loads `assets/first-room/dwarf/identity.json`.
 2. Verifies `identity_png` is a 16×24 Release Frame (sanity check only).
 3. Writes `generation_source` → `<seed.png>` with the declared `seed_pad_px`
-   transform (dwarf: 64 px `#FF00FF` border around
-   `assets/first-room/dwarf/idle/provider/source.png`; interior unchanged).
-4. Emits JSON including `generation_source_sha256` (idle interior binding) and
-   `sha256` (padded seed digest — must match `edit_source_sha256` in provenance).
+   transform (dwarf: 64 px `#FF00FF` border around the interior; swing widens
+   the interior to four 24×24 logical Frames before padding).
+4. Emits JSON including `generation_source_sha256` (idle interior binding),
+   `motion_class` when resolved, `dimensions`, and `sha256` (padded seed digest —
+   must match `edit_source_sha256` in provenance for that Motion class).
 
 The output `<seed.png>` is already a four-Frame idle strip. Image-edit prompts
 for walk and swing describe editing **that canvas** — changing legs/boots (walk)
@@ -130,7 +138,8 @@ or arms/pickaxe/torso lean (swing) while locked regions stay fixed.
 
 ### Image-edit acquisition order
 
-1. Run the seed command above to produce `<seed.png>`.
+1. Run the seed command above to produce `<seed.png>` — for swing, include
+   `--motion-class swing` so the canvas is the 24-Cell action canvas.
 2. Submit `<seed.png>` to the provider as the **image-edit base** (edit source) —
    the image being edited. Do **not** generate a new image from the prompt alone.
    Also supply `identity.png` only if the provider workflow needs a separate
@@ -140,11 +149,13 @@ or arms/pickaxe/torso lean (swing) while locked regions stay fixed.
    - `--identity-reference assets/first-room/dwarf/identity.png` (16×24 anchor)
 4. **Forbid** fresh text-to-image generation for walk and swing.
 5. Record the padded seed digest (`sha256` from `seed --json`) as
-   `edit_source_sha256` in every image-edit Attempt’s provenance. That digest
-   must equal the `seed_pad_px` transform of `identity.json` →
-   `generation_source` (not raw `generation_source.sha256`, which remains the
-   idle interior binding). `init` and `/2` `check`/`finalize` reject any other
-   digest with `edit_source_not_generation_source`.
+   `edit_source_sha256` in every image-edit Attempt’s provenance — walk and
+   other 16×24 classes use the seed without `--motion-class`; swing uses
+   `seed --motion-class swing` and records that class's digest. The digest must
+   equal the `seed_pad_px` transform of `identity.json` → `generation_source`
+   for the bundle's Motion class (not raw `generation_source.sha256`, which
+   remains the idle interior binding). `init` and `/2` `check`/`finalize`
+   reject any other digest with `edit_source_not_generation_source`.
 6. Run Identity Lock only after provider recovery has produced logical Frames.
 7. Generate **sequential immutable Attempts** until one passes provenance,
    automatic Identity Lock, coherence Gates, polish, and visual audit on the

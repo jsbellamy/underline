@@ -1641,16 +1641,80 @@ def _parse_seed_pad_px(raw: object) -> int:
     return raw
 
 
-def magenta_pad_generation_source_png(
+_ANCHOR_FRAME_W = 16
+_ANCHOR_FRAME_H = 24
+_DEFAULT_FRAME_COUNT = 4
+
+
+def _derive_generation_source_cell_px(
+    gen_w: int,
+    *,
+    frame_count: int = _DEFAULT_FRAME_COUNT,
+    anchor_frame_w: int = _ANCHOR_FRAME_W,
+) -> int:
+    stride_cells = frame_count * anchor_frame_w
+    if gen_w % stride_cells != 0:
+        raise IdentityLockError(
+            "generation source width is not divisible by frame_count * anchor frame_w"
+        )
+    return gen_w // stride_cells
+
+
+def _widened_action_canvas_interior_png_bytes(
     generation_source_png_bytes: bytes,
-    seed_pad_px: int,
+    motion_class: str,
 ) -> bytes:
-    """Return a PNG whose border ring is exact transport magenta and interior matches source."""
-    pad_px = _parse_seed_pad_px(seed_pad_px)
+    """Build a class-wide interior by pixel-exact block copy from generation_source."""
+    geometry = resolve_class_frame_geometry(motion_class)
+    if geometry.frame_w <= _ANCHOR_FRAME_W:
+        return generation_source_png_bytes
+
     try:
         with Image.open(BytesIO(generation_source_png_bytes)) as generation_source:
             source_rgba = generation_source.convert("RGBA")
             gen_w, gen_h = source_rgba.size
+    except UnidentifiedImageError as exc:
+        raise IdentityLockError("generation source must be a readable PNG") from exc
+
+    cell_px = _derive_generation_source_cell_px(gen_w)
+    source_block_w = _ANCHOR_FRAME_W * cell_px
+    dest_block_w = geometry.frame_w * cell_px
+    origin_x_px = geometry.canonical_origin[0] * cell_px
+    interior_w = _DEFAULT_FRAME_COUNT * dest_block_w
+    interior = Image.new(
+        "RGBA",
+        (interior_w, gen_h),
+        (*TRANSPORT_MAGENTA, 255),
+    )
+    for block_index in range(_DEFAULT_FRAME_COUNT):
+        src_x0 = block_index * source_block_w
+        src_box = (src_x0, 0, src_x0 + source_block_w, gen_h)
+        dest_x0 = block_index * dest_block_w + origin_x_px
+        interior.paste(source_rgba.crop(src_box), (dest_x0, 0))
+
+    out_buf = BytesIO()
+    interior.save(out_buf, format="PNG")
+    return out_buf.getvalue()
+
+
+def magenta_pad_generation_source_png(
+    generation_source_png_bytes: bytes,
+    seed_pad_px: int,
+    *,
+    motion_class: str | None = None,
+) -> bytes:
+    """Return a PNG whose border ring is exact transport magenta and interior matches source."""
+    pad_px = _parse_seed_pad_px(seed_pad_px)
+    interior_bytes = (
+        _widened_action_canvas_interior_png_bytes(generation_source_png_bytes, motion_class)
+        if motion_class is not None
+        and resolve_class_frame_geometry(motion_class).frame_w > _ANCHOR_FRAME_W
+        else generation_source_png_bytes
+    )
+    try:
+        with Image.open(BytesIO(interior_bytes)) as interior_image:
+            interior_rgba = interior_image.convert("RGBA")
+            gen_w, gen_h = interior_rgba.size
     except UnidentifiedImageError as exc:
         raise IdentityLockError("generation source must be a readable PNG") from exc
 
@@ -1661,7 +1725,7 @@ def magenta_pad_generation_source_png(
         (out_w, out_h),
         (*TRANSPORT_MAGENTA, 255),
     )
-    padded.paste(source_rgba, (pad_px, pad_px))
+    padded.paste(interior_rgba, (pad_px, pad_px))
     out_buf = BytesIO()
     padded.save(out_buf, format="PNG")
     return out_buf.getvalue()
@@ -1671,6 +1735,7 @@ def expected_image_edit_source_sha256(
     declaration: Mapping[str, Any],
     *,
     root: Path | None = None,
+    motion_class: str | None = None,
 ) -> str:
     """SHA-256 of the image-edit seed implied by a dwarf-identity/0 declaration."""
     generation_binding = declaration.get("generation_source")
@@ -1697,6 +1762,7 @@ def expected_image_edit_source_sha256(
     padded_bytes = magenta_pad_generation_source_png(
         generation_path.read_bytes(),
         pad_px,
+        motion_class=motion_class,
     )
     return sha256_bytes(padded_bytes)
 
@@ -1704,14 +1770,17 @@ def expected_image_edit_source_sha256(
 def build_identity_seed(
     identity_declaration_path: Path,
     out_path: Path,
+    *,
+    motion_class: str | None = None,
 ) -> dict[str, Any]:
     """Emit the image-edit seed from ``identity.json`` bindings.
 
     Without ``seed_pad_px``, copies ``generation_source`` byte-for-byte. When
     ``seed_pad_px`` is declared, writes a uniform ``#FF00FF`` pad of that width
-    on all four sides around the generation-source raster (interior unchanged).
-    ``identity_png`` (16×24) is validated but never copied — it is the Identity
-    Lock anchor, not the image-edit canvas.
+    on all four sides around the generation-source raster (interior unchanged,
+    or widened to the Motion class action canvas when ``motion_class`` exceeds
+    the 16-Cell anchor width). ``identity_png`` (16×24) is validated but never
+    copied — it is the Identity Lock anchor, not the image-edit canvas.
     """
     if not identity_declaration_path.is_file():
         raise IdentityLockError(
@@ -1764,16 +1833,22 @@ def build_identity_seed(
         return result
 
     seed_pad_px = _parse_seed_pad_px(seed_pad_px_raw)
+    generation_bytes = generation_source_path.read_bytes()
     padded_bytes = magenta_pad_generation_source_png(
-        generation_source_path.read_bytes(),
+        generation_bytes,
         seed_pad_px,
+        motion_class=motion_class,
     )
     out_path.write_bytes(padded_bytes)
+    with Image.open(BytesIO(padded_bytes)) as padded_image:
+        out_w, out_h = padded_image.size
     result.update(
         {
             "seed_pad_px": seed_pad_px,
-            "dimensions": [gen_w + 2 * seed_pad_px, gen_h + 2 * seed_pad_px],
+            "dimensions": [out_w, out_h],
             "sha256": sha256_bytes(padded_bytes),
         }
     )
+    if motion_class is not None:
+        result["motion_class"] = motion_class
     return result

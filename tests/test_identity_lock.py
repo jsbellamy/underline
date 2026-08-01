@@ -534,6 +534,106 @@ def test_pad_seed_digest_matches_expected_image_edit_source_sha256(tmp_path: Pat
     ) != sha256_file(IDLE_PROVIDER_SOURCE)
 
 
+SWING_SEED_DIMENSIONS = (2432, 1152)
+ANCHOR_FRAME_W = 16
+FRAME_COUNT = 4
+
+
+def _generation_source_cell_px(gen_w: int = 1536) -> int:
+    return gen_w // (FRAME_COUNT * ANCHOR_FRAME_W)
+
+
+def test_swing_seed_geometry_is_2432x1152_with_block_copy(tmp_path: Path) -> None:
+    out_path = tmp_path / "swing-seed.png"
+    meta = build_identity_seed(IDENTITY_JSON, out_path, motion_class="swing")
+    cell_px = _generation_source_cell_px()
+    source_block_w = ANCHOR_FRAME_W * cell_px
+    dest_block_w = 24 * cell_px
+    origin_x_px = 4 * cell_px
+
+    assert meta["motion_class"] == "swing"
+    assert meta["dimensions"] == list(SWING_SEED_DIMENSIONS)
+
+    with Image.open(IDLE_PROVIDER_SOURCE) as source:
+        source_rgba = np.asarray(source.convert("RGBA"))
+        gen_h = source_rgba.shape[0]
+    with Image.open(out_path) as seed:
+        seed_rgba = np.asarray(seed.convert("RGBA"))
+    pad = 64
+    interior = seed_rgba[pad:-pad, pad:-pad, :]
+    assert interior.shape == (gen_h, 4 * dest_block_w, 4)
+    magenta = np.array([255, 0, 255, 255], dtype=np.uint8)
+
+    for block_index in range(FRAME_COUNT):
+        src_x0 = block_index * source_block_w
+        src_block = source_rgba[:, src_x0:src_x0 + source_block_w, :]
+        dest_x0 = block_index * dest_block_w + origin_x_px
+        dest_block = interior[:, dest_x0:dest_x0 + source_block_w, :]
+        assert np.array_equal(dest_block, src_block)
+
+        left_pad = interior[:, block_index * dest_block_w:dest_x0, :]
+        right_pad = interior[:, dest_x0 + source_block_w:(block_index + 1) * dest_block_w, :]
+        assert left_pad.size > 0 and np.all(left_pad == magenta)
+        assert right_pad.size > 0 and np.all(right_pad == magenta)
+
+
+def test_swing_seed_block_copy_is_pixel_exact_not_resampled(tmp_path: Path) -> None:
+    out_path = tmp_path / "swing-seed.png"
+    build_identity_seed(IDENTITY_JSON, out_path, motion_class="swing")
+    cell_px = _generation_source_cell_px()
+    source_block_w = ANCHOR_FRAME_W * cell_px
+    dest_block_w = 24 * cell_px
+    origin_x_px = 4 * cell_px
+
+    with Image.open(IDLE_PROVIDER_SOURCE) as source:
+        source_rgba = np.asarray(source.convert("RGBA"))
+    with Image.open(out_path) as seed:
+        seed_rgba = np.asarray(seed.convert("RGBA"))
+    pad = 64
+    interior = seed_rgba[pad:-pad, pad:-pad, :]
+    magenta = (255, 0, 255, 255)
+
+    source_colors: set[tuple[int, int, int, int]] = set()
+    for block_index in range(FRAME_COUNT):
+        src_x0 = block_index * source_block_w
+        block = source_rgba[:, src_x0:src_x0 + source_block_w, :]
+        for row in block:
+            for pixel in row:
+                source_colors.add(tuple(pixel))
+
+    dest_colors: set[tuple[int, int, int, int]] = set()
+    for block_index in range(FRAME_COUNT):
+        dest_x0 = block_index * dest_block_w + origin_x_px
+        block = interior[:, dest_x0:dest_x0 + source_block_w, :]
+        for row in block:
+            for pixel in row:
+                dest_colors.add(tuple(pixel))
+    assert dest_colors == source_colors
+
+    outside_colors: set[tuple[int, int, int, int]] = set()
+    for block_index in range(FRAME_COUNT):
+        dest_x0 = block_index * dest_block_w
+        left = interior[:, dest_x0:dest_x0 + origin_x_px, :]
+        right = interior[:, dest_x0 + origin_x_px + source_block_w:(block_index + 1) * dest_block_w, :]
+        for region in (left, right):
+            for row in region:
+                for pixel in row:
+                    outside_colors.add(tuple(pixel))
+    assert outside_colors == {magenta}
+
+
+def test_expected_image_edit_source_sha256_is_class_aware(tmp_path: Path) -> None:
+    declaration = json.loads(IDENTITY_JSON.read_text())
+    walk_digest = expected_image_edit_source_sha256(declaration, root=ROOT, motion_class="walk")
+    swing_digest = expected_image_edit_source_sha256(declaration, root=ROOT, motion_class="swing")
+    default_digest = expected_image_edit_source_sha256(declaration, root=ROOT)
+    assert walk_digest == default_digest
+    assert swing_digest != walk_digest
+    swing_seed = tmp_path / "swing-seed.png"
+    swing_meta = build_identity_seed(IDENTITY_JSON, swing_seed, motion_class="swing")
+    assert swing_digest == swing_meta["sha256"]
+
+
 def test_identity_lock_applies_only_to_dwarf_walk_swing() -> None:
     assert identity_lock_applies("dwarf-miner", "walk")
     assert identity_lock_applies("dwarf-miner", "swing")

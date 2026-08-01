@@ -43,9 +43,14 @@ GENERATION_SOURCE_SHA256 = "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201a
 PADDED_SEED_DIMENSIONS = [1664, 1152]
 
 
-def _padded_edit_source_seed(tmp_path: Path) -> Path:
-    out = tmp_path / "padded-edit-source.png"
-    build_identity_seed(IDENTITY_JSON, out)
+def _padded_edit_source_seed(tmp_path: Path, motion_class: str = "walk") -> Path:
+    out = tmp_path / (
+        "swing-edit-source.png" if motion_class == "swing" else "padded-edit-source.png"
+    )
+    kwargs: dict[str, str] = {}
+    if motion_class == "swing":
+        kwargs["motion_class"] = "swing"
+    build_identity_seed(IDENTITY_JSON, out, **kwargs)
     return out
 LOGICAL_SIZE = (DEFAULT_LAYOUT.frame_w, DEFAULT_LAYOUT.frame_h)
 FRAME_COUNT = DEFAULT_LAYOUT.frame_count
@@ -158,7 +163,7 @@ def _provenance_args(
     kwargs: dict[str, object] = {"motion_class": motion_class}
     identity_args: list[str] = []
     if polish_profile == "dwarf-miner" and motion_class in {"walk", "swing"}:
-        padded_seed = _padded_edit_source_seed(tmp_path)
+        padded_seed = _padded_edit_source_seed(tmp_path, motion_class)
         kwargs.update(
             {
                 "generation_mode": "image-edit",
@@ -874,6 +879,66 @@ def test_no_override_flags_in_parser() -> None:
     assert "force" not in flags
     assert "yes" not in flags
     assert "override" not in flags
+
+
+def test_seed_cli_swing_motion_class_writes_24_cell_canvas(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    out_path = tmp_path / "swing-seed.png"
+    result = _run_cli(
+        capsys,
+        [
+            "seed",
+            "--identity-declaration",
+            str(IDENTITY_JSON),
+            "--motion-class",
+            "swing",
+            "--out",
+            str(out_path),
+            "--json",
+        ],
+    )
+    assert result.returncode == 0, result.stderr
+    data = json.loads(result.stdout)
+    assert data["motion_class"] == "swing"
+    assert data["dimensions"] == [2432, 1152]
+    assert data["sha256"] == sha256_file(out_path)
+    with Image.open(out_path) as image:
+        assert image.size == (2432, 1152)
+
+
+def test_seed_cli_without_motion_class_reproduces_current_digest(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    baseline_path = tmp_path / "baseline-seed.png"
+    baseline = _run_cli(
+        capsys,
+        [
+            "seed",
+            "--identity-declaration",
+            str(IDENTITY_JSON),
+            "--out",
+            str(baseline_path),
+            "--json",
+        ],
+    )
+    assert baseline.returncode == 0, baseline.stderr
+    baseline_digest = json.loads(baseline.stdout)["sha256"]
+    checked_in = tmp_path / "checked-in-seed.png"
+    result = _run_cli(
+        capsys,
+        [
+            "seed",
+            "--identity-declaration",
+            str(IDENTITY_JSON),
+            "--out",
+            str(checked_in),
+            "--json",
+        ],
+    )
+    assert result.returncode == 0
+    assert json.loads(result.stdout)["sha256"] == baseline_digest
+    assert json.loads(result.stdout)["dimensions"] == PADDED_SEED_DIMENSIONS
+    assert sha256_file(checked_in) == baseline_digest
 
 
 def test_seed_cli_emits_json_and_is_deterministic_on_rerun(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
