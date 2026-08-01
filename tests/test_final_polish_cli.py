@@ -235,7 +235,7 @@ def _init_bundle(tmp_path: Path) -> Path:
 def _bundle_fingerprint(root: Path) -> str:
     digest = hashlib.sha256()
     for path in sorted(root.rglob("*")):
-        if path.is_file():
+        if path.is_file() and path.parent.name != "reports":
             digest.update(str(path.relative_to(root)).encode("utf-8"))
             digest.update(path.read_bytes())
     return digest.hexdigest()
@@ -557,6 +557,19 @@ def test_brief_requires_a_profiled_bundle(tmp_path: Path) -> None:
     assert result.returncode == 2
     assert "--polish-profile" in result.stderr
     assert not result.stdout
+
+
+def test_check_json_includes_silhouette_artifacts(tmp_path: Path) -> None:
+    bundle = _init_bundle(tmp_path)
+    result = _run_module(["check", str(bundle), "--json"])
+    assert result.returncode == 0, result.stderr
+    data = json.loads(result.stdout)
+    assert data["silhouette_artifacts"]["strip"]["relative_path"] == "reports/silhouette-strip.png"
+    assert data["silhouette_artifacts"]["gif"]["relative_path"] == "reports/silhouette.gif"
+    strip_path = bundle / data["silhouette_artifacts"]["strip"]["relative_path"]
+    gif_path = bundle / data["silhouette_artifacts"]["gif"]["relative_path"]
+    assert data["silhouette_artifacts"]["strip"]["sha256"] == sha256_file(strip_path)
+    assert data["silhouette_artifacts"]["gif"]["sha256"] == sha256_file(gif_path)
 
 
 def test_check_fail_exit_1(tmp_path: Path) -> None:

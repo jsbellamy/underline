@@ -28,6 +28,7 @@ from pipeline.final_polish import (
     initialize_bundle,
     load_polish_brief,
 )
+from pipeline.asset_pack import FIRST_ROOM_ANIMATION_POLICY
 from pipeline.gate_evidence import sha256_bytes, sha256_file
 from pipeline.identity_lock import build_identity_seed, load_canonical_cells
 from pipeline.strip import DEFAULT_LAYOUT, IngestResult, StripLayout, ingest_strip_provider
@@ -221,7 +222,15 @@ def _set_alpha(path: Path, x: int, y: int, alpha: int) -> None:
 def _bundle_tree(root: Path) -> set[str]:
     if not root.exists():
         return set()
-    return {str(path.relative_to(root)) for path in root.rglob("*") if path.is_file()}
+    immutable_layers = frozenset({"provider", "draft", "polished", "release"})
+    paths: set[str] = set()
+    for path in root.rglob("*"):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(root)
+        if rel.name == "manifest.json" or rel.parts[0] in immutable_layers:
+            paths.add(str(rel))
+    return paths
 
 
 def test_passing_corpus_strip_initializes_bundle(tmp_path: Path) -> None:
@@ -1674,3 +1683,97 @@ def test_polish_profile_binding_rejects_path_escape(tmp_path: Path) -> None:
     with pytest.raises(InvalidBundleError) as exc:
         check_bundle(bundle)
     assert exc.value.reason_code == "profile_path_escape"
+
+
+def _distinct_rgba_states(path: Path) -> set[tuple[int, int, int, int]]:
+    with Image.open(path) as image:
+        rgba = image.convert("RGBA")
+        pixels = rgba.load()
+        assert pixels is not None
+        width, height = rgba.size
+        return {pixels[x, y] for y in range(height) for x in range(width)}
+
+
+def _silhouette_artifacts_payload(result) -> dict[str, object]:
+    assert result.silhouette_artifacts is not None
+    return {
+        "strip": {
+            "relative_path": result.silhouette_artifacts.strip_relative_path,
+            "sha256": result.silhouette_artifacts.strip_sha256,
+        },
+        "gif": {
+            "relative_path": result.silhouette_artifacts.gif_relative_path,
+            "sha256": result.silhouette_artifacts.gif_sha256,
+        },
+    }
+
+
+def test_check_emits_two_colour_silhouette_strip_and_gif_for_dwarf_idle() -> None:
+    layout = json.loads((DWARF_IDLE_BUNDLE / "manifest.json").read_text())["layout"]
+    expected_strip_size = (
+        layout["frame_count"] * layout["frame_w"]
+        + (layout["frame_count"] - 1) * layout["gutter"],
+        layout["frame_h"],
+    )
+    reports = DWARF_IDLE_BUNDLE / "reports"
+    existing_report_hashes = {
+        path.name: sha256_file(path) for path in reports.glob("*.json")
+    }
+
+    result = check_bundle(DWARF_IDLE_BUNDLE)
+
+    strip_path = DWARF_IDLE_BUNDLE / "reports" / "silhouette-strip.png"
+    gif_path = DWARF_IDLE_BUNDLE / "reports" / "silhouette.gif"
+    assert strip_path.is_file()
+    assert gif_path.is_file()
+    with Image.open(strip_path) as strip:
+        assert strip.size == expected_strip_size
+    with Image.open(gif_path) as gif:
+        assert gif.size == (layout["frame_w"], layout["frame_h"])
+        assert getattr(gif, "n_frames", 1) == FRAME_COUNT
+    assert _distinct_rgba_states(strip_path) == {(0, 0, 0, 0), (0, 0, 0, 255)}
+    assert len(_distinct_rgba_states(gif_path)) == 2
+    for name, digest in existing_report_hashes.items():
+        assert sha256_file(reports / name) == digest
+    payload = _silhouette_artifacts_payload(result)
+    assert payload["strip"]["relative_path"] == "reports/silhouette-strip.png"
+    assert payload["gif"]["relative_path"] == "reports/silhouette.gif"
+    assert payload["strip"]["sha256"] == sha256_file(strip_path)
+    assert payload["gif"]["sha256"] == sha256_file(gif_path)
+    policy = FIRST_ROOM_ANIMATION_POLICY["dwarf-idle"]
+    with Image.open(gif_path) as gif:
+        frame_durations = []
+        for index in range(gif.n_frames):
+            gif.seek(index)
+            frame_durations.append(gif.info["duration"])
+    assert frame_durations == policy["durations_ms"]
+
+
+def test_check_silhouette_artifacts_are_deterministic(tmp_path: Path) -> None:
+    bundle = _init_passing_bundle(tmp_path)
+    first = check_bundle(bundle)
+    first_strip = (bundle / "reports" / "silhouette-strip.png").read_bytes()
+    first_gif = (bundle / "reports" / "silhouette.gif").read_bytes()
+    second = check_bundle(bundle)
+    assert sha256_bytes(first_strip) == second.silhouette_artifacts.strip_sha256
+    assert sha256_bytes(first_gif) == second.silhouette_artifacts.gif_sha256
+    assert first_strip == (bundle / "reports" / "silhouette-strip.png").read_bytes()
+    assert first_gif == (bundle / "reports" / "silhouette.gif").read_bytes()
+
+
+def test_check_silhouette_report_paths_and_hashes_match_disk(tmp_path: Path) -> None:
+    bundle = _init_passing_bundle(tmp_path)
+    result = check_bundle(bundle)
+    payload = _silhouette_artifacts_payload(result)
+    strip_path = bundle / str(payload["strip"]["relative_path"])
+    gif_path = bundle / str(payload["gif"]["relative_path"])
+    assert payload["strip"]["sha256"] == sha256_file(strip_path)
+    assert payload["gif"]["sha256"] == sha256_file(gif_path)
+
+
+def test_check_silhouette_emission_does_not_change_gate_outcomes(tmp_path: Path) -> None:
+    bundle = _init_passing_bundle(tmp_path)
+    baseline = check_bundle(bundle)
+    follow_up = check_bundle(bundle)
+    assert follow_up.outcome == baseline.outcome
+    assert follow_up.coherence["gate_outcomes"] == baseline.coherence["gate_outcomes"]
