@@ -139,10 +139,18 @@ def test_24x24_clears_boundary_columns(scoreboard: dict[str, object]) -> None:
         assert frame["boundary_columns"]["right"] == 0
 
 
-def test_prototype_swing_canvas_command() -> None:
+def test_prototype_swing_canvas_command_writes_complete_artifacts_outside_the_checkout(
+    tmp_path: Path,
+) -> None:
     env = {**os.environ, "PYTHONPATH": f"{ROOT / 'prototype' / 'swing-canvas'}:{ROOT}"}
+    out_dir = tmp_path / "swing-canvas"
     result = subprocess.run(
-        [sys.executable, str(ROOT / "prototype" / "swing-canvas" / "run.py")],
+        [
+            sys.executable,
+            str(ROOT / "prototype" / "swing-canvas" / "run.py"),
+            "--out-dir",
+            str(out_dir),
+        ],
         cwd=ROOT,
         env=env,
         capture_output=True,
@@ -150,4 +158,8 @@ def test_prototype_swing_canvas_command() -> None:
         check=False,
     )
     assert result.returncode == 0, result.stdout + result.stderr
-    assert "scoreboard.json" in result.stdout
+    scoreboard_path = out_dir / "scoreboard.json"
+    assert str(scoreboard_path) in result.stdout
+    generated = json.loads(scoreboard_path.read_text(encoding="utf-8"))
+    assert set(generated["variants"]) == {"24x24", "32x24", "overlay"}
+    assert len(list((out_dir / "variants").glob("*/*.png"))) == 24
