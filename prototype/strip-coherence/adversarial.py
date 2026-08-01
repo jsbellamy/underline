@@ -43,11 +43,10 @@ MUTATIONS = (
     ("hold frame 2 pose", "hold_pose"),
 )
 
-# Corpus baselines may differ from production reference bundles. Swing inbox strips
-# exceed the static_silhouette_pass budget tuned on dwarf/swing/polished (issue #173).
-BASELINE_OUTCOME: dict[str, str] = {
-    "swing": "REVIEW",
-}
+# Corpus baselines may differ from production reference bundles. Under union
+# normalization (#208) the swing corpus baseline passes the re-tuned 0.88
+# budget; no class currently needs an override here.
+BASELINE_OUTCOME: dict[str, str] = {}
 
 MUST_FAIL: dict[str, set[str]] = {
     "idle": {"recolour", "hop", "wrong_pose", "slide"},

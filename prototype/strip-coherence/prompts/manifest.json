@@ -45,9 +45,9 @@
       "id": "06-miner-swing",
       "class": "one-shot",
       "motion_class": "swing",
-      "contract_expect": "REVIEW",
-      "contract_expect_gates": ["static_silhouette_pass"],
-      "why": "non-looping action; adjacent motion should stay sane while loop closure blows out; corpus static_silhouette exceeds production reference budget (issue #173)"
+      "contract_expect": "PASS",
+      "contract_expect_gates": [],
+      "why": "non-looping action; adjacent motion should stay sane while loop closure blows out; static_silhouette now normalizes by union-opaque Cells (issue #208), and the re-tuned 0.88 budget passes this strip (metric 0.5811)"
     },
     {
       "id": "07-NEG-palette-drift",
@@ -157,17 +157,17 @@
       "id": "20-axe-swing",
       "class": "one-shot",
       "motion_class": "swing",
-      "contract_expect": "REVIEW",
-      "contract_expect_gates": ["static_silhouette_pass"],
-      "why": "second swing sample; corpus static_silhouette exceeds production reference budget (issue #173)"
+      "contract_expect": "PASS",
+      "contract_expect_gates": [],
+      "why": "second swing sample; static_silhouette now normalizes by union-opaque Cells (issue #208), and the re-tuned 0.88 budget passes this strip (metric 0.7812)"
     },
     {
       "id": "21-hammer-swing",
       "class": "one-shot",
       "motion_class": "swing",
-      "contract_expect": "REVIEW",
-      "contract_expect_gates": ["static_silhouette_pass"],
-      "why": "third swing sample; corpus static_silhouette exceeds production reference budget (issue #173)"
+      "contract_expect": "PASS",
+      "contract_expect_gates": [],
+      "why": "third swing sample; static_silhouette now normalizes by union-opaque Cells (issue #208), and the re-tuned 0.88 budget passes this strip (metric 0.8373, tightest known-good, 0.043 headroom)"
     },
     {
       "id": "22-NEG-airborne-identity",

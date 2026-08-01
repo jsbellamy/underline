@@ -9,7 +9,7 @@ from typing import Iterable, Sequence
 
 from pipeline.cell_raster import Cell, read_cells
 from pipeline.identity_lock import _load_palette_roles, nearest_palette_role
-from pipeline.strip import StripLayout
+from pipeline.strip import StripLayout, static_silhouette_pair_fraction
 from PIL import Image
 
 CellGrid = list[list[Cell]]
@@ -22,7 +22,13 @@ GRIP_NEIGHBOR_ROLES = frozenset({"skin", "green-cloth"})
 
 BASELINE_MOTIONS = ("walk", "idle", "swing")
 VARIANTS = ("24x24", "32x24", "overlay")
-ADJACENT_PAIRS = ((0, 1), (1, 2), (2, 3), (3, 0))
+# Swing is loops: false (docs/strip-acquisition-contract.md), so (3, 0) is not a
+# playback transition — adjacent pairs only, no wrap (#208).
+ADJACENT_PAIRS = ((0, 1), (1, 2), (2, 3))
+
+# No second implementation: reuse the fixed, union-normalized production metric
+# (#208) rather than a second area-normalized copy.
+static_silhouette_fraction = static_silhouette_pair_fraction
 
 
 @dataclass(frozen=True)
@@ -134,28 +140,10 @@ def measure_frame(cells: CellGrid) -> FrameMeasurements:
     )
 
 
-def static_silhouette_fraction(a: CellGrid, b: CellGrid) -> float:
-    if len(a) != len(b) or not a or len(a[0]) != len(b[0]):
-        raise ValueError("frames must share dimensions")
-    height = len(a)
-    width = len(a[0])
-    total = width * height
-    if total == 0:
-        return 1.0
-    changed = 0
-    for y in range(height):
-        for x in range(width):
-            occupied_a = a[y][x] is not None
-            occupied_b = b[y][x] is not None
-            if occupied_a != occupied_b:
-                changed += 1
-    return 1.0 - (changed / total)
-
-
 def adjacent_silhouette_fractions(
     frames: Sequence[CellGrid],
 ) -> dict[str, float]:
-    labels = ("0-1", "1-2", "2-3", "3-0")
+    labels = ("0-1", "1-2", "2-3")
     return {
         label: round(static_silhouette_fraction(frames[a], frames[b]), 4)
         for label, (a, b) in zip(labels, ADJACENT_PAIRS, strict=True)
