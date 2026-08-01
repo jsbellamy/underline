@@ -217,6 +217,16 @@ def test_a_changed_attempts_jsonl_selects_acquisition_control_companions() -> No
     assert result.files == _ACQUISITION_CONTROL_COMPANIONS
 
 
+def test_a_changed_acquisition_control_markdown_selects_companions() -> None:
+    result = select_test_files(
+        ["acquisition-controls/readme.md"],
+        existing_tests=set(_ACQUISITION_CONTROL_COMPANIONS),
+    )
+
+    assert result.kind == "selected"
+    assert result.files == _ACQUISITION_CONTROL_COMPANIONS
+
+
 def test_acquisition_control_companions_dedupe_with_other_mapped_changes() -> None:
     result = select_test_files(
         ["acquisition-controls/legacy-bundles.json", "pipeline/strip.py"],
@@ -261,4 +271,4 @@ def test_pr_240_changed_paths_select_companions_without_widening() -> None:
     )
 
     assert result.kind == "selected"
-    assert set(result.files) == set(_ACQUISITION_CONTROL_COMPANIONS)
+    assert result.files == _ACQUISITION_CONTROL_COMPANIONS

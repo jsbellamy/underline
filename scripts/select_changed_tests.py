@@ -147,16 +147,16 @@ def select_test_files(
             selected.add(posix)
             continue
 
-        if _is_documentation(path):
-            selected.update(_tests_reading_doc(path, sources) & existing)
-            continue
-
         if path.parts and path.parts[0] == "acquisition-controls":
             selected.update(set(_ACQUISITION_CONTROL_COMPANION_TESTS) & existing)
             continue
 
         if posix == "tests/final_polish_harness.py":
             selected.update(set(_FINAL_POLISH_HARNESS_CONSUMER_TESTS) & existing)
+            continue
+
+        if _is_documentation(path):
+            selected.update(_tests_reading_doc(path, sources) & existing)
             continue
 
         module_name = _mapped_module_name(path)
