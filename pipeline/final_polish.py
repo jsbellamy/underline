@@ -461,8 +461,11 @@ def _bundle_master_palette_rgb_set(bundle_root: Path) -> set[tuple[int, int, int
         return set()
     try:
         doc = json.loads(sidecar.read_text(encoding="utf-8"))
-    except (UnicodeDecodeError, json.JSONDecodeError):
-        return set()
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise InvalidBundleError(
+            f"invalid provider provenance sidecar: {sidecar}",
+            reason_code="invalid_provenance",
+        ) from exc
     palette_id = doc.get("master_palette_id")
     if not isinstance(palette_id, str) or not palette_id:
         return set()
@@ -1248,6 +1251,33 @@ def _init_ingest_allowed(ingest: IngestResult) -> bool:
     )
 
 
+def _unseparated_only_review_coherence_outcome(coherence: Mapping[str, Any]) -> Outcome:
+    """Treat UNSEPARATED-only REVIEW coherence as PASS for finalized bundles (issue #173)."""
+    outcome = coherence.get("outcome", "FAIL")
+    if outcome == "PASS":
+        return "PASS"
+    gate_outcomes = coherence.get("gate_outcomes") or {}
+    if any(row.get("outcome") == "FAIL" for row in gate_outcomes.values()):
+        return "FAIL"
+    review_gates = [
+        gate for gate, row in gate_outcomes.items() if row.get("outcome") == "REVIEW"
+    ]
+    if not review_gates:
+        return outcome
+    if all(
+        gate_outcomes[gate].get("acceptance_status") == "UNSEPARATED"
+        for gate in review_gates
+    ):
+        return "PASS"
+    return outcome
+
+
+def _effective_provider_outcome(ingest: IngestResult) -> Outcome:
+    if _init_ingest_allowed(ingest):
+        return "PASS"
+    return ingest.outcome
+
+
 def _aggregate_outcome(
     *,
     provider_outcome: Outcome,
@@ -1272,7 +1302,7 @@ def _aggregate_outcome(
         and provider_post_edit.get("outcome") != "PASS"
     ):
         return "FAIL"
-    return coherence.get("outcome", "FAIL")
+    return _unseparated_only_review_coherence_outcome(coherence)
 
 
 def _verify_provider_post_edit(
@@ -1346,7 +1376,7 @@ def _verify_provider_and_drafts(bundle_root: Path, manifest: dict[str, Any]) -> 
             )
 
     ingest = ingest_strip_provider(provider_path, layout, motion_class=manifest["motion_class"])
-    return ingest.outcome
+    return _effective_provider_outcome(ingest)
 
 
 def initialize_bundle(

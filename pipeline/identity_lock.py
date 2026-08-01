@@ -578,7 +578,36 @@ def _compare_structural_lock(
                 and palette_role_distance <= float(lock["max_palette_role_distance"])
             )
     else:
-        passed = occupancy_difference == 0.0
+        if palette_exact_roles:
+            passed = True
+            for x, y, canonical_cell, attempt_cell in _registered_cells(
+                canonical,
+                attempt,
+                rectangle,
+                dx,
+                dy,
+            ):
+                if attempt_cell is None:
+                    continue
+                attempt_role = _role_at(
+                    (x + dx, y + dy),
+                    attempt_cell,
+                    attempt_role_map,
+                    palette_entries,
+                )
+                if canonical_cell is None:
+                    continue
+                canonical_role = _role_at(
+                    (x, y),
+                    canonical_cell,
+                    canonical_role_map,
+                    palette_entries,
+                )
+                if attempt_role != canonical_role:
+                    passed = False
+                    break
+        else:
+            passed = occupancy_difference == 0.0
 
     result: dict[str, Any] = {
         "outcome": "PASS" if passed else "FAIL",

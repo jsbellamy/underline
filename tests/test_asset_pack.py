@@ -245,7 +245,7 @@ def _write_pack(root: Path, doc: dict[str, object] | None = None) -> Path:
 DWARF_RELEASE_FRAMES: tuple[tuple[str, str, int, int, int], ...] = (
     ("dwarf-idle", "idle", 268, 23, 268),
     ("dwarf-walk", "walk", 152, 20, 152),
-    ("dwarf-swing", "swing", 177, 176, 0),
+    ("dwarf-swing", "swing", 177, 19, 177),
 )
 
 
@@ -436,10 +436,10 @@ def test_metadata_policy_rejects_release_hash_mismatch(tmp_path: Path) -> None:
 
 
 def test_dwarf_release_frames_violate_master_palette(tmp_path: Path) -> None:
-    """Characterization of dwarf release frame-0 palette membership (#171, #176, #177, #179).
+    """Characterization of dwarf release frame-0 palette membership (#171, #176–#178).
 
-    Idle is palette-exact after #176; walk after #177; swing remains off-palette until
-    its migration slice. Issue #179 should invert the remaining violations to PASS.
+    Idle, walk, and swing are palette-exact after their migration slices. The bound
+    pack now passes palette verification; issue #179 retires the off-palette v1 identity.
     """
     for asset_id, anim, expected_opaque, expected_unique, expected_in_palette in DWARF_RELEASE_FRAMES:
         rel = f"assets/first-room/dwarf/{anim}/release/frame-0.png"
@@ -449,8 +449,8 @@ def test_dwarf_release_frames_violate_master_palette(tmp_path: Path) -> None:
         assert in_palette == expected_in_palette, asset_id
 
     result = check_asset_pack(_write_dwarf_palette_violation_pack(tmp_path), repo_root=tmp_path)
-    assert not result.valid
-    assert "palette_violation" in result.reason_codes
+    assert result.valid
+    assert result.outcome == "PASS"
 
 
 def test_metadata_policy_rejects_palette_violation(tmp_path: Path) -> None:
