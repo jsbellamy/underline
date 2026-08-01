@@ -82,8 +82,17 @@ class _CliResult:
     stderr: str
 
 
-def _run_cli(capsys: pytest.CaptureFixture[str], args: list[str]) -> _CliResult:
-    returncode = main(args)
+def _run_cli(
+    capsys: pytest.CaptureFixture[str],
+    args: list[str],
+    *,
+    env: dict[str, str] | None = None,
+) -> _CliResult:
+    if env is None:
+        returncode = main(args)
+    else:
+        with patch.dict("os.environ", env):
+            returncode = main(args)
     captured = capsys.readouterr()
     return _CliResult(returncode=returncode, stdout=captured.out, stderr=captured.err)
 
@@ -102,16 +111,105 @@ def _run_check_cli(
         "pipeline.final_polish.load_provider_frames",
         side_effect=lambda path, layout: load_provider_frames(ingest_source, layout),
     ):
-        return _run_cli(capsys, args)
+        return _run_cli(capsys, args, env=_bundle_store_env(bundle))
 
 
-def _run_npm(args: list[str]) -> subprocess.CompletedProcess[str]:
+def _run_npm(
+    args: list[str],
+    *,
+    env: dict[str, str] | None = None,
+) -> subprocess.CompletedProcess[str]:
+    import os
+
+    run_env = os.environ.copy()
+    if env is not None:
+        run_env.update(env)
     return subprocess.run(
         ["npm", "run", "strip:polish", "--", *args],
         cwd=ROOT,
         capture_output=True,
         text=True,
+        env=run_env,
     )
+
+
+def _acquisition_store_env(store_root: Path) -> dict[str, str]:
+    return {"UNDERLINE_ACQUISITION_CONTROLS_ROOT": str(store_root)}
+
+
+def _bundle_store_env(bundle: Path) -> dict[str, str] | None:
+    store_root = bundle.parent / "acquisition-controls"
+    if (store_root / "attempts.jsonl").is_file():
+        return _acquisition_store_env(store_root)
+    return None
+
+
+def _register_store_attempt_for_init(
+    tmp_path: Path,
+    provider_path: Path,
+    motion_class: str,
+    *,
+    polish_profile: str | None = None,
+) -> tuple[Path, Path, list[str], dict[str, str]]:
+    from pipeline import asset_acquire as aa
+
+    effective_provider = _effective_provider_path(
+        provider_path,
+        tmp_path,
+        motion_class,
+        polish_profile=polish_profile,
+    )
+    store_root = tmp_path / "acquisition-controls"
+    generation_mode = (
+        "image-edit"
+        if polish_profile == "dwarf-miner" and motion_class in {"walk", "swing"}
+        else "text-to-image"
+    )
+    record_kwargs: dict[str, object] = {
+        "motion_class": motion_class,
+        "generation_mode": generation_mode,
+        "acquiring_agent": "pytest",
+        "prompt_text": "underline cli test provenance prompt",
+        "repo_root": tmp_path,
+    }
+    identity_args: list[str] = []
+    if generation_mode == "image-edit":
+        padded_seed = _padded_edit_source_seed(tmp_path, motion_class)
+        record_kwargs["reference_image_sha256"] = CANONICAL_IDENTITY_SHA
+        record_kwargs["edit_source"] = padded_seed
+        identity_args = [
+            "--identity-reference",
+            str(IDENTITY_PNG),
+            "--edit-source",
+            str(padded_seed),
+        ]
+    env = _acquisition_store_env(store_root)
+    with patch.dict("os.environ", env):
+        row = aa.record_asset_attempt(
+            effective_provider,
+            f"test/{motion_class}",
+            **record_kwargs,
+        )
+    provenance_path = tmp_path / f"{effective_provider.stem}.source.json"
+    provenance_kwargs: dict[str, object] = {
+        "motion_class": motion_class,
+        "generation_mode": generation_mode,
+        "attempt_id": row["attempt_id"],
+        "predecessor_attempt_id": row["predecessor_attempt_id"],
+        "specification_id": f"test/{motion_class}",
+    }
+    if generation_mode == "image-edit":
+        padded_seed = _padded_edit_source_seed(tmp_path, motion_class)
+        provenance_kwargs.update(
+            {
+                "reference_image_sha256": [CANONICAL_IDENTITY_SHA],
+                "edit_source_sha256": sha256_file(padded_seed),
+            }
+        )
+    provider_for_init = store_root / row["raw_path"]
+    _write_animation_provenance(provider_for_init, provenance_path, **provenance_kwargs)
+    return provider_for_init, provenance_path, identity_args, env
+
 
 
 def _provider_dimensions(provider_path: Path) -> list[int]:
@@ -138,41 +236,41 @@ def _write_animation_provenance(
     *,
     motion_class: str,
     generation_mode: str = "text-to-image",
+    attempt_id: str = "cli-test--001",
+    predecessor_attempt_id: str | None = None,
     reference_image_sha256: list[str] | None = None,
     edit_source_sha256: str | None = None,
+    **overrides: object,
 ) -> None:
     if reference_image_sha256 is None:
         reference_image_sha256 = []
     prompt_text = "underline cli test provenance prompt"
+    record: dict[str, object] = {
+        "schema": "animation-strip-provenance/0",
+        "specification_id": f"test/{motion_class}",
+        "attempt_id": attempt_id,
+        "predecessor_attempt_id": predecessor_attempt_id,
+        "generator": "cursor-image-gen",
+        "model": "cursor-image-gen",
+        "prompt_text": prompt_text,
+        "prompt_sha256": sha256_bytes(prompt_text.encode("utf-8")),
+        "generation_mode": generation_mode,
+        "reference_image_sha256": reference_image_sha256,
+        "edit_source_sha256": edit_source_sha256,
+        "generated_at": "2026-07-27T22:00:00+00:00",
+        "acquiring_agent": "pytest",
+        "repository_commit": "0000000000000000000000000000000000000000",
+        "raw_path": str(provider_path),
+        "raw_sha256": sha256_file(provider_path),
+        "media_type": "image/png",
+        "dimensions": _provider_dimensions(provider_path),
+        "motion_class": motion_class,
+        "master_palette_id": "first-room",
+        "item_geometry": _item_geometry_for(motion_class),
+    }
+    record.update(overrides)
     provenance_path.write_text(
-        json.dumps(
-            {
-                "schema": "animation-strip-provenance/0",
-                "specification_id": f"test/{motion_class}",
-                "attempt_id": "cli-test--001",
-                "predecessor_attempt_id": None,
-                "generator": "cursor-image-gen",
-                "model": "cursor-image-gen",
-                "prompt_text": prompt_text,
-                "prompt_sha256": sha256_bytes(prompt_text.encode("utf-8")),
-                "generation_mode": generation_mode,
-                "reference_image_sha256": reference_image_sha256,
-                "edit_source_sha256": edit_source_sha256,
-                "generated_at": "2026-07-27T22:00:00+00:00",
-                "acquiring_agent": "pytest",
-                "repository_commit": "0000000000000000000000000000000000000000",
-                "raw_path": str(provider_path),
-                "raw_sha256": sha256_file(provider_path),
-                "media_type": "image/png",
-                "dimensions": _provider_dimensions(provider_path),
-                "motion_class": motion_class,
-                "master_palette_id": "first-room",
-                "item_geometry": _item_geometry_for(motion_class),
-            },
-            indent=2,
-            sort_keys=True,
-        )
-        + "\n",
+        json.dumps(record, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
 
@@ -195,33 +293,15 @@ def _provenance_args(
     motion_class: str,
     *,
     polish_profile: str | None = None,
-) -> list[str]:
-    effective_provider = _effective_provider_path(
-        provider_path,
+) -> tuple[list[str], dict[str, str]]:
+    _, provenance_path, identity_args, env = _register_store_attempt_for_init(
         tmp_path,
+        provider_path,
         motion_class,
         polish_profile=polish_profile,
     )
-    provenance_path = tmp_path / f"{effective_provider.stem}.source.json"
-    kwargs: dict[str, object] = {"motion_class": motion_class}
-    identity_args: list[str] = []
-    if polish_profile == "dwarf-miner" and motion_class in {"walk", "swing"}:
-        padded_seed = _padded_edit_source_seed(tmp_path, motion_class)
-        kwargs.update(
-            {
-                "generation_mode": "image-edit",
-                "reference_image_sha256": [CANONICAL_IDENTITY_SHA],
-                "edit_source_sha256": sha256_file(padded_seed),
-            }
-        )
-        identity_args = [
-            "--identity-reference",
-            str(IDENTITY_PNG),
-            "--edit-source",
-            str(padded_seed),
-        ]
-    _write_animation_provenance(effective_provider, provenance_path, **kwargs)
-    return ["--provenance", str(provenance_path), *identity_args]
+    return ["--provenance", str(provenance_path), *identity_args], env
+
 
 
 def _init_cli_args(
@@ -232,32 +312,30 @@ def _init_cli_args(
     *,
     polish_profile: str | None = None,
     json_mode: bool = False,
-) -> list[str]:
-    effective_provider = _effective_provider_path(
-        provider_path,
+) -> tuple[list[str], dict[str, str]]:
+    provider_for_init, provenance_path, identity_args, env = _register_store_attempt_for_init(
         tmp_path,
+        provider_path,
         motion_class,
         polish_profile=polish_profile,
     )
     args = [
         "init",
-        str(effective_provider),
+        str(provider_for_init),
         "--motion-class",
         motion_class,
         "--out",
         str(bundle),
-        *_provenance_args(
-            tmp_path,
-            provider_path,
-            motion_class,
-            polish_profile=polish_profile,
-        ),
+        "--provenance",
+        str(provenance_path),
+        *identity_args,
     ]
     if polish_profile is not None:
         args.extend(["--polish-profile", polish_profile])
     if json_mode:
         args.append("--json")
-    return args
+    return args, env
+
 
 
 def _library_init_bundle(
@@ -268,21 +346,20 @@ def _library_init_bundle(
     *,
     polish_profile: str | None = None,
 ) -> None:
+    provider_for_init, provenance_path, identity_args, env = _register_store_attempt_for_init(
+        tmp_path,
+        provider_path,
+        motion_class,
+        polish_profile=polish_profile,
+    )
+    identity = Path(identity_args[1]) if len(identity_args) > 1 else None
+    edit = Path(identity_args[3]) if len(identity_args) > 3 else None
     effective_provider = _effective_provider_path(
         provider_path,
         tmp_path,
         motion_class,
         polish_profile=polish_profile,
     )
-    provenance_args = _provenance_args(
-        tmp_path,
-        provider_path,
-        motion_class,
-        polish_profile=polish_profile,
-    )
-    provenance_path = Path(provenance_args[1])
-    identity = Path(provenance_args[3]) if len(provenance_args) > 3 else None
-    edit = Path(provenance_args[5]) if len(provenance_args) > 5 else None
     ingest_source = (
         _dwarf_miner_ingest_source(provider_path, motion_class)
         if polish_profile == "dwarf-miner" and effective_provider != provider_path
@@ -307,33 +384,29 @@ def _library_init_bundle(
                 "pipeline.final_polish.load_provider_frames",
                 return_value=base_frames,
             ),
+            patch.dict("os.environ", env),
         ):
             initialize_bundle(
-                effective_provider,
+                provider_for_init,
                 motion_class,
                 bundle,
                 **init_kwargs,
             )
         return
-    initialize_bundle(
-        effective_provider,
-        motion_class,
-        bundle,
-        **init_kwargs,
-    )
+    with patch.dict("os.environ", env):
+        initialize_bundle(
+            provider_for_init,
+            motion_class,
+            bundle,
+            **init_kwargs,
+        )
 
 
 def _init_bundle(tmp_path: Path) -> Path:
     bundle = tmp_path / "bundle"
-    provenance_path = tmp_path / "pass.source.json"
-    _write_animation_provenance(PASS_STRIP, provenance_path, motion_class="idle")
-    initialize_bundle(
-        PASS_STRIP,
-        "idle",
-        bundle,
-        provenance_sidecar=provenance_path,
-    )
+    _library_init_bundle(PASS_STRIP, "idle", bundle, tmp_path)
     return bundle
+
 
 
 def _bundle_fingerprint(root: Path) -> str:
@@ -368,21 +441,23 @@ def _set_opaque_rgb(path: Path, x: int, y: int, rgb: tuple[int, int, int]) -> No
 
 def test_npm_entrypoint_runs_init_check_finalize(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    init = _run_npm(_init_cli_args(tmp_path, PASS_STRIP, "idle", bundle))
+    args, env = _init_cli_args(tmp_path, PASS_STRIP, "idle", bundle)
+    init = _run_npm(args, env=env)
     assert init.returncode == 0, init.stderr
     assert bundle.is_dir()
 
-    check = _run_npm(["check", str(bundle)])
+    check = _run_npm(["check", str(bundle)], env=env)
     assert check.returncode == 0, check.stderr
 
-    finalize = _run_npm(["finalize", str(bundle)])
+    finalize = _run_npm(["finalize", str(bundle)], env=env)
     assert finalize.returncode == 0, finalize.stderr
     assert list((bundle / "release").glob("*.png"))
 
 
 def test_init_creates_bundle_via_module_entrypoint(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
-    result = _run_cli(capsys, _init_cli_args(tmp_path, PASS_STRIP, "idle", bundle))
+    args, env = _init_cli_args(tmp_path, PASS_STRIP, "idle", bundle)
+    result = _run_cli(capsys, args, env=env)
     assert result.returncode == 0, result.stderr
     assert (bundle / "manifest.json").is_file()
     assert (bundle / "polished" / "frame-0.png").is_file()
@@ -390,7 +465,8 @@ def test_init_creates_bundle_via_module_entrypoint(tmp_path: Path, capsys: pytes
 
 def test_init_fail_strip_exit_1(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
-    result = _run_cli(capsys, _init_cli_args(tmp_path, FAIL_STRIP, "idle", bundle))
+    args, env = _init_cli_args(tmp_path, FAIL_STRIP, "idle", bundle)
+    result = _run_cli(capsys, args, env=env)
     assert result.returncode == 1
     assert not bundle.exists()
     assert "FAIL" in result.stdout
@@ -399,7 +475,8 @@ def test_init_fail_strip_exit_1(tmp_path: Path, capsys: pytest.CaptureFixture[st
 
 def test_init_fail_strip_json_exit_1(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
-    result = _run_cli(capsys, _init_cli_args(tmp_path, FAIL_STRIP, "idle", bundle, json_mode=True))
+    args, env = _init_cli_args(tmp_path, FAIL_STRIP, "idle", bundle, json_mode=True)
+    result = _run_cli(capsys, args, env=env)
     assert result.returncode == 1
     assert not bundle.exists()
     data = json.loads(result.stdout)
@@ -411,7 +488,8 @@ def test_init_fail_strip_json_exit_1(tmp_path: Path, capsys: pytest.CaptureFixtu
 
 def test_init_pass_json_exit_0(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
-    result = _run_cli(capsys, _init_cli_args(tmp_path, PASS_STRIP, "idle", bundle, json_mode=True))
+    args, env = _init_cli_args(tmp_path, PASS_STRIP, "idle", bundle, json_mode=True)
+    result = _run_cli(capsys, args, env=env)
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
     assert data["outcome"] == "PASS"
@@ -421,16 +499,15 @@ def test_init_pass_json_exit_0(tmp_path: Path, capsys: pytest.CaptureFixture[str
 
 def test_init_with_profile_binds_profile_in_json_result(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
-    result = _run_cli(capsys,
-        _init_cli_args(
-            tmp_path,
-            PASS_STRIP,
-            "idle",
-            bundle,
-            polish_profile="miner",
-            json_mode=True,
-        )
+    args, env = _init_cli_args(
+        tmp_path,
+        PASS_STRIP,
+        "idle",
+        bundle,
+        polish_profile="miner",
+        json_mode=True,
     )
+    result = _run_cli(capsys, args, env=env)
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
     assert data["polish_profile"] == {
@@ -454,16 +531,15 @@ def test_init_with_production_profile_binds_profile_in_json_result(
     motion_class: str,
 ) -> None:
     bundle = tmp_path / "bundle"
-    result = _run_cli(capsys,
-        _init_cli_args(
-            tmp_path,
-            strip,
-            motion_class,
-            bundle,
-            polish_profile=profile_id,
-            json_mode=True,
-        )
+    args, env = _init_cli_args(
+        tmp_path,
+        strip,
+        motion_class,
+        bundle,
+        polish_profile=profile_id,
+        json_mode=True,
     )
+    result = _run_cli(capsys, args, env=env)
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
     assert data["polish_profile"] == {
@@ -488,54 +564,7 @@ def test_brief_json_selects_production_profile_motion_questions(
     motion_ids: list[str],
 ) -> None:
     bundle = tmp_path / "bundle"
-    provenance_path = _provenance_args(tmp_path, strip, motion_class, polish_profile=profile_id)
-    provenance = Path(provenance_path[1])
-    identity = Path(provenance_path[3]) if len(provenance_path) > 3 else None
-    edit = Path(provenance_path[5]) if len(provenance_path) > 5 else None
-    effective_provider = _effective_provider_path(
-        strip,
-        tmp_path,
-        motion_class,
-        polish_profile=profile_id,
-    )
-    ingest_source = (
-        _dwarf_miner_ingest_source(strip, motion_class)
-        if profile_id == "dwarf-miner" and effective_provider != strip
-        else effective_provider
-    )
-    probe_layout = layout_for_motion_class(motion_class, margin_cells=0)
-    init_kwargs = {
-        "provenance_sidecar": provenance,
-        "polish_profile": profile_id,
-        "identity_reference": identity,
-        "edit_source": edit,
-    }
-    if ingest_source != effective_provider:
-        base_ingest = ingest_strip_provider(ingest_source, probe_layout, motion_class=motion_class)
-        base_frames = load_provider_frames(ingest_source, probe_layout)
-        with (
-            patch(
-                "pipeline.final_polish.ingest_strip_provider",
-                return_value=base_ingest,
-            ),
-            patch(
-                "pipeline.final_polish.load_provider_frames",
-                return_value=base_frames,
-            ),
-        ):
-            initialize_bundle(
-                effective_provider,
-                motion_class,
-                bundle,
-                **init_kwargs,
-            )
-    else:
-        initialize_bundle(
-            effective_provider,
-            motion_class,
-            bundle,
-            **init_kwargs,
-        )
+    _library_init_bundle(strip, motion_class, bundle, tmp_path, polish_profile=profile_id)
     before = _bundle_fingerprint(bundle)
 
     result = _run_cli(capsys, ["brief", str(bundle), "--json"])
@@ -550,15 +579,14 @@ def test_brief_json_selects_production_profile_motion_questions(
 
 def test_init_unknown_profile_exit_2_without_partial_bundle(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
-    result = _run_cli(capsys,
-        _init_cli_args(
-            tmp_path,
-            PASS_STRIP,
-            "idle",
-            bundle,
-            polish_profile="missing",
-        )
+    args, env = _init_cli_args(
+        tmp_path,
+        PASS_STRIP,
+        "idle",
+        bundle,
+        polish_profile="missing",
     )
+    result = _run_cli(capsys, args, env=env)
     assert result.returncode == 2
     assert "unknown Polish profile" in result.stderr
     assert not bundle.exists()
@@ -580,7 +608,11 @@ def test_init_review_strip_json_exit_3(tmp_path: Path, capsys) -> None:
         patch("pipeline.final_polish.ingest_strip_provider", return_value=review),
         patch("pipeline.final_polish_cli.ingest_strip_provider", return_value=review),
     ):
-        code = main(_init_cli_args(tmp_path, PASS_STRIP, "idle", bundle, json_mode=True))
+        args, env = _init_cli_args(tmp_path, PASS_STRIP, "idle", bundle, json_mode=True)
+
+        with patch.dict("os.environ", env):
+
+            code = main(args)
     assert code == 3
     data = json.loads(capsys.readouterr().out)
     assert data["outcome"] == "REVIEW"
@@ -603,7 +635,11 @@ def test_init_review_strip_exit_3(tmp_path: Path, capsys) -> None:
         patch("pipeline.final_polish.ingest_strip_provider", return_value=review),
         patch("pipeline.final_polish_cli.ingest_strip_provider", return_value=review),
     ):
-        code = main(_init_cli_args(tmp_path, PASS_STRIP, "idle", bundle))
+        args, env = _init_cli_args(tmp_path, PASS_STRIP, "idle", bundle)
+
+        with patch.dict("os.environ", env):
+
+            code = main(args)
     assert code == 3
     assert not bundle.exists()
     assert "REVIEW" in capsys.readouterr().out
@@ -633,7 +669,8 @@ def test_init_invalid_provider_exit_2(tmp_path: Path, capsys: pytest.CaptureFixt
 
 def test_init_unknown_motion_class_exit_2(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
-    result = _run_cli(capsys, _init_cli_args(tmp_path, PASS_STRIP, "nonsense", bundle))
+    args, env = _init_cli_args(tmp_path, PASS_STRIP, "nonsense", bundle)
+    result = _run_cli(capsys, args, env=env)
     assert result.returncode == 2
     assert "unknown motion_class" in result.stderr
 
@@ -641,14 +678,15 @@ def test_init_unknown_motion_class_exit_2(tmp_path: Path, capsys: pytest.Capture
 def test_init_existing_bundle_exit_2(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
     bundle.mkdir()
-    result = _run_cli(capsys, _init_cli_args(tmp_path, PASS_STRIP, "idle", bundle))
+    args, env = _init_cli_args(tmp_path, PASS_STRIP, "idle", bundle)
+    result = _run_cli(capsys, args, env=env)
     assert result.returncode == 2
     assert "already exists" in result.stderr
 
 
 def test_check_pass_exit_0(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
-    result = _run_cli(capsys, ["check", str(bundle)])
+    result = _run_cli(capsys, ["check", str(bundle)], env=_bundle_store_env(bundle))
     assert result.returncode == 0, result.stderr
     assert "Overall  PASS" in result.stdout
 
@@ -658,7 +696,7 @@ def test_check_summary_json_emits_only_dispatch_baseline_fields(
 ) -> None:
     bundle = _init_bundle(tmp_path)
 
-    result = _run_cli(capsys, ["check", str(bundle), "--summary-json"])
+    result = _run_cli(capsys, ["check", str(bundle), "--summary-json"], env=_bundle_store_env(bundle))
 
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
@@ -668,6 +706,7 @@ def test_check_summary_json_emits_only_dispatch_baseline_fields(
         "frame_dimensions",
         "identity_lock",
         "gate_outcomes",
+        "attestation",
     }
     assert data["outcome"] == "PASS"
     assert len(data["fingerprint"]) == 64
@@ -731,7 +770,7 @@ def test_brief_requires_a_profiled_bundle(tmp_path: Path, capsys: pytest.Capture
 
 def test_check_json_includes_silhouette_artifacts(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
-    result = _run_cli(capsys, ["check", str(bundle), "--json"])
+    result = _run_cli(capsys, ["check", str(bundle), "--json"], env=_bundle_store_env(bundle))
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
     assert data["silhouette_artifacts"]["strip"]["relative_path"] == "reports/silhouette-strip.png"
@@ -770,7 +809,7 @@ def test_check_human_report_names_provider_post_edit_reason(
         "pipeline.final_polish.load_provider_frames",
         side_effect=lambda path, layout: load_provider_frames(swing_strip, layout),
     ):
-        result = _run_cli(capsys, ["check", str(bundle)])
+        result = _run_cli(capsys, ["check", str(bundle)], env=_bundle_store_env(bundle))
 
     assert result.returncode == 1, result.stderr
     assert "Post-edit   FAIL (edit_source_continuity_fail)" in result.stdout
@@ -781,7 +820,7 @@ def test_check_human_report_marks_provider_post_edit_not_applicable(
 ) -> None:
     bundle = _init_bundle(tmp_path)
 
-    result = _run_cli(capsys, ["check", str(bundle)])
+    result = _run_cli(capsys, ["check", str(bundle)], env=_bundle_store_env(bundle))
 
     assert result.returncode == 0, result.stderr
     assert "Post-edit   (n/a)" in result.stdout
@@ -792,7 +831,7 @@ def test_check_json_provider_post_edit_is_null_when_not_evaluated(
 ) -> None:
     bundle = _init_bundle(tmp_path)
 
-    result = _run_cli(capsys, ["check", str(bundle), "--json"])
+    result = _run_cli(capsys, ["check", str(bundle), "--json"], env=_bundle_store_env(bundle))
 
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
@@ -806,7 +845,7 @@ def test_check_fail_exit_1(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -
     x, y = _first_opaque_xy(polished)
     _set_opaque_rgb(polished, x, y, (3, 99, 200))
 
-    result = _run_cli(capsys, ["check", str(bundle)])
+    result = _run_cli(capsys, ["check", str(bundle)], env=_bundle_store_env(bundle))
     assert result.returncode == 1
     assert "FAIL" in result.stdout
 
@@ -817,7 +856,7 @@ def test_check_fail_json_exit_1(tmp_path: Path, capsys: pytest.CaptureFixture[st
     x, y = _first_opaque_xy(polished)
     _set_opaque_rgb(polished, x, y, (3, 99, 200))
 
-    result = _run_cli(capsys, ["check", str(bundle), "--json"])
+    result = _run_cli(capsys, ["check", str(bundle), "--json"], env=_bundle_store_env(bundle))
     assert result.returncode == 1
     data = json.loads(result.stdout)
     assert data["outcome"] == "FAIL"
@@ -894,7 +933,7 @@ def test_check_review_json_exit_3(tmp_path: Path, capsys) -> None:
 def test_check_invalid_bundle_exit_2(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
     (bundle / "manifest.json").unlink()
-    result = _run_cli(capsys, ["check", str(bundle)])
+    result = _run_cli(capsys, ["check", str(bundle)], env=_bundle_store_env(bundle))
     assert result.returncode == 2
     assert result.stderr.strip()
     assert not result.stdout.strip()
@@ -902,7 +941,7 @@ def test_check_invalid_bundle_exit_2(tmp_path: Path, capsys: pytest.CaptureFixtu
 
 def test_finalize_pass_exit_0_and_creates_release(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
-    result = _run_cli(capsys, ["finalize", str(bundle)])
+    result = _run_cli(capsys, ["finalize", str(bundle)], env=_bundle_store_env(bundle))
     assert result.returncode == 0, result.stderr
     assert "Report" in result.stdout
     assert "Release" in result.stdout
@@ -911,7 +950,7 @@ def test_finalize_pass_exit_0_and_creates_release(tmp_path: Path, capsys: pytest
 
 def test_finalize_pass_json_exit_0(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
-    result = _run_cli(capsys, ["finalize", str(bundle), "--json"])
+    result = _run_cli(capsys, ["finalize", str(bundle), "--json"], env=_bundle_store_env(bundle))
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
     assert data["outcome"] == "PASS"
@@ -926,7 +965,7 @@ def test_finalize_fail_json_exit_1(tmp_path: Path, capsys: pytest.CaptureFixture
     x, y = _first_opaque_xy(polished)
     _set_opaque_rgb(polished, x, y, (250, 1, 2))
 
-    result = _run_cli(capsys, ["finalize", str(bundle), "--json"])
+    result = _run_cli(capsys, ["finalize", str(bundle), "--json"], env=_bundle_store_env(bundle))
     assert result.returncode == 1
     data = json.loads(result.stdout)
     assert data["outcome"] == "FAIL"
@@ -947,7 +986,8 @@ def test_finalize_review_exit_3_records_report(tmp_path: Path, capsys) -> None:
         outcome="REVIEW",
     )
     with patch("pipeline.final_polish.ingest_strip_provider", return_value=review):
-        code = main(["finalize", str(bundle)])
+        with patch.dict("os.environ", _bundle_store_env(bundle) or {}):
+            code = main(["finalize", str(bundle)])
     assert code == 3
     captured = capsys.readouterr().out
     assert "Overall  REVIEW" in captured
@@ -969,7 +1009,8 @@ def test_finalize_review_json_exit_3(tmp_path: Path, capsys) -> None:
         outcome="REVIEW",
     )
     with patch("pipeline.final_polish.ingest_strip_provider", return_value=review):
-        code = main(["finalize", str(bundle), "--json"])
+        with patch.dict("os.environ", _bundle_store_env(bundle) or {}):
+            code = main(["finalize", str(bundle), "--json"])
     assert code == 3
     data = json.loads(capsys.readouterr().out)
     assert data["outcome"] == "REVIEW"
@@ -983,7 +1024,7 @@ def test_finalize_fail_exit_1_records_report_without_release(tmp_path: Path, cap
     x, y = _first_opaque_xy(polished)
     _set_opaque_rgb(polished, x, y, (250, 1, 2))
 
-    result = _run_cli(capsys, ["finalize", str(bundle)])
+    result = _run_cli(capsys, ["finalize", str(bundle)], env=_bundle_store_env(bundle))
     assert result.returncode == 1
     assert "Report" in result.stdout
     assert "Release" not in result.stdout
@@ -1258,7 +1299,7 @@ def test_v2_walk_check_json_binds_sequential_attempt_evidence(tmp_path: Path, ca
 
 def test_human_report_includes_required_fields(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
-    result = _run_cli(capsys, ["check", str(bundle)])
+    result = _run_cli(capsys, ["check", str(bundle)], env=_bundle_store_env(bundle))
     assert result.returncode == 0, result.stderr
     stdout = result.stdout
     assert "Bundle" in stdout
@@ -1273,7 +1314,7 @@ def test_human_report_includes_required_fields(tmp_path: Path, capsys: pytest.Ca
 
 def test_json_mode_emits_single_object_with_complete_payload(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
-    result = _run_cli(capsys, ["check", str(bundle), "--json"])
+    result = _run_cli(capsys, ["check", str(bundle), "--json"], env=_bundle_store_env(bundle))
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
     assert data["outcome"] == "PASS"
@@ -1299,11 +1340,11 @@ def test_check_is_read_only_human_and_json(tmp_path: Path, capsys: pytest.Captur
     bundle = _init_bundle(tmp_path)
     before = _bundle_fingerprint(bundle)
 
-    human = _run_cli(capsys, ["check", str(bundle)])
+    human = _run_cli(capsys, ["check", str(bundle)], env=_bundle_store_env(bundle))
     assert human.returncode == 0, human.stderr
     assert _bundle_fingerprint(bundle) == before
 
-    json_result = _run_cli(capsys, ["check", str(bundle), "--json"])
+    json_result = _run_cli(capsys, ["check", str(bundle), "--json"], env=_bundle_store_env(bundle))
     assert json_result.returncode == 0, json_result.stderr
     assert _bundle_fingerprint(bundle) == before
 
@@ -1314,7 +1355,7 @@ def test_finalize_revalidates_and_lists_release_only_on_pass(tmp_path: Path, cap
     x, y = _first_opaque_xy(polished)
     _set_opaque_rgb(polished, x, y, (250, 1, 2))
 
-    fail = _run_cli(capsys, ["finalize", str(bundle)])
+    fail = _run_cli(capsys, ["finalize", str(bundle)], env=_bundle_store_env(bundle))
     assert fail.returncode == 1
     report_path = next((bundle / "reports").glob("*.json"))
     report = json.loads(report_path.read_text())
@@ -1325,7 +1366,7 @@ def test_finalize_revalidates_and_lists_release_only_on_pass(tmp_path: Path, cap
     draft = bundle / "draft" / "frame-0.png"
     polished.write_bytes(draft.read_bytes())
 
-    pass_result = _run_cli(capsys, ["finalize", str(bundle)])
+    pass_result = _run_cli(capsys, ["finalize", str(bundle)], env=_bundle_store_env(bundle))
     assert pass_result.returncode == 0, pass_result.stderr
     assert "Report" in pass_result.stdout
     release_paths = sorted((bundle / "release").glob("*.png"))
@@ -1355,7 +1396,7 @@ def test_direct_png_edit_accepted_without_editor(tmp_path: Path, capsys: pytest.
     palette_color = next(iter(draft_union))
     _set_opaque_rgb(polished, x, y, palette_color)
 
-    result = _run_cli(capsys, ["check", str(bundle)])
+    result = _run_cli(capsys, ["check", str(bundle)], env=_bundle_store_env(bundle))
     assert result.returncode == 0, result.stderr
 
 

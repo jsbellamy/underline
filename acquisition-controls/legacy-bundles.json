@@ -1,0 +1,20 @@
+{
+  "schema": "acquisition-legacy-allowlist/0",
+  "bundles": [
+    {
+      "specification_id": "first-room/dwarf/idle",
+      "provider_sha256": "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3",
+      "reason": "acquired before attested intake (#233)"
+    },
+    {
+      "specification_id": "first-room/dwarf/walk",
+      "provider_sha256": "8031d7fce82650a2c3b87a318ebfc5264cc51869b8024a05e541589f673904c3",
+      "reason": "acquired before attested intake (#233)"
+    },
+    {
+      "specification_id": "first-room/lantern",
+      "provider_sha256": "b69c91df56a745834eebb23607ee4402968fe48d94b186757f4b903d7e888581",
+      "reason": "acquired before attested intake (#233)"
+    }
+  ]
+}

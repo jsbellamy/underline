@@ -25,8 +25,8 @@ from pipeline.final_polish import (
     FinalPolishError,
     InitializationRejectedError,
     InvalidBundleError,
-    check_bundle,
-    finalize_bundle,
+    check_bundle as polish_check_bundle,
+    finalize_bundle as polish_finalize_bundle,
     initialize_bundle,
     load_polish_brief,
 )
@@ -346,6 +346,34 @@ def _provenance_for(
     return provenance_path
 
 
+def _acquisition_store_env(store_root: Path) -> dict[str, str]:
+    return {"UNDERLINE_ACQUISITION_CONTROLS_ROOT": str(store_root)}
+
+
+def _bundle_store_root(bundle: Path) -> Path | None:
+    store_root = bundle.parent / "acquisition-controls"
+    if (store_root / "attempts.jsonl").is_file():
+        return store_root
+    return None
+
+
+def _check_bundle(bundle: Path) -> FinalPolishCheckResult:
+    store_root = _bundle_store_root(bundle)
+    if store_root is None:
+        return polish_check_bundle(bundle)
+    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+        return polish_check_bundle(bundle)
+
+
+def _finalize_bundle(bundle: Path) -> Path:
+    store_root = _bundle_store_root(bundle)
+    if store_root is None:
+        return polish_finalize_bundle(bundle)
+    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+        return polish_finalize_bundle(bundle)
+
+
+
 def _init_bundle(
     provider_path: Path,
     motion_class: str,
@@ -357,6 +385,8 @@ def _init_bundle(
     identity_reference: Path | None = None,
     edit_source: Path | None = None,
 ) -> None:
+    from pipeline import asset_acquire as aa
+
     effective_provider = provider_path
     if polish_profile == "dwarf-miner":
         effective_provider = _effective_dwarf_miner_provider(
@@ -364,16 +394,52 @@ def _init_bundle(
             tmp_path,
             motion_class,
         )
-    if provenance_path is None:
-        provenance_path = _provenance_for(
-            effective_provider,
-            tmp_path,
-            motion_class,
-            polish_profile=polish_profile,
-        )
     if polish_profile == "dwarf-miner" and motion_class in {"walk", "swing"}:
         identity_reference = identity_reference or IDENTITY_PNG
         edit_source = edit_source or _padded_edit_source_seed(tmp_path, motion_class)
+    specification_id = f"test/{motion_class}"
+    generation_mode = (
+        "image-edit"
+        if polish_profile == "dwarf-miner" and motion_class in {"walk", "swing"}
+        else "text-to-image"
+    )
+    store_root = tmp_path / "acquisition-controls"
+    record_kwargs: dict[str, object] = {
+        "motion_class": motion_class,
+        "generation_mode": generation_mode,
+        "acquiring_agent": "pytest",
+        "prompt_text": "underline test provenance prompt",
+        "repo_root": tmp_path,
+    }
+    if generation_mode == "image-edit":
+        padded_seed = _padded_edit_source_seed(tmp_path, motion_class)
+        record_kwargs["reference_image_sha256"] = CANONICAL_IDENTITY_SHA
+        record_kwargs["edit_source"] = padded_seed
+    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+        row = aa.record_asset_attempt(
+            effective_provider,
+            specification_id,
+            **record_kwargs,
+        )
+    if provenance_path is None:
+        provenance_path = tmp_path / f"{effective_provider.stem}.source.json"
+    provenance_kwargs: dict[str, object] = {
+        "motion_class": motion_class,
+        "generation_mode": generation_mode,
+        "attempt_id": row["attempt_id"],
+        "predecessor_attempt_id": row["predecessor_attempt_id"],
+        "specification_id": specification_id,
+    }
+    if generation_mode == "image-edit":
+        padded_seed = _padded_edit_source_seed(tmp_path, motion_class)
+        provenance_kwargs.update(
+            {
+                "reference_image_sha256": [CANONICAL_IDENTITY_SHA],
+                "edit_source_sha256": sha256_file(padded_seed),
+            }
+        )
+    provider_for_init = store_root / row["raw_path"]
+    _write_animation_provenance(provider_for_init, provenance_path, **provenance_kwargs)
     ingest_source = (
         _dwarf_miner_ingest_source(provider_path, motion_class)
         if polish_profile == "dwarf-miner" and effective_provider != provider_path
@@ -398,31 +464,42 @@ def _init_bundle(
                 "pipeline.final_polish.load_provider_frames",
                 return_value=base_frames,
             ),
+            patch.dict("os.environ", _acquisition_store_env(store_root)),
         ):
             initialize_bundle(
-                effective_provider,
+                provider_for_init,
                 motion_class,
                 bundle,
                 **init_kwargs,
             )
         return
-    initialize_bundle(
-        effective_provider,
-        motion_class,
-        bundle,
-        **init_kwargs,
-    )
+    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+        initialize_bundle(
+            provider_for_init,
+            motion_class,
+            bundle,
+            **init_kwargs,
+        )
 
 
 def _check_bundle_slicing_from(
     bundle: Path,
     ingest_source: Path,
 ) -> FinalPolishCheckResult:
-    with patch(
-        "pipeline.final_polish.load_provider_frames",
-        side_effect=lambda path, layout: load_provider_frames(ingest_source, layout),
+    store_root = _bundle_store_root(bundle)
+    env_patch = (
+        patch.dict("os.environ", _acquisition_store_env(store_root))
+        if store_root is not None
+        else patch.dict("os.environ", {}, clear=False)
+    )
+    with (
+        env_patch,
+        patch(
+            "pipeline.final_polish.load_provider_frames",
+            side_effect=lambda path, layout: load_provider_frames(ingest_source, layout),
+        ),
     ):
-        return check_bundle(bundle)
+        return polish_check_bundle(bundle)
 
 
 def _init_passing_bundle(tmp_path: Path) -> Path:
@@ -650,7 +727,7 @@ def test_tampered_production_profile_is_an_invalid_bundle(
     (bundle / "profile.json").write_text(json.dumps(profile) + "\n")
 
     with pytest.raises(InvalidBundleError) as exc:
-        check_bundle(bundle)
+        _check_bundle(bundle)
     assert exc.value.reason_code == "profile_hash_mismatch"
 
 
@@ -695,12 +772,12 @@ def test_production_check_and_final_report_bind_embedded_profile(
 ) -> None:
     bundle = tmp_path / "bundle"
     _init_bundle(strip, motion_class, bundle, tmp_path, polish_profile=profile_id)
-    result = check_bundle(bundle)
+    result = _check_bundle(bundle)
     profile_hash = sha256_file(bundle / "profile.json")
     assert result.profile_id == profile_id
     assert result.profile_sha256 == profile_hash
 
-    report = json.loads(finalize_bundle(bundle).read_text())
+    report = json.loads(_finalize_bundle(bundle).read_text())
     assert report["polish_profile"] == {
         "id": profile_id,
         "sha256": profile_hash,
@@ -736,7 +813,7 @@ def test_tampered_embedded_profile_is_an_invalid_bundle(tmp_path: Path) -> None:
     (bundle / "profile.json").write_text(json.dumps(profile) + "\n")
 
     with pytest.raises(InvalidBundleError) as exc:
-        check_bundle(bundle)
+        _check_bundle(bundle)
     assert exc.value.reason_code == "profile_hash_mismatch"
 
 
@@ -778,7 +855,7 @@ def test_invalid_embedded_profiles_fail_closed(
         manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
     with pytest.raises(InvalidBundleError) as exc:
-        check_bundle(bundle)
+        _check_bundle(bundle)
     assert exc.value.reason_code == reason_code
 
 
@@ -798,18 +875,18 @@ def test_existing_v0_bundle_remains_check_compatible(tmp_path: Path) -> None:
     manifest.pop("polish_profile")
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
-    assert check_bundle(bundle).outcome == "PASS"
+    assert _check_bundle(bundle).outcome == "PASS"
 
 
 def test_check_and_final_report_bind_embedded_profile(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
     _init_bundle(PASS_STRIP, "idle", bundle, tmp_path, polish_profile="miner")
-    result = check_bundle(bundle)
+    result = _check_bundle(bundle)
     profile_hash = sha256_file(bundle / "profile.json")
     assert result.profile_id == "miner"
     assert result.profile_sha256 == profile_hash
 
-    report = json.loads(finalize_bundle(bundle).read_text())
+    report = json.loads(_finalize_bundle(bundle).read_text())
     assert report["polish_profile"] == {
         "id": "miner",
         "sha256": profile_hash,
@@ -959,7 +1036,7 @@ def test_schema_v2_swing_check_rejects_legacy_provenance_geometry(tmp_path: Path
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
     with pytest.raises(InvalidBundleError) as exc:
-        check_bundle(bundle)
+        _check_bundle(bundle)
     assert exc.value.reason_code == "invalid_provenance"
 
 
@@ -969,7 +1046,7 @@ def test_schema_v1_swing_check_accepts_legacy_provenance_geometry(tmp_path: Path
     provenance_path = bundle / "provider" / "source.source.json"
     provenance = json.loads(provenance_path.read_text())
     assert provenance["item_geometry"]["frame_w"] == 16
-    result = check_bundle(bundle)
+    result = _check_bundle(bundle)
     assert result.outcome == "PASS"
     manifest = json.loads((bundle / "manifest.json").read_text())
     assert manifest["schema"] == BUNDLE_SCHEMA_LEGACY_1
@@ -1007,7 +1084,7 @@ def test_bundle_tree_schema_hashes_and_seeded_polished_copies(tmp_path: Path) ->
     }
     assert _bundle_tree(bundle) == expected_paths
 
-    assert manifest["provider"]["original_filename"] == PASS_STRIP.name
+    assert manifest["provider"]["original_filename"].endswith(".png")
     assert manifest["provider"]["relative_path"] == "provider/source.png"
     assert manifest["provider"]["sha256"] == sha256_file(bundle / "provider" / "source.png")
     assert manifest["provider"]["sha256"] == sha256_file(PASS_STRIP)
@@ -1033,7 +1110,7 @@ def test_provider_tamper_raises_invalid_bundle(tmp_path: Path) -> None:
     provider.write_bytes(provider.read_bytes() + b"\x00")
 
     with pytest.raises(InvalidBundleError) as exc:
-        check_bundle(bundle)
+        _check_bundle(bundle)
     assert exc.value.reason_code == "provenance_hash_mismatch"
 
 
@@ -1043,7 +1120,7 @@ def test_draft_tamper_raises_invalid_bundle(tmp_path: Path) -> None:
     _set_opaque_rgb(draft, 0, 0, (1, 2, 3))
 
     with pytest.raises(InvalidBundleError) as exc:
-        check_bundle(bundle)
+        _check_bundle(bundle)
     assert exc.value.reason_code == "draft_hash_mismatch"
 
 
@@ -1060,11 +1137,11 @@ def test_provider_currently_review_is_reportable_without_release(tmp_path: Path)
         outcome="REVIEW",
     )
     with patch("pipeline.final_polish.ingest_strip_provider", return_value=review):
-        result = check_bundle(bundle)
+        result = _check_bundle(bundle)
         assert result.provider_outcome == "REVIEW"
         assert result.outcome == "REVIEW"
 
-        finalize_bundle(bundle)
+        _finalize_bundle(bundle)
     assert not (bundle / "release").exists()
     assert len(list((bundle / "reports").glob("*.json"))) == 1
 
@@ -1104,7 +1181,7 @@ def test_invalid_polished_frames_raise_stable_reason_codes(
         _set_alpha(polished / "frame-0.png", 1, 1, 128)
 
     with pytest.raises(InvalidBundleError) as exc:
-        check_bundle(bundle)
+        _check_bundle(bundle)
     assert exc.value.reason_code == reason_code
     assert not list((bundle / "reports").glob("*.json"))
 
@@ -1115,7 +1192,7 @@ def test_alpha_mask_edit_fails_structurally(tmp_path: Path) -> None:
     x, y = _first_opaque_xy(polished)
     _set_alpha(polished, x, y, 0)
 
-    result = check_bundle(bundle)
+    result = _check_bundle(bundle)
     assert result.structural.pass_ is False
     assert result.structural.outcome == "FAIL"
     assert any(v.code == "alpha_mismatch" for v in result.structural.violations)
@@ -1127,7 +1204,7 @@ def test_new_opaque_color_fails_structurally(tmp_path: Path) -> None:
     x, y = _first_opaque_xy(polished)
     _set_opaque_rgb(polished, x, y, (3, 99, 200))
 
-    result = check_bundle(bundle)
+    result = _check_bundle(bundle)
     assert result.structural.pass_ is False
     assert any(v.code == "palette_violation" for v in result.structural.violations)
 
@@ -1144,7 +1221,7 @@ def test_master_palette_color_outside_draft_union_passes_structural_layer(
     x, y = _first_opaque_xy(polished)
     _set_opaque_rgb(polished, x, y, master_only)
 
-    result = check_bundle(bundle)
+    result = _check_bundle(bundle)
     assert result.structural.pass_ is True
 
 
@@ -1179,7 +1256,7 @@ def test_reused_draft_palette_color_passes_structural_layer(tmp_path: Path) -> N
             break
         image.save(polished)
 
-    result = check_bundle(bundle)
+    result = _check_bundle(bundle)
     assert result.structural.pass_ is True
 
 
@@ -1208,7 +1285,7 @@ def test_visible_cell_delta_order_and_counts(tmp_path: Path) -> None:
             break
         image.save(polished0)
 
-    result = check_bundle(bundle)
+    result = _check_bundle(bundle)
     edits = result.delta.edits
     assert [(e.frame_index, e.x, e.y) for e in edits] == [(0, x0, y0), (2, x2, y2)]
     assert result.delta.per_frame_counts == (1, 0, 1, 0)
@@ -1217,7 +1294,7 @@ def test_visible_cell_delta_order_and_counts(tmp_path: Path) -> None:
 
 def test_zero_edit_real_bundle_passes_coherence(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
-    result = check_bundle(bundle)
+    result = _check_bundle(bundle)
     assert result.delta.total_edits == 0
     assert result.coherence["outcome"] == "PASS"
     assert result.outcome == "PASS"
@@ -1232,7 +1309,7 @@ def test_synthetic_recolour_reaches_coherence_split(tmp_path: Path) -> None:
         S.export_frames([mutated[index]], polished_dir, "swap", frame_w=16, frame_h=24)
         (polished_dir / "swap-f0.png").replace(polished_dir / f"frame-{index}.png")
 
-    result = check_bundle(bundle)
+    result = _check_bundle(bundle)
     assert result.coherence["outcome"] == "FAIL"
     assert result.coherence["gate_outcomes"]["palette_drift_pass"]["outcome"] == "FAIL"
     assert result.outcome == "FAIL"
@@ -1241,14 +1318,14 @@ def test_synthetic_recolour_reaches_coherence_split(tmp_path: Path) -> None:
 def test_check_is_read_only(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
     before = _bundle_tree(bundle)
-    check_bundle(bundle)
+    _check_bundle(bundle)
     assert _bundle_tree(bundle) == before
 
 
 def test_finalize_records_immutable_report_and_pass_release(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
-    result = check_bundle(bundle)
-    report_path = finalize_bundle(bundle)
+    result = _check_bundle(bundle)
+    report_path = _finalize_bundle(bundle)
 
     assert report_path.is_file()
     report = json.loads(report_path.read_text())
@@ -1268,8 +1345,8 @@ def test_finalize_fail_outcome_writes_report_without_release(tmp_path: Path) -> 
     bundle = _init_passing_bundle(tmp_path)
     polished = bundle / "polished" / "frame-1.png"
     _set_opaque_rgb(polished, 3, 5, (250, 1, 2))
-    result = check_bundle(bundle)
-    report_path = finalize_bundle(bundle)
+    result = _check_bundle(bundle)
+    report_path = _finalize_bundle(bundle)
 
     report = json.loads(report_path.read_text())
     assert report["outcome"] == "FAIL"
@@ -1278,42 +1355,42 @@ def test_finalize_fail_outcome_writes_report_without_release(tmp_path: Path) -> 
 
 def test_repeat_finalize_is_idempotent(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
-    result = check_bundle(bundle)
-    first = finalize_bundle(bundle)
-    second = finalize_bundle(bundle)
+    result = _check_bundle(bundle)
+    first = _finalize_bundle(bundle)
+    second = _finalize_bundle(bundle)
     assert first == second
     assert json.loads(first.read_text()) == json.loads(second.read_text())
 
 
 def test_conflicting_report_fails_closed(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
-    result = check_bundle(bundle)
-    report_path = finalize_bundle(bundle)
+    result = _check_bundle(bundle)
+    report_path = _finalize_bundle(bundle)
     tampered = json.loads(report_path.read_text())
     tampered["outcome"] = "FAIL"
     report_path.write_text(json.dumps(tampered) + "\n", encoding="utf-8")
 
     with pytest.raises(InvalidBundleError) as exc:
-        finalize_bundle(bundle)
+        _finalize_bundle(bundle)
     assert exc.value.reason_code == "report_conflict"
 
 
 def test_conflicting_release_fails_closed(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
-    result = check_bundle(bundle)
-    finalize_bundle(bundle)
+    result = _check_bundle(bundle)
+    _finalize_bundle(bundle)
     release = bundle / "release" / "frame-0.png"
     release.write_bytes(release.read_bytes() + b"x")
 
     with pytest.raises(InvalidBundleError) as exc:
-        finalize_bundle(bundle)
+        _finalize_bundle(bundle)
     assert exc.value.reason_code == "release_conflict"
 
 
 def test_existing_v1_idle_bundle_remains_check_compatible(tmp_path: Path) -> None:
     bundle = tmp_path / "dwarf-idle"
     shutil.copytree(DWARF_IDLE_BUNDLE, bundle)
-    result = check_bundle(bundle)
+    result = _check_bundle(bundle)
     assert result.outcome == "PASS"
     manifest = json.loads((bundle / "manifest.json").read_text())
     assert manifest["schema"] == BUNDLE_SCHEMA_LEGACY_1
@@ -1486,14 +1563,11 @@ def test_edit_source_geometry_match_initializes(tmp_path: Path) -> None:
 def test_text_to_image_skips_edit_source_geometry_check(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
     mismatched_edit = _padded_edit_source_seed(tmp_path, "swing")
-    provenance_path = tmp_path / "idle.source.json"
-    _write_animation_provenance(PASS_STRIP, provenance_path, motion_class="idle")
-
-    initialize_bundle(
+    _init_bundle(
         PASS_STRIP,
         "idle",
         bundle,
-        provenance_sidecar=provenance_path,
+        tmp_path,
         edit_source=mismatched_edit,
     )
     assert bundle.exists()
@@ -1823,7 +1897,7 @@ def test_dwarf_walk_check_rejects_edit_source_that_is_not_generation_source(
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
     with pytest.raises(InvalidBundleError) as exc:
-        check_bundle(bundle)
+        _check_bundle(bundle)
     assert exc.value.reason_code == "edit_source_not_generation_source"
 
 
@@ -1948,11 +2022,11 @@ def test_tampered_v2_provenance_blocks_check_and_finalize(tmp_path: Path) -> Non
     provenance.write_text(json.dumps(record) + "\n")
 
     with pytest.raises(InvalidBundleError) as exc:
-        check_bundle(bundle)
+        _check_bundle(bundle)
     assert exc.value.reason_code == "provenance_hash_mismatch"
 
     with pytest.raises(InvalidBundleError):
-        finalize_bundle(bundle)
+        _finalize_bundle(bundle)
 
 
 def _write_attempt_ledger(bundle: Path, attempts: list[dict[str, object]]) -> None:
@@ -1968,72 +2042,86 @@ def _write_attempt_ledger(bundle: Path, attempts: list[dict[str, object]]) -> No
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
 
+def _record_store_attempt(
+    tmp_path: Path,
+    store_root: Path,
+    *,
+    specification_id: str = "test/idle",
+    outcome: str = "accepted",
+    rejection_reason: str | None = None,
+    provider_path: Path = PASS_STRIP,
+):
+    from pipeline import asset_acquire as aa
+
+    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+        return aa.record_asset_attempt(
+            provider_path,
+            specification_id,
+            motion_class="idle",
+            generation_mode="text-to-image",
+            acquiring_agent="pytest",
+            prompt_text="underline test provenance prompt",
+            outcome=outcome,
+            rejection_reason=rejection_reason,
+            repo_root=tmp_path,
+        )
+
+
 def test_valid_sequential_attempt_ledger_passes_check(tmp_path: Path) -> None:
-    bundle = _init_passing_bundle(tmp_path)
-    provenance_path = bundle / "provider" / "source.source.json"
-    provenance = json.loads(provenance_path.read_text())
-    provenance["attempt_id"] = "test--002"
-    provenance_path.write_text(
-        json.dumps(provenance, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
+    store_root = tmp_path / "acquisition-controls"
+    _record_store_attempt(
+        tmp_path,
+        store_root,
+        outcome="rejected",
+        rejection_reason="palette_drift",
     )
-    manifest_path = bundle / "manifest.json"
-    manifest = json.loads(manifest_path.read_text())
-    manifest["provenance"]["sha256"] = sha256_file(provenance_path)
-    manifest_path.write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
+    accepted = _record_store_attempt(tmp_path, store_root)
+    provider = store_root / accepted["raw_path"]
+    provenance_path = tmp_path / "provenance.json"
+    _write_animation_provenance(
+        provider,
+        provenance_path,
+        motion_class="idle",
+        attempt_id=accepted["attempt_id"],
+        predecessor_attempt_id=accepted["predecessor_attempt_id"],
     )
-    first_raw = "1" * 64
-    _write_attempt_ledger(
-        bundle,
-        [
-            {
-                "attempt_id": "test--001",
-                "predecessor_attempt_id": None,
-                "outcome": "rejected",
-                "rejection_reason": "palette_drift",
-                "prompt_sha256": "a" * 64,
-                "raw_sha256": first_raw,
-                "selected": False,
-            },
-            {
-                "attempt_id": "test--002",
-                "predecessor_attempt_id": "test--001",
-                "outcome": "accepted",
-                "rejection_reason": None,
-                "prompt_sha256": provenance["prompt_sha256"],
-                "raw_sha256": provenance["raw_sha256"],
-                "selected": True,
-            },
-        ],
-    )
-    assert check_bundle(bundle).outcome == "PASS"
+    bundle = tmp_path / "bundle"
+    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+        initialize_bundle(provider, "idle", bundle, provenance_sidecar=provenance_path)
+    assert _check_bundle(bundle).outcome == "PASS"
+    ledger = json.loads((bundle / "provider" / "attempts.json").read_text())
+    assert len(ledger["attempts"]) == 2
 
 
 def test_rejected_attempt_ledger_with_identity_lock_near_miss_detail_passes(
     tmp_path: Path,
 ) -> None:
-    bundle = _init_passing_bundle(tmp_path)
-    provenance_path = bundle / "provider" / "source.source.json"
+    store_root = tmp_path / "acquisition-controls"
+    rejected = _record_store_attempt(
+        tmp_path,
+        store_root,
+        outcome="rejected",
+        rejection_reason="identity_lock",
+    )
+    accepted = _record_store_attempt(tmp_path, store_root)
+    provider = store_root / accepted["raw_path"]
+    provenance_path = tmp_path / "provenance.json"
+    _write_animation_provenance(
+        provider,
+        provenance_path,
+        motion_class="idle",
+        attempt_id=accepted["attempt_id"],
+        predecessor_attempt_id=accepted["predecessor_attempt_id"],
+    )
+    bundle = tmp_path / "bundle"
+    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+        initialize_bundle(provider, "idle", bundle, provenance_sidecar=provenance_path)
     provenance = json.loads(provenance_path.read_text())
-    provenance["attempt_id"] = "test--002"
-    provenance_path.write_text(
-        json.dumps(provenance, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
-    manifest_path = bundle / "manifest.json"
-    manifest = json.loads(manifest_path.read_text())
-    manifest["provenance"]["sha256"] = sha256_file(provenance_path)
-    manifest_path.write_text(
-        json.dumps(manifest, indent=2, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
     _write_attempt_ledger(
         bundle,
         [
             {
-                "attempt_id": "test--001",
+                "attempt_id": rejected["attempt_id"],
                 "predecessor_attempt_id": None,
                 "outcome": "rejected",
                 "rejection_reason": "identity_lock",
@@ -2047,13 +2135,13 @@ def test_rejected_attempt_ledger_with_identity_lock_near_miss_detail_passes(
                     "max_occupancy_difference": 0.20,
                     "occupancy_margin": -0.02,
                 },
-                "prompt_sha256": "a" * 64,
-                "raw_sha256": "1" * 64,
+                "prompt_sha256": provenance["prompt_sha256"],
+                "raw_sha256": rejected["raw_sha256"],
                 "selected": False,
             },
             {
-                "attempt_id": "test--002",
-                "predecessor_attempt_id": "test--001",
+                "attempt_id": accepted["attempt_id"],
+                "predecessor_attempt_id": rejected["attempt_id"],
                 "outcome": "accepted",
                 "rejection_reason": None,
                 "prompt_sha256": provenance["prompt_sha256"],
@@ -2062,7 +2150,7 @@ def test_rejected_attempt_ledger_with_identity_lock_near_miss_detail_passes(
             },
         ],
     )
-    assert check_bundle(bundle).outcome == "PASS"
+    assert _check_bundle(bundle).outcome == "PASS"
 
 
 @pytest.mark.parametrize(
@@ -2078,33 +2166,54 @@ def test_malformed_rejection_detail_fails_closed(
     rejection_detail: object,
     reason_code: str,
 ) -> None:
-    bundle = _init_passing_bundle(tmp_path)
-    provenance = json.loads((bundle / "provider" / "source.source.json").read_text())
-    attempts: list[dict[str, object]] = [
-        {
-            "attempt_id": "test--001",
-            "predecessor_attempt_id": None,
-            "outcome": "rejected",
-            "rejection_reason": "identity_lock",
-            "rejection_detail": rejection_detail,
-            "prompt_sha256": "a" * 64,
-            "raw_sha256": "1" * 64,
-            "selected": False,
-        },
-        {
-            "attempt_id": provenance["attempt_id"],
-            "predecessor_attempt_id": "test--001",
-            "outcome": "accepted",
-            "rejection_reason": None,
-            "prompt_sha256": provenance["prompt_sha256"],
-            "raw_sha256": provenance["raw_sha256"],
-            "selected": True,
-        },
-    ]
-    _write_attempt_ledger(bundle, attempts)
+    store_root = tmp_path / "acquisition-controls"
+    rejected = _record_store_attempt(
+        tmp_path,
+        store_root,
+        outcome="rejected",
+        rejection_reason="identity_lock",
+    )
+    accepted = _record_store_attempt(tmp_path, store_root)
+    provider = store_root / accepted["raw_path"]
+    provenance_path = tmp_path / "provenance.json"
+    _write_animation_provenance(
+        provider,
+        provenance_path,
+        motion_class="idle",
+        attempt_id=accepted["attempt_id"],
+        predecessor_attempt_id=accepted["predecessor_attempt_id"],
+    )
+    bundle = tmp_path / "bundle"
+    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+        initialize_bundle(provider, "idle", bundle, provenance_sidecar=provenance_path)
+    provenance = json.loads(provenance_path.read_text())
+    _write_attempt_ledger(
+        bundle,
+        [
+            {
+                "attempt_id": rejected["attempt_id"],
+                "predecessor_attempt_id": None,
+                "outcome": "rejected",
+                "rejection_reason": "identity_lock",
+                "rejection_detail": rejection_detail,
+                "prompt_sha256": provenance["prompt_sha256"],
+                "raw_sha256": rejected["raw_sha256"],
+                "selected": False,
+            },
+            {
+                "attempt_id": accepted["attempt_id"],
+                "predecessor_attempt_id": rejected["attempt_id"],
+                "outcome": "accepted",
+                "rejection_reason": None,
+                "prompt_sha256": provenance["prompt_sha256"],
+                "raw_sha256": provenance["raw_sha256"],
+                "selected": True,
+            },
+        ],
+    )
 
     with pytest.raises(InvalidBundleError) as exc:
-        check_bundle(bundle)
+        _check_bundle(bundle)
     assert exc.value.reason_code == reason_code
 
 
@@ -2133,19 +2242,19 @@ def test_accepted_row_with_rejection_detail_fails_closed(tmp_path: Path) -> None
     )
 
     with pytest.raises(InvalidBundleError) as exc:
-        check_bundle(bundle)
+        _check_bundle(bundle)
     assert exc.value.reason_code == "invalid_attempt_ledger"
 
 
 @pytest.mark.parametrize(
     ("mutation", "reason_code"),
     [
-        ("duplicate_id", "invalid_attempt_ledger"),
-        ("two_selected", "invalid_attempt_ledger"),
-        ("selected_not_final", "invalid_attempt_ledger"),
-        ("missing_predecessor", "invalid_attempt_ledger"),
-        ("cyclic", "invalid_attempt_ledger"),
-        ("prompt_mismatch", "attempt_ledger_mismatch"),
+        ("duplicate_id", "attempt_ledger_not_attested"),
+        ("two_selected", "attempt_ledger_not_attested"),
+        ("selected_not_final", "attempt_ledger_not_attested"),
+        ("missing_predecessor", "attempt_ledger_not_attested"),
+        ("cyclic", "attempt_ledger_not_attested"),
+        ("prompt_mismatch", "attempt_ledger_not_attested"),
     ],
 )
 def test_invalid_attempt_ledger_fails_closed(
@@ -2232,7 +2341,7 @@ def test_invalid_attempt_ledger_fails_closed(
     _write_attempt_ledger(bundle, attempts)
 
     with pytest.raises(InvalidBundleError) as exc:
-        check_bundle(bundle)
+        _check_bundle(bundle)
     assert exc.value.reason_code == reason_code
 
 
@@ -2357,6 +2466,21 @@ def test_dwarf_swing_check_does_not_trip_magenta_wipe_with_padded_edit_source(
     manifest["attempt_ledger"]["sha256"] = sha256_file(ledger_path)
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
+    store_root = tmp_path / "acquisition-controls"
+    raw_path = store_root / "raw" / f"{provenance['attempt_id']}.png"
+    shutil.copy2(provider_path, raw_path)
+    attempts_path = store_root / "attempts.jsonl"
+    lines = attempts_path.read_text().splitlines()
+    updated: list[str] = []
+    for line in lines:
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        if row.get("attempt_id") == provenance["attempt_id"]:
+            row["raw_sha256"] = new_sha
+        updated.append(json.dumps(row, sort_keys=True))
+    attempts_path.write_text("\n".join(updated) + "\n")
+
     swing_strip = _swing_provider_strip(tmp_path)
     result = _check_bundle_slicing_from(bundle, swing_strip)
     assert result.outcome == "FAIL"
@@ -2392,13 +2516,13 @@ def test_identity_lock_fail_blocks_release_despite_passing_structural_and_cohere
         "pipeline.final_polish.load_provider_frames",
         side_effect=lambda path, layout: load_provider_frames(WALK_STRIP, layout),
     ):
-        result = check_bundle(bundle)
+        result = _check_bundle(bundle)
         assert result.identity_lock is not None
         assert result.identity_lock.outcome == "FAIL"
         assert result.structural.pass_
         assert result.coherence.get("outcome") == "PASS"
         assert result.outcome == "FAIL"
-        report_path = finalize_bundle(bundle)
+        report_path = _finalize_bundle(bundle)
     report = json.loads(report_path.read_text())
     assert report["identity_lock"]["outcome"] == "FAIL"
     assert report["outcome"] == "FAIL"
@@ -2408,7 +2532,7 @@ def test_identity_lock_fail_blocks_release_despite_passing_structural_and_cohere
 
 def test_idle_bundle_has_no_identity_lock(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
-    result = check_bundle(bundle)
+    result = _check_bundle(bundle)
     assert result.identity_lock is None
 
 
@@ -2442,7 +2566,7 @@ def test_provenance_binding_rejects_path_escape(tmp_path: Path) -> None:
     (bundle / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
     with pytest.raises(InvalidBundleError) as exc:
-        check_bundle(bundle)
+        _check_bundle(bundle)
     assert exc.value.reason_code == "provenance_path_escape"
 
 
@@ -2460,7 +2584,7 @@ def test_polish_profile_binding_rejects_path_escape(tmp_path: Path) -> None:
     (bundle / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
     with pytest.raises(InvalidBundleError) as exc:
-        check_bundle(bundle)
+        _check_bundle(bundle)
     assert exc.value.reason_code == "profile_path_escape"
 
 
@@ -2503,7 +2627,7 @@ def test_check_emits_two_colour_silhouette_strip_and_gif_for_dwarf_idle(
         path.name: sha256_file(path) for path in reports.glob("*.json")
     }
 
-    result = check_bundle(bundle)
+    result = _check_bundle(bundle)
 
     strip_path = bundle / "reports" / "silhouette-strip.png"
     gif_path = bundle / "reports" / "silhouette.gif"
@@ -2534,10 +2658,10 @@ def test_check_emits_two_colour_silhouette_strip_and_gif_for_dwarf_idle(
 
 def test_check_silhouette_artifacts_are_deterministic(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
-    first = check_bundle(bundle)
+    first = _check_bundle(bundle)
     first_strip = (bundle / "reports" / "silhouette-strip.png").read_bytes()
     first_gif = (bundle / "reports" / "silhouette.gif").read_bytes()
-    second = check_bundle(bundle)
+    second = _check_bundle(bundle)
     assert sha256_bytes(first_strip) == second.silhouette_artifacts.strip_sha256
     assert sha256_bytes(first_gif) == second.silhouette_artifacts.gif_sha256
     assert first_strip == (bundle / "reports" / "silhouette-strip.png").read_bytes()
@@ -2546,7 +2670,7 @@ def test_check_silhouette_artifacts_are_deterministic(tmp_path: Path) -> None:
 
 def test_check_silhouette_report_paths_and_hashes_match_disk(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
-    result = check_bundle(bundle)
+    result = _check_bundle(bundle)
     payload = _silhouette_artifacts_payload(result)
     strip_path = bundle / str(payload["strip"]["relative_path"])
     gif_path = bundle / str(payload["gif"]["relative_path"])
@@ -2556,7 +2680,341 @@ def test_check_silhouette_report_paths_and_hashes_match_disk(tmp_path: Path) -> 
 
 def test_check_silhouette_emission_does_not_change_gate_outcomes(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
-    baseline = check_bundle(bundle)
-    follow_up = check_bundle(bundle)
+    baseline = _check_bundle(bundle)
+    follow_up = _check_bundle(bundle)
     assert follow_up.outcome == baseline.outcome
     assert follow_up.coherence["gate_outcomes"] == baseline.coherence["gate_outcomes"]
+
+
+def test_initialize_projects_attempt_ledger_from_attested_store(tmp_path: Path) -> None:
+    store_root = tmp_path / "acquisition-controls"
+    first = _record_store_attempt(
+        tmp_path,
+        store_root,
+        outcome="rejected",
+        rejection_reason="palette_drift",
+    )
+    second = _record_store_attempt(
+        tmp_path,
+        store_root,
+        outcome="rejected",
+        rejection_reason="identity_lock",
+    )
+    third = _record_store_attempt(tmp_path, store_root)
+    provider = store_root / third["raw_path"]
+    provenance_path = tmp_path / "provenance.json"
+    _write_animation_provenance(
+        provider,
+        provenance_path,
+        motion_class="idle",
+        attempt_id=third["attempt_id"],
+        predecessor_attempt_id=third["predecessor_attempt_id"],
+    )
+    bundle = tmp_path / "bundle"
+    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+        initialize_bundle(provider, "idle", bundle, provenance_sidecar=provenance_path)
+    ledger = json.loads((bundle / "provider" / "attempts.json").read_text())
+    assert len(ledger["attempts"]) == 3
+    assert [row["attempt_id"] for row in ledger["attempts"]] == [
+        first["attempt_id"],
+        second["attempt_id"],
+        third["attempt_id"],
+    ]
+    assert [row["raw_sha256"] for row in ledger["attempts"]] == [
+        first["raw_sha256"],
+        second["raw_sha256"],
+        third["raw_sha256"],
+    ]
+
+
+@pytest.mark.parametrize(
+    ("setup", "message"),
+    [
+        ("unregistered_attempt_id", "not registered"),
+        ("digest_mismatch", "raw_sha256 differs"),
+        ("selected_rejected", "rejected Attempt cannot be selected"),
+        ("prompt_sha256_mismatch", "prompt_sha256"),
+        ("generation_mode_mismatch", "generation_mode"),
+        ("motion_class_mismatch", "motion_class"),
+    ],
+)
+def test_initialize_rejects_unregistered_attempts(
+    tmp_path: Path,
+    setup: str,
+    message: str,
+) -> None:
+    store_root = tmp_path / "acquisition-controls"
+    row = _record_store_attempt(tmp_path, store_root)
+    provider = store_root / row["raw_path"]
+    provenance_path = tmp_path / "provenance.json"
+    attempt_id = row["attempt_id"]
+    predecessor = row["predecessor_attempt_id"]
+    motion_class = "idle"
+    if setup == "selected_rejected":
+        rejected = _record_store_attempt(
+            tmp_path,
+            store_root,
+            outcome="rejected",
+            rejection_reason="palette_drift",
+        )
+        attempt_id = rejected["attempt_id"]
+        predecessor = rejected["predecessor_attempt_id"]
+        provider = store_root / rejected["raw_path"]
+    _write_animation_provenance(
+        provider,
+        provenance_path,
+        motion_class="idle",
+        attempt_id=attempt_id,
+        predecessor_attempt_id=predecessor,
+    )
+    if setup == "unregistered_attempt_id":
+        record = json.loads(provenance_path.read_text())
+        record["attempt_id"] = "missing--attempt--999"
+        provenance_path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
+    elif setup == "digest_mismatch":
+        attempts_path = store_root / "attempts.jsonl"
+        line = json.loads(attempts_path.read_text().strip())
+        line["raw_sha256"] = "0" * 64
+        attempts_path.write_text(json.dumps(line, sort_keys=True) + "\n")
+        store_provenance_path = store_root / line["provenance_path"]
+        store_provenance = json.loads(store_provenance_path.read_text())
+        store_provenance["raw_sha256"] = "0" * 64
+        store_provenance_path.write_text(
+            json.dumps(store_provenance, indent=2, sort_keys=True) + "\n"
+        )
+    elif setup == "prompt_sha256_mismatch":
+        _write_animation_provenance(
+            provider,
+            provenance_path,
+            motion_class="idle",
+            attempt_id=attempt_id,
+            predecessor_attempt_id=predecessor,
+            prompt_text="a different prompt than the store recorded",
+        )
+    elif setup == "generation_mode_mismatch":
+        attempts_path = store_root / "attempts.jsonl"
+        line = json.loads(attempts_path.read_text().strip())
+        store_provenance_path = store_root / line["provenance_path"]
+        store_provenance = json.loads(store_provenance_path.read_text())
+        store_provenance["generation_mode"] = "image-edit"
+        store_provenance_path.write_text(
+            json.dumps(store_provenance, indent=2, sort_keys=True) + "\n"
+        )
+    elif setup == "motion_class_mismatch":
+        attempts_path = store_root / "attempts.jsonl"
+        line = json.loads(attempts_path.read_text().strip())
+        store_provenance_path = store_root / line["provenance_path"]
+        store_provenance = json.loads(store_provenance_path.read_text())
+        store_provenance["motion_class"] = "walk"
+        store_provenance_path.write_text(
+            json.dumps(store_provenance, indent=2, sort_keys=True) + "\n"
+        )
+    bundle = tmp_path / "bundle"
+    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+        with pytest.raises(InitializationRejectedError) as exc:
+            initialize_bundle(provider, motion_class, bundle, provenance_sidecar=provenance_path)
+    assert exc.value.reason_code == "attempt_not_registered"
+    assert message in str(exc.value)
+
+
+def test_initialize_projects_complete_store_chain(tmp_path: Path) -> None:
+    store_root = tmp_path / "acquisition-controls"
+    rows = [
+        _record_store_attempt(
+            tmp_path,
+            store_root,
+            outcome="rejected",
+            rejection_reason="palette_drift",
+        )
+        for _ in range(3)
+    ]
+    accepted = _record_store_attempt(tmp_path, store_root)
+    rows.append(accepted)
+    provider = store_root / accepted["raw_path"]
+    provenance_path = tmp_path / "provenance.json"
+    _write_animation_provenance(
+        provider,
+        provenance_path,
+        motion_class="idle",
+        attempt_id=accepted["attempt_id"],
+        predecessor_attempt_id=accepted["predecessor_attempt_id"],
+    )
+    bundle = tmp_path / "bundle"
+    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+        initialize_bundle(provider, "idle", bundle, provenance_sidecar=provenance_path)
+    ledger = json.loads((bundle / "provider" / "attempts.json").read_text())
+    assert len(ledger["attempts"]) == 4
+
+
+def test_initialize_rejects_when_store_chain_cannot_satisfy_ledger_rules(tmp_path: Path) -> None:
+    store_root = tmp_path / "acquisition-controls"
+    _record_store_attempt(tmp_path, store_root, outcome="accepted")
+    second = _record_store_attempt(tmp_path, store_root)
+    provider = store_root / second["raw_path"]
+    provenance_path = tmp_path / "provenance.json"
+    _write_animation_provenance(
+        provider,
+        provenance_path,
+        motion_class="idle",
+        attempt_id=second["attempt_id"],
+        predecessor_attempt_id=second["predecessor_attempt_id"],
+    )
+    bundle = tmp_path / "bundle"
+    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+        with pytest.raises(InitializationRejectedError) as exc:
+            initialize_bundle(provider, "idle", bundle, provenance_sidecar=provenance_path)
+    assert exc.value.reason_code == "attempt_not_registered"
+
+
+def test_check_rejects_hand_edited_attempt_ledger(tmp_path: Path) -> None:
+    store_root = tmp_path / "acquisition-controls"
+    _record_store_attempt(
+        tmp_path,
+        store_root,
+        outcome="rejected",
+        rejection_reason="palette_drift",
+    )
+    accepted = _record_store_attempt(tmp_path, store_root)
+    provider = store_root / accepted["raw_path"]
+    provenance_path = tmp_path / "provenance.json"
+    _write_animation_provenance(
+        provider,
+        provenance_path,
+        motion_class="idle",
+        attempt_id=accepted["attempt_id"],
+        predecessor_attempt_id=accepted["predecessor_attempt_id"],
+    )
+    bundle = tmp_path / "bundle"
+    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+        initialize_bundle(provider, "idle", bundle, provenance_sidecar=provenance_path)
+    ledger = json.loads((bundle / "provider" / "attempts.json").read_text())
+    del ledger["attempts"][0]
+    _write_attempt_ledger(bundle, ledger["attempts"])
+    with pytest.raises(InvalidBundleError) as exc:
+        _check_bundle(bundle)
+    assert exc.value.reason_code == "attempt_ledger_not_attested"
+
+
+def test_check_rejects_predecessor_rewrite_not_in_store(tmp_path: Path) -> None:
+    store_root = tmp_path / "acquisition-controls"
+    _record_store_attempt(
+        tmp_path,
+        store_root,
+        outcome="rejected",
+        rejection_reason="palette_drift",
+    )
+    accepted = _record_store_attempt(tmp_path, store_root)
+    provider = store_root / accepted["raw_path"]
+    provenance_path = tmp_path / "provenance.json"
+    _write_animation_provenance(
+        provider,
+        provenance_path,
+        motion_class="idle",
+        attempt_id=accepted["attempt_id"],
+        predecessor_attempt_id=accepted["predecessor_attempt_id"],
+    )
+    bundle = tmp_path / "bundle"
+    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+        initialize_bundle(provider, "idle", bundle, provenance_sidecar=provenance_path)
+    ledger = json.loads((bundle / "provider" / "attempts.json").read_text())
+    ledger["attempts"][-1]["predecessor_attempt_id"] = "dwarf-swing--002"
+    _write_attempt_ledger(bundle, ledger["attempts"])
+    with pytest.raises(InvalidBundleError) as exc:
+        _check_bundle(bundle)
+    assert exc.value.reason_code == "attempt_ledger_not_attested"
+
+
+def test_legacy_allowlist_drops_when_provider_digest_changes(tmp_path: Path) -> None:
+    bundle = _init_passing_bundle(tmp_path)
+    store_root = tmp_path / "acquisition-controls"
+    provider_path = bundle / "provider" / "source.png"
+    shutil.copy2(WALK_STRIP, provider_path)
+    new_sha = sha256_file(provider_path)
+    provenance_path = bundle / "provider" / "source.source.json"
+    provenance = json.loads(provenance_path.read_text())
+    provenance["raw_sha256"] = new_sha
+    provenance_path.write_text(json.dumps(provenance, indent=2, sort_keys=True) + "\n")
+    ledger_path = bundle / "provider" / "attempts.json"
+    ledger = json.loads(ledger_path.read_text())
+    for row in ledger["attempts"]:
+        if row.get("selected"):
+            row["raw_sha256"] = new_sha
+    ledger_path.write_text(json.dumps(ledger, indent=2, sort_keys=True) + "\n")
+    manifest_path = bundle / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["provider"]["sha256"] = new_sha
+    manifest["provenance"]["sha256"] = sha256_file(provenance_path)
+    manifest["attempt_ledger"]["sha256"] = sha256_file(ledger_path)
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+    shutil.rmtree(store_root)
+
+    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+        with pytest.raises(InvalidBundleError) as exc:
+            _check_bundle(bundle)
+    assert exc.value.reason_code == "attempt_not_registered"
+
+
+def test_legacy_allowlist_grandfathers_checked_in_bundles(tmp_path: Path) -> None:
+    allowlist = json.loads(
+        (ROOT / "acquisition-controls" / "legacy-bundles.json").read_text()
+    )
+    specification_ids = {entry["specification_id"] for entry in allowlist["bundles"]}
+    assert "first-room/dwarf/swing" not in specification_ids
+
+    idle_bundle = tmp_path / "idle"
+    shutil.copytree(DWARF_IDLE_BUNDLE, idle_bundle)
+    idle_result = polish_check_bundle(idle_bundle)
+    assert idle_result.attestation is not None
+    assert idle_result.attestation.state == "legacy"
+
+    bundle = _init_passing_bundle(tmp_path)
+    shutil.rmtree(tmp_path / "acquisition-controls")
+    with patch.dict("os.environ", _acquisition_store_env(tmp_path / "acquisition-controls")):
+        with pytest.raises(InvalidBundleError) as exc:
+            _check_bundle(bundle)
+    assert exc.value.reason_code == "attempt_not_registered"
+
+
+def test_attestation_report_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    store_root = tmp_path / "acquisition-controls"
+    row = _record_store_attempt(tmp_path, store_root)
+    provider = store_root / row["raw_path"]
+    provenance_path = tmp_path / "provenance.json"
+    _write_animation_provenance(
+        provider,
+        provenance_path,
+        motion_class="idle",
+        attempt_id=row["attempt_id"],
+        predecessor_attempt_id=row["predecessor_attempt_id"],
+    )
+    bundle = tmp_path / "bundle"
+    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+        initialize_bundle(provider, "idle", bundle, provenance_sidecar=provenance_path)
+        result = _check_bundle(bundle)
+    assert result.attestation is not None
+    assert result.attestation.state == "attested"
+    assert result.attestation.attempt_id == row["attempt_id"]
+
+    report_path = _finalize_bundle(bundle)
+    report = json.loads(report_path.read_text())
+    assert report["attestation"]["state"] == "attested"
+    assert report["attestation"]["attempt_id"] == row["attempt_id"]
+    assert report["attestation"]["store_path"] == "attempts.jsonl"
+
+    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+        code = final_polish_cli_main(["check", str(bundle), "--summary-json"])
+    assert code == 0
+    attested_summary = json.loads(capsys.readouterr().out)
+    assert attested_summary["attestation"]["state"] == "attested"
+
+    idle_bundle = tmp_path / "legacy-idle"
+    shutil.copytree(DWARF_IDLE_BUNDLE, idle_bundle)
+    legacy_result = polish_check_bundle(idle_bundle)
+    assert legacy_result.attestation is not None
+    assert legacy_result.attestation.state == "legacy"
+
+    with patch.dict("os.environ", {}, clear=False):
+        code = final_polish_cli_main(["check", str(idle_bundle), "--summary-json"])
+    assert code == 0
+    summary = json.loads(capsys.readouterr().out)
+    assert summary["attestation"]["state"] == "legacy"

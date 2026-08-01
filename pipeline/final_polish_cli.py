@@ -147,7 +147,7 @@ def _check_json_payload(
 
 
 def _check_summary_json_payload(result: FinalPolishCheckResult) -> dict[str, Any]:
-    return {
+    payload = {
         "outcome": result.outcome,
         "fingerprint": result.fingerprint,
         "frame_dimensions": result.coherence["dimensions"],
@@ -156,6 +156,9 @@ def _check_summary_json_payload(result: FinalPolishCheckResult) -> dict[str, Any
         ),
         "gate_outcomes": result.coherence["gate_outcomes"],
     }
+    if result.attestation is not None:
+        payload["attestation"] = {"state": result.attestation.state}
+    return payload
 
 
 def _init_rejection_json_payload(

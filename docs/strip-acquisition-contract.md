@@ -477,11 +477,16 @@ evidence model, add Gates, or change Budgets.
    `margin_cells=0`; swing: 24×24 logical Cells; other classes: 16×24). It
    creates a retained provider copy, the provenance sidecar at
    `provider/source.source.json`, an
-   `animation-attempt-ledger/0` document at `provider/attempts.json`, immutable
+   `animation-attempt-ledger/0` document at `provider/attempts.json` projected
+   from the attested Attempt store (`acquisition-controls/attempts.jsonl`) for
+   the bundle's `specification_id`, immutable
    Draft Frames, and seeded Polished Frames (one per logical Frame slot).
    `REVIEW` and `FAIL` ingest outcomes create no Polish Bundle. New bundles use
    manifest schema `final-polish-bundle/2` with hash bindings for provenance and
-   the attempt ledger. Optional `--polish-profile <id>` copies a checked-in
+   the attempt ledger. Bundles on the digest-pinned
+   `acquisition-controls/legacy-bundles.json` allowlist use a single-row ledger
+   synthesized from provenance (grandfathered pre-attestation intake); all other
+   inits require a registered Attempt in the attested store. Optional `--polish-profile <id>` copies a checked-in
    Polish profile into the bundle and binds its schema, id, path, and SHA-256.
    For profile `dwarf-miner` with Motion class `walk` or `swing`, `init`
    additionally requires `--identity-reference` and `--edit-source`, copies
@@ -532,7 +537,15 @@ evidence model, add Gates, or change Budgets.
    A bundle without a profile has no authoritative semantic brief.
 4. **`check`** is read-only: for `/2` bundles it revalidates every evidence hash
    and semantic binding (provenance, identity reference, edit source, attempt
-   ledger) before structural polish and coherence Gates. It reports every visible
+   ledger against the attested store projection) before structural polish and
+   coherence Gates. Bundles listed in
+   `acquisition-controls/legacy-bundles.json` (digest-pinned) skip store
+   attestation and report `attestation.state: legacy`; all other `/2` bundles
+   reject with `attempt_not_registered` or `attempt_ledger_not_attested` when
+   the committed ledger disagrees with the store on projected row fields. Full
+   check reports include `attestation` with `state`, and when attested also
+   `attempt_id` and store path; `--summary-json` carries `attestation.state`
+   only. It reports every visible
    changed Cell (Draft vs Polished RGB at occupied coordinates) and runs the
    exact Polished Frames through the current Motion-class Acceptance profiles
    via `coherence_split`.
