@@ -123,6 +123,18 @@ def run_isolated_files(
     return results, counter.max_observed, dispatch
 
 
+def _hint_ratio(result: IsolationResult, durations: dict[str, float]) -> tuple[float | None, float | None]:
+    """Return (hint_s, hint_ratio) for one result; both None when no hint is recorded.
+
+    A hint of zero or less cannot be judged for staleness, so it reports as absent
+    rather than dividing by it.
+    """
+    hint_s = durations.get(Path(result.path).name)
+    if hint_s is None or hint_s <= 0:
+        return None, None
+    return hint_s, round(result.duration_s / hint_s, 3)
+
+
 def _report_payload(
     results: Sequence[IsolationResult],
     *,
@@ -130,8 +142,30 @@ def _report_payload(
     max_concurrency_observed: int,
     wall_s: float,
     schedule: Sequence[Path],
+    durations: dict[str, float] | None = None,
 ) -> dict[str, object]:
     failed = [result for result in results if result.returncode != 0]
+    durations = durations or {}
+    file_rows = []
+    ratios: list[float] = []
+    stale_hint_files: list[str] = []
+    for result in results:
+        hint_s, hint_ratio = _hint_ratio(result, durations)
+        if hint_ratio is not None:
+            ratios.append(hint_ratio)
+            if hint_ratio > 2.0:
+                stale_hint_files.append(Path(result.path).name)
+        file_rows.append(
+            {
+                "path": result.path,
+                "command": list(result.command),
+                "pid": result.pid,
+                "returncode": result.returncode,
+                "duration_s": result.duration_s,
+                "hint_s": hint_s,
+                "hint_ratio": hint_ratio,
+            }
+        )
     return {
         "schema": "test-isolation-report/0",
         "outcome": "FAIL" if failed else "PASS",
@@ -139,16 +173,11 @@ def _report_payload(
         "max_concurrency_observed": max_concurrency_observed,
         "wall_s": wall_s,
         "schedule": [path.name for path in schedule],
-        "files": [
-            {
-                "path": result.path,
-                "command": list(result.command),
-                "pid": result.pid,
-                "returncode": result.returncode,
-                "duration_s": result.duration_s,
-            }
-            for result in results
-        ],
+        # C2/C3: hint accuracy is reporting only. It must never change scheduling,
+        # exit code, or outcome above -- staleness costs wall clock, not correctness.
+        "worst_case_hint_ratio": max(ratios) if ratios else None,
+        "stale_hint_files": stale_hint_files,
+        "files": file_rows,
     }
 
 
@@ -180,11 +209,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     workers = args.workers
     if workers is None:
         workers = min(os.cpu_count() or 1, max(1, len(files)))
+    durations = load_durations(args.durations)
     started = time.monotonic()
     results, max_observed, schedule = run_isolated_files(
         files,
         workers=workers,
-        durations=load_durations(args.durations),
+        durations=durations,
     )
     wall_s = round(time.monotonic() - started, 3)
 
@@ -201,6 +231,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         max_concurrency_observed=max_observed,
         wall_s=wall_s,
         schedule=schedule,
+        durations=durations,
     )
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")

@@ -62,6 +62,25 @@ jobs:
           PYTHONPATH=. python3 scripts/run_isolated_tests.py
           --report "$RUNNER_TEMP/isolation-report.json"
 
+      # C4: surfaces C3's stale-hint list from the report the previous step
+      # wrote, so drift is visible on a PR without downloading the artifact.
+      # C5: hints stay advisory -- this reads the report but never changes the
+      # job's exit code, which is decided by the isolation step above.
+      - name: Report isolation hint drift
+        if: always()
+        run: |
+          report="$RUNNER_TEMP/isolation-report.json"
+          if [ ! -f "$report" ]; then
+            echo "No isolation report found at $report; skipping hint-drift check."
+            exit 0
+          fi
+          stale=$(jq -r '(.stale_hint_files // []) | join(", ")' "$report")
+          if [ -n "$stale" ]; then
+            echo "::notice title=Isolation hint drift::Measured duration exceeded 2x the recorded hint for: $stale. Regenerate scripts/isolation-durations.json (see its _source note)."
+          else
+            echo "No isolation hint drift: every measured duration was within 2x its scripts/isolation-durations.json hint."
+          fi
+
       - name: Upload isolation report
         if: always()
         uses: actions/upload-artifact@v4
