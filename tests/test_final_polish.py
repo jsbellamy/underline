@@ -33,7 +33,13 @@ from pipeline.final_polish import (
 from pipeline.asset_pack import FIRST_ROOM_ANIMATION_POLICY
 from pipeline.gate_evidence import sha256_bytes, sha256_file
 from pipeline.identity_lock import build_identity_seed, load_canonical_cells
-from pipeline.strip import DEFAULT_LAYOUT, IngestResult, StripLayout, ingest_strip_provider
+from pipeline.strip import (
+    DEFAULT_LAYOUT,
+    IngestResult,
+    StripLayout,
+    ingest_strip_provider,
+    layout_for_motion_class,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 INBOX = ROOT / "prototype" / "strip-coherence" / "inbox"
@@ -163,12 +169,13 @@ def _provider_dimensions(provider_path: Path) -> list[int]:
         return [image.width, image.height]
 
 
-def _item_geometry() -> dict[str, int]:
+def _item_geometry(*, motion_class: str) -> dict[str, int]:
+    layout = layout_for_motion_class(motion_class, margin_cells=0)
     return {
-        "frame_w": DEFAULT_LAYOUT.frame_w,
-        "frame_h": DEFAULT_LAYOUT.frame_h,
-        "frame_count": DEFAULT_LAYOUT.frame_count,
-        "gutter": DEFAULT_LAYOUT.gutter,
+        "frame_w": layout.frame_w,
+        "frame_h": layout.frame_h,
+        "frame_count": layout.frame_count,
+        "gutter": layout.gutter,
     }
 
 
@@ -208,7 +215,7 @@ def _write_animation_provenance(
         "dimensions": _provider_dimensions(provider_path),
         "motion_class": motion_class,
         "master_palette_id": "first-room",
-        "item_geometry": _item_geometry(),
+        "item_geometry": _item_geometry(motion_class=motion_class),
     }
     record.update(overrides)
     provenance_path.write_text(
@@ -510,20 +517,21 @@ def test_tampered_production_profile_is_an_invalid_bundle(
     ("profile_id", "strip", "motion_class", "motion_key", "motion_ids"),
     [
         ("dwarf-miner", WALK_STRIP, "walk", "walk", DWARF_MINER_WALK_IDS),
-        ("dwarf-miner", SWING_STRIP, "swing", "swing", DWARF_MINER_SWING_IDS),
+        ("dwarf-miner", "swing", "swing", "swing", DWARF_MINER_SWING_IDS),
         ("lantern", LANTERN_STRIP, "emissive", "emissive", LANTERN_EMISSIVE_IDS),
     ],
 )
 def test_production_polish_brief_selects_motion_overrides(
     tmp_path: Path,
     profile_id: str,
-    strip: Path,
+    strip: Path | str,
     motion_class: str,
     motion_key: str,
     motion_ids: list[str],
 ) -> None:
     bundle = tmp_path / "bundle"
-    _init_bundle(strip, motion_class, bundle, tmp_path, polish_profile=profile_id)
+    provider_path = _swing_provider_strip(tmp_path) if strip == "swing" else strip
+    _init_bundle(provider_path, motion_class, bundle, tmp_path, polish_profile=profile_id)
 
     brief = load_polish_brief(bundle)
     assert brief["profile"]["id"] == profile_id
@@ -720,7 +728,13 @@ def test_review_strip_creates_nothing(tmp_path: Path) -> None:
 
 def test_init_materializes_swing_frames_on_the_motion_class_canvas(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    _init_bundle(SWING_STRIP, "swing", bundle, tmp_path, polish_profile="dwarf-miner")
+    _init_bundle(
+        _swing_provider_strip(tmp_path),
+        "swing",
+        bundle,
+        tmp_path,
+        polish_profile="dwarf-miner",
+    )
 
     manifest = json.loads((bundle / "manifest.json").read_text())
     assert manifest["motion_class"] == "swing"
@@ -729,8 +743,94 @@ def test_init_materializes_swing_frames_on_the_motion_class_canvas(tmp_path: Pat
     for layer in ("draft", "polished"):
         for index in range(FRAME_COUNT):
             cells = read_cells(bundle / layer / f"frame-{index}.png")
+            polished = read_cells(SWING_POLISHED / f"frame-{index}.png", size=(24, 24))
+            expected = _swing_provider_frame_cells(polished)
             assert (len(cells[0]), len(cells)) == (24, 24)
-            assert all(cell is None for row in cells for cell in row[:4])
+            assert cells == expected
+            assert any(row[x] is not None for row in cells for x in range(4))
+
+
+@pytest.mark.parametrize(
+    "motion_class",
+    ["idle", "blob_idle", "walk", "airborne", "emissive"],
+)
+def test_non_swing_probe_layout_matches_corpus_layout(motion_class: str) -> None:
+    probe = layout_for_motion_class(motion_class, margin_cells=0)
+    corpus = _corpus_layout()
+    assert probe == corpus
+
+
+def test_swing_probe_layout_differs_only_in_frame_geometry() -> None:
+    swing = layout_for_motion_class("swing", margin_cells=0)
+    corpus = _corpus_layout()
+    assert swing.frame_w == 24
+    assert swing.frame_h == corpus.frame_h
+    assert swing.frame_count == corpus.frame_count
+    assert swing.gutter == corpus.gutter
+    assert swing.pitch_px == corpus.pitch_px
+    assert swing.margin_cells == corpus.margin_cells
+
+
+def test_swing_init_rejects_16_cell_wide_provider(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    padded_seed = _padded_edit_source_seed(tmp_path)
+    provenance_path = tmp_path / "swing.source.json"
+    _write_animation_provenance(
+        SWING_STRIP,
+        provenance_path,
+        motion_class="swing",
+        generation_mode="image-edit",
+        reference_image_sha256=[CANONICAL_IDENTITY_SHA],
+        edit_source_sha256=sha256_file(padded_seed),
+    )
+    with pytest.raises(InitializationRejectedError) as exc:
+        _init_bundle(
+            SWING_STRIP,
+            "swing",
+            bundle,
+            tmp_path,
+            polish_profile="dwarf-miner",
+            provenance_path=provenance_path,
+            identity_reference=IDENTITY_PNG,
+            edit_source=padded_seed,
+        )
+    assert exc.value.reason_code == "wrong_size"
+    assert not bundle.exists()
+
+
+def test_schema_v2_swing_check_rejects_legacy_provenance_geometry(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    _init_bundle(
+        _swing_provider_strip(tmp_path),
+        "swing",
+        bundle,
+        tmp_path,
+        polish_profile="dwarf-miner",
+    )
+    provenance_path = bundle / "provider" / "source.source.json"
+    provenance = json.loads(provenance_path.read_text())
+    provenance["item_geometry"]["frame_w"] = 16
+    provenance_path.write_text(json.dumps(provenance, indent=2, sort_keys=True) + "\n")
+    manifest_path = bundle / "manifest.json"
+    manifest = json.loads(manifest_path.read_text())
+    manifest["provenance"]["sha256"] = sha256_file(provenance_path)
+    manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+
+    with pytest.raises(InvalidBundleError) as exc:
+        check_bundle(bundle)
+    assert exc.value.reason_code == "invalid_provenance"
+
+
+def test_schema_v1_swing_check_accepts_legacy_provenance_geometry(tmp_path: Path) -> None:
+    bundle = tmp_path / "swing-v1"
+    shutil.copytree(SWING_BUNDLE, bundle)
+    provenance_path = bundle / "provider" / "source.source.json"
+    provenance = json.loads(provenance_path.read_text())
+    assert provenance["item_geometry"]["frame_w"] == 16
+    result = check_bundle(bundle)
+    assert result.outcome == "PASS"
+    manifest = json.loads((bundle / "manifest.json").read_text())
+    assert manifest["schema"] == BUNDLE_SCHEMA_LEGACY_1
 
 
 def test_existing_destination_is_preserved(tmp_path: Path) -> None:
@@ -1194,6 +1294,54 @@ def _write_tiled_identity_seed(path: Path) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     strip.save(path)
     return path
+
+
+def _swing_provider_frame_cells(cells: list[list[object]]) -> list[list[object]]:
+    """Left-shift polished Frames to simulate native 24-wide provider art."""
+    shifted: list[list[object]] = [[None for _ in range(24)] for _ in range(24)]
+    for y in range(24):
+        for x in range(20):
+            shifted[y][x] = cells[y][x + 4]
+    return shifted
+
+
+def _write_swing_provider_strip(path: Path) -> Path:
+    """Rasterize production swing polished Frames into a 24-wide provider strip."""
+    layout = layout_for_motion_class("swing", margin_cells=0)
+    pitch = layout.pitch_px
+    # Abut frames at class width so pitch-slice yields 24-cell blocks (gutter=2 is metadata).
+    strip_w = layout.frame_count * layout.frame_w
+    strip_h = layout.frame_h
+    border_px = 2
+    magenta = (255, 0, 255, 255)
+    content_w = strip_w * pitch
+    content_h = strip_h * pitch
+    strip = Image.new(
+        "RGBA",
+        (content_w + border_px * 2, content_h + border_px * 2),
+        magenta,
+    )
+    for index in range(FRAME_COUNT):
+        polished = read_cells(SWING_POLISHED / f"frame-{index}.png", size=(24, 24))
+        cells = _swing_provider_frame_cells(polished)
+        origin_gx = index * layout.frame_w
+        for gy in range(layout.frame_h):
+            for gx in range(layout.frame_w):
+                rgb = cells[gy][gx]
+                if rgb is None:
+                    continue
+                block = Image.new("RGBA", (pitch, pitch), (*rgb, 255))
+                strip.paste(
+                    block,
+                    (border_px + (origin_gx + gx) * pitch, border_px + gy * pitch),
+                )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    strip.save(path)
+    return path
+
+
+def _swing_provider_strip(tmp_path: Path) -> Path:
+    return _write_swing_provider_strip(tmp_path / "swing-24-provider.png")
 
 
 def _identity_doc_with_seed_pad_px(seed_pad_px: int = 64) -> dict[str, object]:
@@ -1713,7 +1861,13 @@ def test_production_swing_audit_records_interim_re_canvas_status() -> None:
 
 def test_dwarf_swing_check_exposes_identity_lock_report(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    _init_bundle(SWING_STRIP, "swing", bundle, tmp_path, polish_profile="dwarf-miner")
+    _init_bundle(
+        _swing_provider_strip(tmp_path),
+        "swing",
+        bundle,
+        tmp_path,
+        polish_profile="dwarf-miner",
+    )
     result = check_bundle(bundle)
     assert result.identity_lock is not None
     assert result.identity_lock.motion_class == "swing"
@@ -1732,7 +1886,13 @@ def test_dwarf_swing_check_does_not_trip_magenta_wipe_with_padded_edit_source(
     import numpy as np
 
     bundle = tmp_path / "bundle"
-    _init_bundle(SWING_STRIP, "swing", bundle, tmp_path, polish_profile="dwarf-miner")
+    _init_bundle(
+        _swing_provider_strip(tmp_path),
+        "swing",
+        bundle,
+        tmp_path,
+        polish_profile="dwarf-miner",
+    )
     provider_path = bundle / "provider" / "source.png"
     image = Image.open(provider_path).convert("RGBA")
     arr = np.asarray(image).copy()

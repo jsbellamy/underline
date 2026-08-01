@@ -55,9 +55,9 @@ not evaluate a taller canvas.
 ### Negative
 
 - Swing bundles and Release Frames now use the adopted 24×24 canvas.
-- `strip:polish init` still validates and slices the 16×24 provider acquisition
-  layout, then materializes new Draft and Polished Frames directly on the 24×24
-  swing canvas. New bundles do not require a later re-canvas migration.
+- `strip:polish init` resolves the provider Strip layout from the Motion class, so
+  swing Attempts are recovered at 24 logical Cells; legacy `/0` and `/1` bundles
+  keep the 16×24 provenance expectation on `check`.
 - Identity Lock swing evaluation requires 24×24 attempt Frames with the anchor
   embedded at `(4, 0)` — callers cannot pass bare 16×24 rasters for swing.
 - Strip pitch and gutter semantics for swing differ from the global default
