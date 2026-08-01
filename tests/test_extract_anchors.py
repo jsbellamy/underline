@@ -25,7 +25,6 @@ from scripts.extract_anchors import (
 )
 from scripts.select_changed_tests import (
     Selection,
-    _ACQUISITION_CONTROL_COMPANION_TESTS,
     select_test_files,
 )
 
@@ -178,7 +177,26 @@ def test_a_create_entry_is_kept_without_requiring_an_anchor() -> None:
     )
 
 
-_ACQUISITION_CONTROL_COMPANIONS = _ACQUISITION_CONTROL_COMPANION_TESTS
+_ACQUISITION_CONTROL_COMPANIONS = (
+    "tests/test_asset_acquire.py",
+    "tests/test_final_polish.py",
+    "tests/test_final_polish_cli.py",
+)
+
+_ACQUISITION_CONTROL_TEST_SOURCES = {
+    "tests/test_asset_acquire.py": 'store_root = tmp_path / "acquisition-controls"',
+    "tests/test_final_polish.py": (
+        'from tests.final_polish_harness import helper\n'
+        'store = ROOT / "acquisition-controls"'
+    ),
+    "tests/test_final_polish_cli.py": (
+        "from tests.final_polish_harness import helper\n"
+        'patch.dict("os.environ", {"UNDERLINE_ACQUISITION_CONTROLS_ROOT": str(store_root)})'
+    ),
+    "tests/final_polish_harness.py": (
+        'store_root = bundle.parent / "acquisition-controls"'
+    ),
+}
 
 _ISSUE_233_TOUCHES = """## Touches
 
@@ -304,7 +322,11 @@ def test_a_create_path_participates_in_the_forecast_before_it_exists() -> None:
         "- create: `acquisition-controls/legacy-bundles.json` — C5 allowlist\n"
     )
 
-    selection = forecast_test_selection(anchors, set(_ACQUISITION_CONTROL_COMPANIONS))
+    selection = forecast_test_selection(
+        anchors,
+        set(_ACQUISITION_CONTROL_COMPANIONS),
+        test_sources=_ACQUISITION_CONTROL_TEST_SOURCES,
+    )
 
     assert selection.kind == "selected"
     assert selection.files == _ACQUISITION_CONTROL_COMPANIONS
@@ -320,9 +342,12 @@ def test_issue_233s_manifest_forecasts_acquisition_control_companions() -> None:
             "tests/test_strip.py",
         },
         test_sources={
+            **_ACQUISITION_CONTROL_TEST_SOURCES,
             "tests/test_final_polish.py": (
+                'from tests.final_polish_harness import helper\n'
                 'text = (ROOT / "docs" / "strip-acquisition-contract.md").read_text()'
             ),
+            "tests/test_strip.py": "from pipeline.strip import coherence_report",
         },
     )
 

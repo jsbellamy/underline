@@ -150,10 +150,14 @@ def _existing_test_files(tests_dir: pathlib.Path, root: pathlib.Path) -> set[str
 
 
 def _test_sources(tests_dir: pathlib.Path, root: pathlib.Path) -> dict[str, str]:
-    return {
-        p.relative_to(root).as_posix(): p.read_text(encoding="utf-8")
-        for p in tests_dir.glob("test_*.py")
-    }
+    sources: dict[str, str] = {}
+    for path in tests_dir.rglob("*.py"):
+        rel = path.relative_to(root).as_posix()
+        try:
+            sources[rel] = path.read_text(encoding="utf-8")
+        except OSError:
+            continue
+    return sources
 
 
 def _split_symbols_and_note(rest: str) -> tuple[tuple[str, ...], str]:
