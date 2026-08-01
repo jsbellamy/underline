@@ -68,11 +68,12 @@ runtime supports worktrees.
    - Do not add good corpus strips to strengthen a separation claim; under the
      current derivation rule they can only widen budgets toward the fixed
      controls.
-   - **Discovery checkpoint** — within 10 agent turns after loading the issue,
-     either run the first red-capable command or return a structured discovery
-     blocker. The blocker names the missing seam or prerequisite, evidence
-     inspected, and the smallest next issue or issue edit that would unblock the
-     slice. Do not continue open-ended grep/read loops past this checkpoint.
+   - **Discovery checkpoint** — within 10 tool-call round trips after loading the
+     issue, either run the first red-capable command or return a structured
+     discovery blocker. The blocker names the missing seam or prerequisite,
+     evidence inspected, and the smallest next issue or issue edit that would
+     unblock the slice. Do not continue open-ended grep/read loops past this
+     checkpoint.
 5. Before publishing, make a **completion matrix** with columns `Claim`,
    `Verdict`, and `Evidence`, containing one row per Contract claim ID without
    paraphrasing the claim or copying its Proof mapping. For each row, satisfy the
@@ -86,6 +87,10 @@ runtime supports worktrees.
    If a claim is falsified by what you found while implementing, flag it for
    editorial disposition, do not mark it `met`, and do not stop.
 6. Commit only the issue's changes. Let any commit hooks run; never bypass them.
+   For every before/after Polish Bundle Proof, record the resulting revision with
+   `git rev-parse HEAD`, rerun the same `check <bundle> --summary-json` command,
+   and preserve that SHA/payload pair beside the pre-slice evidence. Verify the
+   observed delta against the issue's expected post-slice delta before review.
 7. When the issue requires Promotion-verification gate audits, **before**
    `/code-review`:
    - Build `packet.png` and `packet.json` mechanically for each promotion review

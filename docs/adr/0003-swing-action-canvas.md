@@ -68,3 +68,9 @@ not evaluate a taller canvas.
 Boundary clearance is assumed, not re-measured on re-authored art. If a
 re-authored swing arc still clips at 24×24, the canvas decision must be
 revisited with fresh measurements.
+
+A general `recanvas` or `migrate-layout` command is deliberately deferred. New
+bundles now materialize the class canvas during initialization, and swing is the
+only concrete migration so far. Add a migration command only when another
+existing bundle needs one, with explicit dry-run, hash, report, and Release Frame
+semantics for that use case.
