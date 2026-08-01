@@ -61,10 +61,11 @@ npm run --silent agents:anchors -- --issue <N>
 ```
 
 which prints each anchored function, constant, or doc section as numbered
-source and lists what it could not resolve. Read those leftovers narrowly
-(grep for the symbol, then read a window around it). A whole-file read of a
-module over ~800 lines is a deliberate choice that belongs in the PR body, not
-a default.
+source. It also reports directory and binary entries that need their appropriate
+inspection tool. A named text anchor that does not resolve is a manifest defect:
+return it for repair instead of compensating with a whole-file read. A whole-file
+read of a module over ~800 lines is a deliberate choice that belongs in the PR
+body, not a default.
 
 ### Final-polish agent audit
 

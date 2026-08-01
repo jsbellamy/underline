@@ -26,14 +26,15 @@ from typing import Iterable, Mapping, Sequence
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 _ANCHOR = re.compile(
-    r"^-\s+(?P<role>read|modify|add|delete)\s*:\s*"
+    r"^-\s+(?P<role>read|modify|create|add|delete)\s*:\s*"
     r"(?:\[(?P<tag>[^\]]+)\]\s*)?"
     r"`(?P<path>[^`]+)`"
-    r"(?:\s*::\s*(?P<rest>.*))?$"
+    r"(?:\s*::\s*(?P<rest>.*)|\s+—\s+(?P<note>.*))?$"
 )
 _SECTION = re.compile(r"^##\s+(?P<title>.+?)\s*$")
 _BACKTICKED = re.compile(r"`([^`]+)`")
 _HEADING = re.compile(r"^(?P<hashes>#{1,6})\s+(?P<title>.+?)\s*$")
+_FENCE = re.compile(r"^\s{0,3}(?P<marker>`{3,}|~{3,})")
 
 # The em-dash that separates an anchor's symbol field from its trailing note.
 _NOTE_SEPARATOR = " — "
@@ -84,7 +85,10 @@ def parse_touches(issue_body: str) -> tuple[Anchor, ...]:
         if match is None:
             continue
 
-        symbols, note = _split_symbols_and_note(match.group("rest") or "")
+        if match.group("note") is not None:
+            symbols, note = (), match.group("note").strip()
+        else:
+            symbols, note = _split_symbols_and_note(match.group("rest") or "")
         anchors.append(
             Anchor(
                 role=match.group("role"),
@@ -166,11 +170,7 @@ def markdown_section_span(source: str, name: str) -> Span | None:
     if not titles:
         return None
 
-    headings = [
-        (index, len(m.group("hashes")), m.group("title").strip())
-        for index, line in enumerate(source.splitlines(), start=1)
-        if (m := _HEADING.match(line)) is not None
-    ]
+    headings = _markdown_headings(source)
 
     search_from, search_to = 0, len(headings)
     match_index: int | None = None
@@ -207,6 +207,35 @@ def markdown_section_span(source: str, name: str) -> Span | None:
     return Span(name=title, start=start_line, end=end_line - 1)
 
 
+def _markdown_headings(source: str) -> list[tuple[int, int, str]]:
+    """Return ATX headings outside fenced code blocks."""
+    headings: list[tuple[int, int, str]] = []
+    fence: tuple[str, int] | None = None
+
+    for index, line in enumerate(source.splitlines(), start=1):
+        fence_match = _FENCE.match(line)
+        if fence_match is not None:
+            marker = fence_match.group("marker")
+            if fence is None:
+                fence = (marker[0], len(marker))
+            elif (
+                marker[0] == fence[0]
+                and len(marker) >= fence[1]
+                and not line[fence_match.end() :].strip()
+            ):
+                fence = None
+            continue
+        if fence is not None:
+            continue
+        heading = _HEADING.match(line)
+        if heading is not None:
+            headings.append(
+                (index, len(heading.group("hashes")), heading.group("title").strip())
+            )
+
+    return headings
+
+
 def _normalized(title: str) -> str:
     return re.sub(r"[^a-z0-9]+", " ", title.lower()).strip()
 
@@ -238,17 +267,28 @@ def resolve_anchor(anchor: Anchor, source: str) -> tuple[tuple[Span, ...], tuple
     return spans, unresolved
 
 
-def render(anchors: Sequence[Anchor], sources: Mapping[str, str]) -> str:
+def render(
+    anchors: Sequence[Anchor],
+    sources: Mapping[str, str],
+    *,
+    unavailable: Mapping[str, str] | None = None,
+) -> str:
     """Render every anchor as numbered source under a heading naming it."""
     blocks: list[str] = []
     extracted = 0
     misses: list[str] = []
+    unavailable_reasons = unavailable or {}
 
     for anchor in anchors:
         source = sources.get(anchor.path)
         label = f"{anchor.role}{f' [{anchor.tag}]' if anchor.tag else ''} {anchor.path}"
         if source is None:
-            misses.append(f"{label} — file not found")
+            misses.append(
+                f"{label} — {unavailable_reasons.get(anchor.path, 'file not found')}"
+            )
+            continue
+        if anchor.role in {"read", "modify"} and not anchor.symbols:
+            misses.append(f"{label} — text file has no anchor; repair the manifest")
             continue
 
         spans, unresolved = resolve_anchor(anchor, source)
@@ -268,7 +308,7 @@ def render(anchors: Sequence[Anchor], sources: Mapping[str, str]) -> str:
         f"--- {extracted} lines extracted from {total} lines of anchored files",
     ]
     if misses:
-        footer.append("--- unresolved (read these by hand, narrowly):")
+        footer.append("--- unresolved text anchors or entries without readable source:")
         footer.extend(f"      {miss}" for miss in misses)
 
     return "\n".join([*blocks, *footer])
@@ -284,6 +324,46 @@ def _issue_body(issue: str) -> str:
         check=True,
     )
     return result.stdout
+
+
+def _load_sources(
+    anchors: Sequence[Anchor],
+) -> tuple[dict[str, str], dict[str, str]]:
+    sources: dict[str, str] = {}
+    unavailable: dict[str, str] = {}
+    root = ROOT.resolve()
+
+    for anchor in anchors:
+        if anchor.path in sources or anchor.path in unavailable:
+            continue
+        relative = pathlib.PurePosixPath(anchor.path)
+        path = (ROOT / pathlib.Path(*relative.parts)).resolve()
+        if (
+            relative.is_absolute()
+            or ".." in relative.parts
+            or not path.is_relative_to(root)
+        ):
+            unavailable[anchor.path] = (
+                "invalid manifest path; expected a repo-relative path"
+            )
+            continue
+        if anchor.role == "create":
+            unavailable[anchor.path] = "planned create; no source yet"
+            continue
+        if path.is_dir():
+            unavailable[anchor.path] = "directory; inspect entries narrowly"
+            continue
+        if not path.is_file():
+            unavailable[anchor.path] = "file not found"
+            continue
+        try:
+            source = path.read_text(encoding="utf-8")
+        except UnicodeDecodeError:
+            unavailable[anchor.path] = "binary file; inspect with the appropriate tool"
+            continue
+        sources[anchor.path] = source
+
+    return sources, unavailable
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -307,12 +387,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("extract_anchors: no ## Touches anchors found", file=sys.stderr)
         return 1
 
-    sources = {
-        anchor.path: (ROOT / anchor.path).read_text(encoding="utf-8")
-        for anchor in anchors
-        if (ROOT / anchor.path).is_file()
-    }
-    print(render(anchors, sources))
+    sources, unavailable = _load_sources(anchors)
+    print(render(anchors, sources, unavailable=unavailable))
     return 0
 
 

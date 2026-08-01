@@ -7,9 +7,14 @@ shapes issue #223 used, since those are what an implementer actually receives.
 
 from __future__ import annotations
 
+from pathlib import Path
+
+import pytest
+
 from scripts.extract_anchors import (
     Anchor,
     Span,
+    main,
     markdown_section_span,
     parse_touches,
     python_symbol_spans,
@@ -132,6 +137,39 @@ def test_a_sidecar_anchor_resolves_to_the_whole_file() -> None:
     assert "unresolved" not in output
 
 
+def test_an_unanchored_manifest_entry_keeps_its_purpose_note() -> None:
+    anchors = parse_touches(
+        "## Touches\n\n"
+        "- read: [authority] `assets/dwarf/identity.png` — immutable identity\n"
+    )
+
+    assert anchors == (
+        Anchor(
+            role="read",
+            tag="authority",
+            path="assets/dwarf/identity.png",
+            symbols=(),
+            note="immutable identity",
+        ),
+    )
+
+
+def test_a_create_entry_is_kept_without_requiring_an_anchor() -> None:
+    anchors = parse_touches(
+        "## Touches\n\n- create: `tests/test_new_seam.py` — prove the new seam\n"
+    )
+
+    assert anchors == (
+        Anchor(
+            role="create",
+            tag=None,
+            path="tests/test_new_seam.py",
+            symbols=(),
+            note="prove the new seam",
+        ),
+    )
+
+
 def test_a_note_containing_backticks_does_not_become_a_symbol() -> None:
     anchors = parse_touches(TOUCHES)
 
@@ -183,6 +221,44 @@ def test_a_heading_path_whose_parent_is_absent_does_not_resolve() -> None:
     assert markdown_section_span(DOCUMENT, "Decision → Negative") is None
 
 
+def test_a_markdown_section_ignores_heading_syntax_inside_fenced_code() -> None:
+    document = """## Operator workflow
+
+```bash
+# 1. Score the attempt
+npm run gate-control:score
+```
+
+Still part of the workflow.
+
+## Later
+
+Outside the workflow.
+"""
+
+    assert markdown_section_span(document, "Operator workflow") == Span(
+        name="Operator workflow", start=1, end=9
+    )
+
+
+def test_text_after_a_fence_marker_does_not_close_the_fence() -> None:
+    document = """## Outer
+
+```text
+```still code
+# Still code too
+```
+
+After the fence.
+
+## Later
+"""
+
+    assert markdown_section_span(document, "Outer") == Span(
+        name="Outer", start=1, end=9
+    )
+
+
 def test_a_rendered_anchor_carries_the_source_and_its_line_numbers() -> None:
     anchors = parse_touches(
         "## Touches\n\n- read: [seam] `mod.py` :: `wanted` — the seam\n"
@@ -221,3 +297,106 @@ def test_a_missing_file_is_reported_rather_than_silently_dropped() -> None:
     output = render(anchors, {})
 
     assert "gone.py — file not found" in output
+
+
+def test_an_unanchored_directory_is_reported_for_manual_inspection() -> None:
+    anchors = parse_touches(
+        "## Touches\n\n- modify: `assets/dwarf/swing` — replace the bundle\n"
+    )
+
+    output = render(
+        anchors,
+        {},
+        unavailable={"assets/dwarf/swing": "directory; inspect entries narrowly"},
+    )
+
+    assert "assets/dwarf/swing — directory; inspect entries narrowly" in output
+
+
+def test_the_cli_reports_a_create_path_as_planned(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    body = tmp_path / "issue.md"
+    body.write_text(
+        "## Touches\n\n- create: `tests/test_new_seam.py` — prove the seam\n",
+        encoding="utf-8",
+    )
+
+    assert main(["--body-file", str(body)]) == 0
+
+    captured = capsys.readouterr()
+    assert "tests/test_new_seam.py — planned create; no source yet" in captured.out
+
+
+def test_the_cli_rejects_an_unanchored_readable_file(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    body = tmp_path / "issue.md"
+    body.write_text(
+        "## Touches\n\n"
+        "- read: [authority] `docs/agents/issue-tracker.md` — tracker rules\n",
+        encoding="utf-8",
+    )
+
+    assert main(["--body-file", str(body)]) == 0
+
+    captured = capsys.readouterr()
+    assert "text file has no anchor; repair the manifest" in captured.out
+    assert "# Issue tracker: GitHub Issues" not in captured.out
+
+
+def test_an_anchored_entry_does_not_let_a_duplicate_bypass_anchor_validation(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    body = tmp_path / "issue.md"
+    body.write_text(
+        "## Touches\n\n"
+        "- read: [authority] `docs/agents/issue-tracker.md` :: Conventions — rules\n"
+        "- read: [authority] `docs/agents/issue-tracker.md` — all rules\n",
+        encoding="utf-8",
+    )
+
+    assert main(["--body-file", str(body)]) == 0
+
+    captured = capsys.readouterr()
+    assert "## Conventions" in captured.out
+    assert "text file has no anchor; repair the manifest" in captured.out
+    assert "# Issue tracker: GitHub Issues" not in captured.out
+
+
+def test_an_unanchored_entry_does_not_hide_a_later_valid_anchor(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    body = tmp_path / "issue.md"
+    body.write_text(
+        "## Touches\n\n"
+        "- read: [authority] `docs/agents/issue-tracker.md` — all rules\n"
+        "- read: [authority] `docs/agents/issue-tracker.md` :: Conventions — rules\n",
+        encoding="utf-8",
+    )
+
+    assert main(["--body-file", str(body)]) == 0
+
+    captured = capsys.readouterr()
+    assert "text file has no anchor; repair the manifest" in captured.out
+    assert "## Conventions" in captured.out
+    assert "# Issue tracker: GitHub Issues" not in captured.out
+
+
+@pytest.mark.parametrize("manifest_path", ["/etc/hosts", "../outside.md"])
+def test_the_cli_rejects_paths_outside_the_repository(
+    manifest_path: str,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    body = tmp_path / "issue.md"
+    body.write_text(
+        "## Touches\n\n"
+        f"- read: [authority] `{manifest_path}` :: Hosts — outside\n",
+        encoding="utf-8",
+    )
+
+    assert main(["--body-file", str(body)]) == 0
+
+    captured = capsys.readouterr()
+    assert "invalid manifest path; expected a repo-relative path" in captured.out
