@@ -21,6 +21,11 @@ That document is the single source of truth for the implementer workflow.
 
 - Confirm `## Slice type` is `code` after `gh issue view`. If `asset`, stop with a
   blocked report — you are the wrong implementer.
+- **Step 4 — red before green.** Invoke `/tdd` and read it before writing
+  implementation code; if `/tdd` is unavailable, read `~/.claude/skills/tdd/SKILL.md`.
+  Vertical slices only: one failing test at a seam in `docs/agents/code-style.md`,
+  then minimal code to green. That doc is the standing seam agreement. Done when
+  every production change cites the red command that failed first.
 - Apply step 4 pipeline rules: gates, budgets, `docs/strip-acquisition-contract.md`,
   characterization baselines, adversarial mutations.
 - TypeScript changes require `npm run typecheck` green before publish.
