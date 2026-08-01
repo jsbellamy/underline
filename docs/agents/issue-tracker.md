@@ -9,6 +9,9 @@ Issues, PRDs, and wayfinder maps for this project live as **GitHub issues** on
 - Long-form assets (research summaries, PRDs, prototype notes) live as Markdown
   files under `docs/` and are **linked** from the issue body, not pasted in.
 - Comments and conversation history are GitHub issue comments.
+- An asset slice may not modify pipeline code, gate code, or checked-in
+  characterization tests — see the asset-slice constraint in
+  `docs/agents/issue-implementer.md` § Constraints.
 
 ## Dependency correctness
 

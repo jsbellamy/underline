@@ -18,6 +18,9 @@ ACCEPTANCE_PROFILES = (
     ROOT / "docs" / "acceptance-profiles" / "idle.md",
     ROOT / "docs" / "acceptance-profiles" / "emissive.md",
 )
+ISSUE_IMPLEMENTER = ROOT / "docs" / "agents" / "issue-implementer.md"
+ISSUE_TRACKER = ROOT / "docs" / "agents" / "issue-tracker.md"
+AGENTS_MD = ROOT / "AGENTS.md"
 
 PRODUCTION_DOC_PATHS_WITHOUT_SHIM_TABLE = (
     README,
@@ -48,6 +51,10 @@ WAVE_A_AWAIT_PHRASES = (
 
 def _load_manifest() -> dict:
     return json.loads(MANIFEST.read_text())
+
+
+def _collapse_whitespace(text: str) -> str:
+    return " ".join(text.split())
 
 
 def test_manifest_has_seventeen_active_promotions() -> None:
@@ -136,6 +143,54 @@ def test_operational_docs_do_not_advertise_retired_shims() -> None:
             assert shim_path not in text
     for shim_path in RETIRED_SHIM_PATHS:
         assert not (ROOT / shim_path).exists()
+
+
+def test_issue_implementer_step5_never_pairs_unmet_claim_with_do_not_stop() -> None:
+    text = ISSUE_IMPLEMENTER.read_text()
+    assert "do not stop" not in text
+
+
+def test_issue_implementer_step5_offers_blocked_report_or_diagnostic_draft_pr() -> None:
+    text = ISSUE_IMPLEMENTER.read_text()
+    normalized = _collapse_whitespace(text)
+    assert "structured blocked report" in normalized
+    assert "Diagnostic:" in normalized
+    assert "does not carry `Closes #<N>`" in normalized
+    assert "never a reason for this agent to continue toward a completion PR" in normalized
+
+
+def test_issue_implementer_step9_states_closes_precondition() -> None:
+    text = ISSUE_IMPLEMENTER.read_text()
+    normalized = _collapse_whitespace(text)
+    assert "no `unmet` and no `needs manual` rows" in normalized
+
+
+def test_issue_implementer_constraints_forbid_asset_slice_from_editing_its_own_judge() -> None:
+    text = ISSUE_IMPLEMENTER.read_text()
+    constraints = text.split("## Constraints")[1]
+    normalized = _collapse_whitespace(constraints)
+    assert "An **asset slice** may not modify" in normalized
+    assert "pipeline/" in normalized
+    assert "gate-controls/" in normalized
+    assert "tests/" in normalized
+    assert "stop, report it as a blocked slice" in normalized
+    assert "smallest code issue that would unblock it" in normalized
+    assert "`create:` entry" in normalized
+
+
+def test_issue_tracker_points_to_asset_slice_constraint() -> None:
+    text = ISSUE_TRACKER.read_text()
+    conventions = text.split("## Conventions")[1].split("## Dependency correctness")[0]
+    normalized = _collapse_whitespace(conventions)
+    assert "asset slice" in normalized
+    assert "docs/agents/issue-implementer.md" in normalized
+
+
+def test_agents_md_names_completion_and_asset_slice_rules() -> None:
+    text = AGENTS_MD.read_text()
+    normalized = _collapse_whitespace(text)
+    assert "`Closes #<N>` appears only when every Contract claim" in normalized
+    assert "asset slice may not modify pipeline code" in normalized
 
 
 def test_afk_spec_documents_exactly_two_bat_flap_adversarial_gaps() -> None:
