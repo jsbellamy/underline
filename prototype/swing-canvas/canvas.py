@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Sequence
 
-from pipeline.cell_raster import Cell, cells_from_rgba, read_cells
+from pipeline.cell_raster import Cell, read_cells
 from pipeline.identity_lock import _load_palette_roles, nearest_palette_role
 from pipeline.strip import StripLayout
 from PIL import Image
@@ -313,20 +313,6 @@ def composite_overlay(
     return composite
 
 
-def body_layer_preserves_reference(body: CellGrid, reference: CellGrid) -> bool:
-    if len(body) != len(reference) or not body or len(body[0]) != len(reference[0]):
-        return False
-    for y, row in enumerate(reference):
-        for x, cell in enumerate(row):
-            if cell is None:
-                if body[y][x] is not None:
-                    return False
-                continue
-            if body[y][x] != cell:
-                return False
-    return True
-
-
 def overlay_body_cells_preserved(
     body: CellGrid,
     reference: CellGrid,
@@ -347,13 +333,14 @@ def render_variant_frames(
     source_frames: Sequence[CellGrid],
     variant: str,
     palette_entries: Sequence[tuple[str, tuple[int, int, int]]],
-) -> tuple[list[CellGrid], list[dict[str, object]]]:
+) -> tuple[list[CellGrid], list[dict[str, object]], list[bool]]:
     if variant == "24x24":
         return (
             [
                 expand_canvas(frame, canvas_w=24, canvas_h=24, left_pad=4)
                 for frame in source_frames
             ],
+            [],
             [],
         )
     if variant == "32x24":
@@ -363,17 +350,26 @@ def render_variant_frames(
                 for frame in source_frames
             ],
             [],
+            [],
         )
     if variant == "overlay":
         rendered: list[CellGrid] = []
         separations: list[dict[str, object]] = []
+        body_identity: list[bool] = []
         for frame in source_frames:
             body, tool, separation = split_overlay_layers(frame, palette_entries)
             rendered.append(
                 composite_overlay(body, tool, canvas_w=24, canvas_h=24, left_pad=4)
             )
             separations.append(separation)
-        return rendered, separations
+            tool_mask = separation.get("tool_cells")
+            if separation["status"] != "ok" or tool_mask is None:
+                body_identity.append(False)
+            else:
+                body_identity.append(
+                    overlay_body_cells_preserved(body, frame, tool_mask)
+                )
+        return rendered, separations, body_identity
     raise ValueError(f"unknown variant: {variant}")
 
 
@@ -391,9 +387,10 @@ def load_motion_frames(
 def measure_motion_baseline(
     frames: Sequence[CellGrid],
 ) -> dict[str, object]:
-    per_frame = [measure_frame(frame).as_dict() for frame in frames]
-    edge_left = [measure_frame(frame).boundary_left for frame in frames]
-    edge_right = [measure_frame(frame).boundary_right for frame in frames]
+    measured = [measure_frame(frame) for frame in frames]
+    per_frame = [frame.as_dict() for frame in measured]
+    edge_left = [frame.boundary_left for frame in measured]
+    edge_right = [frame.boundary_right for frame in measured]
     return {
         "per_frame": per_frame,
         "edge_load": {
@@ -438,7 +435,3 @@ def silhouette_render(cells: CellGrid) -> Image.Image:
             for row in cells
         ]
     )
-
-
-def rgba_cells_from_image(image: Image.Image) -> CellGrid:
-    return cells_from_rgba(image.convert("RGBA"))
