@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import shutil
 from pathlib import Path
 
 import numpy as np
@@ -121,8 +122,10 @@ def test_idle_polished_roles_reproduce_pre_cleanup_rasters() -> None:
         assert _cell_content_sha256(precleanup) == PRE_CLEANUP_CELL_SHA256[index]
 
 
-def test_idle_bundle_check_passes_after_palette_migration() -> None:
-    result = check_bundle(IDLE_BUNDLE)
+def test_idle_bundle_check_passes_after_palette_migration(tmp_path: Path) -> None:
+    bundle = tmp_path / "dwarf-idle"
+    shutil.copytree(IDLE_BUNDLE, bundle)
+    result = check_bundle(bundle)
     assert result.outcome == "PASS"
     assert result.structural.outcome == "PASS"
     assert result.coherence["outcome"] == "PASS"
