@@ -115,6 +115,7 @@ def _check_json_payload(
         "motion_class": manifest["motion_class"],
         "structural": _structural_payload(result),
         "visible_cell_delta": _delta_payload(result),
+        "provider_post_edit": result.provider_post_edit,
         "identity_lock": _identity_lock_payload(result),
         "coherence": result.coherence,
         **gate_views,
@@ -159,6 +160,16 @@ def _init_rejection_json_payload(
     }
 
 
+def _format_provider_post_edit(payload: dict[str, Any] | None) -> str:
+    if payload is None:
+        return "(n/a)"
+    outcome = payload["outcome"]
+    reason_code = payload.get("reason_code")
+    if reason_code is None:
+        return str(outcome)
+    return f"{outcome} ({reason_code})"
+
+
 def _format_check_report(
     bundle_root: pathlib.Path,
     result: FinalPolishCheckResult,
@@ -182,6 +193,7 @@ def _format_check_report(
             "Identity    "
             f"{result.identity_lock.outcome if result.identity_lock is not None else '(n/a)'}"
         ),
+        f"Post-edit   {_format_provider_post_edit(result.provider_post_edit)}",
         (
             "Edits     "
             f"total={result.delta.total_edits} "

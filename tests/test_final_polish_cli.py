@@ -573,6 +573,58 @@ def test_check_json_includes_silhouette_artifacts(tmp_path: Path, capsys: pytest
     assert data["silhouette_artifacts"]["gif"]["sha256"] == sha256_file(gif_path)
 
 
+def test_check_json_reports_provider_post_edit(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    bundle = tmp_path / "bundle"
+    _library_init_bundle(SWING_STRIP, "swing", bundle, tmp_path, polish_profile="dwarf-miner")
+
+    result = _run_cli(capsys, ["check", str(bundle), "--json"])
+
+    assert result.returncode == 1, result.stderr
+    data = json.loads(result.stdout)
+    post_edit = data["provider_post_edit"]
+    assert post_edit is not None
+    assert post_edit["magenta_wipe"]["outcome"] == "PASS"
+    assert post_edit["outcome"] == "FAIL"
+    assert post_edit["reason_code"] == "edit_source_continuity_fail"
+    assert post_edit["continuity"]["reason_code"] == "edit_source_continuity_fail"
+
+
+def test_check_human_report_names_provider_post_edit_reason(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    bundle = tmp_path / "bundle"
+    _library_init_bundle(SWING_STRIP, "swing", bundle, tmp_path, polish_profile="dwarf-miner")
+
+    result = _run_cli(capsys, ["check", str(bundle)])
+
+    assert result.returncode == 1, result.stderr
+    assert "Post-edit   FAIL (edit_source_continuity_fail)" in result.stdout
+
+
+def test_check_human_report_marks_provider_post_edit_not_applicable(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    bundle = _init_bundle(tmp_path)
+
+    result = _run_cli(capsys, ["check", str(bundle)])
+
+    assert result.returncode == 0, result.stderr
+    assert "Post-edit   (n/a)" in result.stdout
+
+
+def test_check_json_provider_post_edit_is_null_when_not_evaluated(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    bundle = _init_bundle(tmp_path)
+
+    result = _run_cli(capsys, ["check", str(bundle), "--json"])
+
+    assert result.returncode == 0, result.stderr
+    data = json.loads(result.stdout)
+    assert "provider_post_edit" in data
+    assert data["provider_post_edit"] is None
+
+
 def test_check_fail_exit_1(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = _init_bundle(tmp_path)
     polished = bundle / "polished" / "frame-0.png"
