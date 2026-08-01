@@ -19,8 +19,13 @@ PASS_STRIP = INBOX / "01-miner-idle.png"
 WALK_STRIP = INBOX / "05-miner-walk.png"
 
 
-def test_polish_bundle_module_is_importable() -> None:
+def test_support_polish_bundle_exposes_prepared_attempt_surface() -> None:
     import tests.support.polish_bundle  # noqa: F401
+
+    assert hasattr(tests.support.polish_bundle, "PreparedAttempt")
+    assert hasattr(tests.support.polish_bundle, "prepare")
+    assert hasattr(tests.support.polish_bundle, "init_bundle")
+    assert hasattr(tests.support.polish_bundle, "init_argv")
 
 
 def test_prepare_idle_attempt_is_text_to_image_without_identity_paths(tmp_path: Path) -> None:
@@ -88,19 +93,33 @@ def test_init_bundle_on_idle_attempt_yields_passing_polish_bundle(tmp_path: Path
     assert result.outcome == "PASS"
 
 
-def test_init_bundle_does_not_reconstruct_attempt_from_argv(tmp_path: Path) -> None:
-    """C5: PreparedAttempt is built from typed fields, never from argv positions."""
-    bundle = tmp_path / "bundle"
+def test_init_argv_never_initializes_a_polish_bundle(tmp_path: Path) -> None:
     attempt = pb.prepare(PASS_STRIP, "idle", tmp_path)
-    argv = pb.init_argv(attempt, bundle)
+    bundle = tmp_path / "bundle"
 
-    source = Path(pb.__file__).read_text(encoding="utf-8")
-    assert "PreparedAttempt(" not in source or "argv" not in source.split("PreparedAttempt(", 1)[-1].split(")", 1)[0]
+    with patch("tests.support.polish_bundle.initialize_bundle") as init_mock:
+        argv = pb.init_argv(attempt, bundle)
+
+    init_mock.assert_not_called()
+    assert not bundle.exists()
     assert argv[0] == "init"
     assert not hasattr(pb, "attempt_from_argv")
 
 
-def test_support_tree_has_single_ingest_patch_site() -> None:
+def test_init_bundle_on_dwarf_miner_walk_uses_ingest_patch_when_strip_differs(
+    tmp_path: Path,
+) -> None:
+    bundle = tmp_path / "bundle"
+    attempt = pb.prepare(WALK_STRIP, "walk", tmp_path, polish_profile="dwarf-miner")
+
+    assert attempt.ingest_source != attempt.provider
+
+    pb.init_bundle(attempt, bundle)
+
+    assert bundle.is_dir()
+
+
+def test_prepared_attempt_initialization_centralizes_ingest_strip_provider_patch() -> None:
     result = subprocess.run(
         [
             "grep",
@@ -116,13 +135,3 @@ def test_support_tree_has_single_ingest_patch_site() -> None:
 
     lines = [line for line in result.stdout.splitlines() if line.strip()]
     assert len(lines) == 1
-
-
-def test_init_argv_never_calls_initialize_bundle(tmp_path: Path) -> None:
-    attempt = pb.prepare(PASS_STRIP, "idle", tmp_path)
-    bundle = tmp_path / "bundle"
-
-    with patch("tests.support.polish_bundle.initialize_bundle") as init_mock:
-        pb.init_argv(attempt, bundle)
-
-    init_mock.assert_not_called()

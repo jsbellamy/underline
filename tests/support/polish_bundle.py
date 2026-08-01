@@ -11,11 +11,11 @@ from unittest.mock import patch
 
 from PIL import Image
 
+from pipeline import asset_acquire as aa
 from pipeline.final_polish import PROVENANCE_SCHEMA, initialize_bundle
 from pipeline.gate_evidence import sha256_bytes, sha256_file
 from pipeline.identity_lock import build_identity_seed, magenta_pad_generation_source_png
 from pipeline.strip import ingest_strip_provider, layout_for_motion_class, load_provider_frames
-from tests.final_polish_harness import acquisition_store_env, record_store_attempt
 
 ROOT = Path(__file__).resolve().parents[2]
 INBOX = ROOT / "prototype" / "strip-coherence" / "inbox"
@@ -58,21 +58,13 @@ def prepare(
     )
     identity_reference: Path | None = None
     edit_source: Path | None = None
-    record_kwargs: dict[str, Any] = {
-        "motion_class": motion_class,
-        "generation_mode": generation_mode,
-        "acquiring_agent": "pytest",
-        "prompt_text": _PROMPT_TEXT,
-        "repo_root": tmp_path,
-    }
+    reference_image_sha256: str | None = None
     if generation_mode == "image-edit":
-        padded_seed = _padded_edit_source_seed(tmp_path, motion_class)
+        edit_source = _padded_edit_source_seed(tmp_path, motion_class)
         identity_reference = IDENTITY_PNG
-        edit_source = padded_seed
-        record_kwargs["reference_image_sha256"] = CANONICAL_IDENTITY_SHA
-        record_kwargs["edit_source"] = padded_seed
+        reference_image_sha256 = CANONICAL_IDENTITY_SHA
     specification_id = f"test/{motion_class}"
-    row, provider_for_init = record_store_attempt(
+    row, provider_for_init = _record_store_attempt(
         store_root,
         effective_provider,
         specification_id,
@@ -81,8 +73,8 @@ def prepare(
         acquiring_agent="pytest",
         prompt_text=_PROMPT_TEXT,
         repo_root=tmp_path,
-        reference_image_sha256=record_kwargs.get("reference_image_sha256"),
-        edit_source=record_kwargs.get("edit_source"),
+        reference_image_sha256=reference_image_sha256,
+        edit_source=edit_source,
     )
     provenance_path = tmp_path / f"{effective_provider.stem}.source.json"
     provenance_kwargs: dict[str, object] = {
@@ -93,11 +85,11 @@ def prepare(
         "specification_id": specification_id,
     }
     if generation_mode == "image-edit":
-        padded_seed = _padded_edit_source_seed(tmp_path, motion_class)
+        assert edit_source is not None
         provenance_kwargs.update(
             {
                 "reference_image_sha256": [CANONICAL_IDENTITY_SHA],
-                "edit_source_sha256": sha256_file(padded_seed),
+                "edit_source_sha256": sha256_file(edit_source),
             }
         )
     if polish_profile is not None:
@@ -114,7 +106,7 @@ def prepare(
         identity_reference=identity_reference,
         edit_source=edit_source,
         ingest_source=ingest_source,
-        env=acquisition_store_env(store_root),
+        env=_acquisition_store_env(store_root),
     )
 
 
@@ -199,6 +191,48 @@ def _motion_class(attempt: PreparedAttempt) -> str:
 def _polish_profile(attempt: PreparedAttempt) -> str | None:
     value = _provenance_record(attempt).get("fixture_polish_profile")
     return str(value) if value else None
+
+
+def _acquisition_store_env(store_root: Path) -> dict[str, str]:
+    return {"UNDERLINE_ACQUISITION_CONTROLS_ROOT": str(store_root)}
+
+
+def _record_store_attempt(
+    store_root: Path,
+    provider_path: Path,
+    specification_id: str,
+    *,
+    motion_class: str,
+    generation_mode: str,
+    acquiring_agent: str,
+    prompt_text: str,
+    repo_root: Path,
+    outcome: str = "accepted",
+    rejection_reason: str | None = None,
+    reference_image_sha256: str | None = None,
+    edit_source: Path | None = None,
+) -> tuple[dict[str, Any], Path]:
+    record_kwargs: dict[str, object] = {
+        "motion_class": motion_class,
+        "generation_mode": generation_mode,
+        "acquiring_agent": acquiring_agent,
+        "prompt_text": prompt_text,
+        "outcome": outcome,
+        "rejection_reason": rejection_reason,
+        "repo_root": repo_root,
+    }
+    if reference_image_sha256 is not None:
+        record_kwargs["reference_image_sha256"] = reference_image_sha256
+    if edit_source is not None:
+        record_kwargs["edit_source"] = edit_source
+    with patch.dict("os.environ", _acquisition_store_env(store_root)):
+        row = aa.record_asset_attempt(
+            provider_path,
+            specification_id,
+            **record_kwargs,
+        )
+    stored_provider_path = store_root / row["raw_path"]
+    return row, stored_provider_path
 
 
 def _provider_dimensions(provider_path: Path) -> list[int]:
