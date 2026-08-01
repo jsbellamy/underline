@@ -16,6 +16,15 @@ re-vendor upstream changes rather than editing the copy in place.
 Issues are tracked as GitHub issues on `jsbellamy/underline`. See
 `docs/agents/issue-tracker.md`.
 
+### Issue implementer
+
+`docs/agents/issue-implementer.md` is the shared implementer process. Two
+rules from it: `Closes #<N>` appears only when every Contract claim in the
+reviewed completion matrix is `met`; an `unmet` or `needs manual` row routes to
+a blocked report or a `Diagnostic:`-prefixed draft PR instead. An asset slice
+may not modify pipeline code, gate code, or checked-in characterization tests
+to make its own artifact pass.
+
 ### Triage labels
 
 See `docs/agents/triage-labels.md` for the canonical role → label mapping and

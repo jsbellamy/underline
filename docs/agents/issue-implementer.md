@@ -99,9 +99,17 @@ runtime supports worktrees.
    `npm run prototype:strip:corpus`, `:adversarial`, `:alpha-budgets`,
    `:derive-budgets`, `:displacement`, `:sharpness`. If a claim is not visible to any of them, say so
    in the row rather than substituting a weaker proof.
-   If a claim cannot be evidenced at all, stop — do not open a completion PR.
-   If a claim is falsified by what you found while implementing, flag it for
-   editorial disposition, do not mark it `met`, and do not stop.
+   If a claim cannot be evidenced at all, or is falsified by what you found
+   while implementing, mark its row `unmet` (or `needs manual`) — never `met`,
+   and never `PARTIAL`; that is not a matrix verdict, the vocabulary stays
+   exactly `met` / `unmet` / `needs manual`, and a claim that is only partly
+   satisfied is `unmet`. A claim that is not `met` has exactly one outcome
+   available: return a structured blocked report to the calling orchestrator,
+   or open a **draft** pull request whose title is prefixed `Diagnostic:` and
+   that does not carry `Closes #<N>`. "Editorial disposition" is what the
+   orchestrator or a human decides after receiving that blocked report or
+   draft — it is never a reason for this agent to continue toward a completion
+   PR.
 6. Commit only the issue's changes. Let any commit hooks run; never bypass them.
    For every before/after Polish Bundle Proof, record the resulting revision with
    `git rev-parse HEAD`, rerun the same `check <bundle> --summary-json` command,
@@ -143,7 +151,12 @@ runtime supports worktrees.
    violation (a documented repo-standard breach), then commit and re-run the
    review until those are clear. Judgement-call Standards smells need no rework —
    carry them into the verdict table for the merge decision.
-9. Push with `git push -u origin <branch>`, then create a pull request whose body
+9. This step applies only when the reviewed completion matrix has no `unmet`
+   and no `needs manual` rows. If any row is `unmet` or `needs manual`, follow
+   step 5's diagnostic path instead — a structured blocked report, or a
+   `Diagnostic:`-prefixed draft PR that does not carry `Closes #<N>` — and stop
+   here rather than proceeding with the rest of this step. Otherwise, push with
+   `git push -u origin <branch>`, then create a pull request whose body
    includes a summary, verification details, the reviewed completion matrix file,
    and `Closes #<N>`. Assemble the body as a file and pass it with
    `gh pr create --body-file`, concatenating the matrix file rather than
@@ -165,6 +178,15 @@ runtime supports worktrees.
 
 ## Constraints
 
+- An **asset slice** may not modify pipeline code, gate code, or checked-in
+  characterization tests — the directories `pipeline/`, `gate-controls/`, and
+  `tests/`. The one exception is a test that exists solely to characterize the
+  new asset's own Bundle, declared in the issue's `## Touches` manifest as a
+  `create:` entry. If an asset slice cannot pass without touching one of those
+  directories outside that exception, that is a finding: stop, report it as a
+  blocked slice, and name the smallest code issue that would unblock it. The
+  asset slice resumes after that issue merges. A slice that edits the
+  mechanism judging its own artifact has not been judged.
 - This agent has no direct user-interaction channel. Never ask the user a
   question or wait for user approval. Resolve routine decisions from the issue
   and repository contracts. When progress is impossible, stop and return a
