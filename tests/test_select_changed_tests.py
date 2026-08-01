@@ -50,6 +50,16 @@ def test_a_changed_prototype_module_selects_its_test_and_split_variants() -> Non
     assert result.files == ("tests/test_corpus.py",)
 
 
+def test_a_changed_script_selects_its_test() -> None:
+    result = select_test_files(
+        ["scripts/select_changed_tests.py"],
+        existing_tests={"tests/test_select_changed_tests.py", "tests/test_corpus.py"},
+    )
+
+    assert result.kind == "selected"
+    assert result.files == ("tests/test_select_changed_tests.py",)
+
+
 def test_a_changed_conftest_selects_the_whole_suite() -> None:
     result = select_test_files(["tests/conftest.py"], existing_tests=set())
 
@@ -91,9 +101,49 @@ def test_a_changed_gate_controls_file_selects_the_whole_suite() -> None:
 
 
 def test_an_unmapped_path_falls_back_to_the_whole_suite() -> None:
-    result = select_test_files(["README.md"], existing_tests=set())
+    result = select_test_files([".github/workflows/ci.yml"], existing_tests=set())
 
     assert result.kind == "whole_suite"
+
+
+def test_a_changed_doc_selects_only_the_tests_that_read_it() -> None:
+    result = select_test_files(
+        ["docs/strip-acquisition-contract.md"],
+        existing_tests={"tests/test_final_polish.py", "tests/test_corpus.py"},
+        test_sources={
+            "tests/test_final_polish.py": (
+                'text = (ROOT / "docs" / "strip-acquisition-contract.md").read_text()'
+            ),
+            "tests/test_corpus.py": "from pipeline.strip import coherence_report",
+        },
+    )
+
+    assert result.kind == "selected"
+    assert result.files == ("tests/test_final_polish.py",)
+
+
+def test_a_changed_doc_no_test_reads_selects_nothing() -> None:
+    result = select_test_files(
+        ["docs/agents/code-style.md"],
+        existing_tests={"tests/test_corpus.py"},
+        test_sources={"tests/test_corpus.py": "from pipeline.strip import coherence_report"},
+    )
+
+    assert result.kind == "nothing"
+
+
+def test_a_changed_doc_alongside_a_module_adds_to_the_selection() -> None:
+    result = select_test_files(
+        ["pipeline/strip.py", "docs/strip-acquisition-contract.md"],
+        existing_tests={"tests/test_strip.py", "tests/test_final_polish.py"},
+        test_sources={
+            "tests/test_final_polish.py": '"docs" / "strip-acquisition-contract.md"',
+            "tests/test_strip.py": "from pipeline.strip import coherence_report",
+        },
+    )
+
+    assert result.kind == "selected"
+    assert result.files == ("tests/test_final_polish.py", "tests/test_strip.py")
 
 
 def test_a_mapping_with_no_existing_test_file_falls_back_to_the_whole_suite() -> None:

@@ -27,6 +27,25 @@ missing prerequisite is discovered after dispatch, the implementer returns a
 blocked report; the orchestrator repairs the dependency graph or issue scope
 before redispatching.
 
+## Writing `## Touches`
+
+For every existing text file, anchor at a symbol or exact heading:
+`pipeline/strip.py :: layout_for_motion_class` is a manifest an implementer can
+resolve with `npm run agents:anchors`, while a bare file name silently costs it
+the whole module on every round trip. When the exact site has no name, anchor the
+enclosing definition or heading and put the locating prose in the purpose note.
+Unanchored entries are reserved for `create:` paths, directory scopes, and binary
+assets; the extractor reports those explicitly for the appropriate inspection
+tool.
+
+For every modified public pipeline entry point that can raise, trace its callers
+to the catch site. When a CLI reaches it, the manifest names the CLI handler
+(`pipeline/<module>_cli.py`) and that CLI's test module too, as `modify:` or
+`read:` according to the expected impact. The library and the handler that
+catches it are one seam; splitting them across the manifest boundary is how a
+slice ships a library change that crashes the CLI even when the exception type
+itself did not change.
+
 ## When a skill says "publish to the issue tracker"
 
 Create a new issue with `gh issue create`. Put long-form artifacts in `docs/` and

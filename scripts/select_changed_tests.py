@@ -16,7 +16,7 @@ import pathlib
 import subprocess
 import sys
 from dataclasses import dataclass
-from typing import Iterable
+from typing import Iterable, Mapping
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 TESTS_DIR = ROOT / "tests"
@@ -32,6 +32,12 @@ _WHOLE_SUITE_PATHS = {
 # Changed paths under these top-level directories require the whole suite
 # outright (C2 row 3).
 _WHOLE_SUITE_DIRS = {"assets", "gate-controls"}
+
+# Changed paths that are prose rather than code: any Markdown file, plus
+# anything under these directories. A doc has no module to map to, so it
+# selects the tests that actually read it (see `_tests_reading_doc`) instead
+# of widening the suite.
+_DOCUMENTATION_DIRS = {"docs", "prompts"}
 
 
 @dataclass(frozen=True)
@@ -53,15 +59,36 @@ def _mapped_module_name(path: pathlib.PurePosixPath) -> str | None:
     """Return the module stem `path` maps to under C2 rows 1-2, or None if
     `path` does not match either shape."""
     parts = path.parts
-    if len(parts) == 2 and parts[0] == "pipeline" and path.suffix == ".py":
+    if len(parts) == 2 and parts[0] in {"pipeline", "scripts"} and path.suffix == ".py":
         return path.stem
     if len(parts) == 3 and parts[0] == "prototype" and path.suffix == ".py":
         return path.stem
     return None
 
 
+def _is_documentation(path: pathlib.PurePosixPath) -> bool:
+    """Return whether `path` is prose rather than code."""
+    return path.suffix == ".md" or (
+        bool(path.parts) and path.parts[0] in _DOCUMENTATION_DIRS
+    )
+
+
+def _tests_reading_doc(
+    path: pathlib.PurePosixPath, test_sources: Mapping[str, str]
+) -> set[str]:
+    """Return the test files whose source mentions `path` by file name.
+
+    Doc-contract tests read the document they pin under a `ROOT / "docs" / ...`
+    join, so the repo-relative path never appears as one literal; the file name
+    does. A doc no test names contributes no tests at all.
+    """
+    return {test for test, source in test_sources.items() if path.name in source}
+
+
 def select_test_files(
-    changed_paths: Iterable[str], existing_tests: Iterable[str]
+    changed_paths: Iterable[str],
+    existing_tests: Iterable[str],
+    test_sources: Mapping[str, str] | None = None,
 ) -> Selection:
     """Map `changed_paths` (repo-relative, POSIX-style) to the test files
     that cover them, per the issue-193 C2 rules. Pure function of its
@@ -69,12 +96,17 @@ def select_test_files(
 
     `existing_tests` is the set of repo-relative test file paths that
     actually exist, used to detect a mapping that resolves to nothing (C3).
+
+    `test_sources` maps each existing test file to its source text, and is
+    what a changed document is resolved against. Omitting it means no test
+    reads any document, so documentation changes select nothing.
     """
     changed = sorted(set(changed_paths))
     if not changed:
         return Selection(kind="nothing", reason="no changed files")
 
     existing = set(existing_tests)
+    sources = dict(test_sources or {})
     selected: set[str] = set()
 
     for raw_path in changed:
@@ -102,6 +134,10 @@ def select_test_files(
             selected.add(posix)
             continue
 
+        if _is_documentation(path):
+            selected.update(_tests_reading_doc(path, sources) & existing)
+            continue
+
         module_name = _mapped_module_name(path)
         if module_name is None:
             return Selection(
@@ -125,6 +161,12 @@ def select_test_files(
                 ),
             )
         selected.update(matches)
+
+    if not selected:
+        return Selection(
+            kind="nothing",
+            reason="the changed files are documentation no test reads",
+        )
 
     return Selection(
         kind="selected",
@@ -160,10 +202,17 @@ def _existing_test_files(tests_dir: pathlib.Path, root: pathlib.Path) -> set[str
     return {p.relative_to(root).as_posix() for p in tests_dir.glob("test_*.py")}
 
 
+def _test_sources(tests_dir: pathlib.Path, root: pathlib.Path) -> dict[str, str]:
+    return {
+        p.relative_to(root).as_posix(): p.read_text(encoding="utf-8")
+        for p in tests_dir.glob("test_*.py")
+    }
+
+
 def main() -> int:
     changed = _git_changed_paths(ROOT)
     existing = _existing_test_files(TESTS_DIR, ROOT)
-    selection = select_test_files(changed, existing)
+    selection = select_test_files(changed, existing, _test_sources(TESTS_DIR, ROOT))
 
     if selection.kind == "nothing":
         print(f"select_changed_tests: {selection.reason}; nothing to run")

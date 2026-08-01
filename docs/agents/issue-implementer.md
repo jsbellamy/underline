@@ -20,6 +20,25 @@ runtime supports worktrees.
    join, and `pattern` as an example rather than a specification. Expand beyond an
    anchor only when required. The manifest is expected scope, not a
    straitjacket: justify each out-of-manifest file in the PR body.
+
+   Resolve the manifest with one command rather than opening the files:
+
+   ```bash
+   npm run --silent agents:anchors -- --issue <N>
+   ```
+
+   It prints each anchored symbol as numbered source and reports unanchored
+   directories and binary assets for the appropriate inspection tool. A named
+   text anchor that does not resolve is a manifest defect; return a structured
+   blocker so the orchestrator can repair it rather than opening the whole file.
+   `AGENTS.md` § Reading discipline governs: a whole-file read of a core module
+   is a deliberate choice that belongs in the PR body, not a default.
+
+   Audit the manifest's catch sites once before editing. For every modified
+   public pipeline entry point that can raise, trace its callers; when a CLI
+   reaches it, the read/write set includes that handler and its test module even
+   when the exception type itself is unchanged. Finding either at review time
+   means reworking at peak context.
 3. Create `issue-<N>-<slug>` from `main`.
    For every before/after Polish Bundle Proof, record the exact starting revision
    with `git rev-parse HEAD`, then run this read-only baseline in the worktree:
@@ -67,9 +86,13 @@ runtime supports worktrees.
      evidence inspected, and the smallest next issue or issue edit that would
      unblock the slice. Do not continue open-ended grep/read loops past this
      checkpoint.
-5. Before publishing, make a **completion matrix** with columns `Claim`,
-   `Verdict`, and `Evidence`, containing one row per Contract claim ID without
-   paraphrasing the claim or copying its Proof mapping. For each row, satisfy the
+5. Before publishing, create the canonical **completion matrix** as a scratch file in the
+   worktree (for example `tmp/completion-matrix.md`, untracked) with columns
+   `Claim`, `Verdict`, and `Evidence`, containing one row per Contract claim ID
+   without paraphrasing the claim or copying its Proof mapping. This path is the
+   single source of truth: the Spec reviewer updates its provisional rows in
+   step 8, and steps 9–11 consume that exact file rather than authoring another
+   table. For each row, satisfy the
    issue's Proof mapping with specific evidence: a command and the row of its
    output that shows the fact, or a code location. Every claim in this repo is
    provable by a command that emits text — `npm test`,
@@ -103,26 +126,37 @@ runtime supports worktrees.
    Never author both audits in one subagent session.
 8. Review your own work before publishing: run `/code-review` with `main` as the
    fixed point (`git diff main...HEAD`) and the live issue body as the Spec
-   source, passing the completion matrix in so the Spec reviewer returns a
-   per-claim `met` / `unmet` / `needs manual` verdict with an evidence pointer
-   satisfying the Proof mapping. If the runtime does not expose `/code-review`,
+   source, passing the completion matrix file in. The Spec reviewer owns that
+   file during review: it updates every row to its reviewed `met` / `unmet` /
+   `needs manual` verdict and evidence pointer satisfying the Proof mapping. The
+   Standards reviewer never writes it. If the runtime does not expose `/code-review`,
    run the equivalent Standards and Spec reviews as parallel sub-agents. On
    Cursor, use `code-review-standards` and `code-review-spec` (not
    `generalPurpose`).
+   Have each reviewer **write its report to a file** under the worktree and
+   return only that path and compact finding IDs; the Spec reviewer also returns
+   the unchanged completion-matrix path. Read only the matrix rows and the report
+   sections named by blocking finding IDs during rework. Step 10 posts the files;
+   report prose never has to enter this agent's context, and a report that is
+   never retyped cannot stop being verbatim.
    Rework every Spec finding, every `unmet` row, and every hard Standards
    violation (a documented repo-standard breach), then commit and re-run the
    review until those are clear. Judgement-call Standards smells need no rework —
    carry them into the verdict table for the merge decision.
 9. Push with `git push -u origin <branch>`, then create a pull request whose body
-   includes a summary, verification details, the completion matrix, and
-   `Closes #<N>`.
+   includes a summary, verification details, the reviewed completion matrix file,
+   and `Closes #<N>`. Assemble the body as a file and pass it with
+   `gh pr create --body-file`, concatenating the matrix file rather than
+   retyping its rows.
 10. Post the review to the PR with `gh pr comment <N> --body-file <path>`: the
    **verbatim** Standards and Spec sub-agent output under separate headings, plus
-   the reworked findings and the commits that resolved them. Paste what the
-   reviewers wrote — never a summary of your own review, and never a report
+   the reworked findings and the commits that resolved them. Build that file by
+   concatenating the report files the reviewers wrote in step 8, followed by the
+   canonical completion-matrix file — never by retyping them. Post what the
+   reviewers wrote: never a summary of your own review, and never a report
    rewritten to read better than the one you received.
-11. Report the PR URL, what was built, test results, and the review **verdict
-    table** derived mechanically from that comment: one row per Contract claim ID
+11. Report the PR URL, what was built, test results, and the exact contents of
+    the canonical **verdict table**: one row per Contract claim ID
     with its `met` / `unmet` / `needs manual` verdict and evidence pointer
     satisfying the Proof mapping, the count of blocking findings before and after
     rework, any unreworked judgement-call smells, the comment URL, and anything
