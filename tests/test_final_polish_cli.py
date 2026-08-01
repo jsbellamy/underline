@@ -18,7 +18,13 @@ from pipeline.final_polish import initialize_bundle
 from pipeline.final_polish_cli import main
 from pipeline.gate_evidence import sha256_bytes, sha256_file
 from pipeline.identity_lock import build_identity_seed
-from pipeline.strip import DEFAULT_LAYOUT, IngestResult, StripLayout, ingest_strip_provider
+from pipeline.strip import (
+    DEFAULT_LAYOUT,
+    IngestResult,
+    StripLayout,
+    ingest_strip_provider,
+    layout_for_motion_class,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 INBOX = ROOT / "prototype" / "strip-coherence" / "inbox"
@@ -30,6 +36,8 @@ LANTERN_STRIP = INBOX / "14-lantern-flicker.png"
 IDENTITY_PNG = ROOT / "assets" / "first-room" / "dwarf" / "identity.png"
 IDENTITY_JSON = ROOT / "assets" / "first-room" / "dwarf" / "identity.json"
 IDLE_SEED_STRIP = ROOT / "assets" / "first-room" / "dwarf" / "idle" / "provider" / "source.png"
+from tests.test_final_polish import _swing_provider_strip  # noqa: E402
+
 CANONICAL_IDENTITY_SHA = "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6"
 GENERATION_SOURCE_SHA256 = "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3"
 PADDED_SEED_DIMENSIONS = [1664, 1152]
@@ -81,6 +89,19 @@ def _provider_dimensions(provider_path: Path) -> list[int]:
         return [image.width, image.height]
 
 
+def _item_geometry_for(motion_class: str) -> dict[str, int]:
+    try:
+        layout = layout_for_motion_class(motion_class, margin_cells=0)
+    except ValueError:
+        layout = _corpus_layout()
+    return {
+        "frame_w": layout.frame_w,
+        "frame_h": layout.frame_h,
+        "frame_count": layout.frame_count,
+        "gutter": layout.gutter,
+    }
+
+
 def _write_animation_provenance(
     provider_path: Path,
     provenance_path: Path,
@@ -116,12 +137,7 @@ def _write_animation_provenance(
                 "dimensions": _provider_dimensions(provider_path),
                 "motion_class": motion_class,
                 "master_palette_id": "first-room",
-                "item_geometry": {
-                    "frame_w": DEFAULT_LAYOUT.frame_w,
-                    "frame_h": DEFAULT_LAYOUT.frame_h,
-                    "frame_count": DEFAULT_LAYOUT.frame_count,
-                    "gutter": DEFAULT_LAYOUT.gutter,
-                },
+                "item_geometry": _item_geometry_for(motion_class),
             },
             indent=2,
             sort_keys=True,
@@ -604,7 +620,7 @@ def test_check_json_includes_silhouette_artifacts(tmp_path: Path, capsys: pytest
 
 def test_check_json_reports_provider_post_edit(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
-    _library_init_bundle(SWING_STRIP, "swing", bundle, tmp_path, polish_profile="dwarf-miner")
+    _library_init_bundle(_swing_provider_strip(tmp_path), "swing", bundle, tmp_path, polish_profile="dwarf-miner")
 
     result = _run_cli(capsys, ["check", str(bundle), "--json"])
 
@@ -622,7 +638,7 @@ def test_check_human_report_names_provider_post_edit_reason(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
     bundle = tmp_path / "bundle"
-    _library_init_bundle(SWING_STRIP, "swing", bundle, tmp_path, polish_profile="dwarf-miner")
+    _library_init_bundle(_swing_provider_strip(tmp_path), "swing", bundle, tmp_path, polish_profile="dwarf-miner")
 
     result = _run_cli(capsys, ["check", str(bundle)])
 

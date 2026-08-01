@@ -40,6 +40,7 @@ from pipeline.strip import (
     coherence_split,
     embed_on_class_canvas,
     ingest_strip_provider,
+    layout_for_motion_class,
     load_provider_frames,
     resolve_class_frame_geometry,
 )
@@ -1192,7 +1193,7 @@ def _verify_evidence_bindings(bundle_root: Path, manifest: Mapping[str, Any]) ->
     provider_rel = manifest["provider"]["relative_path"]
     provider_path = bundle_root / provider_rel
     provider_sha = sha256_file(provider_path)
-    layout = _corpus_layout()
+    layout = _probe_layout_for_manifest(manifest)
     polish_profile_id = (
         None
         if manifest.get("polish_profile") is None
@@ -1369,6 +1370,12 @@ def _verify_provider_post_edit(
     return payload
 
 
+def _probe_layout_for_manifest(manifest: Mapping[str, Any]) -> StripLayout:
+    if manifest.get("schema") == BUNDLE_SCHEMA:
+        return layout_for_motion_class(str(manifest["motion_class"]), margin_cells=0)
+    return _corpus_layout()
+
+
 def _verify_provider_and_drafts(bundle_root: Path, manifest: dict[str, Any]) -> Outcome:
     if manifest.get("schema") == BUNDLE_SCHEMA:
         _verify_evidence_bindings(bundle_root, manifest)
@@ -1384,6 +1391,7 @@ def _verify_provider_and_drafts(bundle_root: Path, manifest: dict[str, Any]) -> 
         )
 
     layout = _layout_from_manifest(manifest)
+    probe_layout = _probe_layout_for_manifest(manifest)
     for entry in manifest["draft_frames"]:
         rel = entry["relative_path"]
         expected = entry["sha256"]
@@ -1395,7 +1403,7 @@ def _verify_provider_and_drafts(bundle_root: Path, manifest: dict[str, Any]) -> 
             )
 
     reproduced = _embed_frames_for_manifest_layout(
-        _canonical_draft_frames(provider_path, _corpus_layout()),
+        _canonical_draft_frames(provider_path, probe_layout),
         motion_class=str(manifest["motion_class"]),
         layout=layout,
     )
@@ -1413,7 +1421,7 @@ def _verify_provider_and_drafts(bundle_root: Path, manifest: dict[str, Any]) -> 
 
     ingest = ingest_strip_provider(
         provider_path,
-        _corpus_layout(),
+        probe_layout,
         motion_class=manifest["motion_class"],
     )
     return _effective_provider_outcome(ingest)
@@ -1442,7 +1450,13 @@ def initialize_bundle(
         )
     profile_source = _profile_source(polish_profile) if polish_profile is not None else None
 
-    probe_layout = _corpus_layout()
+    try:
+        probe_layout = layout_for_motion_class(motion_class, margin_cells=0)
+    except ValueError as exc:
+        raise InitializationRejectedError(
+            f"unknown motion_class: {motion_class!r}",
+            reason_code="invalid_motion_class",
+        ) from exc
     provenance_record = _validate_provenance_sidecar(
         provider_path,
         provenance_sidecar,
@@ -1471,6 +1485,14 @@ def initialize_bundle(
         canonicalize_frame(frame, frame_w=probe_layout.frame_w, frame_h=probe_layout.frame_h)
         for frame in frames
     ]
+    anchor_layout = _corpus_layout()
+    if probe_layout.frame_w != anchor_layout.frame_w:
+        for frame in canonical_frames:
+            if not frame or len(frame[0]) != probe_layout.frame_w:
+                raise InitializationRejectedError(
+                    "frame width does not match class acquisition layout",
+                    reason_code="wrong_size",
+                )
     class_geometry = resolve_class_frame_geometry(motion_class)
     bundle_layout = StripLayout(
         frame_w=class_geometry.frame_w,

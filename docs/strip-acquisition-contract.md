@@ -472,8 +472,11 @@ evidence model, add Gates, or change Budgets.
 1. **`init`** accepts only a provider Strip that currently passes production
    ingest (`PASS`). It requires `--provenance <source.json>` validating schema
    `animation-strip-provenance/0` (provider SHA-256, motion class, Strip layout,
-   generation mode, and prompt hash). It creates a retained provider copy, the
-   provenance sidecar at `provider/source.source.json`, an
+   generation mode, and prompt hash). The provider Strip layout `init` validates
+   and slices is the Motion class's Frame geometry (`layout_for_motion_class` with
+   `margin_cells=0`; swing: 24×24 logical Cells; other classes: 16×24). It
+   creates a retained provider copy, the provenance sidecar at
+   `provider/source.source.json`, an
    `animation-attempt-ledger/0` document at `provider/attempts.json`, immutable
    Draft Frames, and seeded Polished Frames (one per logical Frame slot).
    `REVIEW` and `FAIL` ingest outcomes create no Polish Bundle. New bundles use
@@ -516,8 +519,10 @@ evidence model, add Gates, or change Budgets.
    edit source) and a `Post-edit` line in the human report. Failed lock/baseline/clipping/pitch
    requires another Attempt. See
    `prompts/production/animation-strip.md` § Dwarf-miner walk and swing. Existing
-   unprofiled `/0` and profiled
-   `/1` bundles remain valid for `check` and `finalize` under legacy rules.
+   unprofiled `/0` and profiled `/1` bundles remain valid for `check` and
+   `finalize` under legacy rules; `/2` `check` validates provenance
+   `item_geometry` against the Motion class layout (16×24 for non-swing classes,
+   24×24 for swing).
 2. The four Polished Frames remain exact `16×24` RGBA (swing: `24×24`) with binary alpha, exact
    per-Frame Draft alpha masks, and opaque RGB values drawn only from the
    combined Draft palette (only RGB may differ from Draft; alpha is locked).
