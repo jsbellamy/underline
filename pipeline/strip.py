@@ -143,36 +143,54 @@ _CLASS_META: dict[str, dict[str, Any]] = {
         "loops": True,
         "facing": "free",
         "min_alignment_sharpness": None,
+        "frame_w": 16,
+        "frame_h": 24,
+        "canonical_origin": (0, 0),
     },
     "blob_idle": {
         "grounded": True,
         "loops": True,
         "facing": "free",
         "min_alignment_sharpness": None,
+        "frame_w": 16,
+        "frame_h": 24,
+        "canonical_origin": (0, 0),
     },
     "walk": {
         "grounded": True,
         "loops": True,
         "facing": "fixed",
         "min_alignment_sharpness": None,
+        "frame_w": 16,
+        "frame_h": 24,
+        "canonical_origin": (0, 0),
     },
     "swing": {
         "grounded": True,
         "loops": False,
         "facing": "fixed",
         "min_alignment_sharpness": None,
+        "frame_w": 16,
+        "frame_h": 24,
+        "canonical_origin": (0, 0),
     },
     "airborne": {
         "grounded": False,
         "loops": True,
         "facing": "free",
         "min_alignment_sharpness": MIN_ALIGNMENT_SHARPNESS_AIRBORNE,
+        "frame_w": 16,
+        "frame_h": 24,
+        "canonical_origin": (0, 0),
     },
     "emissive": {
         "grounded": True,
         "loops": True,
         "facing": "free",
         "min_alignment_sharpness": None,
+        "frame_w": 16,
+        "frame_h": 24,
+        "canonical_origin": (0, 0),
     },
 }
 
@@ -2009,3 +2027,51 @@ def write_synthetic_fixture(
 
 
 DEFAULT_LAYOUT = StripLayout()
+
+
+@dataclass(frozen=True)
+class ClassFrameGeometry:
+    frame_w: int
+    frame_h: int
+    canonical_origin: tuple[int, int]
+
+
+def resolve_class_frame_geometry(motion_class: str) -> ClassFrameGeometry:
+    """Return Frame size and canonical origin for a motion class."""
+    try:
+        meta = _CLASS_META[motion_class]
+    except KeyError as exc:
+        raise ValueError(f"unknown motion class {motion_class!r}") from exc
+    origin = meta["canonical_origin"]
+    if not isinstance(origin, tuple) or len(origin) != 2:
+        raise ValueError(
+            f"{motion_class}: canonical_origin must be a two-element tuple"
+        )
+    return ClassFrameGeometry(
+        frame_w=int(meta["frame_w"]),
+        frame_h=int(meta["frame_h"]),
+        canonical_origin=(int(origin[0]), int(origin[1])),
+    )
+
+
+def layout_for_motion_class(
+    motion_class: str,
+    *,
+    frame_count: int | None = None,
+    gutter: int | None = None,
+    pitch_px: int | None = None,
+    margin_cells: int | None = None,
+    grounded: bool | None = None,
+) -> StripLayout:
+    """Build a ``StripLayout`` from the motion class's resolved Frame geometry."""
+    geometry = resolve_class_frame_geometry(motion_class)
+    defaults = DEFAULT_LAYOUT
+    return StripLayout(
+        frame_w=geometry.frame_w,
+        frame_h=geometry.frame_h,
+        frame_count=defaults.frame_count if frame_count is None else frame_count,
+        gutter=defaults.gutter if gutter is None else gutter,
+        pitch_px=defaults.pitch_px if pitch_px is None else pitch_px,
+        margin_cells=defaults.margin_cells if margin_cells is None else margin_cells,
+        grounded=defaults.grounded if grounded is None else grounded,
+    )

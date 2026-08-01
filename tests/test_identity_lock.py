@@ -847,6 +847,189 @@ def test_identity_lock_schema_v1_still_validates() -> None:
     validate_identity_lock_spec(v1_doc)
 
 
+def _minimal_v2_spec(*, motion_classes: dict[str, object]) -> dict[str, object]:
+    return {
+        "schema": IDENTITY_LOCK_SCHEMA_V2,
+        "identity_sha256": CANONICAL_IDENTITY_SHA,
+        "frame_size": [16, 24],
+        "master_palette": {
+            "relative_path": "assets/palettes/first-room.json",
+            "sha256": "b21e2a2a85cf8e25c1cbdc69f8f0ffc4cfda7dc7f1f0a451ef7ed9d1fa7d6041",
+        },
+        "palette_exact_identity": {
+            "relative_path": "assets/first-room/dwarf/identity.png",
+            "identity_sha256": CANONICAL_IDENTITY_SHA,
+            "role_map_relative_path": "assets/first-room/dwarf/identity-roles.json",
+            "frame_size": [16, 24],
+        },
+        "motion_classes": motion_classes,
+    }
+
+
+def test_validate_identity_lock_spec_accepts_class_frame_size_override() -> None:
+    spec = _minimal_v2_spec(
+        motion_classes={
+            "wide_walk": {
+                "frame_size": [24, 24],
+                "locks": [
+                    {
+                        "id": "upper_body",
+                        "rectangle": {"x0": 4, "x1": 19, "y0": 1, "y1": 18},
+                        "permitted_offsets": [[0, 0]],
+                        "comparison": "registered-structure",
+                        "max_occupancy_difference": 0.20,
+                        "max_palette_role_distance": 0.20,
+                    }
+                ],
+            }
+        }
+    )
+    validate_identity_lock_spec(spec)
+
+
+def test_validate_identity_lock_spec_rejects_lock_outside_class_frame() -> None:
+    spec = _minimal_v2_spec(
+        motion_classes={
+            "wide_walk": {
+                "frame_size": [24, 24],
+                "locks": [
+                    {
+                        "id": "upper_body",
+                        "rectangle": {"x0": 0, "x1": 24, "y0": 1, "y1": 18},
+                        "permitted_offsets": [[0, 0]],
+                        "comparison": "registered-structure",
+                        "max_occupancy_difference": 0.20,
+                        "max_palette_role_distance": 0.20,
+                    }
+                ],
+            }
+        }
+    )
+    with pytest.raises(IdentityLockError, match="rectangle exceeds frame_size"):
+        validate_identity_lock_spec(spec)
+
+
+def test_palette_exact_identity_rejects_anchor_size_mismatch() -> None:
+    spec = _minimal_v2_spec(
+        motion_classes={
+            "wide_walk": {
+                "frame_size": [24, 24],
+                "locks": [
+                    {
+                        "id": "upper_body",
+                        "rectangle": {"x0": 4, "x1": 19, "y0": 1, "y1": 18},
+                        "permitted_offsets": [[0, 0]],
+                        "comparison": "registered-structure",
+                        "max_occupancy_difference": 0.20,
+                        "max_palette_role_distance": 0.20,
+                    }
+                ],
+            }
+        }
+    )
+    palette_exact = spec["palette_exact_identity"]
+    assert isinstance(palette_exact, dict)
+    palette_exact["frame_size"] = [24, 24]
+    with pytest.raises(IdentityLockError, match="anchor frame_size"):
+        validate_identity_lock_spec(spec)
+
+
+def test_evaluate_identity_lock_with_canonical_origin_embeds_anchor(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import pipeline.strip as strip_module
+
+    monkeypatch.setitem(
+        strip_module._CLASS_META,
+        "synthetic_wide",
+        {
+            "grounded": True,
+            "loops": True,
+            "facing": "fixed",
+            "min_alignment_sharpness": None,
+            "frame_w": 24,
+            "frame_h": 24,
+            "canonical_origin": (4, 0),
+        },
+    )
+    spec = _minimal_v2_spec(
+        motion_classes={
+            "synthetic_wide": {
+                "locks": [
+                    {
+                        "id": "upper_body",
+                        "rectangle": {"x0": 4, "x1": 19, "y0": 1, "y1": 18},
+                        "permitted_offsets": [[0, 0]],
+                        "comparison": "exact-occupancy",
+                    }
+                ],
+            }
+        }
+    )
+    spec_path = tmp_path / "locks.json"
+    spec_path.write_text(json.dumps(spec))
+    anchor = load_canonical_cells(IDENTITY_PNG, (16, 24))
+    wide_frame: list[list[tuple[int, int, int] | None]] = [
+        [None for _ in range(24)] for _ in range(24)
+    ]
+    for y in range(24):
+        for x in range(16):
+            wide_frame[y][x + 4] = anchor[y][x]
+    result = evaluate_identity_lock(
+        [wide_frame],
+        "synthetic_wide",
+        spec_path=spec_path,
+    )
+    assert result.outcome == "PASS"
+
+
+def test_canonical_read_outside_anchor_raises_identity_lock_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import pipeline.strip as strip_module
+
+    monkeypatch.setitem(
+        strip_module._CLASS_META,
+        "synthetic_wide",
+        {
+            "grounded": True,
+            "loops": True,
+            "facing": "fixed",
+            "min_alignment_sharpness": None,
+            "frame_w": 24,
+            "frame_h": 24,
+            "canonical_origin": (4, 0),
+        },
+    )
+    spec = _minimal_v2_spec(
+        motion_classes={
+            "synthetic_wide": {
+                "locks": [
+                    {
+                        "id": "left_edge",
+                        "rectangle": {"x0": 0, "x1": 3, "y0": 1, "y1": 18},
+                        "permitted_offsets": [[0, 0]],
+                        "comparison": "exact-occupancy",
+                    }
+                ],
+            }
+        }
+    )
+    spec_path = tmp_path / "locks.json"
+    spec_path.write_text(json.dumps(spec))
+    wide_frame: list[list[tuple[int, int, int] | None]] = [
+        [None for _ in range(24)] for _ in range(24)
+    ]
+    with pytest.raises(IdentityLockError, match="canonical read outside anchor"):
+        evaluate_identity_lock(
+            [wide_frame],
+            "synthetic_wide",
+            spec_path=spec_path,
+        )
+
+
 def test_adr_0002_indexed_with_required_sections() -> None:
     adr_path = ROOT / "docs" / "adr" / "0002-palette-exact-canonical-identity.md"
     readme = (ROOT / "docs" / "adr" / "README.md").read_text(encoding="utf-8")
