@@ -1,12 +1,13 @@
 ---
 name: tdd
 description: >-
-  Test-driven development for Underline code slices. Use when implementing a
-  code issue, following issue-implementer step 4, or when red-green-refactor is
-  required. Enforces one failing test before any production or asset edit.
+  Test-driven development for Underline issue implementers (code and asset
+  slices). Use when implementing an issue, following issue-implementer step 4,
+  or when red-green-refactor is required. Enforces one failing test or command
+  before any production or asset edit.
 ---
 
-# TDD (Underline code slices)
+# TDD (Underline issue implementers)
 
 Red → green in **vertical slices**. Seams are fixed in `docs/agents/code-style.md` —
 no per-session seam negotiation; issue implementers never ask the user.
@@ -58,6 +59,23 @@ batch-edit production code.
   re-baseline silently; explain diffs in the PR body.
 - **Done** when every production/asset change in the PR cites the red command
   that failed first for its slice.
+
+## Asset slices
+
+When `## Slice type` is `asset` and Proof does **not** name pytest, Red is a
+**text command** from the Proof mapping run against the **current** tree:
+
+- `npm run strip:polish -- check <bundle> --json` — record the failing gate or
+  audit outcome before editing polished or release frames.
+- `npm run asset:static -- check …` — same for static bundles.
+- Pixel-equivalence Proof — a failing digest or comparison test before any byte
+  change.
+
+Green is the minimal pixel or manifest change that makes that command pass.
+Visually authored slices still run `brief` before editing; an `EDIT` or
+`UNCERTAIN` audit verdict is Red evidence for that panel.
+
+Do not batch-replace frames across a bundle before the first Red is recorded.
 
 ## Asset-heavy code slices
 

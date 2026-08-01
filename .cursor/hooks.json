@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "hooks": {
+    "preToolUse": [
+      {
+        "command": ".cursor/hooks/strip-pinned-task-model.sh",
+        "matcher": "Task",
+        "failClosed": false
+      }
+    ],
+    "subagentStart": [
+      {
+        "command": ".cursor/hooks/deny-fast-pinned-subagents.sh",
+        "matcher": "code-review-standards|code-review-spec|issue-implementer-code|issue-implementer-asset|gate-blind-review",
+        "failClosed": true
+      }
+    ]
+  }
+}
