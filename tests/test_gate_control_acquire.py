@@ -45,6 +45,29 @@ def _write(path: Path, payload: object) -> None:
         path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
 
 
+def _seeded_specifications_and_promotions() -> tuple[list[dict], list[dict]]:
+    """Manifest specs/promotions covering every SEPARATED gate active_promotion
+    the copied `acceptance-profiles.json` references, taken from the repo's own
+    consistent manifest so the seeded fixture never disagrees with itself."""
+    real_profiles = json.loads((ROOT / "gate-controls/acceptance-profiles.json").read_text())
+    real_manifest = json.loads((ROOT / "gate-controls/manifest.json").read_text())
+    needed_promo_ids = {
+        gate["active_promotion"]
+        for profile in real_profiles["profiles"].values()
+        for gate in profile["gates"].values()
+        if gate.get("status") == "SEPARATED" and gate.get("active_promotion")
+    }
+    specifications = [
+        spec
+        for spec in real_manifest["specifications"]
+        if spec.get("active_promotion") in needed_promo_ids
+    ]
+    promotions = [
+        promo for promo in real_manifest["promotions"] if promo["id"] in needed_promo_ids
+    ]
+    return specifications, promotions
+
+
 def _seed_gate_controls(tmp_path: Path) -> Path:
     gc_root = tmp_path / "gate-controls"
     gc_root.mkdir(parents=True)
@@ -52,17 +75,57 @@ def _seed_gate_controls(tmp_path: Path) -> Path:
         ROOT / "gate-controls/acceptance-profiles.json",
         gc_root / "acceptance-profiles.json",
     )
+    specifications, promotions = _seeded_specifications_and_promotions()
     _write(
         gc_root / "manifest.json",
         {
             "schema": "gate-control-manifest/0",
-            "specifications": [],
-            "promotions": [],
+            "specifications": specifications,
+            "promotions": promotions,
         },
     )
     (gc_root / "attempts.jsonl").write_text("")
     for name in ("raw", "provenance", "reports", "reviews", "verification"):
         (gc_root / name).mkdir(exist_ok=True)
+    return gc_root
+
+
+def _seed_gate_controls_with_evidence(tmp_path: Path) -> Path:
+    """`_seed_gate_controls` plus real backing evidence for every seeded Promotion.
+
+    `gca.write_pending_promotion` / `gca.invalidate_stale_active_promotion` run
+    `ge.validate_evidence_graph` unfocused, which deep-validates every Promotion
+    already in the manifest — including the ones `_seed_gate_controls` now seeds
+    to keep `build_runtime_acceptance_policy` internally consistent. Copy the
+    real attempt/provenance/raw/measurement evidence backing each seeded
+    Promotion from the repo's own consistent gate-controls tree so that
+    unfocused validation passes before a test's own record_attempt runs.
+
+    Not used by tests exercising `idle/silhouette_budget` ordinal allocation
+    directly (`decide_artifact_retention`'s `ordinal <= 3` retention window,
+    `consecutive_primary_reason_streak`): seeding a backing Attempt for that
+    specification consumes ordinal 1, which those tests assume is free.
+    """
+    gc_root = _seed_gate_controls(tmp_path)
+    _, promotions = _seeded_specifications_and_promotions()
+    attempts_by_id = {}
+    for line in (ROOT / "gate-controls/attempts.jsonl").read_text().splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        attempts_by_id[row["attempt_id"]] = row
+    lines = []
+    for promo in promotions:
+        attempt = attempts_by_id[promo["attempt_id"]]
+        lines.append(json.dumps(attempt, sort_keys=True))
+        raw_rel = f"gate-controls/raw/{attempt['attempt_id']}.png"
+        provenance_rel = attempt["provenance_path"]
+        measurement_rel = attempt["measurement_path"]
+        for rel in (raw_rel, provenance_rel, measurement_rel):
+            dest = tmp_path / rel
+            dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(ROOT / rel, dest)
+    (gc_root / "attempts.jsonl").write_text("\n".join(lines) + ("\n" if lines else ""))
     return gc_root
 
 
@@ -533,7 +596,7 @@ def _write_minimal_review_graph(
 
 
 def test_write_pending_promotion_requires_approved_reviews(tmp_path: Path) -> None:
-    _seed_gate_controls(tmp_path)
+    _seed_gate_controls_with_evidence(tmp_path)
     png = tmp_path / "candidate.png"
     shutil.copy2(IDLE_CONTROL, png)
     with patch.dict("os.environ", {"UNDERLINE_GATE_CONTROLS_ROOT": str(tmp_path / "gate-controls")}):
@@ -574,7 +637,7 @@ def test_write_pending_promotion_requires_approved_reviews(tmp_path: Path) -> No
 
 
 def test_discarded_attempt_cannot_back_pending_promotion(tmp_path: Path) -> None:
-    _seed_gate_controls(tmp_path)
+    _seed_gate_controls_with_evidence(tmp_path)
     png = tmp_path / "candidate.png"
     shutil.copy2(IDLE_CONTROL, png)
     with patch.dict("os.environ", {"UNDERLINE_GATE_CONTROLS_ROOT": str(tmp_path / "gate-controls")}):
@@ -590,9 +653,12 @@ def test_discarded_attempt_cannot_back_pending_promotion(tmp_path: Path) -> None
                 clock=lambda: "2026-07-27T12:00:00+00:00",
             )
     ledger_path = tmp_path / "gate-controls" / "attempts.jsonl"
-    attempt = json.loads(ledger_path.read_text().strip())
+    lines = ledger_path.read_text().strip().splitlines()
+    attempt = json.loads(lines[-1])
+    assert attempt["attempt_id"] == row["attempt_id"]
     attempt["artifact_state"] = "discarded"
-    ledger_path.write_text(json.dumps(attempt, sort_keys=True) + "\n")
+    lines[-1] = json.dumps(attempt, sort_keys=True)
+    ledger_path.write_text("\n".join(lines) + "\n")
     _write_minimal_review_graph(
         tmp_path,
         attempt_id=row["attempt_id"],
