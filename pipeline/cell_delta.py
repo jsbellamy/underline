@@ -221,6 +221,13 @@ def validate_cell_delta_ledger(
             reason_code="invalid_cell_delta_ledger_target_count",
         )
 
+    for frame_index, base_index in enumerate(mapping):
+        if not isinstance(base_index, int) or not 0 <= base_index < len(base_frames):
+            raise CellDeltaError(
+                f"invalid base mapping for target frame {frame_index}",
+                reason_code="invalid_cell_delta_ledger_mapping",
+            )
+
     deltas = ledger.get("deltas")
     if not isinstance(deltas, list):
         raise CellDeltaError(
@@ -268,12 +275,6 @@ def validate_cell_delta_ledger(
             )
 
         base_index = mapping[frame]
-        if not isinstance(base_index, int) or not 0 <= base_index < len(base_frames):
-            raise CellDeltaError(
-                f"invalid base mapping for target frame {frame}",
-                reason_code="invalid_cell_delta_ledger_mapping",
-            )
-
         base_frame = base_frames[base_index]
         frame_w, frame_h = _frame_dimensions(base_frame)
         if x < 0 or x >= frame_w or y < 0 or y >= frame_h:

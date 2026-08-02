@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-import io
 from pathlib import Path
 
 import pytest
@@ -40,33 +39,7 @@ def _frame_with_cell(
     return frame
 
 
-def _png_sha256(cells: list[list[tuple[int, int, int] | None]]) -> str:
-    path = Path("/tmp")  # unused; write to BytesIO instead
-    buffer = io.BytesIO()
-    frame_h = len(cells)
-    frame_w = len(cells[0]) if cells else 0
-    from pipeline.strip import canonicalize_frame
-
-    logical = canonicalize_frame(cells, frame_w=frame_w, frame_h=frame_h)
-    height = len(logical)
-    width = len(logical[0]) if logical else 0
-    from pipeline.recovery import MAGENTA
-
-    image = Image.new("RGBA", (width, height), (*MAGENTA, 0))
-    pixels = image.load()
-    assert pixels is not None
-    for row_y in range(height):
-        for col_x in range(width):
-            rgb = logical[row_y][col_x]
-            if rgb is not None:
-                pixels[col_x, row_y] = (*rgb, 255)
-    image.save(buffer, format="PNG")
-    from pipeline.gate_evidence import sha256_bytes
-
-    return sha256_bytes(buffer.getvalue())
-
-
-def test_build_ledger_binds_base_frames_mapping_and_rgba_deltas() -> None:
+def test_build_ledger_binds_base_frames_mapping_and_rgba_deltas(tmp_path: Path) -> None:
     width, height = 16, 24
     base = _blank_frame(width, height)
     target_changed = copy.deepcopy(base)
@@ -78,6 +51,8 @@ def test_build_ledger_binds_base_frames_mapping_and_rgba_deltas() -> None:
         copy.deepcopy(base),
         copy.deepcopy(base),
     ]
+    base_path = tmp_path / "base.png"
+    write_cells(base_path, base)
 
     ledger = build_cell_delta_ledger(
         [base],
@@ -88,7 +63,7 @@ def test_build_ledger_binds_base_frames_mapping_and_rgba_deltas() -> None:
 
     assert ledger["schema"] == SCHEMA
     assert ledger["base_specification_id"] == SPEC_ID
-    assert ledger["base_frames_sha256"] == [_png_sha256(base)]
+    assert ledger["base_frames_sha256"] == [sha256_file(base_path)]
     assert ledger["base_frame_mapping"] == mapping
     assert ledger["target_frame_count"] == 4
     assert ledger["deltas"] == [
@@ -163,6 +138,12 @@ def test_validate_rejects_malformed_ledger(mutation: str, reason_code: str) -> N
     elif mutation == "malformed_digest":
         ledger["base_frames_sha256"] = ["not-a-hex-digest"]
     elif mutation == "invalid_mapping_index":
+        ledger = build_cell_delta_ledger(
+            [base],
+            [base],
+            base_specification_id=SPEC_ID,
+            base_frame_mapping=[0],
+        )
         ledger["base_frame_mapping"] = [99]
     elif mutation == "inconsistent_target_count":
         ledger["target_frame_count"] = 99
