@@ -334,11 +334,9 @@ def _alpha_bbox(cells: list[list[Cell]]) -> tuple[int, int, int, int]:
     return min(xs), min(ys), max(xs), max(ys)
 
 
-def _boundary_column_load(cells: list[list[Cell]]) -> tuple[int, int]:
+def _opaque_column_loads(cells: list[list[Cell]]) -> list[int]:
     width = len(cells[0]) if cells else 0
-    left = sum(1 for row in cells if row[0] is not None)
-    right = sum(1 for row in cells if row[width - 1] is not None)
-    return left, right
+    return [sum(1 for row in cells if row[x] is not None) for x in range(width)]
 
 
 def _changed_cell_count(base: list[list[Cell]], target: list[list[Cell]]) -> int:
@@ -534,7 +532,7 @@ def author_motion(
             {lock_id: [offset[0], offset[1]] for lock_id, offset in frame_lock_offsets.items()}
         )
         bbox = _alpha_bbox(frame)
-        left_load, right_load = _boundary_column_load(frame)
+        column_loads = _opaque_column_loads(frame)
         frame_reports.append(
             {
                 "frame": frame_index,
@@ -544,7 +542,7 @@ def author_motion(
                     "x1": bbox[2],
                     "y1": bbox[3],
                 },
-                "boundary_column_load": {"left": left_load, "right": right_load},
+                "opaque_column_loads": column_loads,
                 "changed_cell_count": _changed_cell_count(base_frame, frame),
                 "lock_offsets": applied_lock_offsets[-1],
             }

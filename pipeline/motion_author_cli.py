@@ -30,7 +30,10 @@ def _load_pose_plan(path: Path) -> dict[str, Any]:
     try:
         doc = json.loads(path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
-        raise MotionAuthorError(f"invalid pose plan JSON: {path}") from exc
+        raise MotionAuthorError(
+            f"invalid pose plan JSON: {path}",
+            reason_code="authoring_boundary_violation",
+        ) from exc
     if not isinstance(doc, dict):
         raise MotionAuthorError("pose plan must be an object", reason_code="authoring_boundary_violation")
     return doc

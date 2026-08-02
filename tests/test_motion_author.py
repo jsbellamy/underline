@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 import hashlib
 import json
 import os
@@ -15,7 +14,6 @@ import pytest
 from pipeline.canonical import packet_bytes
 from pipeline.cell_delta import SCHEMA as LEDGER_SCHEMA
 from pipeline.cell_raster import read_cells, write_cells
-from pipeline.gate_evidence import sha256_file
 from pipeline.motion_author import (
     MOTION_POSE_PLAN_SCHEMA,
     AuthoredMotion,
@@ -62,11 +60,9 @@ def _alpha_bbox(cells: list[list[tuple[int, int, int] | None]]) -> tuple[int, in
     return min(xs), min(ys), max(xs), max(ys)
 
 
-def _boundary_column_load(cells: list[list[tuple[int, int, int] | None]]) -> tuple[int, int]:
+def _opaque_column_loads(cells: list[list[tuple[int, int, int] | None]]) -> list[int]:
     width = len(cells[0])
-    left = sum(1 for row in cells if row[0] is not None)
-    right = sum(1 for row in cells if row[width - 1] is not None)
-    return left, right
+    return [sum(1 for row in cells if row[x] is not None) for x in range(width)]
 
 
 def _changed_cell_count(
@@ -284,8 +280,8 @@ def test_author_motion_is_byte_deterministic_and_reports_geometry() -> None:
             "x1": _alpha_bbox(frame)[2],
             "y1": _alpha_bbox(frame)[3],
         }
-        left, right = _boundary_column_load(frame)
-        assert row["boundary_column_load"] == {"left": left, "right": right}
+        column_loads = _opaque_column_loads(frame)
+        assert row["opaque_column_loads"] == column_loads
         assert row["changed_cell_count"] == _changed_cell_count(base, frame)
 
 
