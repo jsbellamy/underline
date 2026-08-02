@@ -155,7 +155,11 @@ npm run prototype:strip:sharpness       # alignment-minimum margins, corpus-wide
 
 `.github/workflows/ci.yml` runs the full suite (`npm test`) and the per-file
 isolation sweep on every PR; `test:changed` is the fast local gate, not a
-substitute for that CI run.
+substitute for that CI run. The isolation sweep's throughput model and budget
+are recorded in
+`docs/adr/0005-isolation-sweep-throughput-target.md`: CI's reported `wall_s`
+is the measurement of record, `wall_s` ≤ 180s is the standing budget, and
+there is no per-file ceiling.
 
 A claim cites the command and the row of its output that shows the fact. A claim that no command can see is not yet evidenced — say so
 rather than substituting a weaker seam.

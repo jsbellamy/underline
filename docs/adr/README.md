@@ -18,6 +18,7 @@ not delete history.
 | [0002](0002-palette-exact-canonical-identity.md) | Palette-exact canonical identity (expand–contract migration, contracted) |
 | [0003](0003-swing-action-canvas.md) | Swing action canvas (24×24, canonical origin at column 4) |
 | [0004](0004-pre-attestation-acquisitions.md) | Pre-attestation acquisitions (retain `/1` and legacy allowlist) |
+| [0005](0005-isolation-sweep-throughput-target.md) | Isolation-sweep throughput target (`wall_s` ≤ 180s on CI, per-file ceiling retired) |
 
 Earlier decisions settled only in `docs/strip-acquisition-contract.md` or
 `prototype/strip-coherence/NOTES.md` should be promoted here when they start
