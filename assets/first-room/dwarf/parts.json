@@ -6,8 +6,8 @@
     24
   ],
   "base_raster_relative_path": "assets/first-room/dwarf/idle/release/frame-0.png",
-  "grip_rationale": "The canonical idle carries the pickaxe over the right shoulder with the gripping hand occluded behind the torso. No geometric rule recovers the haft hold point, so grip is pinned to anchor Cell (5, 7) at the visible shoulder contact on the haft.",
-  "assignment_rationale": "Non-outline core Cells are classified from polished material roles and anchor-space regions aligned with identity-lock rectangles. hand_near is the visible near hand: skin Cells (5,12) and (5,13) plus outline and leather Cells that 4-connect to them. The former torso strip x6..8 y7..14 is shoulder and upper arm in arm_near; the run (9,10)..(13,10) is the top of the beard mass. belt is the kinematic root; its buckle landmark is verified by identity-locks. tool_handle parents to arm_near at the shoulder contact where the haft meets the body. Every dark-outline Cell inherits the part of its nearest core Cell under Chebyshev distance (ties broken toward smaller x then y), except anchor Cells (14,16)..(15,17) which stay with beard or legs so belt and legs each remain one 4-connected component. Anchor Cell (12,5) is in lamp so the emission stays one component.",
+  "grip_rationale": "The far gripping hand is drawn at skin Cells (7,11) and (8,12) where the haft diagonal crosses the chest. grip is pinned to anchor Cell (8,11) at the haft contact on the bridging leather Cell between those skin Cells.",
+  "assignment_rationale": "Non-outline core Cells are classified from polished material roles and anchor-space regions aligned with identity-lock rectangles. hand_near is the visible near hand: skin Cells (5,12) and (5,13) plus outline and leather Cells that 4-connect to them. hand_far is the drawn far grip: skin Cells (7,11) and (8,12) plus bridging Cell (8,11). tool_handle is an authored trace along the Master Palette darkest amber #783A18 run (4,7) (5,8) (6,8) (8,8) (8,10) and the Cells that 4-connect it from tool_head to hand_far across the y9-10 gap; (8,8) is cheek light but keeps the haft one component. The x6..8 y9..14 chest mass is beard ramp, not sleeve. arm_near is green-cloth sleeve at x<=6 only. belt is the kinematic root verified by the buckle landmark. Anchor Cells (14,16)..(15,17) stay with beard or legs for connectivity. Cell (12,5) is in lamp. Stone Cells (11,2) and (11,3) remain in helmet as the lantern mounting bracket.",
   "parts": {
     "tool_head": {
       "rigid": true,
@@ -809,7 +809,7 @@
     },
     "tool_handle": {
       "rigid": true,
-      "parent": "arm_near",
+      "parent": "hand_far",
       "cells": [
         "3,6",
         "3,7",
@@ -818,15 +818,23 @@
         "5,5",
         "5,6",
         "5,7",
-        "6,6"
+        "5,8",
+        "6,6",
+        "6,7",
+        "6,8",
+        "7,7",
+        "7,8",
+        "8,8",
+        "8,9",
+        "8,10"
       ],
       "pivot": [
         5,
         7
       ],
       "grip": [
-        5,
-        7
+        8,
+        11
       ],
       "orientations": {
         "rot0": {
@@ -1206,7 +1214,6 @@
         "5,12",
         "5,13",
         "5,14",
-        "6,14",
         "5,15"
       ],
       "pivot": [
@@ -1237,32 +1244,9 @@
         "4,12",
         "4,13",
         "4,14",
-        "5,8",
         "5,9",
         "5,10",
-        "5,11",
-        "6,7",
-        "6,8",
-        "6,9",
-        "6,10",
-        "6,11",
-        "6,12",
-        "6,13",
-        "7,7",
-        "7,8",
-        "7,9",
-        "7,10",
-        "7,11",
-        "7,12",
-        "7,13",
-        "7,14",
-        "8,10",
-        "8,11",
-        "8,12",
-        "8,13",
-        "8,14",
-        "9,12",
-        "9,13"
+        "5,11"
       ],
       "pivot": [
         9,
@@ -1330,8 +1314,6 @@
       "parent": "belt",
       "cells": [
         "8,7",
-        "8,8",
-        "8,9",
         "9,6",
         "9,7",
         "9,8",
@@ -1359,8 +1341,23 @@
       "rigid": false,
       "parent": "head_face",
       "cells": [
+        "6,9",
+        "6,10",
+        "6,11",
+        "6,12",
+        "6,13",
+        "6,14",
+        "7,9",
+        "7,10",
+        "7,12",
+        "7,13",
+        "7,14",
+        "8,13",
+        "8,14",
         "9,10",
         "9,11",
+        "9,12",
+        "9,13",
         "9,14",
         "10,10",
         "10,11",
@@ -1529,6 +1526,19 @@
       "pivot": [
         11,
         22
+      ]
+    },
+    "hand_far": {
+      "rigid": false,
+      "parent": "belt",
+      "cells": [
+        "7,11",
+        "8,11",
+        "8,12"
+      ],
+      "pivot": [
+        8,
+        11
       ]
     }
   }

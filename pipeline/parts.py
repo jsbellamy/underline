@@ -49,6 +49,7 @@ _REVIEW_COLORS: dict[str, tuple[int, int, int, int]] = {
     "beard": (8, 165, 147, 255),
     "arm_near": (10, 160, 216, 255),
     "hand_near": (45, 11, 230, 255),
+    "hand_far": (201, 227, 0, 255),
     "belt": (76, 6, 133, 255),
     "legs": (219, 10, 184, 255),
     "boots": (186, 9, 95, 255),
@@ -70,6 +71,7 @@ _REQUIRED_PART_IDS = frozenset(
         "beard",
         "arm_near",
         "hand_near",
+        "hand_far",
         "belt",
         "legs",
         "boots",
@@ -647,7 +649,7 @@ def _contrast_border_rgba(color: tuple[int, int, int, int]) -> tuple[int, int, i
 
 
 def render_part_map(part_map: PartMap, base_path: Path | str) -> "Image.Image":
-    from PIL import Image, ImageDraw, ImageFont
+    from PIL import Image, ImageDraw
 
     base_path = Path(base_path)
     base_cells = read_cells(base_path)
@@ -695,10 +697,7 @@ def render_part_map(part_map: PartMap, base_path: Path | str) -> "Image.Image":
     )
     sheet = Image.new("RGBA", (total_w, total_h), (0, 0, 0, 0))
     draw = ImageDraw.Draw(sheet)
-    try:
-        font = ImageFont.load_default()
-    except OSError:
-        font = None
+    font = None
 
     y = 4
     sheet.paste(base_native, (0, y))
