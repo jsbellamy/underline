@@ -488,7 +488,7 @@ evidence model, add Gates, or change Budgets.
    synthesized from provenance (grandfathered pre-attestation intake); all other
    inits require a registered Attempt in the attested store. Optional `--polish-profile <id>` copies a checked-in
    Polish profile into the bundle and binds its schema, id, path, and SHA-256.
-   For profile `dwarf-miner` with Motion class `walk` or `swing`, `init`
+   For profile `dwarf-miner` with Motion class `walk`, `init`
    additionally requires `--identity-reference` and `--edit-source`, copies
    those bytes to `reference/identity.png` and `provider/edit-source.png`,
    requires `generation_mode=image-edit`, and binds the canonical identity hash
@@ -523,12 +523,41 @@ evidence model, add Gates, or change Budgets.
    writing: `provider_post_edit` in `--json` (`null` when the bundle declares no
    edit source) and a `Post-edit` line in the human report. Failed lock/baseline/clipping/pitch
    requires another Attempt. See
-   `prompts/production/animation-strip.md` § Dwarf-miner walk and swing. Existing
+   `prompts/production/animation-strip.md` § Dwarf-miner walk. Existing
    unprofiled `/1` bundles remain valid for `check` and `finalize` under legacy
    rules (see [ADR 0004](adr/0004-pre-attestation-acquisitions.md)); `/2`
    `check` validates provenance
    `item_geometry` against the Motion class layout (16×24 for non-swing classes,
    24×24 for swing).
+1b. **`init-cell`** creates a providerless `/2` bundle from Cell-authored
+   Frames — no provider transport raster, no provider Attempt, and no
+   `animation-attempt-ledger/0`. It requires:
+   - `<authored-frames-dir>` — directory of authored logical Frame PNGs
+     (`frame-0.png` …) produced by Motion Author (`strip:author`);
+   - `--base-bundle <finalized-bundle>` — a finalized provider base bundle
+     whose Release Frames supply the declared base mapping;
+   - `--cell-delta-ledger <ledger.json>` — schema `cell-delta-ledger/0`, exact
+     replay proof from base Release Frames to authored Frames;
+   - `--pose-plan <plan.json>` — schema `motion-pose-plan/0`, the reviewable
+     declaration of intended Frame operations and base mapping;
+   - `--specification-id`, `--motion-class`, `--polish-profile` (required),
+     `--identity-reference` (required for dwarf-miner swing), `--authoring-agent`,
+     and `--authoring-session-id`.
+   Motion Author (`npm run strip:author`) is the deterministic authoring
+   boundary: it applies the pose plan under Identity Lock, palette, and geometry
+   constraints and emits authored Frames plus the cell-delta ledger. `init-cell`
+   validates exact replay (`assert_cell_delta_replay`), copies base Release
+   Frames into `authoring/base/`, binds provenance schema
+   `cell-author-provenance/0` with `generation_mode=cell-author`, and seeds
+   Draft and Polished Frames from the authored raster. Dwarf swing uses base
+   mapping `[0, 0, 0, 0]` from idle Release Frame 0 — every target Frame
+   derives from canonical idle Release Frame 0 embedded at column 4 in the 24×24
+   action canvas (ADR 0003). The post-ingest identity anchor
+   (`assets/first-room/dwarf/identity.png`) is validation evidence only and is
+   never a generation canvas. Downstream Identity Lock, coherence Gates,
+   `brief`, `check`, and `finalize` behavior is unchanged from provider `init`.
+   See `prompts/production/animation-strip.md` § Dwarf-miner swing and
+   [ADR 0007](adr/0007-swing-cell-author-acquisition.md).
 2. The four Polished Frames remain exact `16×24` RGBA (swing: `24×24`) with binary alpha, exact
    per-Frame Draft alpha masks, and opaque RGB values drawn only from the
    combined Draft palette (only RGB may differ from Draft; alpha is locked).

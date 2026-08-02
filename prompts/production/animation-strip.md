@@ -77,15 +77,15 @@ Init a Polish Bundle with:
 npm run strip:polish -- init <accepted-strip.png> --polish-profile <id>
 ```
 
-## Dwarf-miner walk and swing — image-edit lifecycle
+## Dwarf-miner walk — image-edit lifecycle
 
-`dwarf-miner` **walk** and **swing** Strips must be acquired by **image-edit**
-from the original idle provider Strip, not by fresh text-to-image redraw.
+`dwarf-miner` **walk** Strips must be acquired by **image-edit** from the
+original idle provider Strip, not by fresh text-to-image redraw.
 
 ### Two inputs — do not conflate them
 
-Walk and swing use **two different PNGs** with **two different jobs**. Confusing
-them is the most common acquisition failure.
+Walk uses **two different PNGs** with **two different jobs**. Confusing them is
+the most common acquisition failure.
 
 | Role | Canonical path | Typical size | When it is used |
 |------|----------------|--------------|-----------------|
@@ -111,35 +111,29 @@ does **not** upscale `identity.png`, and does **not** construct a four-copy stri
 ```bash
 npm run strip:polish -- seed \
   --identity-declaration assets/first-room/dwarf/identity.json \
-  --motion-class swing --out <seed.png> [--json]
+  --out <seed.png> [--json]
 ```
 
 For walk and every 16×24 Motion class, omit `--motion-class` — the command
-emits the uniform magenta-pad seed byte-for-byte as before. For swing, pass
-`--motion-class swing` to build a 24-Cell-wide action canvas: each idle Frame
-block from `generation_source` is copied pixel-exact into columns 4–19 of a
-24-Cell Frame (canonical origin `(4, 0)`), with exact `#FF00FF` in the four
-magenta Cell columns on each side — the arc's room for the provider edit.
+emits the uniform magenta-pad seed byte-for-byte.
 
 This command:
 
 1. Loads `assets/first-room/dwarf/identity.json`.
 2. Verifies `identity_png` is a 16×24 Release Frame (sanity check only).
 3. Writes `generation_source` → `<seed.png>` with the declared `seed_pad_px`
-   transform (dwarf: 64 px `#FF00FF` border around the interior; swing widens
-   the interior to four 24×24 logical Frames before padding).
+   transform (dwarf: 64 px `#FF00FF` border around the interior).
 4. Emits JSON including `generation_source_sha256` (idle interior binding),
-   `motion_class` when resolved, `dimensions`, and `sha256` (padded seed digest —
-   must match `edit_source_sha256` in provenance for that Motion class).
+   `dimensions`, and `sha256` (padded seed digest — must match
+   `edit_source_sha256` in provenance).
 
 The output `<seed.png>` is already a four-Frame idle strip. Image-edit prompts
-for walk and swing describe editing **that canvas** — changing legs/boots (walk)
-or arms/pickaxe/torso lean (swing) while locked regions stay fixed.
+for walk describe editing **that canvas** — changing legs/boots while locked
+regions stay fixed.
 
 ### Image-edit acquisition order
 
-1. Run the seed command above to produce `<seed.png>` — for swing, include
-   `--motion-class swing` so the canvas is the 24-Cell action canvas.
+1. Run the seed command above to produce `<seed.png>`.
 2. Submit `<seed.png>` to the provider as the **image-edit base** (edit source) —
    the image being edited. Do **not** generate a new image from the prompt alone.
    Also supply `identity.png` only if the provider workflow needs a separate
@@ -147,15 +141,13 @@ or arms/pickaxe/torso lean (swing) while locked regions stay fixed.
 3. On `strip:polish init`, pass:
    - `--edit-source <seed.png>` (the idle provider Strip copy)
    - `--identity-reference assets/first-room/dwarf/identity.png` (16×24 anchor)
-4. **Forbid** fresh text-to-image generation for walk and swing.
+4. **Forbid** fresh text-to-image generation for walk.
 5. Record the padded seed digest (`sha256` from `seed --json`) as
-   `edit_source_sha256` in every image-edit Attempt’s provenance — walk and
-   other 16×24 classes use the seed without `--motion-class`; swing uses
-   `seed --motion-class swing` and records that class's digest. The digest must
+   `edit_source_sha256` in every image-edit Attempt's provenance. The digest must
    equal the `seed_pad_px` transform of `identity.json` → `generation_source`
-   for the bundle's Motion class (not raw `generation_source.sha256`, which
-   remains the idle interior binding). `init` and `/2` `check`/`finalize`
-   reject any other digest with `edit_source_not_generation_source`.
+   (not raw `generation_source.sha256`, which remains the idle interior binding).
+   `init` and `/2` `check`/`finalize` reject any other digest with
+   `edit_source_not_generation_source`.
 6. Run Identity Lock only after provider recovery has produced logical Frames.
 7. Generate **sequential immutable Attempts** until one passes provenance,
    automatic Identity Lock, coherence Gates, polish, and visual audit on the
@@ -178,7 +170,7 @@ or arms/pickaxe/torso lean (swing) while locked regions stay fixed.
    edit source was not the idle provider Strip or when lock Cells were painted
    into the provider raster after generation.
 
-### Explicitly forbidden substitutes
+### Explicitly forbidden substitutes (walk)
 
 | Forbidden | Why |
 |-----------|-----|
@@ -187,10 +179,82 @@ or arms/pickaxe/torso lean (swing) while locked regions stay fixed.
 | Tiling `identity.png` into a four-Frame “seed” | Same failure mode as upscaling; must use idle provider bytes |
 | `prototype/strip-coherence/inbox/*` corpus Strips as the edit source | Motion evidence only — see `docs/first-room-art-direction.md` |
 | Mechanical merge of corpus motion + identity upper body without a ledgered Attempt | Bypasses provenance and does not replace a clean image-edit Attempt |
-| Reusing the pre-`/2` walk or swing `provider/source.png` from issues #110/#111 | Those bundles were text-to-image acquisitions, not image-edit from the idle seed |
+| Reusing the pre-`/2` walk `provider/source.png` from issues #110/#111 | Those bundles were text-to-image acquisitions, not image-edit from the idle seed |
 | Post-editing `provider/source.png` after generation to clear Gates (near-magenta wipe to exact `#FF00FF`, Frame shifts for baseline, painting/stamping Identity Lock or flat identity colors into pitch sample centers or locked regions) | Produces hard flat lock blocks and seams that confuse cell recovery; Identity Lock PASS no longer proves a clean idle-seed edit. `check_bundle` rejects magenta wipe with `provider_magenta_wipe` and reports edit-source lock continuity as `provider_post_edit` / `edit_source_continuity_fail`. Regenerate until lock/baseline pass without provider painting |
 
 Identity Lock rules live in `assets/first-room/dwarf/identity-locks.json`.
+
+## Dwarf-miner swing — Cell-authored acquisition lifecycle
+
+`dwarf-miner` **swing** Strips are acquired by **Cell-authored acquisition** —
+not image-edit, not fresh text-to-image, and not a newly generated pose
+reference. See [ADR 0007](../../docs/adr/0007-swing-cell-author-acquisition.md).
+
+### Base Frame and pose plan
+
+All four target Frames start from canonical idle **Release Frame 0** — the
+palette-exact post-ingest identity anchor at `assets/first-room/dwarf/identity.png`
+(16×24). Swing embeds this anchor at column 4 in the 24×24 action canvas (ADR
+0003). The canonical identity is validation evidence and is **never** an upscaled
+generation canvas.
+
+The checked-in pose plan (`motion-pose-plan/0`) declares intended Frame
+operations and base mapping `[0, 0, 0, 0]` — every swing Frame derives from
+idle Release Frame 0. Corpus motion samples and PR #169 are reference evidence
+for pose readability only; generating new pose concepts is out of scope.
+
+### Motion Author — exact behavior
+
+```bash
+npm run strip:author -- \
+  --base-bundle <idle-finalized-bundle> \
+  --pose-plan <pose-plan.json> \
+  --identity-locks assets/first-room/dwarf/identity-locks.json \
+  --palette assets/palettes/first-room.json \
+  --frames-out <authored-frames-dir> \
+  --ledger-out <cell-delta-ledger.json> [--json]
+```
+
+Motion Author applies the declarative pose plan under Identity Lock, palette, and
+geometry constraints. It emits authored logical Frames and a replayable
+`cell-delta-ledger/0` sidecar.
+
+### Cell-author initialization order
+
+1. Finalize the idle provider bundle so Release Frame 0 is available as the base.
+2. Author the checked-in pose plan through `strip:author` to produce authored
+   Frames and `cell-delta-ledger/0`.
+3. On `strip:polish init-cell`, pass:
+   - `<authored-frames-dir>` (logical frame PNGs from Motion Author)
+   - `--base-bundle <idle-finalized-bundle>`
+   - `--cell-delta-ledger <cell-delta-ledger.json>`
+   - `--pose-plan <pose-plan.json>`
+   - `--specification-id first-room/dwarf/swing`
+   - `--motion-class swing`
+   - `--polish-profile dwarf-miner`
+   - `--identity-reference assets/first-room/dwarf/identity.png`
+   - `--authoring-agent <agent-id>` and `--authoring-session-id <session-id>`
+4. **Forbid** provider image-edit, fresh text-to-image, and newly generated pose
+   references for swing.
+5. No provider directory, no `animation-attempt-ledger/0`, and no provider
+   Attempt are created. Provenance uses schema `cell-author-provenance/0`.
+6. Run Identity Lock, coherence Gates, polish, and visual audit on the authored
+   Frames through the same downstream `check`/`finalize` path as provider bundles.
+7. Record authoring agent and session in `cell-author-provenance/0`.
+
+### Explicitly forbidden substitutes (swing)
+
+| Forbidden | Why |
+|-----------|-----|
+| Provider image-edit from idle seed | Swing uses Cell-authored acquisition (ADR 0007) |
+| Fresh text-to-image from `identity.png` or a prompt alone | No provider raster; breaks cell-author provenance |
+| Upscaling `identity.png` into a generation canvas | Identity anchor is validation evidence only |
+| Newly generated pose reference images | Out of scope; corpus and PR #169 are reference evidence only |
+| `prototype/strip-coherence/inbox/*` corpus Strips as edit source | Motion evidence only — not a substitute for Cell-authored Frames |
+| Reusing the pre-`/2` swing `provider/source.png` from issues #110/#111 | Legacy text-to-image acquisition, not Cell-authored |
+
+Identity Lock rules live in `assets/first-room/dwarf/identity-locks.json`.
+
 
 ## Provenance
 
