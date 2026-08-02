@@ -186,14 +186,14 @@ _ACQUISITION_CONTROL_COMPANIONS = (
 _ACQUISITION_CONTROL_TEST_SOURCES = {
     "tests/test_asset_acquire.py": 'store_root = tmp_path / "acquisition-controls"',
     "tests/test_final_polish.py": (
-        'from tests.final_polish_harness import helper\n'
+        'from tests.support.final_polish_testkit import helper\n'
         'store = ROOT / "acquisition-controls"'
     ),
     "tests/test_final_polish_cli.py": (
-        "from tests.final_polish_harness import helper\n"
+        "from tests.support.final_polish_testkit import helper\n"
         'patch.dict("os.environ", {"UNDERLINE_ACQUISITION_CONTROLS_ROOT": str(store_root)})'
     ),
-    "tests/final_polish_harness.py": (
+    "tests/support/final_polish_testkit.py": (
         'store_root = bundle.parent / "acquisition-controls"'
     ),
 }
@@ -344,7 +344,7 @@ def test_issue_233s_manifest_forecasts_acquisition_control_companions() -> None:
         test_sources={
             **_ACQUISITION_CONTROL_TEST_SOURCES,
             "tests/test_final_polish.py": (
-                'from tests.final_polish_harness import helper\n'
+                'from tests.support.final_polish_testkit import helper\n'
                 'text = (ROOT / "docs" / "strip-acquisition-contract.md").read_text()'
             ),
             "tests/test_strip.py": "from pipeline.strip import coherence_report",

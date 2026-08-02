@@ -38,13 +38,8 @@ from pipeline.strip import (
     ingest_strip_provider,
     layout_for_motion_class,
 )
-from tests.final_polish_harness import (
-    acquisition_store_env,
-    record_store_attempt,
-)
 from tests.support import polish_bundle as pb
-
-from tests.support.final_polish_fixtures import (
+from tests.support.final_polish_testkit import (
     CANONICAL_IDENTITY_SHA,
     FRAME_COUNT,
     IDENTITY_PNG,
@@ -56,23 +51,70 @@ from tests.support.final_polish_fixtures import (
     SWING_POLISHED,
     SWING_STRIP,
     WALK_STRIP,
-    _IDLE_STORE_ATTEMPT_KWARGS,
-    _bundle_tree,
-    _corpus_layout,
-    _identity_doc_with_seed_pad_px,
-    _padded_edit_source_seed,
-    _provenance_for,
-    _provider_dimensions,
-    _swing_provider_frame_cells,
-    _swing_provider_on_edit_canvas,
-    _swing_provider_strip,
-    _walk_provider_on_edit_canvas,
-    _write_animation_provenance,
+    IDLE_STORE_ATTEMPT_KWARGS,
+    bundle_tree,
+    corpus_layout,
+    identity_doc_with_seed_pad_px,
+    padded_edit_source_seed,
+    padded_inbox_provider,
+    provider_dimensions,
+    swing_provider_frame_cells,
+    swing_provider_strip,
+    write_animation_provenance,
+    identity_seed_pad_px,
 )
+from tests.support.polish_bundle import acquisition_store_env, record_store_attempt
 
 
 FAIL_STRIP = INBOX / "08-NEG-identity-drift.png"
 IDLE_SEED_STRIP = ROOT / "assets" / "first-room" / "dwarf" / "idle" / "provider" / "source.png"
+
+
+def provenance_for(
+    provider_path: Path,
+    tmp_path: Path,
+    motion_class: str,
+    *,
+    polish_profile: str | None = None,
+) -> Path:
+    provenance_path = tmp_path / f"{provider_path.stem}.source.json"
+    kwargs: dict[str, object] = {"motion_class": motion_class}
+    if polish_profile == "dwarf-miner" and motion_class in {"walk", "swing"}:
+        padded_seed = padded_edit_source_seed(tmp_path, motion_class)
+        kwargs.update(
+            {
+                "generation_mode": "image-edit",
+                "reference_image_sha256": [CANONICAL_IDENTITY_SHA],
+                "edit_source_sha256": sha256_file(padded_seed),
+            }
+        )
+    write_animation_provenance(provider_path, provenance_path, **kwargs)
+    return provenance_path
+
+
+def walk_provider_on_edit_canvas(tmp_path: Path) -> Path:
+    seed = padded_edit_source_seed(tmp_path, "walk")
+    out = tmp_path / "walk-on-edit-canvas.png"
+    pad = identity_seed_pad_px()
+    with Image.open(seed) as canvas:
+        base = canvas.copy()
+        with Image.open(WALK_STRIP) as walk:
+            base.paste(walk.convert("RGBA"), (pad, pad))
+        base.save(out)
+    return out
+
+
+def swing_provider_on_edit_canvas(tmp_path: Path) -> Path:
+    seed = padded_edit_source_seed(tmp_path, "swing")
+    inner = padded_inbox_provider(SWING_STRIP, tmp_path, motion_class="swing")
+    out = tmp_path / "swing-on-edit-canvas.png"
+    pad = identity_seed_pad_px()
+    with Image.open(seed) as seed_image:
+        canvas = seed_image.copy()
+        with Image.open(inner) as inner_image:
+            canvas.paste(inner_image.convert("RGBA"), (pad, pad))
+        canvas.save(out)
+    return out
 
 
 def _init_bundle_polish(
@@ -268,7 +310,7 @@ def test_production_polish_brief_selects_motion_overrides(
     motion_ids: list[str],
 ) -> None:
     bundle = tmp_path / "bundle"
-    provider_path = _swing_provider_strip(tmp_path) if strip == "swing" else strip
+    provider_path = swing_provider_strip(tmp_path) if strip == "swing" else strip
     _init_bundle_polish(provider_path, motion_class, bundle, tmp_path, polish_profile=profile_id)
 
     brief = load_polish_brief(bundle)
@@ -341,7 +383,7 @@ def test_fail_strip_creates_nothing(tmp_path: Path) -> None:
 
 def test_review_strip_creates_nothing(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    base = ingest_strip_provider(PASS_STRIP, _corpus_layout(), motion_class="idle")
+    base = ingest_strip_provider(PASS_STRIP, corpus_layout(), motion_class="idle")
     review = IngestResult(
         layout=base.layout,
         source=base.source,
@@ -365,7 +407,7 @@ def test_review_strip_creates_nothing(tmp_path: Path) -> None:
 def test_init_materializes_swing_frames_on_the_motion_class_canvas(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
     _init_bundle_polish(
-        _swing_provider_strip(tmp_path),
+        swing_provider_strip(tmp_path),
         "swing",
         bundle,
         tmp_path,
@@ -380,7 +422,7 @@ def test_init_materializes_swing_frames_on_the_motion_class_canvas(tmp_path: Pat
         for index in range(FRAME_COUNT):
             cells = read_cells(bundle / layer / f"frame-{index}.png")
             polished = read_cells(SWING_POLISHED / f"frame-{index}.png", size=(24, 24))
-            expected = _swing_provider_frame_cells(polished)
+            expected = swing_provider_frame_cells(polished)
             assert (len(cells[0]), len(cells)) == (24, 24)
             assert cells == expected
             assert any(row[x] is not None for row in cells for x in range(4))
@@ -390,15 +432,15 @@ def test_init_materializes_swing_frames_on_the_motion_class_canvas(tmp_path: Pat
     "motion_class",
     ["idle", "blob_idle", "walk", "airborne", "emissive"],
 )
-def test_non_swing_probe_layout_matches_corpus_layout(motion_class: str) -> None:
+def test_non_swing_probe_layout_matchescorpus_layout(motion_class: str) -> None:
     probe = layout_for_motion_class(motion_class, margin_cells=0)
-    corpus = _corpus_layout()
+    corpus = corpus_layout()
     assert probe == corpus
 
 
 def test_swing_probe_layout_differs_only_in_frame_geometry() -> None:
     swing = layout_for_motion_class("swing", margin_cells=0)
-    corpus = _corpus_layout()
+    corpus = corpus_layout()
     assert swing.frame_w == 24
     assert swing.frame_h == corpus.frame_h
     assert swing.frame_count == corpus.frame_count
@@ -431,7 +473,7 @@ def test_existing_destination_is_preserved(tmp_path: Path) -> None:
     assert marker.read_text(encoding="utf-8") == "stay"
 
 
-def test_bundle_tree_schema_hashes_and_seeded_polished_copies(tmp_path: Path) -> None:
+def testbundle_tree_schema_hashes_and_seeded_polished_copies(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
     manifest = json.loads((bundle / "manifest.json").read_text())
 
@@ -449,7 +491,7 @@ def test_bundle_tree_schema_hashes_and_seeded_polished_copies(tmp_path: Path) ->
         "polished/frame-2.png",
         "polished/frame-3.png",
     }
-    assert _bundle_tree(bundle) == expected_paths
+    assert bundle_tree(bundle) == expected_paths
 
     assert manifest["provider"]["original_filename"].endswith(".png")
     assert manifest["provider"]["relative_path"] == "provider/source.png"
@@ -514,7 +556,7 @@ def test_invalid_provenance_rejects_init_without_bundle(
 ) -> None:
     bundle = tmp_path / "bundle"
     provenance_path = tmp_path / "bad.source.json"
-    _write_animation_provenance(PASS_STRIP, provenance_path, motion_class="idle")
+    write_animation_provenance(PASS_STRIP, provenance_path, motion_class="idle")
     record = json.loads(provenance_path.read_text())
 
     if mutation == "missing_field":
@@ -570,7 +612,7 @@ def _blank_raster(path: Path, width: int, height: int) -> Path:
 def test_provenance_dimensions_mismatch_rejects_init(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
     provenance_path = tmp_path / "bad-dimensions.source.json"
-    _write_animation_provenance(PASS_STRIP, provenance_path, motion_class="idle")
+    write_animation_provenance(PASS_STRIP, provenance_path, motion_class="idle")
     record = json.loads(provenance_path.read_text())
     record["dimensions"] = [100, 200]
     provenance_path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
@@ -591,15 +633,15 @@ def test_provenance_dimensions_match_initializes(tmp_path: Path) -> None:
     provenance = json.loads(
         (bundle / "provider" / "source.source.json").read_text(encoding="utf-8")
     )
-    assert provenance["dimensions"] == _provider_dimensions(PASS_STRIP)
+    assert provenance["dimensions"] == provider_dimensions(PASS_STRIP)
 
 
 def test_edit_source_geometry_mismatch_rejects_init(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
     provider = _blank_raster(tmp_path / "small-provider.png", 2308, 580)
-    edit_source = _padded_edit_source_seed(tmp_path, "swing")
+    edit_source = padded_edit_source_seed(tmp_path, "swing")
     provenance_path = tmp_path / "swing.source.json"
-    _write_animation_provenance(
+    write_animation_provenance(
         provider,
         provenance_path,
         motion_class="swing",
@@ -630,14 +672,14 @@ def test_edit_source_geometry_mismatch_rejects_init(tmp_path: Path) -> None:
 def test_edit_source_geometry_match_initializes(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
     _init_bundle_polish(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="dwarf-miner")
-    provider_dims = _provider_dimensions(bundle / "provider" / "source.png")
-    edit_dims = _provider_dimensions(bundle / "provider" / "edit-source.png")
+    provider_dims = provider_dimensions(bundle / "provider" / "source.png")
+    edit_dims = provider_dimensions(bundle / "provider" / "edit-source.png")
     assert provider_dims == edit_dims
 
 
 def test_text_to_image_skips_edit_source_geometry_check(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    mismatched_edit = _padded_edit_source_seed(tmp_path, "swing")
+    mismatched_edit = padded_edit_source_seed(tmp_path, "swing")
     attempt = replace(pb.prepare(PASS_STRIP, "idle", tmp_path), edit_source=mismatched_edit)
     pb.init_bundle(attempt, bundle)
     assert bundle.exists()
@@ -649,9 +691,9 @@ def test_edit_source_geometry_mismatch_surfaces_reason_code_in_init_json(
 ) -> None:
     bundle = tmp_path / "bundle"
     provider = _blank_raster(tmp_path / "small-provider.png", 2308, 580)
-    edit_source = _padded_edit_source_seed(tmp_path, "swing")
+    edit_source = padded_edit_source_seed(tmp_path, "swing")
     provenance_path = tmp_path / "swing.source.json"
-    _write_animation_provenance(
+    write_animation_provenance(
         provider,
         provenance_path,
         motion_class="swing",
@@ -693,7 +735,7 @@ def test_provenance_hash_mismatch_surfaces_reason_code_in_init_json(
 ) -> None:
     bundle = tmp_path / "bundle"
     provenance_path = tmp_path / "bad-hash.source.json"
-    _write_animation_provenance(PASS_STRIP, provenance_path, motion_class="idle")
+    write_animation_provenance(PASS_STRIP, provenance_path, motion_class="idle")
     record = json.loads(provenance_path.read_text())
     record["raw_sha256"] = "0" * 64
     provenance_path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
@@ -725,7 +767,7 @@ def test_provenance_dimensions_mismatch_surfaces_reason_code_in_init_json(
 ) -> None:
     bundle = tmp_path / "bundle"
     provenance_path = tmp_path / "bad-dimensions.source.json"
-    _write_animation_provenance(PASS_STRIP, provenance_path, motion_class="idle")
+    write_animation_provenance(PASS_STRIP, provenance_path, motion_class="idle")
     record = json.loads(provenance_path.read_text())
     record["dimensions"] = [100, 200]
     provenance_path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
@@ -753,7 +795,7 @@ def test_provenance_dimensions_mismatch_surfaces_reason_code_in_init_json(
 
 def test_dwarf_walk_init_requires_identity_and_edit_source(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    provenance_path = _provenance_for(WALK_STRIP, tmp_path, "walk", polish_profile="dwarf-miner")
+    provenance_path = provenance_for(WALK_STRIP, tmp_path, "walk", polish_profile="dwarf-miner")
     with pytest.raises(InitializationRejectedError) as exc:
         initialize_bundle(
             WALK_STRIP,
@@ -768,7 +810,7 @@ def test_dwarf_walk_init_requires_identity_and_edit_source(tmp_path: Path) -> No
 
 def _wrong_padded_edit_source(tmp_path: Path, motion_class: str) -> Path:
     """Same canvas size as the canonical padded seed but a different digest."""
-    canvas = _padded_edit_source_seed(tmp_path, motion_class)
+    canvas = padded_edit_source_seed(tmp_path, motion_class)
     wrong = tmp_path / f"wrong-{motion_class}-edit-source.png"
     wrong.write_bytes(canvas.read_bytes())
     with Image.open(wrong) as image:
@@ -783,10 +825,10 @@ def _wrong_padded_edit_source(tmp_path: Path, motion_class: str) -> Path:
 def test_dwarf_walk_init_rejects_edit_source_that_is_not_generation_source(
     tmp_path: Path,
 ) -> None:
-    walk_provider = _walk_provider_on_edit_canvas(tmp_path)
+    walk_provider = walk_provider_on_edit_canvas(tmp_path)
     wrong_seed = _wrong_padded_edit_source(tmp_path, "walk")
     provenance_path = tmp_path / "walk.source.json"
-    _write_animation_provenance(
+    write_animation_provenance(
         walk_provider,
         provenance_path,
         motion_class="walk",
@@ -815,12 +857,12 @@ def test_dwarf_walk_init_rejects_wrong_edit_source_when_seed_pad_px_set(
 ) -> None:
     monkeypatch.setattr(
         "pipeline.final_polish._load_dwarf_identity_doc",
-        lambda: _identity_doc_with_seed_pad_px(),
+        lambda: identity_doc_with_seed_pad_px(),
     )
     wrong_seed = _wrong_padded_edit_source(tmp_path, "walk")
     provenance_path = tmp_path / "walk.source.json"
-    _write_animation_provenance(
-        _walk_provider_on_edit_canvas(tmp_path),
+    write_animation_provenance(
+        walk_provider_on_edit_canvas(tmp_path),
         provenance_path,
         motion_class="walk",
         generation_mode="image-edit",
@@ -830,7 +872,7 @@ def test_dwarf_walk_init_rejects_wrong_edit_source_when_seed_pad_px_set(
     bundle = tmp_path / "bundle"
     with pytest.raises(InitializationRejectedError) as exc:
         initialize_bundle(
-            _walk_provider_on_edit_canvas(tmp_path),
+            walk_provider_on_edit_canvas(tmp_path),
             "walk",
             bundle,
             provenance_sidecar=provenance_path,
@@ -851,7 +893,7 @@ def test_dwarf_walk_init_accepts_padded_edit_source_when_seed_pad_px_set(
     # with no override needed.
     monkeypatch.setattr(
         "pipeline.final_polish._load_dwarf_identity_doc",
-        lambda: _identity_doc_with_seed_pad_px(),
+        lambda: identity_doc_with_seed_pad_px(),
     )
     bundle = tmp_path / "bundle"
     _init_bundle_polish(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="dwarf-miner")
@@ -862,7 +904,7 @@ def test_dwarf_swing_init_rejects_16_cell_pad_edit_source(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    identity_doc = _identity_doc_with_seed_pad_px()
+    identity_doc = identity_doc_with_seed_pad_px()
     monkeypatch.setattr(
         "pipeline.final_polish._load_dwarf_identity_doc",
         lambda: identity_doc,
@@ -871,9 +913,9 @@ def test_dwarf_swing_init_rejects_16_cell_pad_edit_source(
     declaration_path.write_text(json.dumps(identity_doc), encoding="utf-8")
     padded_seed = tmp_path / "padded-seed.png"
     build_identity_seed(declaration_path, padded_seed)
-    swing_provider = _swing_provider_on_edit_canvas(tmp_path)
+    swing_provider = swing_provider_on_edit_canvas(tmp_path)
     provenance_path = tmp_path / "swing.source.json"
-    _write_animation_provenance(
+    write_animation_provenance(
         swing_provider,
         provenance_path,
         motion_class="swing",
@@ -905,7 +947,7 @@ def test_dwarf_walk_init_accepts_16_cell_pad_edit_source(
     # with no override needed.
     monkeypatch.setattr(
         "pipeline.final_polish._load_dwarf_identity_doc",
-        lambda: _identity_doc_with_seed_pad_px(),
+        lambda: identity_doc_with_seed_pad_px(),
     )
     bundle = tmp_path / "bundle"
     _init_bundle_polish(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="dwarf-miner")
@@ -932,11 +974,11 @@ def test_final_polish_has_no_pil_dependency() -> None:
 
 def test_initialize_projects_attempt_ledger_from_attested_store(tmp_path: Path) -> None:
     store_root = tmp_path / "acquisition-controls"
-    first, _ = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS, outcome="rejected", rejection_reason="palette_drift")
-    second, _ = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS, outcome="rejected", rejection_reason="identity_lock")
-    third, provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS)
+    first, _ = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **IDLE_STORE_ATTEMPT_KWARGS, outcome="rejected", rejection_reason="palette_drift")
+    second, _ = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **IDLE_STORE_ATTEMPT_KWARGS, outcome="rejected", rejection_reason="identity_lock")
+    third, provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **IDLE_STORE_ATTEMPT_KWARGS)
     provenance_path = tmp_path / "provenance.json"
-    _write_animation_provenance(
+    write_animation_provenance(
         provider,
         provenance_path,
         motion_class="idle",
@@ -977,17 +1019,17 @@ def test_initialize_rejects_unregistered_attempts(
     message: str,
 ) -> None:
     store_root = tmp_path / "acquisition-controls"
-    row, provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS)
+    row, provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **IDLE_STORE_ATTEMPT_KWARGS)
     provenance_path = tmp_path / "provenance.json"
     attempt_id = row["attempt_id"]
     predecessor = row["predecessor_attempt_id"]
     motion_class = "idle"
     if setup == "selected_rejected":
-        rejected, rejected_provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS, outcome="rejected", rejection_reason="palette_drift")
+        rejected, rejected_provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **IDLE_STORE_ATTEMPT_KWARGS, outcome="rejected", rejection_reason="palette_drift")
         attempt_id = rejected["attempt_id"]
         predecessor = rejected["predecessor_attempt_id"]
         provider = rejected_provider
-    _write_animation_provenance(
+    write_animation_provenance(
         provider,
         provenance_path,
         motion_class="idle",
@@ -1010,7 +1052,7 @@ def test_initialize_rejects_unregistered_attempts(
             json.dumps(store_provenance, indent=2, sort_keys=True) + "\n"
         )
     elif setup == "prompt_sha256_mismatch":
-        _write_animation_provenance(
+        write_animation_provenance(
             provider,
             provenance_path,
             motion_class="idle",
@@ -1052,18 +1094,18 @@ def test_initialize_projects_complete_store_chain(tmp_path: Path) -> None:
             PASS_STRIP,
             "test/idle",
             repo_root=tmp_path,
-            **_IDLE_STORE_ATTEMPT_KWARGS,
+            **IDLE_STORE_ATTEMPT_KWARGS,
             outcome="rejected",
             rejection_reason="palette_drift",
         )[0]
         for _ in range(3)
     ]
     accepted, provider = record_store_attempt(
-        store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS
+        store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **IDLE_STORE_ATTEMPT_KWARGS
     )
     rows.append(accepted)
     provenance_path = tmp_path / "provenance.json"
-    _write_animation_provenance(
+    write_animation_provenance(
         provider,
         provenance_path,
         motion_class="idle",
@@ -1079,12 +1121,12 @@ def test_initialize_projects_complete_store_chain(tmp_path: Path) -> None:
 
 def test_initialize_rejects_when_store_chain_cannot_satisfy_ledger_rules(tmp_path: Path) -> None:
     store_root = tmp_path / "acquisition-controls"
-    record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS, outcome="accepted")
+    record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **IDLE_STORE_ATTEMPT_KWARGS, outcome="accepted")
     second, provider = record_store_attempt(
-        store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS
+        store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **IDLE_STORE_ATTEMPT_KWARGS
     )
     provenance_path = tmp_path / "provenance.json"
-    _write_animation_provenance(
+    write_animation_provenance(
         provider,
         provenance_path,
         motion_class="idle",

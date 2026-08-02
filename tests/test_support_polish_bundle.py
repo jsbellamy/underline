@@ -26,6 +26,11 @@ def test_support_polish_bundle_exposes_prepared_attempt_surface() -> None:
     assert hasattr(tests.support.polish_bundle, "prepare")
     assert hasattr(tests.support.polish_bundle, "init_bundle")
     assert hasattr(tests.support.polish_bundle, "init_argv")
+    assert hasattr(tests.support.polish_bundle, "acquisition_store_env")
+    assert hasattr(tests.support.polish_bundle, "bundle_store_env")
+    assert hasattr(tests.support.polish_bundle, "bundle_store_env_context")
+    assert hasattr(tests.support.polish_bundle, "bundle_store_root")
+    assert hasattr(tests.support.polish_bundle, "record_store_attempt")
 
 
 def test_prepare_idle_attempt_is_text_to_image_without_identity_paths(tmp_path: Path) -> None:
@@ -135,3 +140,76 @@ def test_prepared_attempt_initialization_centralizes_ingest_strip_provider_patch
 
     lines = [line for line in result.stdout.splitlines() if line.strip()]
     assert len(lines) == 1
+
+
+def test_acquisition_store_env_sets_controls_root(tmp_path: Path) -> None:
+    store_root = tmp_path / "acquisition-controls"
+
+    assert pb.acquisition_store_env(store_root) == {
+        "UNDERLINE_ACQUISITION_CONTROLS_ROOT": str(store_root),
+    }
+
+
+def test_bundle_store_root_absent_without_attempts_ledger(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    (bundle.parent / "acquisition-controls").mkdir()
+
+    assert pb.bundle_store_root(bundle) is None
+
+
+def test_bundle_store_root_present_when_attempts_ledger_exists(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    store_root = bundle.parent / "acquisition-controls"
+    store_root.mkdir()
+    (store_root / "attempts.jsonl").write_text("{}\n", encoding="utf-8")
+
+    assert pb.bundle_store_root(bundle) == store_root
+
+
+def test_bundle_store_env_matches_store_root_presence(tmp_path: Path) -> None:
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    store_root = bundle.parent / "acquisition-controls"
+    store_root.mkdir()
+
+    assert pb.bundle_store_env(bundle) is None
+
+    (store_root / "attempts.jsonl").write_text("{}\n", encoding="utf-8")
+    assert pb.bundle_store_env(bundle) == pb.acquisition_store_env(store_root)
+
+
+def test_record_store_attempt_returns_row_and_stored_provider_path(
+    tmp_path: Path,
+) -> None:
+    store_root = tmp_path / "acquisition-controls"
+
+    row, provider_path = pb.record_store_attempt(
+        store_root,
+        PASS_STRIP,
+        "test/idle",
+        motion_class="idle",
+        generation_mode="text-to-image",
+        acquiring_agent="pytest",
+        prompt_text="underline harness test prompt",
+        repo_root=tmp_path,
+    )
+
+    assert row["raw_path"]
+    assert provider_path == store_root / row["raw_path"]
+    assert provider_path.is_file()
+
+
+def test_bundle_store_env_context_applies_controls_root(tmp_path: Path, monkeypatch) -> None:
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    store_root = bundle.parent / "acquisition-controls"
+    store_root.mkdir()
+    (store_root / "attempts.jsonl").write_text("{}\n", encoding="utf-8")
+    monkeypatch.delenv("UNDERLINE_ACQUISITION_CONTROLS_ROOT", raising=False)
+
+    with pb.bundle_store_env_context(bundle):
+        import os
+
+        assert os.environ["UNDERLINE_ACQUISITION_CONTROLS_ROOT"] == str(store_root)

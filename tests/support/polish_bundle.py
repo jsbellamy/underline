@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -25,6 +26,72 @@ IDENTITY_PNG = ROOT / "assets" / "first-room" / "dwarf" / "identity.png"
 IDENTITY_JSON = ROOT / "assets" / "first-room" / "dwarf" / "identity.json"
 CANONICAL_IDENTITY_SHA = "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6"
 _PROMPT_TEXT = "underline test provenance prompt"
+
+
+def acquisition_store_env(store_root: Path) -> dict[str, str]:
+    return {"UNDERLINE_ACQUISITION_CONTROLS_ROOT": str(store_root)}
+
+
+def bundle_store_root(bundle: Path) -> Path | None:
+    store_root = bundle.parent / "acquisition-controls"
+    if (store_root / "attempts.jsonl").is_file():
+        return store_root
+    return None
+
+
+def bundle_store_env(bundle: Path) -> dict[str, str] | None:
+    store_root = bundle_store_root(bundle)
+    if store_root is None:
+        return None
+    return acquisition_store_env(store_root)
+
+
+@contextmanager
+def bundle_store_env_context(bundle: Path) -> Iterator[Path | None]:
+    store_root = bundle_store_root(bundle)
+    if store_root is None:
+        yield None
+        return
+    with patch.dict("os.environ", acquisition_store_env(store_root)):
+        yield store_root
+
+
+def record_store_attempt(
+    store_root: Path,
+    provider_path: Path,
+    specification_id: str,
+    *,
+    motion_class: str,
+    generation_mode: str,
+    acquiring_agent: str,
+    prompt_text: str,
+    repo_root: Path,
+    outcome: str = "accepted",
+    rejection_reason: str | None = None,
+    reference_image_sha256: str | None = None,
+    edit_source: Path | None = None,
+) -> tuple[dict[str, Any], Path]:
+    record_kwargs: dict[str, object] = {
+        "motion_class": motion_class,
+        "generation_mode": generation_mode,
+        "acquiring_agent": acquiring_agent,
+        "prompt_text": prompt_text,
+        "outcome": outcome,
+        "rejection_reason": rejection_reason,
+        "repo_root": repo_root,
+    }
+    if reference_image_sha256 is not None:
+        record_kwargs["reference_image_sha256"] = reference_image_sha256
+    if edit_source is not None:
+        record_kwargs["edit_source"] = edit_source
+    with patch.dict("os.environ", acquisition_store_env(store_root)):
+        row = aa.record_asset_attempt(
+            provider_path,
+            specification_id,
+            **record_kwargs,
+        )
+    stored_provider_path = store_root / row["raw_path"]
+    return row, stored_provider_path
 
 
 @dataclass(frozen=True)
@@ -64,7 +131,7 @@ def prepare(
         identity_reference = IDENTITY_PNG
         reference_image_sha256 = CANONICAL_IDENTITY_SHA
     specification_id = f"test/{motion_class}"
-    row, provider_for_init = _record_store_attempt(
+    row, provider_for_init = record_store_attempt(
         store_root,
         effective_provider,
         specification_id,
@@ -106,7 +173,7 @@ def prepare(
         identity_reference=identity_reference,
         edit_source=edit_source,
         ingest_source=ingest_source,
-        env=_acquisition_store_env(store_root),
+        env=acquisition_store_env(store_root),
     )
 
 
@@ -191,48 +258,6 @@ def _motion_class(attempt: PreparedAttempt) -> str:
 def _polish_profile(attempt: PreparedAttempt) -> str | None:
     value = _provenance_record(attempt).get("fixture_polish_profile")
     return str(value) if value else None
-
-
-def _acquisition_store_env(store_root: Path) -> dict[str, str]:
-    return {"UNDERLINE_ACQUISITION_CONTROLS_ROOT": str(store_root)}
-
-
-def _record_store_attempt(
-    store_root: Path,
-    provider_path: Path,
-    specification_id: str,
-    *,
-    motion_class: str,
-    generation_mode: str,
-    acquiring_agent: str,
-    prompt_text: str,
-    repo_root: Path,
-    outcome: str = "accepted",
-    rejection_reason: str | None = None,
-    reference_image_sha256: str | None = None,
-    edit_source: Path | None = None,
-) -> tuple[dict[str, Any], Path]:
-    record_kwargs: dict[str, object] = {
-        "motion_class": motion_class,
-        "generation_mode": generation_mode,
-        "acquiring_agent": acquiring_agent,
-        "prompt_text": prompt_text,
-        "outcome": outcome,
-        "rejection_reason": rejection_reason,
-        "repo_root": repo_root,
-    }
-    if reference_image_sha256 is not None:
-        record_kwargs["reference_image_sha256"] = reference_image_sha256
-    if edit_source is not None:
-        record_kwargs["edit_source"] = edit_source
-    with patch.dict("os.environ", _acquisition_store_env(store_root)):
-        row = aa.record_asset_attempt(
-            provider_path,
-            specification_id,
-            **record_kwargs,
-        )
-    stored_provider_path = store_root / row["raw_path"]
-    return row, stored_provider_path
 
 
 def _provider_dimensions(provider_path: Path) -> list[int]:

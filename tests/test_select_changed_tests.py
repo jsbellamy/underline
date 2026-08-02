@@ -15,7 +15,7 @@ _ACQUISITION_CONTROL_COMPANIONS = (
     "tests/test_final_polish_cli.py",
 )
 
-_FINAL_POLISH_HARNESS_CONSUMERS = (
+_FINAL_POLISH_TESTKIT_CONSUMERS = (
     "tests/test_final_polish.py",
     "tests/test_final_polish_cli.py",
 )
@@ -103,14 +103,14 @@ def _acquisition_control_test_sources() -> dict[str, str]:
     return {
         "tests/test_asset_acquire.py": 'store_root = tmp_path / "acquisition-controls"',
         "tests/test_final_polish.py": (
-            'from tests.final_polish_harness import helper\n'
+            'from tests.support.final_polish_testkit import helper\n'
             'store = ROOT / "acquisition-controls"'
         ),
         "tests/test_final_polish_cli.py": (
-            "from tests.final_polish_harness import helper\n"
+            "from tests.support.final_polish_testkit import helper\n"
             'patch.dict("os.environ", {"UNDERLINE_ACQUISITION_CONTROLS_ROOT": str(store_root)})'
         ),
-        "tests/final_polish_harness.py": (
+        "tests/support/final_polish_testkit.py": (
             'store_root = bundle.parent / "acquisition-controls"'
         ),
     }
@@ -118,15 +118,15 @@ def _acquisition_control_test_sources() -> dict[str, str]:
 
 def test_a_changed_support_module_selects_from_import_consumers() -> None:
     result = select_test_files(
-        ["tests/final_polish_harness.py"],
+        ["tests/support/final_polish_testkit.py"],
         existing_tests={
             "tests/test_final_polish.py",
             "tests/test_final_polish_cli.py",
             "tests/test_strip.py",
         },
         test_sources={
-            "tests/test_final_polish.py": "from tests.final_polish_harness import helper",
-            "tests/test_final_polish_cli.py": "import tests.final_polish_harness",
+            "tests/test_final_polish.py": "from tests.support.final_polish_testkit import helper",
+            "tests/test_final_polish_cli.py": "import tests.support.final_polish_testkit",
             "tests/test_strip.py": "from pipeline.strip import coherence_report",
         },
     )
@@ -194,13 +194,13 @@ def test_a_changed_acquisition_control_selects_direct_and_indirect_consumers() -
 def test_a_test_source_that_cannot_be_read_is_skipped_not_raised() -> None:
     """C4: missing test source is skipped when resolving support-module consumers."""
     result = select_test_files(
-        ["tests/final_polish_harness.py"],
+        ["tests/support/final_polish_testkit.py"],
         existing_tests={
             "tests/test_final_polish.py",
             "tests/test_unreadable.py",
         },
         test_sources={
-            "tests/test_final_polish.py": "from tests.final_polish_harness import helper",
+            "tests/test_final_polish.py": "from tests.support.final_polish_testkit import helper",
         },
     )
 
@@ -380,18 +380,18 @@ def test_acquisition_control_companions_dedupe_with_other_mapped_changes() -> No
     )
 
 
-def test_a_changed_final_polish_harness_selects_its_consumers() -> None:
+def test_a_changed_final_polish_testkit_selects_its_consumers() -> None:
     result = select_test_files(
-        ["tests/final_polish_harness.py"],
-        existing_tests=set(_FINAL_POLISH_HARNESS_CONSUMERS),
+        ["tests/support/final_polish_testkit.py"],
+        existing_tests=set(_FINAL_POLISH_TESTKIT_CONSUMERS),
         test_sources={
-            "tests/test_final_polish.py": "from tests.final_polish_harness import helper",
-            "tests/test_final_polish_cli.py": "import tests.final_polish_harness",
+            "tests/test_final_polish.py": "from tests.support.final_polish_testkit import helper",
+            "tests/test_final_polish_cli.py": "import tests.support.final_polish_testkit",
         },
     )
 
     assert result.kind == "selected"
-    assert result.files == _FINAL_POLISH_HARNESS_CONSUMERS
+    assert result.files == _FINAL_POLISH_TESTKIT_CONSUMERS
 
 
 def test_pr_240_changed_paths_select_companions_without_widening() -> None:
@@ -404,7 +404,7 @@ def test_pr_240_changed_paths_select_companions_without_widening() -> None:
         test_sources={
             **_acquisition_control_test_sources(),
             "tests/test_final_polish.py": (
-                'from tests.final_polish_harness import helper\n'
+                'from tests.support.final_polish_testkit import helper\n'
                 'text = (ROOT / "docs" / "strip-acquisition-contract.md").read_text()'
             ),
             "tests/test_strip.py": "from pipeline.strip import coherence_report",

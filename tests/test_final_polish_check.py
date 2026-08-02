@@ -31,13 +31,8 @@ from pipeline.gate_evidence import (
     sha256_file,
 )
 from pipeline.final_polish_cli import main as final_polish_cli_main
-from tests.final_polish_harness import (
-    acquisition_store_env,
-    record_store_attempt,
-)
 from tests.support import polish_bundle as pb
-
-from tests.support.final_polish_fixtures import (
+from tests.support.final_polish_testkit import (
     FRAME_COUNT,
     LANTERN_STRIP,
     LOGICAL_SIZE,
@@ -45,18 +40,23 @@ from tests.support.final_polish_fixtures import (
     ROOT,
     SWING_BUNDLE,
     WALK_STRIP,
-    _IDLE_STORE_ATTEMPT_KWARGS,
-    _bundle_tree,
-    _check_bundle,
-    _finalize_bundle,
-    _load_frame_rgba,
-    _set_opaque_rgb,
-    _swing_provider_strip,
-    _write_animation_provenance,
+    IDLE_STORE_ATTEMPT_KWARGS,
+    bundle_tree,
+    check_bundle,
+    finalize_bundle,
+    set_opaque_rgb,
+    swing_provider_strip,
+    write_animation_provenance,
 )
+from tests.support.polish_bundle import acquisition_store_env, record_store_attempt
 
 
 DWARF_IDLE_BUNDLE = ROOT / "assets" / "first-room" / "dwarf" / "idle"
+
+
+def load_frame_rgba(path: Path) -> Image.Image:
+    with Image.open(path) as image:
+        return image.convert("RGBA")
 
 
 def _init_bundle_polish(
@@ -91,7 +91,7 @@ def _first_opaque_xy(path: Path) -> tuple[int, int]:
 
 
 def _set_alpha(path: Path, x: int, y: int, alpha: int) -> None:
-    image = _load_frame_rgba(path)
+    image = load_frame_rgba(path)
     pixels = image.load()
     assert pixels is not None
     r, g, b, _ = pixels[x, y]
@@ -113,7 +113,7 @@ def test_tampered_production_profile_is_an_invalid_bundle(
     (bundle / "profile.json").write_text(json.dumps(profile) + "\n")
 
     with pytest.raises(InvalidBundleError) as exc:
-        _check_bundle(bundle)
+        check_bundle(bundle)
     assert exc.value.reason_code == "profile_hash_mismatch"
 
 
@@ -125,7 +125,7 @@ def test_tampered_embedded_profile_is_an_invalid_bundle(tmp_path: Path) -> None:
     (bundle / "profile.json").write_text(json.dumps(profile) + "\n")
 
     with pytest.raises(InvalidBundleError) as exc:
-        _check_bundle(bundle)
+        check_bundle(bundle)
     assert exc.value.reason_code == "profile_hash_mismatch"
 
 
@@ -167,7 +167,7 @@ def test_invalid_embedded_profiles_fail_closed(
         manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
     with pytest.raises(InvalidBundleError) as exc:
-        _check_bundle(bundle)
+        check_bundle(bundle)
     assert exc.value.reason_code == reason_code
 
 
@@ -179,7 +179,7 @@ def test_existing_v1_bundle_remains_check_compatible(tmp_path: Path) -> None:
     manifest.pop("polish_profile")
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
-    assert _check_bundle(bundle).outcome == "PASS"
+    assert check_bundle(bundle).outcome == "PASS"
 
 
 def test_v0_bundle_is_rejected(tmp_path: Path) -> None:
@@ -191,14 +191,14 @@ def test_v0_bundle_is_rejected(tmp_path: Path) -> None:
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
     with pytest.raises(InvalidBundleError) as exc:
-        _check_bundle(bundle)
+        check_bundle(bundle)
     assert exc.value.reason_code == "invalid_manifest"
 
 
 def test_schema_v2_swing_check_rejects_legacy_provenance_geometry(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
     _init_bundle_polish(
-        _swing_provider_strip(tmp_path),
+        swing_provider_strip(tmp_path),
         "swing",
         bundle,
         tmp_path,
@@ -214,7 +214,7 @@ def test_schema_v2_swing_check_rejects_legacy_provenance_geometry(tmp_path: Path
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
     with pytest.raises(InvalidBundleError) as exc:
-        _check_bundle(bundle)
+        check_bundle(bundle)
     assert exc.value.reason_code == "invalid_provenance"
 
 
@@ -224,7 +224,7 @@ def test_schema_v1_swing_check_accepts_legacy_provenance_geometry(tmp_path: Path
     provenance_path = bundle / "provider" / "source.source.json"
     provenance = json.loads(provenance_path.read_text())
     assert provenance["item_geometry"]["frame_w"] == 16
-    result = _check_bundle(bundle)
+    result = check_bundle(bundle)
     assert result.outcome == "PASS"
     manifest = json.loads((bundle / "manifest.json").read_text())
     assert manifest["schema"] == BUNDLE_SCHEMA_LEGACY_1
@@ -236,17 +236,17 @@ def test_provider_tamper_raises_invalid_bundle(tmp_path: Path) -> None:
     provider.write_bytes(provider.read_bytes() + b"\x00")
 
     with pytest.raises(InvalidBundleError) as exc:
-        _check_bundle(bundle)
+        check_bundle(bundle)
     assert exc.value.reason_code == "provenance_hash_mismatch"
 
 
 def test_draft_tamper_raises_invalid_bundle(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
     draft = bundle / "draft" / "frame-0.png"
-    _set_opaque_rgb(draft, 0, 0, (1, 2, 3))
+    set_opaque_rgb(draft, 0, 0, (1, 2, 3))
 
     with pytest.raises(InvalidBundleError) as exc:
-        _check_bundle(bundle)
+        check_bundle(bundle)
     assert exc.value.reason_code == "draft_hash_mismatch"
 
 
@@ -285,7 +285,7 @@ def test_invalid_polished_frames_raise_stable_reason_codes(
         _set_alpha(polished / "frame-0.png", 1, 1, 128)
 
     with pytest.raises(InvalidBundleError) as exc:
-        _check_bundle(bundle)
+        check_bundle(bundle)
     assert exc.value.reason_code == reason_code
     assert not list((bundle / "reports").glob("*.json"))
 
@@ -296,7 +296,7 @@ def test_alpha_mask_edit_fails_structurally(tmp_path: Path) -> None:
     x, y = _first_opaque_xy(polished)
     _set_alpha(polished, x, y, 0)
 
-    result = _check_bundle(bundle)
+    result = check_bundle(bundle)
     assert result.structural.pass_ is False
     assert result.structural.outcome == "FAIL"
     assert any(v.code == "alpha_mismatch" for v in result.structural.violations)
@@ -306,9 +306,9 @@ def test_new_opaque_color_fails_structurally(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
     polished = bundle / "polished" / "frame-1.png"
     x, y = _first_opaque_xy(polished)
-    _set_opaque_rgb(polished, x, y, (3, 99, 200))
+    set_opaque_rgb(polished, x, y, (3, 99, 200))
 
-    result = _check_bundle(bundle)
+    result = check_bundle(bundle)
     assert result.structural.pass_ is False
     assert any(v.code == "palette_violation" for v in result.structural.violations)
 
@@ -323,9 +323,9 @@ def test_master_palette_color_outside_draft_union_passes_structural_layer(
     master_only = palette.role_colors["cyan-crystal"][0]
     polished = bundle / "polished" / "frame-0.png"
     x, y = _first_opaque_xy(polished)
-    _set_opaque_rgb(polished, x, y, master_only)
+    set_opaque_rgb(polished, x, y, master_only)
 
-    result = _check_bundle(bundle)
+    result = check_bundle(bundle)
     assert result.structural.pass_ is True
 
 
@@ -360,7 +360,7 @@ def test_reused_draft_palette_color_passes_structural_layer(tmp_path: Path) -> N
             break
         image.save(polished)
 
-    result = _check_bundle(bundle)
+    result = check_bundle(bundle)
     assert result.structural.pass_ is True
 
 
@@ -370,8 +370,8 @@ def test_visible_cell_delta_order_and_counts(tmp_path: Path) -> None:
     polished2 = bundle / "polished" / "frame-2.png"
     x0, y0 = _first_opaque_xy(polished0)
     x2, y2 = _first_opaque_xy(polished2)
-    _set_opaque_rgb(polished0, x0, y0, (11, 22, 33))
-    _set_opaque_rgb(polished2, x2, y2, (44, 55, 66))
+    set_opaque_rgb(polished0, x0, y0, (11, 22, 33))
+    set_opaque_rgb(polished2, x2, y2, (44, 55, 66))
 
     # transparent RGB-only change must not appear in delta
     with Image.open(polished0) as image:
@@ -389,7 +389,7 @@ def test_visible_cell_delta_order_and_counts(tmp_path: Path) -> None:
             break
         image.save(polished0)
 
-    result = _check_bundle(bundle)
+    result = check_bundle(bundle)
     edits = result.delta.edits
     assert [(e.frame_index, e.x, e.y) for e in edits] == [(0, x0, y0), (2, x2, y2)]
     assert result.delta.per_frame_counts == (1, 0, 1, 0)
@@ -398,7 +398,7 @@ def test_visible_cell_delta_order_and_counts(tmp_path: Path) -> None:
 
 def test_zero_edit_real_bundle_passes_coherence(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
-    result = _check_bundle(bundle)
+    result = check_bundle(bundle)
     assert result.delta.total_edits == 0
     assert result.coherence["outcome"] == "PASS"
     assert result.outcome == "PASS"
@@ -413,7 +413,7 @@ def test_synthetic_recolour_reaches_coherence_split(tmp_path: Path) -> None:
         S.export_frames([mutated[index]], polished_dir, "swap", frame_w=16, frame_h=24)
         (polished_dir / "swap-f0.png").replace(polished_dir / f"frame-{index}.png")
 
-    result = _check_bundle(bundle)
+    result = check_bundle(bundle)
     assert result.coherence["outcome"] == "FAIL"
     assert result.coherence["gate_outcomes"]["palette_drift_pass"]["outcome"] == "FAIL"
     assert result.outcome == "FAIL"
@@ -421,15 +421,15 @@ def test_synthetic_recolour_reaches_coherence_split(tmp_path: Path) -> None:
 
 def test_check_is_read_only(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
-    before = _bundle_tree(bundle)
-    _check_bundle(bundle)
-    assert _bundle_tree(bundle) == before
+    before = bundle_tree(bundle)
+    check_bundle(bundle)
+    assert bundle_tree(bundle) == before
 
 
 def test_existing_v1_idle_bundle_remains_check_compatible(tmp_path: Path) -> None:
     bundle = tmp_path / "dwarf-idle"
     shutil.copytree(DWARF_IDLE_BUNDLE, bundle)
-    result = _check_bundle(bundle)
+    result = check_bundle(bundle)
     assert result.outcome == "PASS"
     manifest = json.loads((bundle / "manifest.json").read_text())
     assert manifest["schema"] == BUNDLE_SCHEMA_LEGACY_1
@@ -450,10 +450,10 @@ def _write_attempt_ledger(bundle: Path, attempts: list[dict[str, object]]) -> No
 
 def test_valid_sequential_attempt_ledger_passes_check(tmp_path: Path) -> None:
     store_root = tmp_path / "acquisition-controls"
-    record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS, outcome="rejected", rejection_reason="palette_drift")
-    accepted, provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS)
+    record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **IDLE_STORE_ATTEMPT_KWARGS, outcome="rejected", rejection_reason="palette_drift")
+    accepted, provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **IDLE_STORE_ATTEMPT_KWARGS)
     provenance_path = tmp_path / "provenance.json"
-    _write_animation_provenance(
+    write_animation_provenance(
         provider,
         provenance_path,
         motion_class="idle",
@@ -463,7 +463,7 @@ def test_valid_sequential_attempt_ledger_passes_check(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
     with patch.dict("os.environ", acquisition_store_env(store_root)):
         initialize_bundle(provider, "idle", bundle, provenance_sidecar=provenance_path)
-    assert _check_bundle(bundle).outcome == "PASS"
+    assert check_bundle(bundle).outcome == "PASS"
     ledger = json.loads((bundle / "provider" / "attempts.json").read_text())
     assert len(ledger["attempts"]) == 2
 
@@ -472,10 +472,10 @@ def test_rejected_attempt_ledger_with_identity_lock_near_miss_detail_passes(
     tmp_path: Path,
 ) -> None:
     store_root = tmp_path / "acquisition-controls"
-    rejected, rejected_provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS, outcome="rejected", rejection_reason="identity_lock")
-    accepted, provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS)
+    rejected, rejected_provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **IDLE_STORE_ATTEMPT_KWARGS, outcome="rejected", rejection_reason="identity_lock")
+    accepted, provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **IDLE_STORE_ATTEMPT_KWARGS)
     provenance_path = tmp_path / "provenance.json"
-    _write_animation_provenance(
+    write_animation_provenance(
         provider,
         provenance_path,
         motion_class="idle",
@@ -519,7 +519,7 @@ def test_rejected_attempt_ledger_with_identity_lock_near_miss_detail_passes(
             },
         ],
     )
-    assert _check_bundle(bundle).outcome == "PASS"
+    assert check_bundle(bundle).outcome == "PASS"
 
 
 @pytest.mark.parametrize(
@@ -536,10 +536,10 @@ def test_malformed_rejection_detail_fails_closed(
     reason_code: str,
 ) -> None:
     store_root = tmp_path / "acquisition-controls"
-    rejected, rejected_provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS, outcome="rejected", rejection_reason="identity_lock")
-    accepted, provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS)
+    rejected, rejected_provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **IDLE_STORE_ATTEMPT_KWARGS, outcome="rejected", rejection_reason="identity_lock")
+    accepted, provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **IDLE_STORE_ATTEMPT_KWARGS)
     provenance_path = tmp_path / "provenance.json"
-    _write_animation_provenance(
+    write_animation_provenance(
         provider,
         provenance_path,
         motion_class="idle",
@@ -576,7 +576,7 @@ def test_malformed_rejection_detail_fails_closed(
     )
 
     with pytest.raises(InvalidBundleError) as exc:
-        _check_bundle(bundle)
+        check_bundle(bundle)
     assert exc.value.reason_code == reason_code
 
 
@@ -605,7 +605,7 @@ def test_accepted_row_with_rejection_detail_fails_closed(tmp_path: Path) -> None
     )
 
     with pytest.raises(InvalidBundleError) as exc:
-        _check_bundle(bundle)
+        check_bundle(bundle)
     assert exc.value.reason_code == "invalid_attempt_ledger"
 
 
@@ -704,7 +704,7 @@ def test_invalid_attempt_ledger_fails_closed(
     _write_attempt_ledger(bundle, attempts)
 
     with pytest.raises(InvalidBundleError) as exc:
-        _check_bundle(bundle)
+        check_bundle(bundle)
     assert exc.value.reason_code == reason_code
 
 
@@ -720,7 +720,7 @@ def test_provenance_binding_rejects_path_escape(tmp_path: Path) -> None:
     (bundle / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
     with pytest.raises(InvalidBundleError) as exc:
-        _check_bundle(bundle)
+        check_bundle(bundle)
     assert exc.value.reason_code == "provenance_path_escape"
 
 
@@ -738,7 +738,7 @@ def test_polish_profile_binding_rejects_path_escape(tmp_path: Path) -> None:
     (bundle / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
 
     with pytest.raises(InvalidBundleError) as exc:
-        _check_bundle(bundle)
+        check_bundle(bundle)
     assert exc.value.reason_code == "profile_path_escape"
 
 
@@ -781,7 +781,7 @@ def test_check_emits_two_colour_silhouette_strip_and_gif_for_dwarf_idle(
         path.name: sha256_file(path) for path in reports.glob("*.json")
     }
 
-    result = _check_bundle(bundle)
+    result = check_bundle(bundle)
 
     strip_path = bundle / "reports" / "silhouette-strip.png"
     gif_path = bundle / "reports" / "silhouette.gif"
@@ -812,10 +812,10 @@ def test_check_emits_two_colour_silhouette_strip_and_gif_for_dwarf_idle(
 
 def test_check_silhouette_artifacts_are_deterministic(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
-    first = _check_bundle(bundle)
+    first = check_bundle(bundle)
     first_strip = (bundle / "reports" / "silhouette-strip.png").read_bytes()
     first_gif = (bundle / "reports" / "silhouette.gif").read_bytes()
-    second = _check_bundle(bundle)
+    second = check_bundle(bundle)
     assert sha256_bytes(first_strip) == second.silhouette_artifacts.strip_sha256
     assert sha256_bytes(first_gif) == second.silhouette_artifacts.gif_sha256
     assert first_strip == (bundle / "reports" / "silhouette-strip.png").read_bytes()
@@ -824,7 +824,7 @@ def test_check_silhouette_artifacts_are_deterministic(tmp_path: Path) -> None:
 
 def test_check_silhouette_report_paths_and_hashes_match_disk(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
-    result = _check_bundle(bundle)
+    result = check_bundle(bundle)
     payload = _silhouette_artifacts_payload(result)
     strip_path = bundle / str(payload["strip"]["relative_path"])
     gif_path = bundle / str(payload["gif"]["relative_path"])
@@ -834,18 +834,18 @@ def test_check_silhouette_report_paths_and_hashes_match_disk(tmp_path: Path) -> 
 
 def test_check_silhouette_emission_does_not_change_gate_outcomes(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
-    baseline = _check_bundle(bundle)
-    follow_up = _check_bundle(bundle)
+    baseline = check_bundle(bundle)
+    follow_up = check_bundle(bundle)
     assert follow_up.outcome == baseline.outcome
     assert follow_up.coherence["gate_outcomes"] == baseline.coherence["gate_outcomes"]
 
 
 def test_check_rejects_hand_edited_attempt_ledger(tmp_path: Path) -> None:
     store_root = tmp_path / "acquisition-controls"
-    record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS, outcome="rejected", rejection_reason="palette_drift")
-    accepted, provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS)
+    record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **IDLE_STORE_ATTEMPT_KWARGS, outcome="rejected", rejection_reason="palette_drift")
+    accepted, provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **IDLE_STORE_ATTEMPT_KWARGS)
     provenance_path = tmp_path / "provenance.json"
-    _write_animation_provenance(
+    write_animation_provenance(
         provider,
         provenance_path,
         motion_class="idle",
@@ -859,16 +859,16 @@ def test_check_rejects_hand_edited_attempt_ledger(tmp_path: Path) -> None:
     del ledger["attempts"][0]
     _write_attempt_ledger(bundle, ledger["attempts"])
     with pytest.raises(InvalidBundleError) as exc:
-        _check_bundle(bundle)
+        check_bundle(bundle)
     assert exc.value.reason_code == "attempt_ledger_not_attested"
 
 
 def test_check_rejects_predecessor_rewrite_not_in_store(tmp_path: Path) -> None:
     store_root = tmp_path / "acquisition-controls"
-    record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS, outcome="rejected", rejection_reason="palette_drift")
-    accepted, provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS)
+    record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **IDLE_STORE_ATTEMPT_KWARGS, outcome="rejected", rejection_reason="palette_drift")
+    accepted, provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **IDLE_STORE_ATTEMPT_KWARGS)
     provenance_path = tmp_path / "provenance.json"
-    _write_animation_provenance(
+    write_animation_provenance(
         provider,
         provenance_path,
         motion_class="idle",
@@ -882,7 +882,7 @@ def test_check_rejects_predecessor_rewrite_not_in_store(tmp_path: Path) -> None:
     ledger["attempts"][-1]["predecessor_attempt_id"] = "dwarf-swing--002"
     _write_attempt_ledger(bundle, ledger["attempts"])
     with pytest.raises(InvalidBundleError) as exc:
-        _check_bundle(bundle)
+        check_bundle(bundle)
     assert exc.value.reason_code == "attempt_ledger_not_attested"
 
 
@@ -912,7 +912,7 @@ def test_legacy_allowlist_drops_when_provider_digest_changes(tmp_path: Path) -> 
 
     with patch.dict("os.environ", acquisition_store_env(store_root)):
         with pytest.raises(InvalidBundleError) as exc:
-            _check_bundle(bundle)
+            check_bundle(bundle)
     assert exc.value.reason_code == "attempt_not_registered"
 
 
@@ -933,15 +933,15 @@ def test_legacy_allowlist_grandfathers_checked_in_bundles(tmp_path: Path) -> Non
     shutil.rmtree(tmp_path / "acquisition-controls")
     with patch.dict("os.environ", acquisition_store_env(tmp_path / "acquisition-controls")):
         with pytest.raises(InvalidBundleError) as exc:
-            _check_bundle(bundle)
+            check_bundle(bundle)
     assert exc.value.reason_code == "attempt_not_registered"
 
 
 def test_attestation_report_payloads(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     store_root = tmp_path / "acquisition-controls"
-    row, provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **_IDLE_STORE_ATTEMPT_KWARGS)
+    row, provider = record_store_attempt(store_root, PASS_STRIP, "test/idle", repo_root=tmp_path, **IDLE_STORE_ATTEMPT_KWARGS)
     provenance_path = tmp_path / "provenance.json"
-    _write_animation_provenance(
+    write_animation_provenance(
         provider,
         provenance_path,
         motion_class="idle",
@@ -951,12 +951,12 @@ def test_attestation_report_payloads(tmp_path: Path, capsys: pytest.CaptureFixtu
     bundle = tmp_path / "bundle"
     with patch.dict("os.environ", acquisition_store_env(store_root)):
         initialize_bundle(provider, "idle", bundle, provenance_sidecar=provenance_path)
-        result = _check_bundle(bundle)
+        result = check_bundle(bundle)
     assert result.attestation is not None
     assert result.attestation.state == "attested"
     assert result.attestation.attempt_id == row["attempt_id"]
 
-    report_path = _finalize_bundle(bundle)
+    report_path = finalize_bundle(bundle)
     report = json.loads(report_path.read_text())
     assert report["attestation"]["state"] == "attested"
     assert report["attestation"]["attempt_id"] == row["attempt_id"]
