@@ -70,7 +70,8 @@ the sum it belongs to does not move `wall_s`.
 
 The per-file ceiling is retired. A per-file number gates nothing while the
 longest file is under Σ/workers (Findings 3–4), and the previously stated 70s
-target is unreachable by partitioning (Finding 5).
+target is recorded as unreachable by partitioning: at 4 workers it requires
+Σ ≤ 280s against today's measured 662.4 (Finding 5).
 
 The standing budget is **`wall_s` ≤ 180s on CI** — roughly 9% headroom over the
 measured 165.761 (Finding 4). A PR whose isolation report exceeds 180s either
