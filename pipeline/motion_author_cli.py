@@ -16,7 +16,6 @@ from pipeline.palette_quantize import load_master_palette
 from pipeline.strip import Cell
 
 
-
 def _discover_base_frames(base_bundle: Path, motion_class: str) -> list[list[list[Cell]]]:
     """Load base Frames from ``base_bundle``, embedded onto ``motion_class``'s canvas.
 

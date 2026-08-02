@@ -272,32 +272,30 @@ def prepare_cell_author(
     polish_profile: str | None = None,
     base_frame_mapping: list[int] | None = None,
     mutate_frame: tuple[int, int, int, tuple[int, int, int]] | None = None,
-    base_motion_class: str | None = None,
     base_bundle_root: Path | None = None,
 ) -> PreparedCellAuthor:
     """Build a cell-author fixture from a finalized provider base bundle.
 
-    `base_motion_class` and `base_bundle_root` let the base Bundle's Motion
-    class differ from the authored `motion_class` (issue #290): the base
-    Bundle's release Frames are embedded onto the target class canvas via
-    the same shared rule `initialize_cell_authored_bundle` uses
-    (`pipeline.final_polish._load_base_release_frames`), so a 16x24 base can
-    author a 24x24 target. `base_bundle_root`, when given, is used directly
-    as the base Bundle instead of synthesizing one.
+    `base_bundle_root`, when given, is used directly as the base Bundle
+    instead of synthesizing one from `motion_class`'s own strip — letting the
+    base Bundle's Motion class differ from the authored `motion_class` (issue
+    #290). The base Bundle's release Frames are embedded onto the target
+    class canvas via the same shared rule `initialize_cell_authored_bundle`
+    uses (`pipeline.final_polish._load_base_release_frames`), so a 16x24 base
+    can author a 24x24 target.
     """
     if base_bundle_root is not None:
         base_bundle = base_bundle_root
     else:
         base_bundle = tmp_path / "base-bundle"
-        synth_motion_class = base_motion_class or motion_class
         attempt = prepare(
-            PASS_STRIP if synth_motion_class == "idle" else WALK_STRIP,
-            synth_motion_class,
+            PASS_STRIP if motion_class == "idle" else WALK_STRIP,
+            motion_class,
             tmp_path,
             polish_profile=polish_profile,
         )
         init_bundle(attempt, base_bundle)
-        synth_layout = layout_for_motion_class(synth_motion_class, margin_cells=0)
+        synth_layout = layout_for_motion_class(motion_class, margin_cells=0)
         release_dir = base_bundle / "release"
         release_dir.mkdir(exist_ok=True)
         for index in range(synth_layout.frame_count):
