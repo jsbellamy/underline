@@ -49,7 +49,6 @@ from tests.support.final_polish_fixtures import (
     _bundle_tree,
     _check_bundle,
     _finalize_bundle,
-    _init_bundle,
     _load_frame_rgba,
     _set_opaque_rgb,
     _swing_provider_strip,
@@ -68,11 +67,7 @@ def _init_bundle_polish(
     *,
     polish_profile: str | None = None,
 ) -> None:
-    """Idle/blob_idle/emissive/lantern bundle construction via the polish_bundle seam.
-
-    The one swing call site in this module still builds through the interim
-    `tests.support.final_polish_fixtures._init_bundle` (issue #249).
-    """
+    """Bundle construction via the polish_bundle seam (issues #249, #250)."""
     attempt = pb.prepare(strip, motion_class, tmp_path, polish_profile=polish_profile)
     pb.init_bundle(attempt, bundle)
 
@@ -202,7 +197,7 @@ def test_v0_bundle_is_rejected(tmp_path: Path) -> None:
 
 def test_schema_v2_swing_check_rejects_legacy_provenance_geometry(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    _init_bundle(
+    _init_bundle_polish(
         _swing_provider_strip(tmp_path),
         "swing",
         bundle,

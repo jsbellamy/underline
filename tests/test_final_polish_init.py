@@ -60,11 +60,9 @@ from tests.support.final_polish_fixtures import (
     _bundle_tree,
     _corpus_layout,
     _identity_doc_with_seed_pad_px,
-    _init_bundle,
     _padded_edit_source_seed,
     _provenance_for,
     _provider_dimensions,
-    _swing_padded_inbox_provider,
     _swing_provider_frame_cells,
     _swing_provider_on_edit_canvas,
     _swing_provider_strip,
@@ -85,12 +83,7 @@ def _init_bundle_polish(
     *,
     polish_profile: str | None = None,
 ) -> None:
-    """Idle/blob_idle/emissive/lantern bundle construction via the polish_bundle seam.
-
-    Walk and swing call sites in this module still build through the interim
-    `tests.support.final_polish_fixtures._init_bundle`; only idle, blob_idle,
-    emissive, and lantern-Strip sites route through this seam (issue #249).
-    """
+    """Bundle construction via the polish_bundle seam (issues #249, #250)."""
     attempt = pb.prepare(strip, motion_class, tmp_path, polish_profile=polish_profile)
     pb.init_bundle(attempt, bundle)
 
@@ -317,7 +310,7 @@ def test_polish_brief_selects_fixed_questions_and_walk_overrides(
     tmp_path: Path,
 ) -> None:
     bundle = tmp_path / "bundle"
-    _init_bundle(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="miner")
+    _init_bundle_polish(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="miner")
 
     brief = load_polish_brief(bundle)
     assert brief["profile"]["id"] == "miner"
@@ -371,7 +364,7 @@ def test_review_strip_creates_nothing(tmp_path: Path) -> None:
 
 def test_init_materializes_swing_frames_on_the_motion_class_canvas(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    _init_bundle(
+    _init_bundle_polish(
         _swing_provider_strip(tmp_path),
         "swing",
         bundle,
@@ -415,29 +408,13 @@ def test_swing_probe_layout_differs_only_in_frame_geometry() -> None:
 
 
 def test_swing_init_rejects_16_cell_wide_provider(tmp_path: Path) -> None:
+    """SWING_STRIP's dwarf-miner effective provider is the 16-cell-wide padded
+    inbox strip (`pb.prepare`'s `_effective_dwarf_miner_provider`), so the
+    default seam reproduces the wrong_size rejection with no override needed.
+    """
     bundle = tmp_path / "bundle"
-    swing_seed = _padded_edit_source_seed(tmp_path, "swing")
-    swing_provider = _swing_padded_inbox_provider(tmp_path)
-    provenance_path = tmp_path / "swing.source.json"
-    _write_animation_provenance(
-        swing_provider,
-        provenance_path,
-        motion_class="swing",
-        generation_mode="image-edit",
-        reference_image_sha256=[CANONICAL_IDENTITY_SHA],
-        edit_source_sha256=sha256_file(swing_seed),
-    )
     with pytest.raises(InitializationRejectedError) as exc:
-        _init_bundle(
-            SWING_STRIP,
-            "swing",
-            bundle,
-            tmp_path,
-            polish_profile="dwarf-miner",
-            provenance_path=provenance_path,
-            identity_reference=IDENTITY_PNG,
-            edit_source=swing_seed,
-        )
+        _init_bundle_polish(SWING_STRIP, "swing", bundle, tmp_path, polish_profile="dwarf-miner")
     assert exc.value.reason_code == "wrong_size"
     assert not bundle.exists()
 
@@ -498,7 +475,7 @@ def test_schema_v2_bundle_binds_provenance_identity_and_edit_source_for_dwarf_wa
     tmp_path: Path,
 ) -> None:
     bundle = tmp_path / "bundle"
-    _init_bundle(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="dwarf-miner")
+    _init_bundle_polish(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="dwarf-miner")
     manifest = json.loads((bundle / "manifest.json").read_text())
     assert manifest["schema"] == BUNDLE_SCHEMA
     assert manifest["provenance"]["sha256"] == sha256_file(
@@ -652,7 +629,7 @@ def test_edit_source_geometry_mismatch_rejects_init(tmp_path: Path) -> None:
 
 def test_edit_source_geometry_match_initializes(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    _init_bundle(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="dwarf-miner")
+    _init_bundle_polish(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="dwarf-miner")
     provider_dims = _provider_dimensions(bundle / "provider" / "source.png")
     edit_dims = _provider_dimensions(bundle / "provider" / "edit-source.png")
     assert provider_dims == edit_dims
@@ -869,36 +846,15 @@ def test_dwarf_walk_init_accepts_padded_edit_source_when_seed_pad_px_set(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    identity_doc = _identity_doc_with_seed_pad_px()
+    # identity.json's production seed_pad_px is already 64 (this monkeypatch's
+    # value), so the default polish_bundle seam already exercises this case
+    # with no override needed.
     monkeypatch.setattr(
         "pipeline.final_polish._load_dwarf_identity_doc",
-        lambda: identity_doc,
-    )
-    declaration_path = tmp_path / "identity.json"
-    declaration_path.write_text(json.dumps(identity_doc), encoding="utf-8")
-    padded_seed = tmp_path / "padded-seed.png"
-    build_identity_seed(declaration_path, padded_seed)
-    provenance_path = tmp_path / "walk.source.json"
-    walk_provider = _walk_provider_on_edit_canvas(tmp_path)
-    _write_animation_provenance(
-        walk_provider,
-        provenance_path,
-        motion_class="walk",
-        generation_mode="image-edit",
-        reference_image_sha256=[CANONICAL_IDENTITY_SHA],
-        edit_source_sha256=sha256_file(padded_seed),
+        lambda: _identity_doc_with_seed_pad_px(),
     )
     bundle = tmp_path / "bundle"
-    _init_bundle(
-        WALK_STRIP,
-        "walk",
-        bundle,
-        tmp_path,
-        polish_profile="dwarf-miner",
-        provenance_path=provenance_path,
-        identity_reference=IDENTITY_PNG,
-        edit_source=padded_seed,
-    )
+    _init_bundle_polish(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="dwarf-miner")
     assert bundle.exists()
 
 
@@ -944,36 +900,15 @@ def test_dwarf_walk_init_accepts_16_cell_pad_edit_source(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    identity_doc = _identity_doc_with_seed_pad_px()
+    # identity.json's production seed_pad_px is already 64 (this monkeypatch's
+    # value), so the default polish_bundle seam already exercises this case
+    # with no override needed.
     monkeypatch.setattr(
         "pipeline.final_polish._load_dwarf_identity_doc",
-        lambda: identity_doc,
-    )
-    declaration_path = tmp_path / "identity.json"
-    declaration_path.write_text(json.dumps(identity_doc), encoding="utf-8")
-    padded_seed = tmp_path / "padded-seed.png"
-    build_identity_seed(declaration_path, padded_seed)
-    provenance_path = tmp_path / "walk.source.json"
-    walk_provider = _walk_provider_on_edit_canvas(tmp_path)
-    _write_animation_provenance(
-        walk_provider,
-        provenance_path,
-        motion_class="walk",
-        generation_mode="image-edit",
-        reference_image_sha256=[CANONICAL_IDENTITY_SHA],
-        edit_source_sha256=sha256_file(padded_seed),
+        lambda: _identity_doc_with_seed_pad_px(),
     )
     bundle = tmp_path / "bundle"
-    _init_bundle(
-        WALK_STRIP,
-        "walk",
-        bundle,
-        tmp_path,
-        polish_profile="dwarf-miner",
-        provenance_path=provenance_path,
-        identity_reference=IDENTITY_PNG,
-        edit_source=padded_seed,
-    )
+    _init_bundle_polish(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="dwarf-miner")
     assert bundle.exists()
 
 
