@@ -13,7 +13,7 @@ import pytest
 from PIL import Image
 
 from pipeline.gate_evidence import sha256_file
-from tests.test_asset_pack import _pack_doc, _write_pack
+from tests.support.asset_pack import pack_doc, write_pack
 
 ROOT = Path(__file__).resolve().parents[1]
 FIXTURE_ROOT = ROOT / ".pytest-asset-pack"
@@ -56,7 +56,7 @@ def _run_npm(args: list[str]) -> subprocess.CompletedProcess[str]:
 
 
 def test_npm_check_valid_pack_exit_0_json(pack_fixture_dir: Path) -> None:
-    pack = _write_pack(pack_fixture_dir)
+    pack = write_pack(pack_fixture_dir)
     result = _run_npm(["check", str(pack), "--json"])
     assert result.returncode == 0, result.stderr
     payload = _json_stdout(result.stdout)
@@ -66,9 +66,9 @@ def test_npm_check_valid_pack_exit_0_json(pack_fixture_dir: Path) -> None:
 
 
 def test_npm_check_invalid_pack_exit_2_json(pack_fixture_dir: Path) -> None:
-    doc = _pack_doc(pack_fixture_dir)
+    doc = pack_doc(pack_fixture_dir)
     doc["assets"][0]["releases"][0]["sha256"] = "0" * 64
-    pack = _write_pack(pack_fixture_dir, doc)
+    pack = write_pack(pack_fixture_dir, doc)
     result = _run_npm(["check", str(pack), "--json"])
     assert result.returncode == 2, result.stderr
     payload = _json_stdout(result.stdout)
@@ -77,7 +77,7 @@ def test_npm_check_invalid_pack_exit_2_json(pack_fixture_dir: Path) -> None:
 
 
 def test_npm_preview_writes_outputs_json(pack_fixture_dir: Path) -> None:
-    pack = _write_pack(pack_fixture_dir)
+    pack = write_pack(pack_fixture_dir)
     out = pack_fixture_dir / "preview-out"
     result = _run_npm(["preview", str(pack), "--out", str(out), "--json"])
     assert result.returncode == 0, result.stderr
@@ -91,7 +91,7 @@ def test_npm_preview_writes_outputs_json(pack_fixture_dir: Path) -> None:
 
 
 def test_module_check_human_output(pack_fixture_dir: Path) -> None:
-    pack = _write_pack(pack_fixture_dir)
+    pack = write_pack(pack_fixture_dir)
     result = _run_module(["check", str(pack)])
     assert result.returncode == 0, result.stderr
     assert "PASS" in result.stdout
@@ -99,9 +99,9 @@ def test_module_check_human_output(pack_fixture_dir: Path) -> None:
 
 
 def test_module_preview_invalid_exit_2(pack_fixture_dir: Path) -> None:
-    doc = _pack_doc(pack_fixture_dir)
+    doc = pack_doc(pack_fixture_dir)
     doc["assets"][0]["final_report"]["sha256"] = "0" * 64
-    pack = _write_pack(pack_fixture_dir, doc)
+    pack = write_pack(pack_fixture_dir, doc)
     out = pack_fixture_dir / "preview-out"
     result = _run_module(["preview", str(pack), "--out", str(out)])
     assert result.returncode == 2, result.stdout
