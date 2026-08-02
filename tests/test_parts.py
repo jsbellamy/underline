@@ -48,6 +48,7 @@ REQUIRED_PART_IDS = frozenset(
         "beard",
         "arm_near",
         "hand_near",
+        "hand_far",
         "belt",
         "legs",
         "boots",
@@ -58,8 +59,10 @@ TOOL_HEAD_CORE = frozenset(
 )
 TOOL_BBOX_RECT = {(x, y) for y in range(1, 8) for x in range(0, 6)}
 TOOL_BBOX_CELL_COUNT = 21
-TOOL_PART_CELL_COUNT = 26
-OUTLINE_CONNECTIVITY_EXCEPTIONS = frozenset({(5, 15), (14, 16), (14, 17), (14, 18), (15, 17)})
+TOOL_PART_CELL_COUNT = 34
+OUTLINE_CONNECTIVITY_EXCEPTIONS = frozenset(
+    {(5, 15), (6, 11), (6, 14), (9, 12), (9, 13), (14, 16), (14, 17), (14, 18), (15, 17)}
+)
 
 
 def _opaque_cells(path: Path = BASE_FRAME) -> set[tuple[int, int]]:
@@ -233,7 +236,7 @@ def test_c3_landmarks_match_identity_locks_and_fixture_moves_eye(
 
 def test_c4_tool_handle_is_carried_and_fixture_breaks_contact(tmp_path: Path, part_map) -> None:
     handle = part_map.parts["tool_handle"]
-    assert handle.parent == "arm_near"
+    assert handle.parent == "hand_far"
     assert handle.parent != "hand_near"
     parent = part_map.parts[handle.parent]
     assert any(
@@ -265,7 +268,63 @@ def test_c5_render_part_map_declares_review_colors_and_panels(part_map) -> None:
     tile_rows = (len(part_ids) + 3) // 4
     expected_h = 8 + panel1_h + 8 + panel2_h + 8 + tile_rows * (tile_h + label_h + 4) + 8
     assert image.size[1] == expected_h
-    assert expected_panel_count == 13
+    assert expected_panel_count == 14
+
+
+def test_c9_hand_far_is_drawn_grip_part(part_map) -> None:
+    hand_far = part_map.parts["hand_far"]
+    assert hand_far.parent == "belt"
+    assert (7, 11) in hand_far.cells
+    assert (8, 12) in hand_far.cells
+    assert len(_four_connected_blobs(hand_far.cells)) == 1
+    roles = _roles_for_frame0()
+    skin_cells = {
+        tuple(map(int, key.split(",")))
+        for key, role in roles.items()
+        if role == "skin"
+    }
+    owners = {
+        cell: part_id
+        for part_id, part in part_map.parts.items()
+        for cell in part.cells
+        if cell in skin_cells
+    }
+    assert owners[(5, 12)] == "hand_near"
+    assert owners[(5, 13)] == "hand_near"
+    assert owners[(7, 11)] == "hand_far"
+    assert owners[(8, 12)] == "hand_far"
+    assert owners[(12, 7)] == "head_face"
+
+
+def test_c10_tool_handle_traces_haft_to_hand_far(part_map) -> None:
+    handle = part_map.parts["tool_handle"]
+    required = frozenset({(4, 7), (5, 8), (6, 8), (8, 10)})
+    assert required <= handle.cells
+    assert len(_four_connected_blobs(handle.cells)) == 1
+    assert handle.parent == "hand_far"
+    hand_far = part_map.parts["hand_far"]
+    head = part_map.parts["tool_head"]
+    assert any(
+        _chebyshev(handle_cell, head_cell) <= 1
+        for handle_cell in handle.cells
+        for head_cell in head.cells
+    )
+    assert any(
+        _chebyshev(handle_cell, hand_far_cell) <= 1
+        for handle_cell in handle.cells
+        for hand_far_cell in hand_far.cells
+    )
+
+
+def test_c11_arm_near_is_green_cloth_sleeve_only(part_map) -> None:
+    arm = part_map.parts["arm_near"]
+    roles = _roles_for_frame0()
+    assert all(x < 7 for x, _ in arm.cells)
+    non_outline = [cell for cell in arm.cells if roles[f"{cell[0]},{cell[1]}"] != "dark-outline"]
+    green_count = sum(
+        1 for cell in non_outline if roles[f"{cell[0]},{cell[1]}"] == "green-cloth"
+    )
+    assert green_count > len(non_outline) - green_count
 
 
 def test_c7_review_colors_are_separated() -> None:
@@ -328,7 +387,8 @@ def test_c4_parent_chain_reaches_belt_without_cycle(part_map) -> None:
 
     walk("tool_head")
     assert part_map.parts["tool_head"].parent == "tool_handle"
-    assert part_map.parts["tool_handle"].parent == "arm_near"
+    assert part_map.parts["tool_handle"].parent == "hand_far"
+    assert part_map.parts["hand_far"].parent == "belt"
     assert part_map.parts["hand_near"].parent == "arm_near"
     assert part_map.parts["arm_near"].parent == "belt"
     assert part_map.parts["belt"].parent is None
@@ -342,11 +402,11 @@ def test_c4_parent_chain_reaches_belt_without_cycle(part_map) -> None:
 
 def test_c5_tool_handle_grip_is_authored_and_inside_part(part_map) -> None:
     handle = part_map.parts["tool_handle"]
-    assert handle.grip == (5, 7)
-    assert handle.grip in handle.cells
+    assert handle.grip == (8, 11)
+    assert handle.grip in part_map.parts["hand_far"].cells
     document = json.loads(PARTS_JSON.read_text(encoding="utf-8"))
     assert "grip_rationale" in document
-    assert "occluded" in document["grip_rationale"].lower()
+    assert "drawn" in document["grip_rationale"].lower()
 
 
 def test_c6_rejects_base_digest_mismatch(tmp_path: Path) -> None:
