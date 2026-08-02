@@ -1,8 +1,8 @@
 {
   "_source": "Regenerate with: PYTHONPATH=. python3 scripts/run_isolated_tests.py --workers 4 --durations /nonexistent.json --report /tmp/iso.json, then map each files[] entry to name -> duration_s. Recorded from the CI isolation job's uploaded report (same command shape, 4-worker runner) so the hints match the machine that schedules against them. Scheduling hints only: staleness costs a few seconds of wall clock, never correctness.",
-  "test_final_polish_cli_check.py": 39.837,
-  "test_final_polish_cli_finalize.py": 16.634,
-  "test_final_polish_cli_init.py": 11.572,
+  "test_final_polish_cli_check.py": 82.186,
+  "test_final_polish_cli_finalize.py": 25.027,
+  "test_final_polish_cli_init.py": 18.284,
   "test_final_polish_init.py": 99.872,
   "test_final_polish_check.py": 82.356,
   "test_final_polish_identity.py": 75.413,
