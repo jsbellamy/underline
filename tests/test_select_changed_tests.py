@@ -232,6 +232,15 @@ def test_a_changed_package_json_selects_the_whole_suite() -> None:
     assert result.kind == "whole_suite"
 
 
+def test_a_changed_package_lock_selects_the_whole_suite_explicitly() -> None:
+    result = select_test_files(["package-lock.json"], existing_tests=set())
+
+    assert result == Selection(
+        kind="whole_suite",
+        reason="package-lock.json changed, which always selects the whole suite",
+    )
+
+
 def test_a_changed_asset_file_selects_the_whole_suite() -> None:
     result = select_test_files(
         ["assets/dwarf/idle/strip.png"], existing_tests=set()
