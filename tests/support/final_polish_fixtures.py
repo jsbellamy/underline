@@ -1,0 +1,459 @@
+"""Interim shared fixtures for the split final-polish test modules (#263).
+
+This module exists only so the lifecycle split could land before the Polish
+Bundle fixture migration. It is a way station, not a seam: `tests/support/
+polish_bundle.py` is the permanent fixture seam, and #252 deletes this module
+once every test builds through it. Do not add to it and do not improve it.
+"""
+
+from __future__ import annotations
+
+import json
+from pathlib import Path
+from unittest.mock import patch
+
+from PIL import Image
+
+from pipeline.cell_raster import read_cells
+from pipeline.final_polish import (
+    PROVENANCE_SCHEMA,
+    check_bundle as polish_check_bundle,
+    finalize_bundle as polish_finalize_bundle,
+    initialize_bundle,
+)
+from pipeline.gate_evidence import (
+    sha256_bytes,
+    sha256_file,
+)
+from pipeline.identity_lock import (
+    build_identity_seed,
+    magenta_pad_generation_source_png,
+)
+from pipeline.strip import (
+    DEFAULT_LAYOUT,
+    StripLayout,
+    ingest_strip_provider,
+    layout_for_motion_class,
+    load_provider_frames,
+)
+from tests.final_polish_harness import (
+    acquisition_store_env,
+    bundle_store_env_context,
+    record_store_attempt,
+)
+
+
+ROOT = Path(__file__).resolve().parents[2]
+INBOX = ROOT / "prototype" / "strip-coherence" / "inbox"
+PASS_STRIP = INBOX / "01-miner-idle.png"
+_IDLE_STORE_ATTEMPT_KWARGS = {
+    "motion_class": "idle",
+    "generation_mode": "text-to-image",
+    "acquiring_agent": "pytest",
+    "prompt_text": "underline test provenance prompt",
+}
+WALK_STRIP = INBOX / "05-miner-walk.png"
+SWING_STRIP = INBOX / "06-miner-swing.png"
+LANTERN_STRIP = INBOX / "14-lantern-flicker.png"
+IDENTITY_PNG = ROOT / "assets" / "first-room" / "dwarf" / "identity.png"
+IDENTITY_JSON = ROOT / "assets" / "first-room" / "dwarf" / "identity.json"
+CANONICAL_IDENTITY_SHA = "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6"
+SWING_BUNDLE = ROOT / "assets" / "first-room" / "dwarf" / "swing"
+SWING_POLISHED = SWING_BUNDLE / "polished"
+LOGICAL_SIZE = (DEFAULT_LAYOUT.frame_w, DEFAULT_LAYOUT.frame_h)
+FRAME_COUNT = DEFAULT_LAYOUT.frame_count
+
+
+def _corpus_layout() -> StripLayout:
+    return StripLayout(
+        frame_w=DEFAULT_LAYOUT.frame_w,
+        frame_h=DEFAULT_LAYOUT.frame_h,
+        frame_count=DEFAULT_LAYOUT.frame_count,
+        gutter=DEFAULT_LAYOUT.gutter,
+        pitch_px=24,
+        margin_cells=0,
+    )
+
+
+def _provider_dimensions(provider_path: Path) -> list[int]:
+    with Image.open(provider_path) as image:
+        return [image.width, image.height]
+
+
+def _item_geometry(*, motion_class: str) -> dict[str, int]:
+    layout = layout_for_motion_class(motion_class, margin_cells=0)
+    return {
+        "frame_w": layout.frame_w,
+        "frame_h": layout.frame_h,
+        "frame_count": layout.frame_count,
+        "gutter": layout.gutter,
+    }
+
+
+def _write_animation_provenance(
+    provider_path: Path,
+    provenance_path: Path,
+    *,
+    motion_class: str,
+    generation_mode: str = "text-to-image",
+    attempt_id: str = "test--001",
+    predecessor_attempt_id: str | None = None,
+    reference_image_sha256: list[str] | None = None,
+    edit_source_sha256: str | None = None,
+    prompt_text: str = "underline test provenance prompt",
+    **overrides: object,
+) -> None:
+    if reference_image_sha256 is None:
+        reference_image_sha256 = []
+    record: dict[str, object] = {
+        "schema": PROVENANCE_SCHEMA,
+        "specification_id": f"test/{motion_class}",
+        "attempt_id": attempt_id,
+        "predecessor_attempt_id": predecessor_attempt_id,
+        "generator": "cursor-image-gen",
+        "model": "cursor-image-gen",
+        "prompt_text": prompt_text,
+        "prompt_sha256": sha256_bytes(prompt_text.encode("utf-8")),
+        "generation_mode": generation_mode,
+        "reference_image_sha256": reference_image_sha256,
+        "edit_source_sha256": edit_source_sha256,
+        "generated_at": "2026-07-27T22:00:00+00:00",
+        "acquiring_agent": "pytest",
+        "repository_commit": "0000000000000000000000000000000000000000",
+        "raw_path": str(provider_path),
+        "raw_sha256": sha256_file(provider_path),
+        "media_type": "image/png",
+        "dimensions": _provider_dimensions(provider_path),
+        "motion_class": motion_class,
+        "master_palette_id": "first-room",
+        "item_geometry": _item_geometry(motion_class=motion_class),
+    }
+    record.update(overrides)
+    provenance_path.write_text(
+        json.dumps(record, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
+def _padded_edit_source_seed(tmp_path: Path, motion_class: str) -> Path:
+    out = tmp_path / (
+        "swing-edit-source.png" if motion_class == "swing" else "padded-edit-source.png"
+    )
+    kwargs: dict[str, str] = {}
+    if motion_class == "swing":
+        kwargs["motion_class"] = "swing"
+    build_identity_seed(IDENTITY_JSON, out, **kwargs)
+    return out
+
+
+def _identity_seed_pad_px() -> int:
+    doc = json.loads(IDENTITY_JSON.read_text(encoding="utf-8"))
+    return int(doc["seed_pad_px"])
+
+
+def _padded_inbox_provider(
+    inbox_strip: Path,
+    tmp_path: Path,
+    *,
+    motion_class: str | None = None,
+) -> Path:
+    seed_pad_px = _identity_seed_pad_px()
+    kwargs: dict[str, str] = {}
+    if motion_class is not None:
+        kwargs["motion_class"] = motion_class
+    out = tmp_path / f"{inbox_strip.stem}-padded-provider.png"
+    out.write_bytes(
+        magenta_pad_generation_source_png(
+            inbox_strip.read_bytes(),
+            seed_pad_px,
+            **kwargs,
+        )
+    )
+    return out
+
+
+def _walk_provider_on_edit_canvas(tmp_path: Path) -> Path:
+    seed = _padded_edit_source_seed(tmp_path, "walk")
+    out = tmp_path / "walk-on-edit-canvas.png"
+    pad = _identity_seed_pad_px()
+    with Image.open(seed) as canvas:
+        base = canvas.copy()
+        with Image.open(WALK_STRIP) as walk:
+            base.paste(walk.convert("RGBA"), (pad, pad))
+        base.save(out)
+    return out
+
+
+def _swing_padded_inbox_provider(tmp_path: Path) -> Path:
+    return _padded_inbox_provider(SWING_STRIP, tmp_path, motion_class="swing")
+
+
+def _swing_provider_on_edit_canvas(tmp_path: Path) -> Path:
+    """Rasterize polished swing Frames on the swing image-edit canvas size."""
+    seed = _padded_edit_source_seed(tmp_path, "swing")
+    inner = _swing_provider_strip(tmp_path)
+    out = tmp_path / "swing-on-edit-canvas.png"
+    pad = _identity_seed_pad_px()
+    with Image.open(seed) as seed_image:
+        canvas = seed_image.copy()
+        with Image.open(inner) as inner_image:
+            canvas.paste(inner_image.convert("RGBA"), (pad, pad))
+        canvas.save(out)
+    return out
+
+
+def _effective_dwarf_miner_provider(
+    provider_path: Path,
+    tmp_path: Path,
+    motion_class: str,
+) -> Path:
+    if motion_class == "walk" and provider_path == WALK_STRIP:
+        return _walk_provider_on_edit_canvas(tmp_path)
+    if motion_class == "swing" and provider_path == SWING_STRIP:
+        return _swing_padded_inbox_provider(tmp_path)
+    if motion_class == "swing" and provider_path.parent == tmp_path:
+        stem = provider_path.stem
+        if stem in {"swing-24-provider", "swing-on-edit-canvas"}:
+            return _swing_provider_on_edit_canvas(tmp_path)
+    return provider_path
+
+
+def _dwarf_miner_ingest_source(
+    provider_path: Path,
+    motion_class: str,
+) -> Path:
+    if motion_class == "walk":
+        return WALK_STRIP
+    if provider_path.stem == "swing-24-provider":
+        return provider_path
+    return SWING_STRIP
+
+
+def _provenance_for(
+    provider_path: Path,
+    tmp_path: Path,
+    motion_class: str,
+    *,
+    polish_profile: str | None = None,
+) -> Path:
+    provenance_path = tmp_path / f"{provider_path.stem}.source.json"
+    kwargs: dict[str, object] = {"motion_class": motion_class}
+    if polish_profile == "dwarf-miner" and motion_class in {"walk", "swing"}:
+        padded_seed = _padded_edit_source_seed(tmp_path, motion_class)
+        kwargs.update(
+            {
+                "generation_mode": "image-edit",
+                "reference_image_sha256": [CANONICAL_IDENTITY_SHA],
+                "edit_source_sha256": sha256_file(padded_seed),
+            }
+        )
+    _write_animation_provenance(provider_path, provenance_path, **kwargs)
+    return provenance_path
+
+
+def _check_bundle(bundle: Path) -> FinalPolishCheckResult:
+    with bundle_store_env_context(bundle):
+        return polish_check_bundle(bundle)
+
+
+def _finalize_bundle(bundle: Path) -> Path:
+    with bundle_store_env_context(bundle):
+        return polish_finalize_bundle(bundle)
+
+
+def _init_bundle(
+    provider_path: Path,
+    motion_class: str,
+    bundle: Path,
+    tmp_path: Path,
+    *,
+    polish_profile: str | None = None,
+    provenance_path: Path | None = None,
+    identity_reference: Path | None = None,
+    edit_source: Path | None = None,
+) -> None:
+    effective_provider = provider_path
+    if polish_profile == "dwarf-miner":
+        effective_provider = _effective_dwarf_miner_provider(
+            provider_path,
+            tmp_path,
+            motion_class,
+        )
+    if polish_profile == "dwarf-miner" and motion_class in {"walk", "swing"}:
+        identity_reference = identity_reference or IDENTITY_PNG
+        edit_source = edit_source or _padded_edit_source_seed(tmp_path, motion_class)
+    specification_id = f"test/{motion_class}"
+    generation_mode = (
+        "image-edit"
+        if polish_profile == "dwarf-miner" and motion_class in {"walk", "swing"}
+        else "text-to-image"
+    )
+    store_root = tmp_path / "acquisition-controls"
+    record_kwargs: dict[str, object] = {
+        "motion_class": motion_class,
+        "generation_mode": generation_mode,
+        "acquiring_agent": "pytest",
+        "prompt_text": "underline test provenance prompt",
+        "repo_root": tmp_path,
+    }
+    if generation_mode == "image-edit":
+        padded_seed = _padded_edit_source_seed(tmp_path, motion_class)
+        record_kwargs["reference_image_sha256"] = CANONICAL_IDENTITY_SHA
+        record_kwargs["edit_source"] = padded_seed
+    row, provider_for_init = record_store_attempt(
+        store_root,
+        effective_provider,
+        specification_id,
+        motion_class=motion_class,
+        generation_mode=generation_mode,
+        acquiring_agent="pytest",
+        prompt_text="underline test provenance prompt",
+        repo_root=tmp_path,
+        reference_image_sha256=record_kwargs.get("reference_image_sha256"),  # type: ignore[arg-type]
+        edit_source=record_kwargs.get("edit_source"),  # type: ignore[arg-type]
+    )
+    if provenance_path is None:
+        provenance_path = tmp_path / f"{effective_provider.stem}.source.json"
+    provenance_kwargs: dict[str, object] = {
+        "motion_class": motion_class,
+        "generation_mode": generation_mode,
+        "attempt_id": row["attempt_id"],
+        "predecessor_attempt_id": row["predecessor_attempt_id"],
+        "specification_id": specification_id,
+    }
+    if generation_mode == "image-edit":
+        padded_seed = _padded_edit_source_seed(tmp_path, motion_class)
+        provenance_kwargs.update(
+            {
+                "reference_image_sha256": [CANONICAL_IDENTITY_SHA],
+                "edit_source_sha256": sha256_file(padded_seed),
+            }
+        )
+    _write_animation_provenance(provider_for_init, provenance_path, **provenance_kwargs)
+    ingest_source = (
+        _dwarf_miner_ingest_source(provider_path, motion_class)
+        if polish_profile == "dwarf-miner" and effective_provider != provider_path
+        else effective_provider
+    )
+    probe_layout = layout_for_motion_class(motion_class, margin_cells=0)
+    init_kwargs = {
+        "provenance_sidecar": provenance_path,
+        "polish_profile": polish_profile,
+        "identity_reference": identity_reference,
+        "edit_source": edit_source,
+    }
+    if ingest_source != effective_provider:
+        base_ingest = ingest_strip_provider(ingest_source, probe_layout, motion_class=motion_class)
+        base_frames = load_provider_frames(ingest_source, probe_layout)
+        with (
+            patch(
+                "pipeline.final_polish.ingest_strip_provider",
+                return_value=base_ingest,
+            ),
+            patch(
+                "pipeline.final_polish.load_provider_frames",
+                return_value=base_frames,
+            ),
+            patch.dict("os.environ", acquisition_store_env(store_root)),
+        ):
+            initialize_bundle(
+                provider_for_init,
+                motion_class,
+                bundle,
+                **init_kwargs,
+            )
+        return
+    with patch.dict("os.environ", acquisition_store_env(store_root)):
+        initialize_bundle(
+            provider_for_init,
+            motion_class,
+            bundle,
+            **init_kwargs,
+        )
+
+
+def _init_passing_bundle(tmp_path: Path) -> Path:
+    bundle = tmp_path / "bundle"
+    _init_bundle(PASS_STRIP, "idle", bundle, tmp_path)
+    return bundle
+
+
+def _load_frame_rgba(path: Path) -> Image.Image:
+    with Image.open(path) as image:
+        return image.convert("RGBA")
+
+
+def _set_opaque_rgb(path: Path, x: int, y: int, rgb: tuple[int, int, int]) -> None:
+    image = _load_frame_rgba(path)
+    pixels = image.load()
+    assert pixels is not None
+    pixels[x, y] = (*rgb, 255)
+    image.save(path)
+
+
+def _bundle_tree(root: Path) -> set[str]:
+    if not root.exists():
+        return set()
+    immutable_layers = frozenset({"provider", "draft", "polished", "release"})
+    paths: set[str] = set()
+    for path in root.rglob("*"):
+        if not path.is_file():
+            continue
+        rel = path.relative_to(root)
+        if rel.name == "manifest.json" or rel.parts[0] in immutable_layers:
+            paths.add(str(rel))
+    return paths
+
+
+def _swing_provider_frame_cells(cells: list[list[object]]) -> list[list[object]]:
+    """Left-shift polished Frames to simulate native 24-wide provider art."""
+    shifted: list[list[object]] = [[None for _ in range(24)] for _ in range(24)]
+    for y in range(24):
+        for x in range(20):
+            shifted[y][x] = cells[y][x + 4]
+    return shifted
+
+
+def _write_swing_provider_strip(path: Path) -> Path:
+    """Rasterize production swing polished Frames into a 24-wide provider strip."""
+    layout = layout_for_motion_class("swing", margin_cells=0)
+    pitch = layout.pitch_px
+    # Abut frames at class width so pitch-slice yields 24-cell blocks (gutter=2 is metadata).
+    strip_w = layout.frame_count * layout.frame_w
+    strip_h = layout.frame_h
+    border_px = 2
+    magenta = (255, 0, 255, 255)
+    content_w = strip_w * pitch
+    content_h = strip_h * pitch
+    strip = Image.new(
+        "RGBA",
+        (content_w + border_px * 2, content_h + border_px * 2),
+        magenta,
+    )
+    for index in range(FRAME_COUNT):
+        polished = read_cells(SWING_POLISHED / f"frame-{index}.png", size=(24, 24))
+        cells = _swing_provider_frame_cells(polished)
+        origin_gx = index * layout.frame_w
+        for gy in range(layout.frame_h):
+            for gx in range(layout.frame_w):
+                rgb = cells[gy][gx]
+                if rgb is None:
+                    continue
+                block = Image.new("RGBA", (pitch, pitch), (*rgb, 255))
+                strip.paste(
+                    block,
+                    (border_px + (origin_gx + gx) * pitch, border_px + gy * pitch),
+                )
+    path.parent.mkdir(parents=True, exist_ok=True)
+    strip.save(path)
+    return path
+
+
+def _swing_provider_strip(tmp_path: Path) -> Path:
+    return _write_swing_provider_strip(tmp_path / "swing-24-provider.png")
+
+
+def _identity_doc_with_seed_pad_px(seed_pad_px: int = 64) -> dict[str, object]:
+    doc = json.loads(IDENTITY_JSON.read_text(encoding="utf-8"))
+    doc["seed_pad_px"] = seed_pad_px
+    return doc
