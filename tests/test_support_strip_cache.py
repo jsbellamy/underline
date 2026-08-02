@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import multiprocessing
 import os
 import threading
 import time
@@ -12,9 +13,14 @@ import pytest
 from tests.support import strip_cache
 
 
-def _key(path: Path, layout: str = "idle") -> tuple:
+def _key(path: Path, layout: str = "idle", qualname: str = "some.qualname") -> tuple:
     stat = path.stat()
-    return ("some.qualname", str(path), stat.st_mtime_ns, stat.st_size, layout, ())
+    return (qualname, str(path), stat.st_mtime_ns, stat.st_size, layout, ())
+
+
+def _write_from_subprocess(root: Path, key: tuple, value: dict) -> None:
+    """Top-level so `multiprocessing`'s spawn start method can pickle it."""
+    strip_cache.write(root, key, value)
 
 
 # --- C4: store root resolution -------------------------------------------------
@@ -128,7 +134,7 @@ def test_corrupt_entry_is_treated_as_a_miss_and_can_be_overwritten(tmp_path):
     key = _key(target)
 
     strip_cache.write(root, key, {"ok": True})
-    entry = strip_cache._entry_path(root, key)
+    (entry,) = root.glob("*.pkl")
     entry.write_bytes(b"not a pickle at all, deliberately truncated")
 
     hit, value = strip_cache.read(root, key)
@@ -165,6 +171,30 @@ def test_concurrent_writers_of_the_same_key_both_succeed_and_agree(tmp_path):
         t.join()
 
     assert errors == []
+    hit, read_back = strip_cache.read(root, key)
+    assert hit is True
+    assert read_back == value
+
+
+def test_concurrent_writers_of_the_same_key_across_processes_both_succeed_and_agree(tmp_path):
+    """C5's proof names two processes, not threads: exercise the real
+    cross-process case an xdist worker pair actually hits."""
+    target = tmp_path / "strip.png"
+    target.write_bytes(b"data")
+    root = tmp_path / "store"
+    key = _key(target)
+    value = {"cells": list(range(2000))}
+
+    processes = [
+        multiprocessing.Process(target=_write_from_subprocess, args=(root, key, value))
+        for _ in range(4)
+    ]
+    for p in processes:
+        p.start()
+    for p in processes:
+        p.join(timeout=30)
+
+    assert [p.exitcode for p in processes] == [0] * len(processes)
     hit, read_back = strip_cache.read(root, key)
     assert hit is True
     assert read_back == value
@@ -228,15 +258,7 @@ def test_a_raising_call_through_the_wrapper_is_never_cached(tmp_path, monkeypatc
     _fake_raising_recover.__qualname__ = "fake_raising_recover_for_test_261"
     wrapped = ct._memoized_strip_read(_fake_raising_recover)
 
-    stat = target.stat()
-    key = (
-        _fake_raising_recover.__qualname__,
-        str(target),
-        stat.st_mtime_ns,
-        stat.st_size,
-        "idle",
-        (),
-    )
+    key = _key(target, qualname=_fake_raising_recover.__qualname__)
 
     with pytest.raises(ValueError):
         wrapped(target, "idle")

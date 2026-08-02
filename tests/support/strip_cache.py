@@ -2,11 +2,11 @@
 
 `tests/conftest.py`'s `_memoized_strip_read` keeps an in-process dict as its
 first tier so a single test-session hit never touches disk. This module backs
-that dict with a store under the pytest temp root: a cross-process hit (a
-different `-n auto` worker, or a later per-file isolation run) costs a pickle
-load instead of a full Strip recovery. Root resolution, keying, and atomic
-read/write live here; `conftest.py` owns the in-process tier and the callee
-wiring it wraps.
+that dict with a store under the system temp dir, keyed by repo path (never
+inside the repository): a cross-process hit (a different `-n auto` worker, or
+a later per-file isolation run) costs a pickle load instead of a full Strip
+recovery. Root resolution, keying, and atomic read/write live here;
+`conftest.py` owns the in-process tier and the callee wiring it wraps.
 """
 
 from __future__ import annotations
