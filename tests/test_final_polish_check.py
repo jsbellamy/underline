@@ -35,6 +35,7 @@ from tests.final_polish_harness import (
     acquisition_store_env,
     record_store_attempt,
 )
+from tests.support import polish_bundle as pb
 
 from tests.support.final_polish_fixtures import (
     FRAME_COUNT,
@@ -49,7 +50,6 @@ from tests.support.final_polish_fixtures import (
     _check_bundle,
     _finalize_bundle,
     _init_bundle,
-    _init_passing_bundle,
     _load_frame_rgba,
     _set_opaque_rgb,
     _swing_provider_strip,
@@ -58,6 +58,29 @@ from tests.support.final_polish_fixtures import (
 
 
 DWARF_IDLE_BUNDLE = ROOT / "assets" / "first-room" / "dwarf" / "idle"
+
+
+def _init_bundle_polish(
+    strip: Path,
+    motion_class: str,
+    bundle: Path,
+    tmp_path: Path,
+    *,
+    polish_profile: str | None = None,
+) -> None:
+    """Idle/blob_idle/emissive/lantern bundle construction via the polish_bundle seam.
+
+    The one swing call site in this module still builds through the interim
+    `tests.support.final_polish_fixtures._init_bundle` (issue #249).
+    """
+    attempt = pb.prepare(strip, motion_class, tmp_path, polish_profile=polish_profile)
+    pb.init_bundle(attempt, bundle)
+
+
+def _init_passing_bundle(tmp_path: Path) -> Path:
+    bundle = tmp_path / "bundle"
+    _init_bundle_polish(PASS_STRIP, "idle", bundle, tmp_path)
+    return bundle
 
 
 def _first_opaque_xy(path: Path) -> tuple[int, int]:
@@ -89,7 +112,7 @@ def test_tampered_production_profile_is_an_invalid_bundle(
     strip = PASS_STRIP if profile_id == "dwarf-miner" else LANTERN_STRIP
     motion_class = "idle" if profile_id == "dwarf-miner" else "emissive"
     bundle = tmp_path / "bundle"
-    _init_bundle(strip, motion_class, bundle, tmp_path, polish_profile=profile_id)
+    _init_bundle_polish(strip, motion_class, bundle, tmp_path, polish_profile=profile_id)
     profile = json.loads((bundle / "profile.json").read_text())
     profile["description"] = "tampered"
     (bundle / "profile.json").write_text(json.dumps(profile) + "\n")
@@ -101,7 +124,7 @@ def test_tampered_production_profile_is_an_invalid_bundle(
 
 def test_tampered_embedded_profile_is_an_invalid_bundle(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    _init_bundle(PASS_STRIP, "idle", bundle, tmp_path, polish_profile="miner")
+    _init_bundle_polish(PASS_STRIP, "idle", bundle, tmp_path, polish_profile="miner")
     profile = json.loads((bundle / "profile.json").read_text())
     profile["description"] = "tampered"
     (bundle / "profile.json").write_text(json.dumps(profile) + "\n")
@@ -127,7 +150,7 @@ def test_invalid_embedded_profiles_fail_closed(
     reason_code: str,
 ) -> None:
     bundle = tmp_path / "bundle"
-    _init_bundle(PASS_STRIP, "idle", bundle, tmp_path, polish_profile="miner")
+    _init_bundle_polish(PASS_STRIP, "idle", bundle, tmp_path, polish_profile="miner")
     profile_path = bundle / "profile.json"
     manifest_path = bundle / "manifest.json"
 
@@ -708,7 +731,7 @@ def test_provenance_binding_rejects_path_escape(tmp_path: Path) -> None:
 
 def test_polish_profile_binding_rejects_path_escape(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    _init_bundle(PASS_STRIP, "idle", bundle, tmp_path, polish_profile="dwarf-miner")
+    _init_bundle_polish(PASS_STRIP, "idle", bundle, tmp_path, polish_profile="dwarf-miner")
     outside = tmp_path / "outside.json"
     outside.write_text("{}\n", encoding="utf-8")
     manifest = json.loads((bundle / "manifest.json").read_text())
