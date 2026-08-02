@@ -15,7 +15,13 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from pipeline import canonical
+from pipeline import gate_control as gc
 from pipeline.asset_pack import FIRST_ROOM_ANIMATION_POLICY
+from pipeline.cell_delta import (
+    CellDeltaError,
+    assert_cell_delta_replay,
+    validate_cell_delta_ledger,
+)
 from pipeline.cell_raster import RasterError, write_cells
 from pipeline.cell_raster import read_cells as _read_cells
 from pipeline.cell_raster import write_silhouette_gif, write_silhouette_strip
@@ -54,7 +60,25 @@ PROVENANCE_SCHEMA = "animation-strip-provenance/0"
 ATTEMPT_LEDGER_SCHEMA = "animation-attempt-ledger/0"
 PROFILE_SCHEMA = "polish-profile/0"
 REPORT_SCHEMA = "final-polish-report/0"
-GENERATION_MODES = frozenset({"text-to-image", "image-edit"})
+GENERATION_MODES = frozenset({"text-to-image", "image-edit", "cell-author"})
+PROVIDER_GENERATION_MODES = frozenset({"text-to-image", "image-edit"})
+CELL_AUTHOR_GENERATION_MODE = "cell-author"
+CELL_AUTHOR_PROVENANCE_SCHEMA = "cell-author-provenance/0"
+MOTION_POSE_PLAN_SCHEMA = "motion-pose-plan/0"
+CELL_AUTHOR_PROVENANCE_REQUIRED_FIELDS = (
+    "schema",
+    "generation_mode",
+    "specification_id",
+    "motion_class",
+    "base_specification_id",
+    "base_frames_sha256",
+    "base_frame_mapping",
+    "pose_plan",
+    "cell_delta_ledger",
+    "authoring_agent",
+    "authoring_session_id",
+    "repository_commit",
+)
 ATTEMPT_OUTCOMES = frozenset({"accepted", "rejected"})
 LEGACY_BUNDLES_SCHEMA = "acquisition-legacy-allowlist/0"
 ATTEMPTS_JSONL_REL = "attempts.jsonl"
@@ -166,6 +190,11 @@ class AttestationState:
     state: str
     attempt_id: str | None = None
     store_path: str | None = None
+    generation_mode: str | None = None
+    base_specification_id: str | None = None
+    base_frames_sha256: tuple[str, ...] | None = None
+    base_frame_mapping: tuple[int, ...] | None = None
+    cell_delta_ledger_sha256: str | None = None
 
 
 @dataclass(frozen=True)
@@ -497,18 +526,26 @@ def _collect_draft_palette(draft_frames: list[list[list[Cell]]]) -> set[tuple[in
 
 
 def _bundle_master_palette_rgb_set(bundle_root: Path) -> set[tuple[int, int, int]]:
-    """Master Palette colours bound by the provider provenance sidecar, if any."""
-    sidecar = bundle_root / "provider" / "source.source.json"
+    """Master Palette colours bound by provenance, if any."""
+    manifest = _load_manifest(bundle_root)
+    if _is_cell_authored_manifest(manifest):
+        provenance_binding = manifest["cell_authoring"]["provenance"]
+        sidecar = bundle_root / str(provenance_binding["relative_path"])
+    else:
+        sidecar = bundle_root / "provider" / "source.source.json"
     if not sidecar.is_file():
         return set()
     try:
         doc = json.loads(sidecar.read_text(encoding="utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError) as exc:
         raise InvalidBundleError(
-            f"invalid provider provenance sidecar: {sidecar}",
+            f"invalid provenance sidecar: {sidecar}",
             reason_code="invalid_provenance",
         ) from exc
-    palette_id = doc.get("master_palette_id")
+    if _is_cell_authored_manifest(manifest):
+        palette_id = "first-room"
+    else:
+        palette_id = doc.get("master_palette_id")
     if not isinstance(palette_id, str) or not palette_id:
         return set()
     palette_path = _REPO_ROOT / "assets" / "palettes" / f"{palette_id}.json"
@@ -767,9 +804,9 @@ def _validate_animation_provenance_record(
         )
 
     generation_mode = str(record["generation_mode"])
-    if generation_mode not in GENERATION_MODES:
+    if generation_mode not in PROVIDER_GENERATION_MODES:
         reject(
-            f"provenance generation_mode must be one of {sorted(GENERATION_MODES)}",
+            f"provenance generation_mode must be one of {sorted(PROVIDER_GENERATION_MODES)}",
             "invalid_provenance",
         )
 
@@ -1172,7 +1209,255 @@ def _attestation_report_payload(state: AttestationState) -> dict[str, Any]:
         payload["attempt_id"] = state.attempt_id
     if state.store_path is not None:
         payload["store_path"] = state.store_path
+    if state.generation_mode is not None:
+        payload["generation_mode"] = state.generation_mode
+    if state.base_specification_id is not None:
+        payload["base_specification_id"] = state.base_specification_id
+    if state.base_frames_sha256 is not None:
+        payload["base_frames_sha256"] = list(state.base_frames_sha256)
+    if state.base_frame_mapping is not None:
+        payload["base_frame_mapping"] = list(state.base_frame_mapping)
+    if state.cell_delta_ledger_sha256 is not None:
+        payload["cell_delta_ledger_sha256"] = state.cell_delta_ledger_sha256
     return payload
+
+
+def _is_cell_authored_manifest(manifest: Mapping[str, Any]) -> bool:
+    return manifest.get("generation_mode") == CELL_AUTHOR_GENERATION_MODE
+
+
+def _reject_generation_mode_changed(message: str) -> None:
+    raise InvalidBundleError(message, reason_code="generation_mode_changed")
+
+
+def _assert_provider_bundle_has_no_cell_authoring(manifest: Mapping[str, Any]) -> None:
+    if manifest.get("cell_authoring") is not None:
+        _reject_generation_mode_changed("provider bundle must not carry cell_authoring")
+
+
+def _assert_cell_bundle_has_no_provider_fields(manifest: Mapping[str, Any]) -> None:
+    forbidden = ("provider", "provenance", "attempt_ledger")
+    for field in forbidden:
+        if field in manifest:
+            _reject_generation_mode_changed(
+                f"cell-author bundle must not carry provider field {field!r}"
+            )
+
+
+def _binding_sha256_dict(binding: Mapping[str, Any]) -> str:
+    digest = binding.get("sha256")
+    if not isinstance(digest, str) or not _is_sha256_hex(digest):
+        raise InvalidBundleError(
+            "binding sha256 must be SHA-256 hex",
+            reason_code="invalid_manifest",
+        )
+    return digest
+
+
+def _load_base_release_frames(base_bundle_root: Path) -> list[list[list[Cell]]]:
+    manifest = _load_manifest(base_bundle_root)
+    layout = _layout_from_manifest(manifest)
+    release_dir = _frame_dir(base_bundle_root, "release")
+    if not release_dir.is_dir():
+        raise InitializationRejectedError(
+            f"base bundle missing release frames: {base_bundle_root}",
+            reason_code="missing_release_frames",
+        )
+    return [
+        _load_logical_frame_png(
+            release_dir / name,
+            frame_w=layout.frame_w,
+            frame_h=layout.frame_h,
+        )
+        for name in EXPECTED_FRAME_NAMES
+    ]
+
+
+def _resolve_base_bundle_attestation(
+    base_bundle_root: Path,
+) -> AttestationState:
+    manifest = _load_manifest(base_bundle_root)
+    if _is_cell_authored_manifest(manifest):
+        raise InitializationRejectedError(
+            "cell-author bundle cannot serve as a cell-author base",
+            reason_code="cell_author_base_forbidden",
+        )
+    provenance = _bundle_provenance_record(base_bundle_root, manifest)
+    attestation = _resolve_bundle_attestation(
+        base_bundle_root,
+        manifest,
+        provenance=provenance,
+    )
+    if attestation is None or attestation.state not in {"attested", "legacy"}:
+        raise InitializationRejectedError(
+            "base bundle is not attested or legacy-allowlisted",
+            reason_code="unattested_base_bundle",
+        )
+    return attestation
+
+
+def _validate_pose_plan_document(
+    pose_plan: Mapping[str, Any],
+    *,
+    motion_class: str,
+    base_specification_id: str,
+    base_frame_mapping: Sequence[int],
+) -> None:
+    if pose_plan.get("schema") != MOTION_POSE_PLAN_SCHEMA:
+        raise InitializationRejectedError(
+            f"pose plan schema must be {MOTION_POSE_PLAN_SCHEMA!r}",
+            reason_code="invalid_pose_plan",
+        )
+    if str(pose_plan.get("motion_class")) != motion_class:
+        raise InitializationRejectedError(
+            "pose plan motion_class does not match init motion_class",
+            reason_code="invalid_pose_plan",
+        )
+    if str(pose_plan.get("base_specification_id")) != base_specification_id:
+        raise InitializationRejectedError(
+            "pose plan base_specification_id does not match ledger",
+            reason_code="invalid_pose_plan",
+        )
+    mapping = pose_plan.get("base_frame_mapping")
+    if list(mapping or []) != list(base_frame_mapping):
+        raise InitializationRejectedError(
+            "pose plan base_frame_mapping does not match ledger",
+            reason_code="invalid_pose_plan",
+        )
+
+
+def _validate_cell_author_provenance_record(
+    record: Mapping[str, Any],
+    *,
+    motion_class: str,
+    specification_id: str,
+    base_specification_id: str,
+    base_frames_sha256: Sequence[str],
+    base_frame_mapping: Sequence[int],
+    pose_plan_sha256: str,
+    ledger_sha256: str,
+) -> None:
+    if record.get("schema") != CELL_AUTHOR_PROVENANCE_SCHEMA:
+        raise InitializationRejectedError(
+            f"provenance schema must be {CELL_AUTHOR_PROVENANCE_SCHEMA!r}",
+            reason_code="invalid_provenance",
+        )
+    for field in CELL_AUTHOR_PROVENANCE_REQUIRED_FIELDS:
+        if field not in record:
+            raise InitializationRejectedError(
+                f"provenance missing required field {field!r}",
+                reason_code="invalid_provenance",
+            )
+    if str(record["generation_mode"]) != CELL_AUTHOR_GENERATION_MODE:
+        raise InitializationRejectedError(
+            "provenance generation_mode must be cell-author",
+            reason_code="invalid_provenance",
+        )
+    if str(record["specification_id"]) != specification_id:
+        raise InitializationRejectedError(
+            "provenance specification_id does not match init specification_id",
+            reason_code="invalid_provenance",
+        )
+    if str(record["motion_class"]) != motion_class:
+        raise InitializationRejectedError(
+            "provenance motion_class does not match init motion_class",
+            reason_code="invalid_provenance",
+        )
+    if str(record["base_specification_id"]) != base_specification_id:
+        raise InitializationRejectedError(
+            "provenance base_specification_id mismatch",
+            reason_code="invalid_provenance",
+        )
+    if list(record["base_frames_sha256"]) != list(base_frames_sha256):
+        raise InitializationRejectedError(
+            "provenance base_frames_sha256 mismatch",
+            reason_code="invalid_provenance",
+        )
+    if list(record["base_frame_mapping"]) != list(base_frame_mapping):
+        raise InitializationRejectedError(
+            "provenance base_frame_mapping mismatch",
+            reason_code="invalid_provenance",
+        )
+    pose_binding = record["pose_plan"]
+    if not isinstance(pose_binding, dict):
+        raise InitializationRejectedError(
+            "provenance pose_plan must be an object",
+            reason_code="invalid_provenance",
+        )
+    if _binding_sha256_dict(pose_binding) != pose_plan_sha256:
+        raise InitializationRejectedError(
+            "provenance pose_plan sha256 mismatch",
+            reason_code="invalid_provenance",
+        )
+    ledger_binding = record["cell_delta_ledger"]
+    if not isinstance(ledger_binding, dict):
+        raise InitializationRejectedError(
+            "provenance cell_delta_ledger must be an object",
+            reason_code="invalid_provenance",
+        )
+    if _binding_sha256_dict(ledger_binding) != ledger_sha256:
+        raise InitializationRejectedError(
+            "provenance cell_delta_ledger sha256 mismatch",
+            reason_code="invalid_provenance",
+        )
+    for field in (
+        "authoring_agent",
+        "authoring_session_id",
+        "repository_commit",
+    ):
+        value = record.get(field)
+        if not isinstance(value, str) or not value:
+            raise InitializationRejectedError(
+                f"provenance field {field!r} must be a non-empty string",
+                reason_code="invalid_provenance",
+            )
+
+
+def _load_authored_frames(
+    authored_frames_dir: Path,
+    *,
+    frame_count: int,
+    frame_w: int,
+    frame_h: int,
+) -> list[list[list[Cell]]]:
+    if not authored_frames_dir.is_dir():
+        raise InitializationRejectedError(
+            f"missing authored frames directory: {authored_frames_dir}",
+            reason_code="missing_authored_frames",
+        )
+    frames: list[list[list[Cell]]] = []
+    for index in range(frame_count):
+        path = authored_frames_dir / f"frame-{index}.png"
+        if not path.is_file():
+            raise InitializationRejectedError(
+                f"missing authored frame: {path.name}",
+                reason_code="missing_authored_frames",
+            )
+        try:
+            frames.append(_read_cells(path, size=(frame_w, frame_h), label="authored frame"))
+        except RasterError as exc:
+            raise InitializationRejectedError(
+                str(exc),
+                reason_code=exc.reason_code or "missing_authored_frames",
+            ) from exc
+    return frames
+
+
+def _cell_author_attestation_from_bindings(
+    *,
+    base_specification_id: str,
+    base_frames_sha256: Sequence[str],
+    base_frame_mapping: Sequence[int],
+    ledger_sha256: str,
+) -> AttestationState:
+    return AttestationState(
+        state=CELL_AUTHOR_GENERATION_MODE,
+        generation_mode=CELL_AUTHOR_GENERATION_MODE,
+        base_specification_id=base_specification_id,
+        base_frames_sha256=tuple(base_frames_sha256),
+        base_frame_mapping=tuple(base_frame_mapping),
+        cell_delta_ledger_sha256=ledger_sha256,
+    )
 
 
 def _resolve_bundle_attestation(
@@ -1181,6 +1466,26 @@ def _resolve_bundle_attestation(
     *,
     provenance: Mapping[str, Any] | None = None,
 ) -> AttestationState | None:
+    if _is_cell_authored_manifest(manifest):
+        authoring = manifest.get("cell_authoring")
+        if not isinstance(authoring, dict):
+            raise InvalidBundleError(
+                "cell-author bundle missing cell_authoring block",
+                reason_code="missing_provenance",
+            )
+        ledger_binding = authoring.get("cell_delta_ledger")
+        if not isinstance(ledger_binding, dict):
+            raise InvalidBundleError(
+                "cell-author bundle missing cell_delta_ledger binding",
+                reason_code="missing_provenance",
+            )
+        return _cell_author_attestation_from_bindings(
+            base_specification_id=str(authoring["base_specification_id"]),
+            base_frames_sha256=tuple(authoring["base_frames_sha256"]),
+            base_frame_mapping=tuple(authoring["base_frame_mapping"]),
+            ledger_sha256=_binding_sha256_dict(ledger_binding),
+        )
+
     if manifest.get("schema") != BUNDLE_SCHEMA:
         provenance = provenance or _bundle_provenance_record(bundle_root, manifest)
         specification_id = _specification_id_for_bundle(bundle_root, provenance)
@@ -1485,6 +1790,7 @@ def _verify_evidence_bindings(
             "schema /2 bundle expected for evidence bindings",
             reason_code="missing_provenance",
         )
+    _assert_provider_bundle_has_no_cell_authoring(manifest)
 
     provenance_binding = manifest.get("provenance")
     if not isinstance(provenance_binding, dict):
@@ -1589,6 +1895,164 @@ def _verify_evidence_bindings(
     return provenance, attestation
 
 
+def _verify_cell_author_bindings(
+    bundle_root: Path,
+    manifest: Mapping[str, Any],
+) -> AttestationState:
+    if manifest.get("schema") != BUNDLE_SCHEMA:
+        raise InvalidBundleError(
+            "schema /2 bundle expected for cell-author bindings",
+            reason_code="missing_provenance",
+        )
+    if not _is_cell_authored_manifest(manifest):
+        _reject_generation_mode_changed("manifest generation_mode is not cell-author")
+    _assert_cell_bundle_has_no_provider_fields(manifest)
+
+    authoring = manifest.get("cell_authoring")
+    if not isinstance(authoring, dict):
+        raise InvalidBundleError(
+            "cell-author bundle missing cell_authoring block",
+            reason_code="missing_provenance",
+        )
+
+    provenance_binding = authoring.get("provenance")
+    if not isinstance(provenance_binding, dict):
+        raise InvalidBundleError(
+            "cell-author bundle missing provenance binding",
+            reason_code="missing_provenance",
+        )
+    _verify_hash_binding(bundle_root, provenance_binding, label="provenance")
+    provenance_path = bundle_root / str(provenance_binding["relative_path"])
+    provenance = _load_json_object(
+        provenance_path,
+        reason_code="invalid_provenance",
+        error_class=InvalidBundleError,
+    )
+
+    if str(provenance.get("generation_mode")) != CELL_AUTHOR_GENERATION_MODE:
+        _reject_generation_mode_changed(
+            "cell-author provenance generation_mode does not match manifest"
+        )
+    if manifest.get("generation_mode") != provenance.get("generation_mode"):
+        _reject_generation_mode_changed(
+            "manifest generation_mode does not match cell-author provenance"
+        )
+
+    pose_binding = authoring.get("pose_plan")
+    ledger_binding = authoring.get("cell_delta_ledger")
+    if not isinstance(pose_binding, dict) or not isinstance(ledger_binding, dict):
+        raise InvalidBundleError(
+            "cell-author bundle missing pose_plan or cell_delta_ledger binding",
+            reason_code="missing_provenance",
+        )
+    _verify_hash_binding(bundle_root, pose_binding, label="pose_plan")
+    _verify_hash_binding(bundle_root, ledger_binding, label="cell_delta_ledger")
+
+    pose_plan = _load_json_object(
+        bundle_root / str(pose_binding["relative_path"]),
+        reason_code="invalid_pose_plan",
+        error_class=InvalidBundleError,
+    )
+    ledger = _load_json_object(
+        bundle_root / str(ledger_binding["relative_path"]),
+        reason_code="invalid_cell_delta_ledger",
+        error_class=InvalidBundleError,
+    )
+
+    base_specification_id = str(authoring["base_specification_id"])
+    base_frames_sha256 = tuple(str(value) for value in authoring["base_frames_sha256"])
+    base_frame_mapping = tuple(int(value) for value in authoring["base_frame_mapping"])
+    ledger_sha256 = _binding_sha256_dict(ledger_binding)
+    pose_plan_sha256 = _binding_sha256_dict(pose_binding)
+
+    _validate_cell_author_provenance_record(
+        provenance,
+        motion_class=str(manifest["motion_class"]),
+        specification_id=str(provenance["specification_id"]),
+        base_specification_id=base_specification_id,
+        base_frames_sha256=base_frames_sha256,
+        base_frame_mapping=base_frame_mapping,
+        pose_plan_sha256=pose_plan_sha256,
+        ledger_sha256=ledger_sha256,
+    )
+    _validate_pose_plan_document(
+        pose_plan,
+        motion_class=str(manifest["motion_class"]),
+        base_specification_id=base_specification_id,
+        base_frame_mapping=base_frame_mapping,
+    )
+
+    if list(provenance["base_frames_sha256"]) != list(base_frames_sha256):
+        raise InvalidBundleError(
+            "cell-author provenance base_frames_sha256 mismatch",
+            reason_code="invalid_provenance",
+        )
+    if list(provenance["base_frame_mapping"]) != list(base_frame_mapping):
+        raise InvalidBundleError(
+            "cell-author provenance base_frame_mapping mismatch",
+            reason_code="invalid_provenance",
+        )
+
+    return _cell_author_attestation_from_bindings(
+        base_specification_id=base_specification_id,
+        base_frames_sha256=base_frames_sha256,
+        base_frame_mapping=base_frame_mapping,
+        ledger_sha256=ledger_sha256,
+    )
+
+
+def _replay_cell_author_drafts(
+    bundle_root: Path,
+    manifest: Mapping[str, Any],
+    ledger: Mapping[str, Any],
+) -> list[list[list[Cell]]]:
+    authoring = manifest["cell_authoring"]
+    base_bindings = authoring.get("base_release_frames")
+    if not isinstance(base_bindings, list):
+        raise InvalidBundleError(
+            "cell-author bundle missing base_release_frames bindings",
+            reason_code="missing_provenance",
+        )
+    base_frames: list[list[list[Cell]]] = []
+    layout = _layout_from_manifest(manifest)
+    for binding in base_bindings:
+        if not isinstance(binding, dict):
+            raise InvalidBundleError(
+                "base_release_frames entry must be an object",
+                reason_code="invalid_manifest",
+            )
+        _verify_hash_binding(bundle_root, binding, label="base_release_frame")
+        base_frames.append(
+            _load_logical_frame_png(
+                bundle_root / str(binding["relative_path"]),
+                frame_w=layout.frame_w,
+                frame_h=layout.frame_h,
+            )
+        )
+    try:
+        validate_cell_delta_ledger(base_frames, ledger)
+    except CellDeltaError as exc:
+        raise InvalidBundleError(str(exc), reason_code=exc.reason_code) from exc
+    draft_frames = _load_frame_sequence(bundle_root, "draft")
+    try:
+        assert_cell_delta_replay(base_frames, draft_frames, ledger)
+    except CellDeltaError as exc:
+        raise InvalidBundleError(str(exc), reason_code=exc.reason_code) from exc
+    return draft_frames
+
+
+def _resolve_cell_author_base_bundle(
+    bundle_root: Path,
+    manifest: Mapping[str, Any],
+    ledger: Mapping[str, Any],
+) -> Path:
+    del bundle_root, manifest, ledger
+    raise InvalidBundleError(
+        "cell-author replay uses embedded base release frames",
+        reason_code="missing_base_bundle",
+    )
+
+
 def _init_ingest_allowed(ingest: IngestResult) -> bool:
     """Allow bundle init on PASS or UNSEPARATED-only REVIEW (issue #173)."""
     if ingest.outcome == "PASS":
@@ -1670,6 +2134,8 @@ def _verify_provider_post_edit(
     profile_id: str | None,
 ) -> dict[str, Any] | None:
     """Hard-reject magenta-wiped providers; report edit-source continuity."""
+    if _is_cell_authored_manifest(manifest):
+        return None
     if not _requires_image_edit_evidence(profile_id, str(manifest["motion_class"])):
         return None
     edit_binding = manifest.get("edit_source")
@@ -1705,6 +2171,26 @@ def _verify_provider_and_drafts(
     bundle_root: Path,
     manifest: dict[str, Any],
 ) -> tuple[Outcome, AttestationState | None]:
+    if _is_cell_authored_manifest(manifest):
+        attestation = _verify_cell_author_bindings(bundle_root, manifest)
+        ledger_binding = manifest["cell_authoring"]["cell_delta_ledger"]
+        ledger = _load_json_object(
+            bundle_root / str(ledger_binding["relative_path"]),
+            reason_code="invalid_cell_delta_ledger",
+            error_class=InvalidBundleError,
+        )
+        _replay_cell_author_drafts(bundle_root, manifest, ledger)
+        for entry in manifest["draft_frames"]:
+            rel = entry["relative_path"]
+            expected = entry["sha256"]
+            actual = sha256_file(bundle_root / rel)
+            if actual != expected:
+                raise InvalidBundleError(
+                    f"draft frame hash mismatch: {rel}",
+                    reason_code="draft_hash_mismatch",
+                )
+        return "PASS", attestation
+
     attestation: AttestationState | None = None
     if manifest.get("schema") == BUNDLE_SCHEMA:
         _, attestation = _verify_evidence_bindings(bundle_root, manifest)
@@ -1980,6 +2466,255 @@ def initialize_bundle(
         raise
 
 
+def initialize_cell_authored_bundle(
+    authored_frames_dir: Path,
+    motion_class: str,
+    bundle_root: Path,
+    *,
+    specification_id: str,
+    base_bundle_root: Path,
+    cell_delta_ledger: Path,
+    pose_plan: Path,
+    polish_profile: str,
+    identity_reference: Path | None,
+    authoring_agent: str,
+    authoring_session_id: str,
+) -> None:
+    """Create a providerless /2 bundle from authored Frames and a cell-delta ledger."""
+    if bundle_root.exists():
+        raise BundleExistsError(
+            f"bundle destination already exists: {bundle_root}",
+            reason_code="bundle_exists",
+        )
+    if not cell_delta_ledger.is_file():
+        raise InitializationRejectedError(
+            f"missing cell delta ledger: {cell_delta_ledger}",
+            reason_code="missing_cell_delta_ledger",
+        )
+    if not pose_plan.is_file():
+        raise InitializationRejectedError(
+            f"missing pose plan: {pose_plan}",
+            reason_code="missing_pose_plan",
+        )
+
+    try:
+        probe_layout = layout_for_motion_class(motion_class, margin_cells=0)
+    except ValueError as exc:
+        raise InitializationRejectedError(
+            f"unknown motion_class: {motion_class!r}",
+            reason_code="invalid_motion_class",
+        ) from exc
+
+    _resolve_base_bundle_attestation(base_bundle_root)
+    base_manifest = _load_manifest(base_bundle_root)
+    base_provenance = _bundle_provenance_record(base_bundle_root, base_manifest)
+    if base_provenance is None:
+        raise InitializationRejectedError(
+            "base bundle missing provenance record",
+            reason_code="unattested_base_bundle",
+        )
+    base_specification_id = str(base_provenance["specification_id"])
+
+    ledger = _load_json_object(
+        cell_delta_ledger,
+        reason_code="invalid_cell_delta_ledger",
+    )
+    if str(ledger.get("base_specification_id")) != base_specification_id:
+        raise InitializationRejectedError(
+            "ledger base_specification_id does not match base bundle",
+            reason_code="base_specification_mismatch",
+        )
+
+    pose_doc = _load_json_object(
+        pose_plan,
+        reason_code="invalid_pose_plan",
+    )
+    base_frame_mapping = [int(value) for value in ledger["base_frame_mapping"]]
+    _validate_pose_plan_document(
+        pose_doc,
+        motion_class=motion_class,
+        base_specification_id=base_specification_id,
+        base_frame_mapping=base_frame_mapping,
+    )
+
+    base_frames = _load_base_release_frames(base_bundle_root)
+    try:
+        validate_cell_delta_ledger(base_frames, ledger)
+    except CellDeltaError as exc:
+        raise InitializationRejectedError(
+            str(exc),
+            reason_code=exc.reason_code,
+        ) from exc
+
+    class_geometry = resolve_class_frame_geometry(motion_class)
+    bundle_layout = StripLayout(
+        frame_w=class_geometry.frame_w,
+        frame_h=class_geometry.frame_h,
+        frame_count=probe_layout.frame_count,
+        gutter=probe_layout.gutter,
+    )
+    authored_frames = _load_authored_frames(
+        authored_frames_dir,
+        frame_count=bundle_layout.frame_count,
+        frame_w=bundle_layout.frame_w,
+        frame_h=bundle_layout.frame_h,
+    )
+    try:
+        assert_cell_delta_replay(base_frames, authored_frames, ledger)
+    except CellDeltaError as exc:
+        raise InitializationRejectedError(
+            str(exc),
+            reason_code=exc.reason_code,
+        ) from exc
+
+    profile_source = _profile_source(polish_profile)
+    repository_commit = gc.git_commit(_REPO_ROOT)
+
+    temp_root = bundle_root.parent / f".{bundle_root.name}.tmp"
+    _cleanup_partial(temp_root)
+    try:
+        temp_root.mkdir(parents=True, exist_ok=False)
+
+        authoring_dir = temp_root / "authoring"
+        authoring_dir.mkdir()
+        ledger_dest = authoring_dir / "cell-delta-ledger.json"
+        shutil.copy2(cell_delta_ledger, ledger_dest)
+        pose_dest = authoring_dir / "pose-plan.json"
+        shutil.copy2(pose_plan, pose_dest)
+
+        base_release_bindings: list[dict[str, Any]] = []
+        for index, frame in enumerate(base_frames):
+            rel = f"authoring/base/frame-{index}.png"
+            base_path = temp_root / rel
+            base_path.parent.mkdir(parents=True, exist_ok=True)
+            write_cells(base_path, frame)
+            base_release_bindings.append(
+                {
+                    "index": index,
+                    "relative_path": rel,
+                    "sha256": sha256_file(base_path),
+                }
+            )
+
+        pose_binding = {
+            "relative_path": "authoring/pose-plan.json",
+            "sha256": sha256_file(pose_dest),
+        }
+        ledger_binding = {
+            "relative_path": "authoring/cell-delta-ledger.json",
+            "sha256": sha256_file(ledger_dest),
+        }
+
+        provenance_record: dict[str, Any] = {
+            "schema": CELL_AUTHOR_PROVENANCE_SCHEMA,
+            "generation_mode": CELL_AUTHOR_GENERATION_MODE,
+            "specification_id": specification_id,
+            "motion_class": motion_class,
+            "base_specification_id": base_specification_id,
+            "base_frames_sha256": list(ledger["base_frames_sha256"]),
+            "base_frame_mapping": base_frame_mapping,
+            "pose_plan": dict(pose_binding),
+            "cell_delta_ledger": dict(ledger_binding),
+            "authoring_agent": authoring_agent,
+            "authoring_session_id": authoring_session_id,
+            "repository_commit": repository_commit,
+        }
+        _validate_cell_author_provenance_record(
+            provenance_record,
+            motion_class=motion_class,
+            specification_id=specification_id,
+            base_specification_id=base_specification_id,
+            base_frames_sha256=ledger["base_frames_sha256"],
+            base_frame_mapping=base_frame_mapping,
+            pose_plan_sha256=pose_binding["sha256"],
+            ledger_sha256=ledger_binding["sha256"],
+        )
+        provenance_dest = authoring_dir / "provenance.json"
+        provenance_dest.write_text(
+            json.dumps(provenance_record, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        provenance_binding = {
+            "relative_path": "authoring/provenance.json",
+            "sha256": sha256_file(provenance_dest),
+        }
+
+        identity_manifest: dict[str, Any] | None = None
+        if identity_reference is not None:
+            identity_dest = temp_root / "reference" / "identity.png"
+            identity_dest.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(identity_reference, identity_dest)
+            identity_manifest = {
+                "relative_path": "reference/identity.png",
+                "sha256": sha256_file(identity_dest),
+            }
+
+        profile_dest = temp_root / "profile.json"
+        shutil.copy2(profile_source, profile_dest)
+        profile_doc = json.loads(profile_dest.read_text(encoding="utf-8"))
+        profile_manifest = {
+            "schema": profile_doc["schema"],
+            "id": profile_doc["id"],
+            "relative_path": "profile.json",
+            "sha256": sha256_file(profile_dest),
+        }
+
+        draft_hashes: list[dict[str, Any]] = []
+        for index, cells in enumerate(authored_frames):
+            rel = f"draft/frame-{index}.png"
+            draft_path = temp_root / rel
+            write_cells(draft_path, cells)
+            polished_path = temp_root / "polished" / f"frame-{index}.png"
+            polished_path.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(draft_path, polished_path)
+            draft_hashes.append(
+                {
+                    "index": index,
+                    "relative_path": rel,
+                    "sha256": sha256_file(draft_path),
+                }
+            )
+
+        manifest: dict[str, Any] = {
+            "schema": BUNDLE_SCHEMA,
+            "generation_mode": CELL_AUTHOR_GENERATION_MODE,
+            "motion_class": motion_class,
+            "layout": {
+                "frame_w": bundle_layout.frame_w,
+                "frame_h": bundle_layout.frame_h,
+                "frame_count": bundle_layout.frame_count,
+                "frame_order": list(range(bundle_layout.frame_count)),
+                "gutter": bundle_layout.gutter,
+            },
+            "cell_authoring": {
+                "provenance": provenance_binding,
+                "base_specification_id": base_specification_id,
+                "base_frames_sha256": list(ledger["base_frames_sha256"]),
+                "base_frame_mapping": base_frame_mapping,
+                "base_release_frames": base_release_bindings,
+                "pose_plan": pose_binding,
+                "cell_delta_ledger": ledger_binding,
+            },
+            "draft_frames": draft_hashes,
+            "polish_profile": profile_manifest,
+        }
+        if identity_manifest is not None:
+            manifest["identity_reference"] = identity_manifest
+
+        (temp_root / "manifest.json").write_text(
+            json.dumps(manifest, indent=2, sort_keys=True) + "\n",
+            encoding="utf-8",
+        )
+        (temp_root / "reports").mkdir()
+        temp_root.rename(bundle_root)
+    except InitializationRejectedError:
+        _cleanup_partial(temp_root)
+        raise
+    except Exception:
+        _cleanup_partial(temp_root)
+        raise
+
+
 def _layout_from_manifest(manifest: dict[str, Any]) -> StripLayout:
     layout = manifest["layout"]
     return StripLayout(
@@ -2067,7 +2802,10 @@ def check_bundle(bundle_root: Path) -> FinalPolishCheckResult:
     polished_frames = _load_frame_sequence(bundle_root, "polished")
     draft_hashes = _ordered_frame_hashes(bundle_root, "draft")
     polished_hashes = _ordered_frame_hashes(bundle_root, "polished")
-    provider_sha256 = sha256_file(_provider_path(bundle_root))
+    if _is_cell_authored_manifest(manifest):
+        provider_sha256 = ""
+    else:
+        provider_sha256 = sha256_file(_provider_path(bundle_root))
 
     structural = _structural_check(
         draft_frames,
@@ -2132,10 +2870,6 @@ def _report_payload(bundle_root: Path, result: FinalPolishCheckResult) -> dict[s
         "manifest_sha256": result.manifest_sha256,
         "motion_class": manifest["motion_class"],
         "layout": manifest["layout"],
-        "provider": {
-            "relative_path": manifest["provider"]["relative_path"],
-            "sha256": result.provider_sha256,
-        },
         "draft_frames": [
             {"index": index, "sha256": digest}
             for index, digest in enumerate(result.draft_hashes)
@@ -2190,6 +2924,15 @@ def _report_payload(bundle_root: Path, result: FinalPolishCheckResult) -> dict[s
         "coherence": result.coherence,
         "outcome": result.outcome,
     }
+    if _is_cell_authored_manifest(manifest):
+        payload["generation_mode"] = CELL_AUTHOR_GENERATION_MODE
+        if result.attestation is not None:
+            payload["base_specification_id"] = result.attestation.base_specification_id
+    else:
+        payload["provider"] = {
+            "relative_path": manifest["provider"]["relative_path"],
+            "sha256": result.provider_sha256,
+        }
     if result.attestation is not None:
         payload["attestation"] = _attestation_report_payload(result.attestation)
     if result.silhouette_artifacts is not None:

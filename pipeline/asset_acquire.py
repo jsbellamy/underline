@@ -39,6 +39,10 @@ def utc_now() -> str:
 class AssetAcquisitionError(ValueError):
     """Fail-closed asset-acquisition failure."""
 
+    def __init__(self, message: str, *, reason_code: str | None = None) -> None:
+        super().__init__(message)
+        self.reason_code = reason_code
+
 
 @dataclass(frozen=True)
 class AssetAttemptIdentity:
@@ -159,6 +163,11 @@ def record_asset_attempt(
     parameter, so passing one as a keyword raises ``TypeError`` from the
     signature itself.
     """
+    if generation_mode == "cell-author":
+        raise AssetAcquisitionError(
+            "provider Attempt cannot claim cell-author generation mode",
+            reason_code="provider_attempt_claims_cell_author",
+        )
     if generation_mode not in GENERATION_MODES:
         raise AssetAcquisitionError(f"unknown generation_mode {generation_mode!r}")
     if outcome not in ATTEMPT_OUTCOMES:

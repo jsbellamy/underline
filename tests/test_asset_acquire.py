@@ -209,6 +209,13 @@ def test_rejected_attempt_without_reason_raises(tmp_path: Path) -> None:
         _record(tmp_path, store_root, outcome="rejected")
 
 
+def test_cell_author_generation_mode_rejects_provider_attempt(tmp_path: Path) -> None:
+    store_root = tmp_path / "acquisition-controls"
+    with pytest.raises(aa.AssetAcquisitionError) as exc:
+        _record(tmp_path, store_root, generation_mode="cell-author")
+    assert exc.value.reason_code == "provider_attempt_claims_cell_author"
+
+
 # --- C6: ledger rows are append-only -----------------------------------------
 
 

@@ -11,6 +11,7 @@ from typing import Any
 from pipeline.asset_acquire import AssetAcquisitionError, record_asset_attempt
 from pipeline.final_polish import (
     BundleExistsError,
+    CELL_AUTHOR_GENERATION_MODE,
     FinalPolishCheckResult,
     FinalPolishError,
     InitializationRejectedError,
@@ -19,6 +20,7 @@ from pipeline.final_polish import (
     check_bundle,
     finalize_bundle,
     initialize_bundle,
+    initialize_cell_authored_bundle,
     load_polish_brief,
 )
 from pipeline.gate_evidence import sha256_file
@@ -113,7 +115,6 @@ def _check_json_payload(
     payload: dict[str, Any] = {
         "provider_outcome": result.provider_outcome,
         "bundle": str(bundle_root.resolve()),
-        "provider": str((bundle_root / manifest["provider"]["relative_path"]).resolve()),
         "motion_class": manifest["motion_class"],
         "structural": _structural_payload(result),
         "visible_cell_delta": _delta_payload(result),
@@ -122,7 +123,6 @@ def _check_json_payload(
         "coherence": result.coherence,
         **gate_views,
         "manifest_sha256": result.manifest_sha256,
-        "provider_sha256": result.provider_sha256,
         "draft_hashes": list(result.draft_hashes),
         "polished_hashes": list(result.polished_hashes),
         "fingerprint": result.fingerprint,
@@ -136,6 +136,15 @@ def _check_json_payload(
         ),
         "outcome": result.outcome,
     }
+    if manifest.get("generation_mode") == CELL_AUTHOR_GENERATION_MODE:
+        payload["generation_mode"] = CELL_AUTHOR_GENERATION_MODE
+        if result.attestation is not None:
+            payload["base_specification_id"] = result.attestation.base_specification_id
+    else:
+        payload["provider"] = str(
+            (bundle_root / manifest["provider"]["relative_path"]).resolve()
+        )
+        payload["provider_sha256"] = result.provider_sha256
     silhouette_artifacts = _silhouette_artifacts_payload(result)
     if silhouette_artifacts is not None:
         payload["silhouette_artifacts"] = silhouette_artifacts
@@ -158,6 +167,20 @@ def _check_summary_json_payload(result: FinalPolishCheckResult) -> dict[str, Any
     }
     if result.attestation is not None:
         payload["attestation"] = {"state": result.attestation.state}
+        if result.attestation.state == CELL_AUTHOR_GENERATION_MODE:
+            payload["generation_mode"] = CELL_AUTHOR_GENERATION_MODE
+            payload["base_specification_id"] = result.attestation.base_specification_id
+            payload["base_frames_sha256"] = (
+                list(result.attestation.base_frames_sha256)
+                if result.attestation.base_frames_sha256 is not None
+                else None
+            )
+            payload["base_frame_mapping"] = (
+                list(result.attestation.base_frame_mapping)
+                if result.attestation.base_frame_mapping is not None
+                else None
+            )
+            payload["cell_delta_ledger_sha256"] = result.attestation.cell_delta_ledger_sha256
     return payload
 
 
@@ -209,10 +232,15 @@ def _format_check_report(
     release_paths: list[pathlib.Path] | None = None,
 ) -> str:
     manifest = json.loads((bundle_root / "manifest.json").read_text())
-    provider_path = bundle_root / manifest["provider"]["relative_path"]
     lines = [
         f"Bundle    {bundle_root.resolve()}",
-        f"Provider  {provider_path.name}",
+    ]
+    if manifest.get("generation_mode") == CELL_AUTHOR_GENERATION_MODE:
+        lines.append(f"Mode      {CELL_AUTHOR_GENERATION_MODE}")
+    else:
+        provider_path = bundle_root / manifest["provider"]["relative_path"]
+        lines.append(f"Provider  {provider_path.name}")
+    lines.extend([
         f"Motion    {manifest['motion_class']}",
         f"Profile   {result.profile_id or '(none)'}",
         (
@@ -231,7 +259,7 @@ def _format_check_report(
             f"per_frame={list(result.delta.per_frame_counts)}"
         ),
         "Gates",
-    ]
+    ])
     lines.extend(format_coherence_split_report(result.coherence))
     lines.append(f"Overall  {result.outcome}")
     silhouette_artifacts = _silhouette_artifacts_payload(result)
@@ -296,6 +324,53 @@ def _format_brief(brief: dict[str, Any]) -> str:
     lines.append("Audit workflow")
     lines.extend(f"  {index}. {step}" for index, step in enumerate(brief["audit_workflow"], 1))
     return "\n".join(lines)
+
+
+def _handle_init_cell(args: argparse.Namespace) -> int:
+    try:
+        initialize_cell_authored_bundle(
+            args.authored_frames_dir,
+            args.motion_class,
+            args.out,
+            specification_id=args.specification_id,
+            base_bundle_root=args.base_bundle,
+            cell_delta_ledger=args.cell_delta_ledger,
+            pose_plan=args.pose_plan,
+            polish_profile=args.polish_profile,
+            identity_reference=args.identity_reference,
+            authoring_agent=args.authoring_agent,
+            authoring_session_id=args.authoring_session_id,
+        )
+    except BundleExistsError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+    except InitializationRejectedError as exc:
+        if args.json:
+            _emit_json(
+                {
+                    "pass": False,
+                    "motion_class": args.motion_class,
+                    "outcome": "FAIL",
+                    "reason_code": exc.reason_code or "unknown",
+                }
+            )
+        print(str(exc), file=sys.stderr)
+        return 2
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+
+    try:
+        result = check_bundle(args.out)
+    except (InvalidBundleError, FinalPolishError) as exc:
+        print(str(exc), file=sys.stderr)
+        return 2
+
+    if args.json:
+        _emit_json(_check_json_payload(args.out, result))
+    else:
+        print(_format_check_report(args.out, result))
+    return _exit_code(result.outcome)
 
 
 def _handle_init(args: argparse.Namespace) -> int:
@@ -513,6 +588,54 @@ def _configure_parser(parser: argparse.ArgumentParser) -> None:
     )
     init.add_argument("--json", action="store_true", help="Emit machine-readable JSON on stdout")
 
+    init_cell = sub.add_parser(
+        "init-cell",
+        help="Create a cell-authored final-polish bundle without a provider raster",
+    )
+    init_cell.add_argument(
+        "authored_frames_dir",
+        type=pathlib.Path,
+        help="Directory of authored logical frame PNGs (frame-0.png …)",
+    )
+    init_cell.add_argument(
+        "--base-bundle",
+        type=pathlib.Path,
+        required=True,
+        help="Finalized provider base bundle directory",
+    )
+    init_cell.add_argument(
+        "--cell-delta-ledger",
+        type=pathlib.Path,
+        required=True,
+        help="Cell-delta ledger sidecar (cell-delta-ledger/0)",
+    )
+    init_cell.add_argument(
+        "--pose-plan",
+        type=pathlib.Path,
+        required=True,
+        help="Motion pose plan sidecar (motion-pose-plan/0)",
+    )
+    init_cell.add_argument(
+        "--specification-id",
+        required=True,
+        help="Slash-delimited specification id for the cell-authored bundle",
+    )
+    init_cell.add_argument("--motion-class", required=True, help="Motion class for gating")
+    init_cell.add_argument("--out", type=pathlib.Path, required=True, help="Bundle destination directory")
+    init_cell.add_argument("--polish-profile", required=True, help="Embed a checked-in visual audit profile")
+    init_cell.add_argument(
+        "--identity-reference",
+        type=pathlib.Path,
+        help="Canonical identity PNG (required for dwarf-miner walk/swing)",
+    )
+    init_cell.add_argument("--authoring-agent", required=True, help="Authoring agent identifier")
+    init_cell.add_argument(
+        "--authoring-session-id",
+        required=True,
+        help="Authoring session identifier",
+    )
+    init_cell.add_argument("--json", action="store_true", help="Emit machine-readable JSON on stdout")
+
     check = sub.add_parser("check", help="Validate a bundle without writing")
     check.add_argument("bundle", type=pathlib.Path, help="Final-polish bundle directory")
     check_output = check.add_mutually_exclusive_group()
@@ -619,6 +742,8 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "init":
         return _handle_init(args)
+    if args.command == "init-cell":
+        return _handle_init_cell(args)
     if args.command == "check":
         return _handle_check(args)
     if args.command == "brief":
