@@ -23,6 +23,7 @@
     "gate-control:acquire": "PYTHONPATH=. python3 -m pipeline.gate_control_acquire",
     "gate-control:score": "PYTHONPATH=. python3 -m pipeline.gate_control",
     "gate-control:review": "PYTHONPATH=. python3 -m pipeline.gate_review",
-    "gate-control:verify": "PYTHONPATH=. python3 -m pipeline.gate_verification"
+    "gate-control:verify": "PYTHONPATH=. python3 -m pipeline.gate_verification",
+    "parts:render": "PYTHONPATH=. python3 -m pipeline.parts_cli render"
   }
 }

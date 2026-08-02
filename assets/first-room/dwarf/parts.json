@@ -6,8 +6,8 @@
     24
   ],
   "base_raster_relative_path": "assets/first-room/dwarf/idle/release/frame-0.png",
-  "grip_rationale": "The canonical idle carries the pickaxe over the right shoulder with the gripping hand occluded behind the torso. No geometric rule recovers the haft hold point, so grip is pinned to anchor Cell (5, 7) at the visible shoulder contact on the haft.",
-  "assignment_rationale": "Non-outline core Cells are classified from polished material roles and anchor-space regions aligned with identity-lock rectangles. tool_head is the seven stone head Cells along (4,3)->(1,7); remaining opaque Cells in the measured 6x7 tool rectangle are tool_handle cores. Every dark-outline Cell inherits the part of its nearest core Cell under Chebyshev distance (ties broken toward smaller x then y).",
+  "grip_rationale": "The far gripping hand is drawn at skin Cells (7,11) and (8,12) where the haft diagonal crosses the chest. grip is pinned to anchor Cell (8,11) at the haft contact on the bridging leather Cell between those skin Cells.",
+  "assignment_rationale": "Non-outline core Cells are classified from polished material roles and anchor-space regions aligned with identity-lock rectangles. hand_near is the visible near hand: skin Cells (5,12) and (5,13) plus outline and leather Cells that 4-connect to them. hand_far is the drawn far grip: skin Cells (7,11) and (8,12) plus bridging Cell (8,11). tool_handle is an authored trace along the Master Palette darkest amber #783A18 run (4,7) (5,8) (6,8) (8,8) (8,10) and the Cells that 4-connect it from tool_head to hand_far across the y9-10 gap; (8,8) is cheek light but keeps the haft one component. The x6..8 y9..14 chest mass is beard ramp, not sleeve. arm_near is green-cloth sleeve at x<=6 only. belt is the kinematic root verified by the buckle landmark. Anchor Cells (14,16)..(15,17) stay with beard or legs for connectivity. Cell (12,5) is in lamp. Stone Cells (11,2) and (11,3) remain in helmet as the lantern mounting bracket.",
   "parts": {
     "tool_head": {
       "rigid": true,
@@ -809,7 +809,7 @@
     },
     "tool_handle": {
       "rigid": true,
-      "parent": "hand_near",
+      "parent": "hand_far",
       "cells": [
         "3,6",
         "3,7",
@@ -818,15 +818,23 @@
         "5,5",
         "5,6",
         "5,7",
-        "6,6"
+        "5,8",
+        "6,6",
+        "6,7",
+        "6,8",
+        "7,7",
+        "7,8",
+        "8,8",
+        "8,9",
+        "8,10"
       ],
       "pivot": [
         5,
         7
       ],
       "grip": [
-        5,
-        7
+        8,
+        11
       ],
       "orientations": {
         "rot0": {
@@ -1205,19 +1213,17 @@
       "cells": [
         "5,12",
         "5,13",
-        "6,14",
-        "7,11",
-        "8,12",
-        "9,13"
+        "5,14",
+        "5,15"
       ],
       "pivot": [
-        7,
-        11
+        5,
+        12
       ]
     },
     "arm_near": {
       "rigid": false,
-      "parent": "torso",
+      "parent": "belt",
       "cells": [
         "1,13",
         "1,14",
@@ -1240,56 +1246,16 @@
         "4,14",
         "5,9",
         "5,10",
-        "5,11",
-        "5,14",
-        "5,15",
-        "6,9",
-        "6,10",
-        "6,11",
-        "6,12",
-        "6,13",
-        "7,8",
-        "7,9",
-        "7,10",
-        "7,12",
-        "7,13",
-        "7,14",
-        "8,9",
-        "8,11",
-        "8,13",
-        "8,14",
-        "9,12"
+        "5,11"
       ],
       "pivot": [
         9,
         10
       ]
     },
-    "torso": {
-      "rigid": false,
-      "parent": null,
-      "cells": [
-        "3,21",
-        "4,20",
-        "4,21",
-        "7,7",
-        "8,7",
-        "9,11",
-        "9,14",
-        "10,3",
-        "10,4",
-        "10,14",
-        "11,4",
-        "13,9",
-        "13,10",
-        "14,11",
-        "14,12",
-        "14,13"
-      ]
-    },
     "helmet": {
       "rigid": false,
-      "parent": "torso",
+      "parent": "head_face",
       "cells": [
         "6,2",
         "6,3",
@@ -1314,11 +1280,13 @@
         "9,5",
         "10,1",
         "10,2",
+        "10,3",
+        "10,4",
         "10,5",
         "11,2",
         "11,3",
-        "11,5",
-        "12,5"
+        "11,4",
+        "11,5"
       ],
       "pivot": [
         10,
@@ -1327,11 +1295,12 @@
     },
     "lamp": {
       "rigid": false,
-      "parent": "torso",
+      "parent": "helmet",
       "cells": [
         "12,2",
         "12,3",
         "12,4",
+        "12,5",
         "13,3",
         "13,5"
       ],
@@ -1342,25 +1311,26 @@
     },
     "head_face": {
       "rigid": false,
-      "parent": "torso",
+      "parent": "belt",
       "cells": [
+        "8,7",
+        "9,6",
+        "9,7",
         "9,8",
         "9,9",
-        "9,10",
         "10,6",
+        "10,7",
         "10,8",
         "10,9",
-        "10,10",
         "11,6",
         "11,7",
         "11,8",
         "11,9",
-        "11,10",
         "12,6",
         "12,7",
         "12,8",
         "12,9",
-        "12,10"
+        "13,9"
       ],
       "pivot": [
         11,
@@ -1369,45 +1339,55 @@
     },
     "beard": {
       "rigid": false,
-      "parent": "torso",
+      "parent": "head_face",
       "cells": [
-        "5,8",
-        "6,7",
-        "6,8",
-        "8,8",
-        "8,10",
-        "9,6",
-        "9,7",
-        "10,7",
+        "6,9",
+        "6,10",
+        "6,11",
+        "6,12",
+        "6,13",
+        "6,14",
+        "7,9",
+        "7,10",
+        "7,12",
+        "7,13",
+        "7,14",
+        "8,13",
+        "8,14",
+        "9,10",
+        "9,11",
+        "9,12",
+        "9,13",
+        "9,14",
+        "10,10",
         "10,11",
         "10,12",
         "10,13",
-        "10,17",
+        "10,14",
+        "11,10",
         "11,11",
         "11,12",
         "11,13",
         "11,14",
-        "11,17",
-        "11,18",
+        "12,10",
         "12,11",
         "12,12",
         "12,13",
         "12,14",
         "12,15",
-        "12,18",
+        "13,10",
         "13,11",
         "13,12",
         "13,13",
         "13,14",
         "13,15",
         "13,16",
-        "13,17",
+        "14,11",
+        "14,12",
+        "14,13",
         "14,14",
         "14,15",
-        "14,16",
-        "14,17",
-        "14,18",
-        "15,17"
+        "14,16"
       ],
       "pivot": [
         12,
@@ -1416,7 +1396,7 @@
     },
     "belt": {
       "rigid": false,
-      "parent": "torso",
+      "parent": null,
       "cells": [
         "2,15",
         "2,16",
@@ -1452,12 +1432,17 @@
         "9,18",
         "10,15",
         "10,16",
+        "10,17",
         "10,18",
         "11,15",
         "11,16",
+        "11,17",
+        "11,18",
         "11,19",
         "12,16",
         "12,17",
+        "12,18",
+        "13,17",
         "13,18"
       ],
       "pivot": [
@@ -1467,10 +1452,13 @@
     },
     "legs": {
       "rigid": false,
-      "parent": "torso",
+      "parent": "belt",
       "cells": [
         "3,20",
+        "3,21",
         "4,19",
+        "4,20",
+        "4,21",
         "5,19",
         "5,20",
         "6,19",
@@ -1493,7 +1481,10 @@
         "13,19",
         "13,20",
         "13,21",
+        "14,17",
+        "14,18",
         "14,19",
+        "15,17",
         "15,18"
       ],
       "pivot": [
@@ -1503,7 +1494,7 @@
     },
     "boots": {
       "rigid": false,
-      "parent": "torso",
+      "parent": "legs",
       "cells": [
         "3,22",
         "3,23",
@@ -1535,6 +1526,19 @@
       "pivot": [
         11,
         22
+      ]
+    },
+    "hand_far": {
+      "rigid": false,
+      "parent": "belt",
+      "cells": [
+        "7,11",
+        "8,11",
+        "8,12"
+      ],
+      "pivot": [
+        8,
+        11
       ]
     }
   }
