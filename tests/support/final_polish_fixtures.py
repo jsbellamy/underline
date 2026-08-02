@@ -21,7 +21,6 @@ from pipeline.final_polish import (
     PROVENANCE_SCHEMA,
     check_bundle as polish_check_bundle,
     finalize_bundle as polish_finalize_bundle,
-    initialize_bundle,
 )
 from pipeline.final_polish_cli import main as final_polish_cli_main
 from pipeline.gate_evidence import (
@@ -35,14 +34,10 @@ from pipeline.identity_lock import (
 from pipeline.strip import (
     DEFAULT_LAYOUT,
     StripLayout,
-    ingest_strip_provider,
     layout_for_motion_class,
-    load_provider_frames,
 )
 from tests.final_polish_harness import (
-    acquisition_store_env,
     bundle_store_env_context,
-    record_store_attempt,
 )
 
 
@@ -243,192 +238,6 @@ def _write_cli_animation_provenance(
     )
 
 
-def _effective_provider_path(
-    provider_path: Path,
-    tmp_path: Path,
-    motion_class: str,
-    *,
-    polish_profile: str | None = None,
-) -> Path:
-    if polish_profile == "dwarf-miner":
-        return _effective_dwarf_miner_provider(provider_path, tmp_path, motion_class)
-    return provider_path
-
-
-def _register_store_attempt_for_init(
-    tmp_path: Path,
-    provider_path: Path,
-    motion_class: str,
-    *,
-    polish_profile: str | None = None,
-) -> tuple[Path, Path, list[str], dict[str, str]]:
-    effective_provider = _effective_provider_path(
-        provider_path,
-        tmp_path,
-        motion_class,
-        polish_profile=polish_profile,
-    )
-    store_root = tmp_path / "acquisition-controls"
-    generation_mode = (
-        "image-edit"
-        if polish_profile == "dwarf-miner" and motion_class in {"walk", "swing"}
-        else "text-to-image"
-    )
-    record_kwargs: dict[str, object] = {
-        "motion_class": motion_class,
-        "generation_mode": generation_mode,
-        "acquiring_agent": "pytest",
-        "prompt_text": "underline cli test provenance prompt",
-        "repo_root": tmp_path,
-    }
-    identity_args: list[str] = []
-    if generation_mode == "image-edit":
-        padded_seed = _padded_edit_source_seed(tmp_path, motion_class)
-        record_kwargs["reference_image_sha256"] = CANONICAL_IDENTITY_SHA
-        record_kwargs["edit_source"] = padded_seed
-        identity_args = [
-            "--identity-reference",
-            str(IDENTITY_PNG),
-            "--edit-source",
-            str(padded_seed),
-        ]
-    env = acquisition_store_env(store_root)
-    row, provider_for_init = record_store_attempt(
-        store_root,
-        effective_provider,
-        f"test/{motion_class}",
-        motion_class=motion_class,
-        generation_mode=generation_mode,
-        acquiring_agent="pytest",
-        prompt_text="underline cli test provenance prompt",
-        repo_root=tmp_path,
-        reference_image_sha256=record_kwargs.get("reference_image_sha256"),  # type: ignore[arg-type]
-        edit_source=record_kwargs.get("edit_source"),  # type: ignore[arg-type]
-    )
-    provenance_path = tmp_path / f"{effective_provider.stem}.source.json"
-    provenance_kwargs: dict[str, object] = {
-        "motion_class": motion_class,
-        "generation_mode": generation_mode,
-        "attempt_id": row["attempt_id"],
-        "predecessor_attempt_id": row["predecessor_attempt_id"],
-        "specification_id": f"test/{motion_class}",
-    }
-    if generation_mode == "image-edit":
-        padded_seed = _padded_edit_source_seed(tmp_path, motion_class)
-        provenance_kwargs.update(
-            {
-                "reference_image_sha256": [CANONICAL_IDENTITY_SHA],
-                "edit_source_sha256": sha256_file(padded_seed),
-            }
-        )
-    _write_cli_animation_provenance(provider_for_init, provenance_path, **provenance_kwargs)
-    return provider_for_init, provenance_path, identity_args, env
-
-
-def _init_cli_args(
-    tmp_path: Path,
-    provider_path: Path,
-    motion_class: str,
-    bundle: Path,
-    *,
-    polish_profile: str | None = None,
-    json_mode: bool = False,
-) -> tuple[list[str], dict[str, str]]:
-    provider_for_init, provenance_path, identity_args, env = _register_store_attempt_for_init(
-        tmp_path,
-        provider_path,
-        motion_class,
-        polish_profile=polish_profile,
-    )
-    args = [
-        "init",
-        str(provider_for_init),
-        "--motion-class",
-        motion_class,
-        "--out",
-        str(bundle),
-        "--provenance",
-        str(provenance_path),
-        *identity_args,
-    ]
-    if polish_profile is not None:
-        args.extend(["--polish-profile", polish_profile])
-    if json_mode:
-        args.append("--json")
-    return args, env
-
-
-def _library_init_bundle(
-    provider_path: Path,
-    motion_class: str,
-    bundle: Path,
-    tmp_path: Path,
-    *,
-    polish_profile: str | None = None,
-) -> None:
-    provider_for_init, provenance_path, identity_args, env = _register_store_attempt_for_init(
-        tmp_path,
-        provider_path,
-        motion_class,
-        polish_profile=polish_profile,
-    )
-    identity = Path(identity_args[1]) if len(identity_args) > 1 else None
-    edit = Path(identity_args[3]) if len(identity_args) > 3 else None
-    effective_provider = _effective_provider_path(
-        provider_path,
-        tmp_path,
-        motion_class,
-        polish_profile=polish_profile,
-    )
-    ingest_source = (
-        _dwarf_miner_ingest_source(provider_path, motion_class)
-        if polish_profile == "dwarf-miner" and effective_provider != provider_path
-        else effective_provider
-    )
-    probe_layout = layout_for_motion_class(motion_class, margin_cells=0)
-    init_kwargs = {
-        "provenance_sidecar": provenance_path,
-        "polish_profile": polish_profile,
-        "identity_reference": identity,
-        "edit_source": edit,
-    }
-    if ingest_source != effective_provider:
-        base_ingest = ingest_strip_provider(ingest_source, probe_layout, motion_class=motion_class)
-        base_frames = load_provider_frames(ingest_source, probe_layout)
-        with (
-            patch(
-                "pipeline.final_polish.ingest_strip_provider",
-                return_value=base_ingest,
-            ),
-            patch(
-                "pipeline.final_polish.load_provider_frames",
-                return_value=base_frames,
-            ),
-            patch.dict("os.environ", env),
-        ):
-            initialize_bundle(
-                provider_for_init,
-                motion_class,
-                bundle,
-                **init_kwargs,
-            )
-        return
-    with patch.dict("os.environ", env):
-        initialize_bundle(
-            provider_for_init,
-            motion_class,
-            bundle,
-            **init_kwargs,
-        )
-
-
-def _cli_init_idle_bundle(tmp_path: Path) -> Path:
-    """Build a passing idle bundle via the library path shared by check/finalize CLI tests."""
-    bundle = tmp_path / "bundle"
-    _library_init_bundle(PASS_STRIP, "idle", bundle, tmp_path)
-    return bundle
-
-
 def _identity_seed_pad_px() -> int:
     doc = json.loads(IDENTITY_JSON.read_text(encoding="utf-8"))
     return int(doc["seed_pad_px"])
@@ -499,17 +308,6 @@ def _effective_dwarf_miner_provider(
         if stem in {"swing-24-provider", "swing-on-edit-canvas"}:
             return _swing_provider_on_edit_canvas(tmp_path)
     return provider_path
-
-
-def _dwarf_miner_ingest_source(
-    provider_path: Path,
-    motion_class: str,
-) -> Path:
-    if motion_class == "walk":
-        return WALK_STRIP
-    if provider_path.stem == "swing-24-provider":
-        return provider_path
-    return SWING_STRIP
 
 
 def _provenance_for(

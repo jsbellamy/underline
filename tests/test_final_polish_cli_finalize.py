@@ -20,19 +20,25 @@ import pytest
 from pipeline.final_polish_cli import main
 from pipeline.gate_evidence import sha256_file
 from pipeline.strip import IngestResult, ingest_strip_provider
+from tests.support import polish_bundle as pb
 from tests.support.final_polish_fixtures import (
     FRAME_COUNT,
     ROOT,
-    _cli_init_idle_bundle,
     _corpus_layout,
     _first_opaque_xy,
-    _init_cli_args,
     _run_cli,
     _set_opaque_rgb,
 )
 from tests.final_polish_harness import bundle_store_env
 
 PASS_STRIP = ROOT / "prototype" / "strip-coherence" / "inbox" / "01-miner-idle.png"
+
+
+def _idle_bundle(tmp_path: Path) -> Path:
+    bundle = tmp_path / "bundle"
+    attempt = pb.prepare(PASS_STRIP, "idle", tmp_path)
+    pb.init_bundle(attempt, bundle)
+    return bundle
 
 
 def _run_npm(
@@ -56,7 +62,9 @@ def _run_npm(
 
 def test_npm_entrypoint_runs_init_check_finalize(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    args, env = _init_cli_args(tmp_path, PASS_STRIP, "idle", bundle)
+    attempt = pb.prepare(PASS_STRIP, "idle", tmp_path)
+    args = pb.init_argv(attempt, bundle)
+    env = dict(attempt.env)
     init = _run_npm(args, env=env)
     assert init.returncode == 0, init.stderr
     assert bundle.is_dir()
@@ -70,7 +78,7 @@ def test_npm_entrypoint_runs_init_check_finalize(tmp_path: Path) -> None:
 
 
 def test_finalize_pass_exit_0_and_creates_release(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    bundle = _cli_init_idle_bundle(tmp_path)
+    bundle = _idle_bundle(tmp_path)
     result = _run_cli(capsys, ["finalize", str(bundle)], env=bundle_store_env(bundle))
     assert result.returncode == 0, result.stderr
     assert "Report" in result.stdout
@@ -79,7 +87,7 @@ def test_finalize_pass_exit_0_and_creates_release(tmp_path: Path, capsys: pytest
 
 
 def test_finalize_pass_json_exit_0(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    bundle = _cli_init_idle_bundle(tmp_path)
+    bundle = _idle_bundle(tmp_path)
     result = _run_cli(capsys, ["finalize", str(bundle), "--json"], env=bundle_store_env(bundle))
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
@@ -90,7 +98,7 @@ def test_finalize_pass_json_exit_0(tmp_path: Path, capsys: pytest.CaptureFixture
 
 
 def test_finalize_fail_json_exit_1(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    bundle = _cli_init_idle_bundle(tmp_path)
+    bundle = _idle_bundle(tmp_path)
     polished = bundle / "polished" / "frame-1.png"
     x, y = _first_opaque_xy(polished)
     _set_opaque_rgb(polished, x, y, (250, 1, 2))
@@ -104,7 +112,7 @@ def test_finalize_fail_json_exit_1(tmp_path: Path, capsys: pytest.CaptureFixture
 
 
 def test_finalize_review_exit_3_records_report(tmp_path: Path, capsys) -> None:
-    bundle = _cli_init_idle_bundle(tmp_path)
+    bundle = _idle_bundle(tmp_path)
     base = ingest_strip_provider(bundle / "provider" / "source.png", _corpus_layout(), motion_class="idle")
     review = IngestResult(
         layout=base.layout,
@@ -127,7 +135,7 @@ def test_finalize_review_exit_3_records_report(tmp_path: Path, capsys) -> None:
 
 
 def test_finalize_review_json_exit_3(tmp_path: Path, capsys) -> None:
-    bundle = _cli_init_idle_bundle(tmp_path)
+    bundle = _idle_bundle(tmp_path)
     base = ingest_strip_provider(bundle / "provider" / "source.png", _corpus_layout(), motion_class="idle")
     review = IngestResult(
         layout=base.layout,
@@ -151,7 +159,7 @@ def test_finalize_review_json_exit_3(tmp_path: Path, capsys) -> None:
 
 
 def test_finalize_fail_exit_1_records_report_without_release(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    bundle = _cli_init_idle_bundle(tmp_path)
+    bundle = _idle_bundle(tmp_path)
     polished = bundle / "polished" / "frame-1.png"
     x, y = _first_opaque_xy(polished)
     _set_opaque_rgb(polished, x, y, (250, 1, 2))
@@ -165,7 +173,7 @@ def test_finalize_fail_exit_1_records_report_without_release(tmp_path: Path, cap
 
 
 def test_finalize_revalidates_and_lists_release_only_on_pass(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    bundle = _cli_init_idle_bundle(tmp_path)
+    bundle = _idle_bundle(tmp_path)
     polished = bundle / "polished" / "frame-0.png"
     x, y = _first_opaque_xy(polished)
     _set_opaque_rgb(polished, x, y, (250, 1, 2))
