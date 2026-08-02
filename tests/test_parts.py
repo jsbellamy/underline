@@ -64,15 +64,18 @@ TOOL_HEAD_CORE = frozenset(
 TOOL_BBOX_RECT = {(x, y) for y in range(1, 8) for x in range(0, 6)}
 TOOL_BBOX_CELL_COUNT = 17
 TOOL_PART_CELL_COUNT = 28
+# Outline Cells whose owning part is not the part owning their Chebyshev-nearest
+# core Cell. `(6, 14)` and `(8, 14)` are the y14 beard fringe passing behind the
+# near and far gloves: both gloves are pure-skin footprints, so the dark fringe
+# row stays one connected beard edge rather than splitting into glove trim.
 OUTLINE_CONNECTIVITY_EXCEPTIONS = frozenset(
     {
-        (5, 6),
         (5, 5),
-        (5, 15),
+        (5, 6),
         (6, 6),
-        (6, 11),
         (6, 14),
         (6, 16),
+        (8, 14),
         (9, 12),
         (9, 13),
         (14, 16),
@@ -177,6 +180,36 @@ def test_c2_outline_cells_follow_nearest_core_chebyshev_rule(part_map) -> None:
             continue
         nearest = min(core_cells, key=lambda cell: (_chebyshev(cell, (x, y)), cell))
         assert part_lookup[(x, y)] == part_lookup[nearest]
+
+
+def test_c2_outline_connectivity_exceptions_are_exactly_the_rule_violations(part_map) -> None:
+    """Every exception must earn its place (#300).
+
+    The exception set grew on every pass of #298 and #300 while nothing removed
+    entries the map had since fixed, so the Chebyshev rule was quietly losing
+    coverage. Pinning the set to the exact violations keeps a re-derivation that
+    repairs a Cell from leaving a permanent hole in the rule.
+    """
+    roles = _roles_for_frame0()
+    core_cells = {
+        tuple(map(int, key.split(",")))
+        for key, role in roles.items()
+        if role != "dark-outline"
+    }
+    part_lookup = {
+        cell: part_id
+        for part_id, part in part_map.parts.items()
+        for cell in part.cells
+    }
+    violations = set()
+    for key, role in roles.items():
+        if role != "dark-outline":
+            continue
+        cell = tuple(map(int, key.split(",")))
+        nearest = min(core_cells, key=lambda core: (_chebyshev(core, cell), core))
+        if part_lookup[cell] != part_lookup[nearest]:
+            violations.add(cell)
+    assert violations == OUTLINE_CONNECTIVITY_EXCEPTIONS
 
 
 def _chebyshev(a: tuple[int, int], b: tuple[int, int]) -> int:

@@ -512,8 +512,23 @@ def _ordered_frame_hashes(bundle_root: Path, layer: str) -> tuple[str, ...]:
     return tuple(sha256_file(directory / name) for name in EXPECTED_FRAME_NAMES)
 
 
-def _fingerprint_polished_hashes(polished_hashes: Sequence[str]) -> str:
+def _fingerprint_polished_hashes(
+    polished_hashes: Sequence[str],
+    identity_lock: IdentityLockResult | None = None,
+) -> str:
+    """Name the immutable report after everything the report payload depends on.
+
+    Hashing the polished Frame digests alone (issue #300) meant a bundle re-bound
+    to a new canonical identity produced a different payload at the *same*
+    `reports/{fingerprint}.json` path, which `finalize_bundle` can only reject as
+    a `report_conflict`. Bundles without an Identity Lock keep their historical
+    fingerprints, so only lock-bound evidence is re-addressed.
+    """
     joined = ":".join(polished_hashes)
+    if identity_lock is not None:
+        joined = ":".join(
+            (joined, identity_lock.identity_sha256, identity_lock.lock_spec_sha256)
+        )
     return sha256_bytes(joined.encode("utf-8"))
 
 
@@ -2846,7 +2861,7 @@ def check_bundle(bundle_root: Path) -> FinalPolishCheckResult:
         coherence=coherence,
         provider_post_edit=provider_post_edit,
     )
-    fingerprint = _fingerprint_polished_hashes(polished_hashes)
+    fingerprint = _fingerprint_polished_hashes(polished_hashes, identity_lock)
     silhouette_artifacts = _emit_silhouette_artifacts(bundle_root, polished_frames, manifest)
     if attestation is None:
         attestation = _resolve_bundle_attestation(bundle_root, manifest)

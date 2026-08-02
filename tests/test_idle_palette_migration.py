@@ -35,8 +35,11 @@ PRE_SLICE_ALPHA_SHA256 = {
 }
 PRE_SLICE_OCCUPANCY = [0.698, 0.701, 0.677, 0.688]
 
+# Frame 0 re-pinned on #300: the glove/haft re-role changed the canonical Frame
+# only. Frames 1-3 are untouched, which is the evidence that the re-role stayed
+# inside Frame 0 rather than drifting across the idle bundle.
 PRE_CLEANUP_CELL_SHA256 = {
-    0: "6160cb94751f397f3ca64acaf2fb76dcba7e93e50ecda343d9e360e39a147639",
+    0: "aab388ecd3875e492ce1f147020e638654427b637be61e1d50114b1020f52ecb",
     1: "3a26a19cb46e452aa3dbde29b299158dd0dc133d9c397b4a21718d4c36bdaafe",
     2: "91f818f850044eabb50d6190ce6986920f2a960df6e4917fc1fc8ca39bddaa5d",
     3: "a1bec61b77e2aa6d4bfc6b4d300d013fd395e01b299b888301a95666c824ae76",
@@ -117,6 +120,25 @@ def test_idle_polished_roles_reproduce_pre_cleanup_rasters() -> None:
         source_cells = read_cells(source)
         precleanup = quantize_cells(source_cells, palette, role_assignment)
         assert _cell_content_sha256(precleanup) == PRE_CLEANUP_CELL_SHA256[index]
+
+
+def test_idle_precleanup_rasters_equal_the_committed_polished_frames() -> None:
+    """C4 anchor for the #300 re-role.
+
+    `PRE_CLEANUP_CELL_SHA256` is otherwise a bare pin that has to be re-derived
+    from the code every time the role map moves, which cannot disagree with the
+    quantizer. The idle bundle carries a zero hand-cleanup delta, so the
+    pre-cleanup raster must equal the reviewed committed Frame exactly. That ties
+    the pin to the artifact a human approved rather than to the quantizer output.
+    """
+    doc = json.loads(POLISHED_ROLES_JSON.read_text(encoding="utf-8"))
+    palette = load_master_palette(MASTER_PALETTE_PATH)
+    for index in range(4):
+        entry = _frame_roles_entry(doc, index)
+        role_assignment = _load_role_assignment(entry["cells"])
+        source_cells = read_cells(ROOT / str(entry["source"]))
+        precleanup = quantize_cells(source_cells, palette, role_assignment)
+        assert precleanup == read_cells(IDLE_POLISHED / f"frame-{index}.png")
 
 
 def test_idle_bundle_check_passes_after_palette_migration(tmp_path: Path) -> None:

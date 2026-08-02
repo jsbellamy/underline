@@ -988,3 +988,50 @@ def test_attestation_report_payloads(tmp_path: Path, capsys: pytest.CaptureFixtu
     assert code == 0
     summary = json.loads(capsys.readouterr().out)
     assert summary["attestation"]["state"] == "legacy"
+
+
+def test_report_fingerprint_binds_the_identity_lock_not_only_the_polished_frames(
+    tmp_path: Path,
+) -> None:
+    """#300: immutable report paths must move when the bound identity moves.
+
+    `finalize_bundle` writes `reports/{fingerprint}.json` and refuses to
+    overwrite an existing path whose payload differs. The fingerprint hashed the
+    polished Frame digests alone, but the payload also carries the Identity Lock
+    binding, so re-pinning the canonical identity produced a *different* payload
+    at the *same* immutable path — an unresolvable `report_conflict` that forced
+    deleting historical evidence. The fingerprint must depend on the binding too.
+    """
+    from pipeline.final_polish import check_bundle
+    from pipeline import final_polish as fp
+    from pipeline.identity_lock import DEFAULT_IDENTITY_LOCKS_PATH
+
+    bundle = tmp_path / "walk"
+    shutil.copytree(
+        Path(__file__).resolve().parents[1] / "assets" / "first-room" / "dwarf" / "walk",
+        bundle,
+    )
+    baseline = check_bundle(bundle)
+    assert baseline.identity_lock is not None
+
+    # Same polished Frames, same bundle bytes — only the Identity Lock spec moves.
+    rebound_spec = tmp_path / "identity-locks.json"
+    spec = json.loads(DEFAULT_IDENTITY_LOCKS_PATH.read_text(encoding="utf-8"))
+    spec["motion_classes"]["walk"]["locks"][0]["max_occupancy_difference"] = 0.21
+    rebound_spec.write_text(json.dumps(spec, indent=1), encoding="utf-8")
+
+    original = fp.evaluate_identity_lock
+
+    def _rebound(frames, motion_class, **kwargs):
+        kwargs["spec_path"] = rebound_spec
+        return original(frames, motion_class, **kwargs)
+
+    with patch.object(fp, "evaluate_identity_lock", _rebound):
+        rebound = check_bundle(bundle)
+
+    assert rebound.polished_hashes == baseline.polished_hashes
+    assert rebound.identity_lock is not None
+    assert (
+        rebound.identity_lock.lock_spec_sha256 != baseline.identity_lock.lock_spec_sha256
+    )
+    assert rebound.fingerprint != baseline.fingerprint

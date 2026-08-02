@@ -1,64 +1,70 @@
 {
-  "schema": "polish-visual-audit/0",
-  "bundle": "assets/first-room/dwarf/idle",
-  "profile_id": "dwarf-miner",
-  "profile_sha256": "0e60aee8d4a630bad6fdabc8d2525c8ae9e2cda8ceab92e37a1dd972a4fcedcf",
-  "motion_class": "idle",
-  "inspection": {
-    "native_scale": true,
-    "nearest_neighbor_enlargement": true,
-    "composites": [
-      "inspected release Frames at 16\u00d724 native",
-      "inspected 8\u00d7 nearest-neighbor composite of polished Frames",
-      "inspected reports/silhouette.gif at native and enlarged scale"
-    ]
+ "schema": "polish-visual-audit/0",
+ "bundle": "assets/first-room/dwarf/idle",
+ "profile_id": "dwarf-miner",
+ "profile_sha256": "0e60aee8d4a630bad6fdabc8d2525c8ae9e2cda8ceab92e37a1dd972a4fcedcf",
+ "motion_class": "idle",
+ "inspection": {
+  "native_scale": true,
+  "nearest_neighbor_enlargement": true,
+  "composites": [
+   "inspected release Frames at 16×24 native",
+   "inspected 8× nearest-neighbor composite of polished Frames",
+   "inspected reports/silhouette.gif at native and enlarged scale"
+  ]
+ },
+ "machine_check": {
+  "command": "npm run strip:polish -- check assets/first-room/dwarf/idle --json",
+  "outcome": "PASS",
+  "fingerprint": "ac47afff3132d725fa73dcd04f292b2b3449c0e0c162af005eb2ea3eaa24e0c9",
+  "visible_cell_edits": 1061,
+  "edit_summary": "Rebound on issue #300. Palette-exact requantization onto the Master Palette across all four Frames, then the #300 re-role of canonical Frame 0 only: 35 Cells moved so the pickaxe haft reads stone and both glove footprints read skin, value-separated from earth-leather-beard. Frames 1-3 are byte-identical to the pre-#300 bundle. Alpha masks and silhouettes unchanged, so the alpha and occupancy evidence carries over unmodified; only Frame 0 colour changed.",
+  "supersedes_fingerprint": "c95fd35dec103433e2fdfdc65ef4c7133d6b2496b5fd7bd7db98991d98d1fe3c"
+ },
+ "answers": [
+  {
+   "id": "identity_anchors",
+   "question": "Are short/broad proportions, beard mass, the oversized blue lamp helmet, green clothing, belt and buckle, gloves, boots, and pickaxe legible and temporally consistent whenever the pose exposes them?",
+   "verdict": "PASS",
+   "rationale": "Re-confirmed on the #300 raster (human review of assets/first-room/dwarf/parts-review.png, 2026-08-02). Short/broad dwarf proportions, large rust beard mass, oversized blue lamp helmet with centered amber lamp, green tunic, leather belt with amber buckle, gloves, broad boots, and shoulder pickaxe remain legible and consistent across all four idle Frames whenever exposed. The re-role improves this answer rather than preserving it: gloves and pickaxe were previously legible only by position because they shared earth-leather-beard values with the beard and sleeve, and they now separate in value."
   },
-  "machine_check": {
-    "command": "npm run strip:polish -- check assets/first-room/dwarf/idle --json",
-    "outcome": "PASS",
-    "fingerprint": "c95fd35dec103433e2fdfdc65ef4c7133d6b2496b5fd7bd7db98991d98d1fe3c",
-    "visible_cell_edits": 1061,
-    "edit_summary": "Palette-exact requantization onto the Master Palette across all four Frames; Frame 0 matches identity-v2.png. Alpha masks and silhouettes unchanged from the pre-migration bundle."
+  {
+   "id": "black_eye_no_sclera",
+   "question": "When the eye is exposed, is it a single black Cell with no white sclera?",
+   "verdict": "PASS",
+   "rationale": "Each Frame exposes a single near-black eye Cell at (10,7) with no white sclera Cells; the requantized palette role is dark-outline."
   },
-  "answers": [
-    {
-      "id": "identity_anchors",
-      "question": "Are short/broad proportions, beard mass, the oversized blue lamp helmet, green clothing, belt and buckle, gloves, boots, and pickaxe legible and temporally consistent whenever the pose exposes them?",
-      "verdict": "PASS",
-      "rationale": "Short/broad dwarf proportions, large rust beard mass, oversized blue lamp helmet with centered amber lamp, green tunic, leather belt with amber buckle, gloves, broad boots, and shoulder pickaxe remain legible and consistent across all four idle Frames whenever exposed; only palette encoding changed."
-    },
-    {
-      "id": "black_eye_no_sclera",
-      "question": "When the eye is exposed, is it a single black Cell with no white sclera?",
-      "verdict": "PASS",
-      "rationale": "Each Frame exposes a single near-black eye Cell at (10,7) with no white sclera Cells; the requantized palette role is dark-outline."
-    },
-    {
-      "id": "native_scale_separation",
-      "question": "At native scale, are face/beard, beard/torso, hands/handle, legs/torso, and boots/ground separated rather than accidentally melding at same-value contacts?",
-      "verdict": "PASS",
-      "rationale": "At native 16\u00d724, face/beard, beard/torso, legs/torso, and boots/ground read as separated masses; buckle and lamp remain distinct accents."
-    },
-    {
-      "id": "palette_lighting_outline",
-      "question": "Do Master Palette roles, upper-left local light, and selective warm-dark outline remain stable across Frames?",
-      "verdict": "PASS",
-      "rationale": "Every opaque Cell is now an exact Master Palette colour; warm-dark selective outline, upper-left local highlights, and role hues stay stable across the loop."
-    },
-    {
-      "id": "temporal_consistency",
-      "question": "Do identity accents and intentional outlines remain stable across Frames without one-Frame decorative flicker?",
-      "verdict": "PASS",
-      "rationale": "Identity accents (lamp, buckle, eye, pickaxe) do not one-Frame flicker; motion is subtle breathing with planted boots and tight f3\u2192f0 loop closure."
-    }
-  ],
-  "explicit_confirmations": {
-    "stout_dwarf_read": "PASS",
-    "black_eye_cell": "PASS",
-    "stable_helmet_lamp_beard_belt_anchors": "PASS",
-    "planted_boots": "PASS",
-    "closed_idle_loop": "PASS"
+  {
+   "id": "native_scale_separation",
+   "question": "At native scale, are face/beard, beard/torso, hands/handle, legs/torso, and boots/ground separated rather than accidentally melding at same-value contacts?",
+   "verdict": "PASS",
+   "rationale": "At native 16×24, face/beard, beard/torso, legs/torso, and boots/ground read as separated masses; buckle and lamp remain distinct accents."
   },
-  "uncertain_count": 0,
-  "overall": "PASS"
+  {
+   "id": "palette_lighting_outline",
+   "question": "Do Master Palette roles, upper-left local light, and selective warm-dark outline remain stable across Frames?",
+   "verdict": "PASS",
+   "rationale": "Every opaque Cell is now an exact Master Palette colour; warm-dark selective outline, upper-left local highlights, and role hues stay stable across the loop."
+  },
+  {
+   "id": "temporal_consistency",
+   "question": "Do identity accents and intentional outlines remain stable across Frames without one-Frame decorative flicker?",
+   "verdict": "PASS",
+   "rationale": "Identity accents (lamp, buckle, eye, pickaxe) do not one-Frame flicker; motion is subtle breathing with planted boots and tight f3→f0 loop closure."
+  }
+ ],
+ "explicit_confirmations": {
+  "stout_dwarf_read": "PASS",
+  "black_eye_cell": "PASS",
+  "stable_helmet_lamp_beard_belt_anchors": "PASS",
+  "planted_boots": "PASS",
+  "closed_idle_loop": "PASS"
+ },
+ "uncertain_count": 0,
+ "overall": "PASS",
+ "identity_binding": {
+  "identity_png_sha256": "707442d156b96b862f801a5e81febdbb5ca47c82e0d3587dffc255c7e02b4357",
+  "issue": 300,
+  "human_visual_approval": "2026-08-02, assets/first-room/dwarf/parts-review.png vs parts-review-before-300.png"
+ }
 }

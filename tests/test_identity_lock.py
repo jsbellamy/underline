@@ -49,8 +49,10 @@ SOFT_SHADED_SOURCE_PNG = (
     ROOT / "assets" / "first-room" / "dwarf" / "idle" / "draft" / "frame-0.png"
 )
 CANONICAL_IDENTITY_SHA = "707442d156b96b862f801a5e81febdbb5ca47c82e0d3587dffc255c7e02b4357"
+# Re-pinned on #300 for the glove/haft re-role. The pin is anchored by the
+# zero hand-cleanup delta asserted below, not derived from the quantizer.
 PRE_CLEANUP_IDENTITY_CELL_SHA = (
-    "6160cb94751f397f3ca64acaf2fb76dcba7e93e50ecda343d9e360e39a147639"
+    "aab388ecd3875e492ce1f147020e638654427b637be61e1d50114b1020f52ecb"
 )
 BEARD_CHEST_RECT = {"x0": 10, "x1": 13, "y0": 6, "y1": 14}
 LANDMARK_COORDS = {
@@ -226,9 +228,13 @@ def test_walk_large_occupancy_change_fails_registered_structure() -> None:
     assert check["outcome"] == "FAIL"
     assert check["occupancy_difference"] == 105 / 218
     # Re-baselined by #300: canonical role composition shifted when haft became stone
-    # and glove leather became skin; occupancy_difference is unchanged.
+    # and glove leather became skin; occupancy_difference is unchanged, which is the
+    # evidence that only composition moved. The blanked x0..7 band is where the haft
+    # lives, so removing it now removes 27 of 28 stone Cells instead of 8, and the
+    # distance rises. Recomputed independently from the Master Palette and the
+    # committed raster before re-pinning.
     assert check["palette_role_distance"] == pytest.approx(
-        0.14044233807266984,
+        0.15580568720379143,
         abs=METRIC_ABS_TOLERANCE,
     )
 
