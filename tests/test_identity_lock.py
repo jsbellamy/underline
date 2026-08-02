@@ -48,9 +48,11 @@ IDLE_PROVIDER_SOURCE = (
 SOFT_SHADED_SOURCE_PNG = (
     ROOT / "assets" / "first-room" / "dwarf" / "idle" / "draft" / "frame-0.png"
 )
-CANONICAL_IDENTITY_SHA = "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6"
+CANONICAL_IDENTITY_SHA = "707442d156b96b862f801a5e81febdbb5ca47c82e0d3587dffc255c7e02b4357"
+# Re-pinned on #300 for the glove/haft re-role. The pin is anchored by the
+# zero hand-cleanup delta asserted below, not derived from the quantizer.
 PRE_CLEANUP_IDENTITY_CELL_SHA = (
-    "cabcc1ff3725dcb3370d0e699ef7ac1af1db5ea1a3e9e6dbee03cc08806ff2f9"
+    "aab388ecd3875e492ce1f147020e638654427b637be61e1d50114b1020f52ecb"
 )
 BEARD_CHEST_RECT = {"x0": 10, "x1": 13, "y0": 6, "y1": 14}
 LANDMARK_COORDS = {
@@ -210,7 +212,7 @@ def test_walk_registered_structure_allows_limited_occupancy_change() -> None:
     assert check["outcome"] == "PASS"
     assert check["occupancy_difference"] == 1 / 212
     assert check["palette_role_distance"] == pytest.approx(
-        38 / 11183,
+        0.0036886345345613983,
         abs=METRIC_ABS_TOLERANCE,
     )
 
@@ -225,11 +227,14 @@ def test_walk_large_occupancy_change_fails_registered_structure() -> None:
     check = result.per_frame[2].check_results["upper_body"]
     assert check["outcome"] == "FAIL"
     assert check["occupancy_difference"] == 105 / 218
-    # Re-baselined by #179: the mutation is scored against the canonical raster,
-    # whose role composition changed when it became palette-exact. The alpha mask
-    # did not change, so occupancy_difference is unchanged.
+    # Re-baselined by #300: canonical role composition shifted when haft became stone
+    # and glove leather became skin; occupancy_difference is unchanged, which is the
+    # evidence that only composition moved. The blanked x0..7 band is where the haft
+    # lives, so removing it now removes 27 of 28 stone Cells instead of 8, and the
+    # distance rises. Recomputed independently from the Master Palette and the
+    # committed raster before re-pinning.
     assert check["palette_role_distance"] == pytest.approx(
-        2840 / 25320,
+        0.15580568720379143,
         abs=METRIC_ABS_TOLERANCE,
     )
 
@@ -909,8 +914,8 @@ def test_identity_roles_reproduce_precleanup_raster(tmp_path: Path) -> None:
         for x in range(16)
         if precleanup[y][x] != committed_identity[y][x]
     )
-    # Hand cleanup: (5,4) cyan helmet island, (12,7) and (8,12) isolated skin in beard.
-    assert diff_count == 3
+    # Hand cleanup: role map reproduces committed identity exactly after #300 re-role.
+    assert diff_count == 0
 
 
 def test_evaluate_identity_lock_resolves_the_single_canonical_identity() -> None:

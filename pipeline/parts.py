@@ -1,4 +1,4 @@
-"""Canonical dwarf Cell part map loader (issue #295)."""
+"""Canonical dwarf Cell part map loader and review render (issues #295, #298)."""
 
 from __future__ import annotations
 
@@ -17,8 +17,13 @@ __all__ = [
     "Part",
     "PartMap",
     "PartMapError",
+    "REVIEW_SCALE",
+    "_REVIEW_COLORS",
     "lattice_orientation",
     "load_part_map",
+    "minimum_review_color_delta_e",
+    "render_part_map",
+    "review_tile_label",
 ]
 
 SCHEMA = "cell-part-map/0"
@@ -34,6 +39,28 @@ ORIENTATION_IDS = (
     "rot270",
     "rot270+mirror",
 )
+REVIEW_SCALE = 12
+_REVIEW_COLORS: dict[str, tuple[int, int, int, int]] = {
+    "tool_head": (165, 8, 8, 255),
+    "tool_handle": (204, 115, 10, 255),
+    "helmet": (128, 140, 7, 255),
+    "lamp": (12, 242, 18, 255),
+    "head_face": (9, 192, 87, 255),
+    "beard": (8, 165, 147, 255),
+    "arm_near": (10, 160, 216, 255),
+    "hand_near": (45, 11, 230, 255),
+    "hand_far": (201, 227, 0, 255),
+    "belt": (76, 6, 133, 255),
+    "legs": (219, 10, 184, 255),
+    "boots": (186, 9, 95, 255),
+}
+_LANDMARK_PART_IDS: dict[str, str] = {
+    "lamp": "lamp",
+    "eye": "head_face",
+    "buckle": "belt",
+}
+_IDENTITY_LOCKS_PATH = _REPO_ROOT / "assets" / "first-room" / "dwarf" / "identity-locks.json"
+_NEUTRAL_REVIEW_RGBA = (48, 48, 48, 255)
 _REQUIRED_PART_IDS = frozenset(
     {
         "tool_head",
@@ -42,9 +69,9 @@ _REQUIRED_PART_IDS = frozenset(
         "lamp",
         "head_face",
         "beard",
-        "torso",
         "arm_near",
         "hand_near",
+        "hand_far",
         "belt",
         "legs",
         "boots",
@@ -203,6 +230,121 @@ def _mirror_footprint(footprint: Footprint) -> Footprint:
     )
 
 
+def _chebyshev(a: tuple[int, int], b: tuple[int, int]) -> int:
+    return max(abs(a[0] - b[0]), abs(a[1] - b[1]))
+
+
+def _four_connected_blobs(cells: frozenset[tuple[int, int]]) -> list[set[tuple[int, int]]]:
+    remaining = set(cells)
+    blobs: list[set[tuple[int, int]]] = []
+    while remaining:
+        start = next(iter(remaining))
+        stack = [start]
+        blob: set[tuple[int, int]] = set()
+        while stack:
+            cell = stack.pop()
+            if cell not in remaining or cell in blob:
+                continue
+            blob.add(cell)
+            x, y = cell
+            for dx, dy in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+                stack.append((x + dx, y + dy))
+        blobs.append(blob)
+        remaining -= blob
+    return blobs
+
+
+def _load_identity_landmarks() -> dict[str, tuple[int, int]]:
+    document = json.loads(_IDENTITY_LOCKS_PATH.read_text(encoding="utf-8"))
+    motion_classes = document.get("motion_classes")
+    if not isinstance(motion_classes, dict):
+        raise PartMapError(
+            "identity locks motion_classes must be an object",
+            reason_code="invalid_identity_locks",
+        )
+    walk = motion_classes.get("walk")
+    if not isinstance(walk, dict):
+        raise PartMapError(
+            "identity locks walk motion class is required",
+            reason_code="invalid_identity_locks",
+        )
+    landmarks = walk.get("landmarks")
+    if not isinstance(landmarks, list):
+        raise PartMapError(
+            "identity locks walk landmarks must be an array",
+            reason_code="invalid_identity_locks",
+        )
+    parsed: dict[str, tuple[int, int]] = {}
+    for row in landmarks:
+        if not isinstance(row, dict):
+            continue
+        landmark_id = row.get("id")
+        canonical = row.get("canonical")
+        if not isinstance(landmark_id, str) or not isinstance(canonical, list) or len(canonical) != 2:
+            continue
+        x, y = canonical
+        if isinstance(x, int) and isinstance(y, int):
+            parsed[landmark_id] = (x, y)
+    return parsed
+
+
+def _validate_part_connectivity(parsed_parts: dict[str, Part]) -> None:
+    for part_id, part in parsed_parts.items():
+        blobs = _four_connected_blobs(part.cells)
+        if len(blobs) > 1:
+            raise PartMapError(
+                f"part {part_id!r} must be one 4-connected component, found {len(blobs)}",
+                reason_code="part_not_connected",
+            )
+
+
+def _validate_landmark_parts(parsed_parts: dict[str, Part]) -> None:
+    landmarks = _load_identity_landmarks()
+    cell_owner = {
+        cell: part_id
+        for part_id, part in parsed_parts.items()
+        for cell in part.cells
+    }
+    for landmark_id, required_part_id in _LANDMARK_PART_IDS.items():
+        cell = landmarks.get(landmark_id)
+        if cell is None:
+            raise PartMapError(
+                f"identity lock landmark {landmark_id!r} is missing",
+                reason_code="landmark_part_mismatch",
+            )
+        owner = cell_owner.get(cell)
+        if owner != required_part_id:
+            raise PartMapError(
+                f"landmark {landmark_id!r} at {cell[0]},{cell[1]} must belong to {required_part_id!r}, found {owner!r}",
+                reason_code="landmark_part_mismatch",
+            )
+
+
+def _validate_tool_carried(parsed_parts: dict[str, Part]) -> None:
+    handle = parsed_parts["tool_handle"]
+    parent_id = handle.parent
+    if parent_id is None:
+        raise PartMapError(
+            "tool_handle must declare a parent part",
+            reason_code="tool_not_carried",
+        )
+    parent = parsed_parts.get(parent_id)
+    if parent is None:
+        raise PartMapError(
+            f"tool_handle parent {parent_id!r} is unknown",
+            reason_code="tool_not_carried",
+        )
+    if not any(
+        _chebyshev(handle_cell, parent_cell) <= 1
+        for handle_cell in handle.cells
+        for parent_cell in parent.cells
+    ):
+        raise PartMapError(
+            f"tool_handle is not carried by parent {parent_id!r}",
+            reason_code="tool_not_carried",
+        )
+
+
 def lattice_orientation(footprint: Footprint, orientation_id: str) -> Footprint:
     if orientation_id not in ORIENTATION_IDS:
         raise PartMapError(
@@ -243,7 +385,55 @@ def _footprint_from_part_cells(
     )
 
 
-def load_part_map(path: Path | str) -> PartMap:
+def _validate_material_part_alignment(
+    parsed_parts: dict[str, Part],
+    identity_roles_path: Path,
+) -> None:
+    try:
+        doc = json.loads(identity_roles_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise PartMapError(
+            f"invalid identity role map: {identity_roles_path}",
+            reason_code="invalid_identity_roles",
+        ) from exc
+    cells_doc = doc.get("cells")
+    if not isinstance(cells_doc, dict):
+        raise PartMapError(
+            "identity role map requires cells object",
+            reason_code="invalid_identity_roles",
+        )
+    role_cells = {
+        (int(x_text), int(y_text)): role
+        for key, role in cells_doc.items()
+        if isinstance(role, str)
+        for x_text, y_text in [str(key).split(",", maxsplit=1)]
+    }
+    stone_cells = frozenset(cell for cell, role in role_cells.items() if role == "stone")
+    skin_cells = frozenset(cell for cell, role in role_cells.items() if role == "skin")
+    tool_cells = frozenset(
+        parsed_parts["tool_head"].cells | parsed_parts["tool_handle"].cells
+    )
+    head_face = frozenset(parsed_parts["head_face"].cells)
+    hand_cells = frozenset(
+        parsed_parts["hand_near"].cells | parsed_parts["hand_far"].cells
+    )
+    if stone_cells != tool_cells:
+        raise PartMapError(
+            "stone role cells must equal tool_head union tool_handle material cells",
+            reason_code="material_part_mismatch",
+        )
+    if skin_cells - head_face != hand_cells:
+        raise PartMapError(
+            "skin role cells outside head_face must equal hand_near union hand_far material cells",
+            reason_code="material_part_mismatch",
+        )
+
+
+def load_part_map(
+    path: Path | str,
+    *,
+    identity_roles_path: Path | str | None = None,
+) -> PartMap:
     document_path = Path(path)
     document = json.loads(document_path.read_text(encoding="utf-8"))
     schema = document.get("schema")
@@ -333,13 +523,7 @@ def load_part_map(path: Path | str) -> PartMap:
             pivot_raw,
             where=f"parts.{part_id}.pivot",
         )
-        if parent is None:
-            if pivot is not None:
-                raise PartMapError(
-                    f"part {part_id!r} root cannot declare a pivot",
-                    reason_code="invalid_part_map_parent",
-                )
-        elif pivot is None:
+        if parent is not None and pivot is None:
             raise PartMapError(
                 f"part {part_id!r} must declare a pivot",
                 reason_code="invalid_part_map_parent",
@@ -435,6 +619,16 @@ def load_part_map(path: Path | str) -> PartMap:
             reason_code="unassigned_opaque_cell",
         )
 
+    _validate_part_connectivity(parsed_parts)
+    _validate_landmark_parts(parsed_parts)
+    _validate_tool_carried(parsed_parts)
+    roles_path = (
+        Path(identity_roles_path)
+        if identity_roles_path is not None
+        else _REPO_ROOT / "assets" / "first-room" / "dwarf" / "identity-roles.json"
+    )
+    _validate_material_part_alignment(parsed_parts, roles_path)
+
     return PartMap(
         schema=SCHEMA,
         base_raster_sha256=digest,
@@ -452,3 +646,149 @@ def build_rigid_orientations(
         orientation_id: _footprint_to_payload(lattice_orientation(rot0, orientation_id))
         for orientation_id in ORIENTATION_IDS
     }
+
+
+def _rgb_to_lab(r: int, g: int, b: int) -> tuple[float, float, float]:
+    def pivot(channel: float) -> float:
+        return ((channel + 0.055) / 1.055) ** 2.4 if channel > 0.04045 else channel / 12.92
+
+    red, green, blue = (
+        pivot(r / 255.0),
+        pivot(g / 255.0),
+        pivot(b / 255.0),
+    )
+    x = red * 0.4124 + green * 0.3576 + blue * 0.1805
+    y = red * 0.2126 + green * 0.7152 + blue * 0.0722
+    z = red * 0.0193 + green * 0.1192 + blue * 0.9505
+    x /= 0.95047
+    z /= 1.08883
+
+    def f(channel: float) -> float:
+        return channel ** (1 / 3) if channel > 0.008856 else (7.787 * channel) + (16 / 116)
+
+    fx, fy, fz = f(x), f(y), f(z)
+    return (116.0 * fy) - 16.0, 500.0 * (fx - fy), 200.0 * (fy - fz)
+
+
+def _cie76_delta_e(
+    left: tuple[int, int, int, int],
+    right: tuple[int, int, int, int],
+) -> float:
+    lab_left = _rgb_to_lab(left[0], left[1], left[2])
+    lab_right = _rgb_to_lab(right[0], right[1], right[2])
+    return sum((a - b) ** 2 for a, b in zip(lab_left, lab_right)) ** 0.5
+
+
+def minimum_review_color_delta_e() -> float:
+    colors = list(_REVIEW_COLORS.values())
+    return min(
+        _cie76_delta_e(colors[index], colors[other])
+        for index in range(len(colors))
+        for other in range(index + 1, len(colors))
+    )
+
+
+def review_tile_label(part_id: str, part: Part) -> str:
+    count = len(part.cells)
+    if part.parent is None:
+        return f"{part_id} (root) ({count})"
+    return f"{part_id} \u2190 {part.parent} ({count})"
+
+
+def _contrast_border_rgba(color: tuple[int, int, int, int]) -> tuple[int, int, int, int]:
+    luminance = 0.299 * color[0] + 0.587 * color[1] + 0.114 * color[2]
+    if luminance < 128:
+        return (255, 255, 255, 255)
+    return (0, 0, 0, 255)
+
+
+def render_part_map(part_map: PartMap, base_path: Path | str) -> "Image.Image":
+    from PIL import Image, ImageDraw
+
+    base_path = Path(base_path)
+    base_cells = read_cells(base_path)
+    width, height = part_map.frame_size
+    color_lookup: dict[tuple[int, int], tuple[int, int, int, int]] = {}
+    for part_id, part in part_map.parts.items():
+        color = _REVIEW_COLORS[part_id]
+        for cell in part.cells:
+            color_lookup[cell] = color
+
+    def frame_from_rgba(fill_lookup: Mapping[tuple[int, int], tuple[int, int, int, int]]) -> Image.Image:
+        image = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+        pixels = image.load()
+        for y, row in enumerate(base_cells):
+            for x, cell in enumerate(row):
+                if cell is None:
+                    continue
+                pixels[x, y] = fill_lookup.get((x, y), (*cell, 255))
+        return image
+
+    base_native = frame_from_rgba({})
+    base_scaled = base_native.resize(
+        (width * REVIEW_SCALE, height * REVIEW_SCALE),
+        Image.NEAREST,
+    )
+    overlay_scaled = frame_from_rgba(color_lookup).resize(
+        (width * REVIEW_SCALE, height * REVIEW_SCALE),
+        Image.NEAREST,
+    )
+
+    part_ids = sorted(part_map.parts)
+    tile_w = width * REVIEW_SCALE
+    tile_h = height * REVIEW_SCALE
+    label_h = 16
+    tiles_per_row = 4
+    tile_rows = (len(part_ids) + tiles_per_row - 1) // tiles_per_row
+    part_grid_h = tile_rows * (tile_h + label_h + 4)
+    panel1_h = height + 4 + height * REVIEW_SCALE
+    panel2_h = height * REVIEW_SCALE + 8
+    total_h = 8 + panel1_h + 8 + panel2_h + 8 + part_grid_h + 8
+    total_w = max(
+        width + 4 + width * REVIEW_SCALE,
+        overlay_scaled.width,
+        tiles_per_row * tile_w + (tiles_per_row - 1) * 4,
+    )
+    sheet = Image.new("RGBA", (total_w, total_h), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(sheet)
+    font = None
+
+    y = 4
+    sheet.paste(base_native, (0, y))
+    sheet.paste(base_scaled, (width + 4, y))
+    y += panel1_h + 8
+    sheet.paste(overlay_scaled, (0, y))
+    y += panel2_h + 8
+
+    for index, part_id in enumerate(part_ids):
+        row = index // tiles_per_row
+        col = index % tiles_per_row
+        x = col * (tile_w + 4)
+        tile_y = y + row * (tile_h + label_h + 4)
+        part = part_map.parts[part_id]
+        part_color = _REVIEW_COLORS[part_id]
+        border_color = _contrast_border_rgba(part_color)
+        border_cells: set[tuple[int, int]] = set()
+        for cell_x, cell_y in part.cells:
+            for dx, dy in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+                neighbor = (cell_x + dx, cell_y + dy)
+                if neighbor not in part.cells and base_cells[cell_y][cell_x] is not None:
+                    border_cells.add(neighbor)
+        tile_lookup: dict[tuple[int, int], tuple[int, int, int, int]] = {}
+        for cell_y, row_cells in enumerate(base_cells):
+            for cell_x, cell in enumerate(row_cells):
+                if cell is None:
+                    continue
+                coord = (cell_x, cell_y)
+                if coord in part.cells:
+                    tile_lookup[coord] = part_color
+                elif coord in border_cells:
+                    tile_lookup[coord] = border_color
+                else:
+                    tile_lookup[coord] = _NEUTRAL_REVIEW_RGBA
+        tile = frame_from_rgba(tile_lookup).resize((tile_w, tile_h), Image.NEAREST)
+        sheet.paste(tile, (x, tile_y))
+        label = review_tile_label(part_id, part)
+        draw.text((x, tile_y + tile_h + 2), label, fill=(220, 220, 220, 255), font=font)
+
+    return sheet

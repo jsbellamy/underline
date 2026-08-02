@@ -42,7 +42,7 @@ BAD_RGB = (17, 23, 32)
 
 
 DWARF_RELEASE_FRAMES: tuple[tuple[str, str, int, int, int], ...] = (
-    ("dwarf-idle", "idle", 268, 23, 268),
+    ("dwarf-idle", "idle", 268, 24, 268),
     ("dwarf-walk", "walk", 152, 20, 152),
     ("dwarf-swing", "swing", 177, 19, 177),
 )

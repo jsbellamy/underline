@@ -1,6 +1,6 @@
 {
   "schema": "dwarf-identity/0",
-  "subject_read": "iconic working dwarf, compact and sturdy rather than tall human; immediately readable at native 16\u00d724 scale",
+  "subject_read": "iconic working dwarf, compact and sturdy rather than tall human; immediately readable at native 16×24 scale",
   "canonical_description": {
     "proportions": "very short and broad",
     "beard": "large rust-brown beard",
@@ -8,7 +8,7 @@
     "eye": "one black eye Cell when exposed, no white sclera",
     "tunic": "GREEN work tunic",
     "belt": "dark leather belt with small amber buckle",
-    "gloves": "thick gloves",
+    "gloves": "thick gloves in dark-tan skin ramp (#6C3D31 / #A45F46), value-separated from earth-leather-beard",
     "boots": "broad brown boots",
     "pickaxe": "compact heavy pickaxe resting behind the right shoulder",
     "facing": "right",
@@ -19,7 +19,7 @@
   },
   "identity_png": {
     "relative_path": "assets/first-room/dwarf/identity.png",
-    "sha256": "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6",
+    "sha256": "707442d156b96b862f801a5e81febdbb5ca47c82e0d3587dffc255c7e02b4357",
     "source": "assets/first-room/dwarf/idle/release/frame-0.png"
   },
   "generation_source": {
@@ -32,10 +32,10 @@
     "relative_path": "assets/first-room/dwarf/idle",
     "motion_class": "idle",
     "polish_profile": "dwarf-miner",
-    "report_relative_path": "assets/first-room/dwarf/idle/reports/c95fd35dec103433e2fdfdc65ef4c7133d6b2496b5fd7bd7db98991d98d1fe3c.json",
-    "report_sha256": "756493795710c219a93c0190f0cddf9f7f5a69af3925af3498d592458cee72bf",
-    "report_fingerprint": "c95fd35dec103433e2fdfdc65ef4c7133d6b2496b5fd7bd7db98991d98d1fe3c",
-    "release_frame_0_sha256": "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6"
+    "report_relative_path": "assets/first-room/dwarf/idle/reports/ac47afff3132d725fa73dcd04f292b2b3449c0e0c162af005eb2ea3eaa24e0c9.json",
+    "report_sha256": "9fadc3ca8338e52f17dfb9553a77627ae6f7b4f882cd1c5234bc6a4690d02237",
+    "report_fingerprint": "ac47afff3132d725fa73dcd04f292b2b3449c0e0c162af005eb2ea3eaa24e0c9",
+    "release_frame_0_sha256": "707442d156b96b862f801a5e81febdbb5ca47c82e0d3587dffc255c7e02b4357"
   },
   "visual_reference_for": [
     "walk",

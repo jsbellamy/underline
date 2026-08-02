@@ -33,7 +33,7 @@ WALK_STRIP = INBOX / "05-miner-walk.png"
 SWING_STRIP = INBOX / "06-miner-swing.png"
 IDENTITY_PNG = ROOT / "assets" / "first-room" / "dwarf" / "identity.png"
 IDENTITY_JSON = ROOT / "assets" / "first-room" / "dwarf" / "identity.json"
-CANONICAL_IDENTITY_SHA = "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6"
+CANONICAL_IDENTITY_SHA = "707442d156b96b862f801a5e81febdbb5ca47c82e0d3587dffc255c7e02b4357"
 _PROMPT_TEXT = "underline test provenance prompt"
 
 

@@ -24,8 +24,12 @@ MANIFEST = ROOT / "gate-controls" / "manifest.json"
 TOLERANCE = 0.002
 
 C1_TABLE = {
+    # idle Frame 0<->1 rgba churn moved 0.4193 -> 0.4375 on #300: the re-role rewrote
+    # 35 Cells of canonical Frame 0, of which a net 7 newly disagree with Frame 1
+    # (161/384 -> 168/384). Only Frame 0 is canonical, so pairs 1<->2 and 2<->3 and
+    # every alpha figure are unchanged — the re-role touched colour, not silhouette.
     "idle": {
-        "rgba": (0.4193, 0.2292, 0.3333),
+        "rgba": (0.4375, 0.2292, 0.3333),
         "alpha": (0.1289, 0.0623, 0.0664),
     },
     "walk": {

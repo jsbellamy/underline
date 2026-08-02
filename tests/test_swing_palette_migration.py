@@ -21,7 +21,7 @@ POLISHED_ROLES_JSON = SWING_BUNDLE / "polished-roles.json"
 MASTER_PALETTE_PATH = ROOT / "assets" / "palettes" / "first-room.json"
 
 PALETTE_EXACT_IDENTITY_SHA = (
-    "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6"
+    "707442d156b96b862f801a5e81febdbb5ca47c82e0d3587dffc255c7e02b4357"
 )
 
 PRE_CLEANUP_CELL_SHA256 = {
