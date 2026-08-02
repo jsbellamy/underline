@@ -9,19 +9,33 @@ from pathlib import Path
 from typing import Any
 
 from pipeline.cell_raster import read_cells, write_cells
+from pipeline.final_polish import FinalPolishError, _load_base_release_frames
 from pipeline.identity_lock import load_identity_lock_spec
 from pipeline.motion_author import MotionAuthorError, author_motion
 from pipeline.palette_quantize import load_master_palette
+from pipeline.strip import Cell
 
 
-def _discover_base_frames(base_bundle: Path) -> list[Path]:
+
+def _discover_base_frames(base_bundle: Path, motion_class: str) -> list[list[list[Cell]]]:
+    """Load base Frames from ``base_bundle``, embedded onto ``motion_class``'s canvas.
+
+    Accepts either a Polish Bundle root (read via the shared C1 embedding rule
+    in `final_polish._load_base_release_frames`) or a bare directory of
+    `frame-*.png` files, unchanged for backward compatibility.
+    """
+    if (base_bundle / "manifest.json").is_file():
+        try:
+            return _load_base_release_frames(base_bundle, motion_class)
+        except FinalPolishError as exc:
+            raise MotionAuthorError(str(exc), reason_code="authoring_boundary_violation") from exc
     paths = sorted(base_bundle.glob("frame-*.png"))
     if not paths:
         raise MotionAuthorError(
             f"no frame-*.png files in base bundle: {base_bundle}",
             reason_code="authoring_boundary_violation",
         )
-    return paths
+    return [read_cells(path, label="base frame") for path in paths]
 
 
 def _load_pose_plan(path: Path) -> dict[str, Any]:
@@ -60,10 +74,14 @@ def run(argv: list[str] | None = None) -> int:
 
     try:
         pose_plan = _load_pose_plan(args.pose_plan)
+        motion_class = pose_plan.get("motion_class")
+        if not isinstance(motion_class, str) or not motion_class:
+            raise MotionAuthorError(
+                "pose plan motion_class required", reason_code="authoring_boundary_violation"
+            )
         identity_lock_spec = load_identity_lock_spec(args.identity_locks)
         palette = load_master_palette(args.palette)
-        frame_paths = _discover_base_frames(args.base_bundle)
-        base_frames = [read_cells(path, label="base frame") for path in frame_paths]
+        base_frames = _discover_base_frames(args.base_bundle, motion_class)
         result = author_motion(base_frames, pose_plan, identity_lock_spec, palette)
 
         args.frames_out.mkdir(parents=True, exist_ok=True)

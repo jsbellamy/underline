@@ -15,10 +15,11 @@ from PIL import Image
 
 from pipeline import asset_acquire as aa
 from pipeline.cell_delta import build_cell_delta_ledger
-from pipeline.cell_raster import read_cells, write_cells
+from pipeline.cell_raster import write_cells
 from pipeline.final_polish import (
     MOTION_POSE_PLAN_SCHEMA,
     PROVENANCE_SCHEMA,
+    _load_base_release_frames,
     initialize_bundle,
 )
 from pipeline.gate_evidence import sha256_bytes, sha256_file
@@ -271,24 +272,39 @@ def prepare_cell_author(
     polish_profile: str | None = None,
     base_frame_mapping: list[int] | None = None,
     mutate_frame: tuple[int, int, int, tuple[int, int, int]] | None = None,
+    base_motion_class: str | None = None,
+    base_bundle_root: Path | None = None,
 ) -> PreparedCellAuthor:
-    """Build a cell-author fixture from a finalized provider base bundle."""
-    base_bundle = tmp_path / "base-bundle"
-    attempt = prepare(
-        PASS_STRIP if motion_class == "idle" else WALK_STRIP,
-        motion_class,
-        tmp_path,
-        polish_profile=polish_profile,
-    )
-    init_bundle(attempt, base_bundle)
-    layout = layout_for_motion_class(motion_class, margin_cells=0)
-    release_dir = base_bundle / "release"
-    release_dir.mkdir(exist_ok=True)
-    for index in range(layout.frame_count):
-        shutil.copy2(
-            base_bundle / "polished" / f"frame-{index}.png",
-            release_dir / f"frame-{index}.png",
+    """Build a cell-author fixture from a finalized provider base bundle.
+
+    `base_motion_class` and `base_bundle_root` let the base Bundle's Motion
+    class differ from the authored `motion_class` (issue #290): the base
+    Bundle's release Frames are embedded onto the target class canvas via
+    the same shared rule `initialize_cell_authored_bundle` uses
+    (`pipeline.final_polish._load_base_release_frames`), so a 16x24 base can
+    author a 24x24 target. `base_bundle_root`, when given, is used directly
+    as the base Bundle instead of synthesizing one.
+    """
+    if base_bundle_root is not None:
+        base_bundle = base_bundle_root
+    else:
+        base_bundle = tmp_path / "base-bundle"
+        synth_motion_class = base_motion_class or motion_class
+        attempt = prepare(
+            PASS_STRIP if synth_motion_class == "idle" else WALK_STRIP,
+            synth_motion_class,
+            tmp_path,
+            polish_profile=polish_profile,
         )
+        init_bundle(attempt, base_bundle)
+        synth_layout = layout_for_motion_class(synth_motion_class, margin_cells=0)
+        release_dir = base_bundle / "release"
+        release_dir.mkdir(exist_ok=True)
+        for index in range(synth_layout.frame_count):
+            shutil.copy2(
+                base_bundle / "polished" / f"frame-{index}.png",
+                release_dir / f"frame-{index}.png",
+            )
 
     provenance = json.loads((base_bundle / "provider" / "source.source.json").read_text())
     specification_id = str(provenance["specification_id"])
@@ -296,10 +312,7 @@ def prepare_cell_author(
     if base_frame_mapping is None:
         base_frame_mapping = [0] * layout.frame_count
 
-    release_frames = [
-        read_cells(base_bundle / "release" / f"frame-{index}.png")
-        for index in range(layout.frame_count)
-    ]
+    release_frames = _load_base_release_frames(base_bundle, motion_class)
     target_frames = [frame[:] for frame in release_frames]
     if mutate_frame is not None:
         frame_index, x, y, rgb = mutate_frame

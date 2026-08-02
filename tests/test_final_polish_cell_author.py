@@ -362,6 +362,81 @@ def _init_cell_from_walk(tmp_path: Path) -> tuple[pb.PreparedCellAuthor, Path]:
     return prepared, bundle
 
 
+REAL_DWARF_IDLE_BUNDLE = ROOT / "assets" / "first-room" / "dwarf" / "idle"
+
+
+def _prepare_swing_from_real_idle_bundle(tmp_path: Path) -> pb.PreparedCellAuthor:
+    """C4: cell-author a swing Bundle from the real checked-in dwarf idle Bundle.
+
+    The idle Bundle's release Frames are 16x24; swing's canvas is 24x24 at
+    canonical_origin (4, 0) — this only succeeds because `initialize_cell_authored_bundle`
+    embeds the base onto the target class canvas before validating the ledger (issue #290).
+    """
+    return pb.prepare_cell_author(
+        "swing",
+        tmp_path,
+        polish_profile="dwarf-miner",
+        base_bundle_root=REAL_DWARF_IDLE_BUNDLE,
+    )
+
+
+def _init_cell_from_real_idle_to_swing(tmp_path: Path) -> tuple[pb.PreparedCellAuthor, Path]:
+    prepared = _prepare_swing_from_real_idle_bundle(tmp_path)
+    bundle = tmp_path / "swing-cell-bundle"
+    pb.init_cell_bundle(prepared, bundle)
+    return prepared, bundle
+
+
+def test_cell_author_swing_from_real_idle_bundle_reaches_providerless_bundle(
+    tmp_path: Path,
+) -> None:
+    prepared, bundle = _init_cell_from_real_idle_to_swing(tmp_path)
+    manifest = json.loads((bundle / "manifest.json").read_text())
+    assert manifest["schema"] == BUNDLE_SCHEMA
+    assert manifest["generation_mode"] == CELL_AUTHOR_GENERATION_MODE
+    assert manifest["motion_class"] == "swing"
+    assert manifest["layout"]["frame_w"] == 24
+    assert manifest["layout"]["frame_h"] == 24
+    assert not (bundle / "provider").exists()
+
+    provenance = json.loads((bundle / "authoring" / "provenance.json").read_text())
+    assert provenance["motion_class"] == "swing"
+    assert provenance["base_specification_id"] == "first-room/dwarf/idle"
+
+
+def test_cell_author_swing_authoring_base_bytes_match_ledger_digests(tmp_path: Path) -> None:
+    prepared, bundle = _init_cell_from_real_idle_to_swing(tmp_path)
+    ledger = json.loads(prepared.cell_delta_ledger.read_text())
+    for index, expected_digest in enumerate(ledger["base_frames_sha256"]):
+        base_path = bundle / "authoring" / "base" / f"frame-{index}.png"
+        assert read_cells(base_path, size=(24, 24)) is not None
+        assert sha256_file(base_path) == expected_digest
+
+
+def test_cell_author_swing_rejects_unembedded_base_hash(tmp_path: Path) -> None:
+    prepared = _prepare_swing_from_real_idle_bundle(tmp_path)
+    ledger = json.loads(prepared.cell_delta_ledger.read_text())
+    ledger["base_frames_sha256"][0] = "f" * 64
+    bad_ledger = tmp_path / "bad-ledger.json"
+    bad_ledger.write_text(json.dumps(ledger, indent=2, sort_keys=True) + "\n")
+
+    with pytest.raises(InitializationRejectedError) as exc:
+        initialize_cell_authored_bundle(
+            prepared.authored_frames_dir,
+            "swing",
+            tmp_path / "swing-cell-bundle-rejected",
+            specification_id=prepared.specification_id,
+            base_bundle_root=prepared.base_bundle,
+            cell_delta_ledger=bad_ledger,
+            pose_plan=prepared.pose_plan,
+            polish_profile=prepared.polish_profile,
+            identity_reference=prepared.identity_reference,
+            authoring_agent=prepared.authoring_agent,
+            authoring_session_id=prepared.authoring_session_id,
+        )
+    assert exc.value.reason_code == "base_frame_hash_mismatch"
+
+
 def test_init_cell_cli_success(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],

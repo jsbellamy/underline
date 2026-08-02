@@ -233,8 +233,10 @@ def _embed_frames_for_manifest_layout(
     *,
     motion_class: str,
     layout: StripLayout,
+    anchor_layout: StripLayout | None = None,
 ) -> list[list[list[Cell]]]:
-    anchor_layout = _corpus_layout()
+    if anchor_layout is None:
+        anchor_layout = _corpus_layout()
     if (
         layout.frame_w == anchor_layout.frame_w
         and layout.frame_h == anchor_layout.frame_h
@@ -1249,23 +1251,45 @@ def _binding_sha256_dict(binding: Mapping[str, Any]) -> str:
     return digest
 
 
-def _load_base_release_frames(base_bundle_root: Path) -> list[list[list[Cell]]]:
+def _load_base_release_frames(
+    base_bundle_root: Path, motion_class: str
+) -> list[list[list[Cell]]]:
+    """Load a base Bundle's release Frames, embedded onto ``motion_class``'s canvas.
+
+    Shared by the Motion Author CLI and `initialize_cell_authored_bundle` so both
+    derive byte-identical base Frames (issue #290 C1): the base Bundle's own
+    manifest layout is the anchor raster, and the target class's
+    ``canonical_origin`` is the embedding offset.
+    """
     manifest = _load_manifest(base_bundle_root)
-    layout = _layout_from_manifest(manifest)
+    anchor_layout = _layout_from_manifest(manifest)
     release_dir = _frame_dir(base_bundle_root, "release")
     if not release_dir.is_dir():
         raise InitializationRejectedError(
             f"base bundle missing release frames: {base_bundle_root}",
             reason_code="missing_release_frames",
         )
-    return [
+    frames = [
         _load_logical_frame_png(
             release_dir / name,
-            frame_w=layout.frame_w,
-            frame_h=layout.frame_h,
+            frame_w=anchor_layout.frame_w,
+            frame_h=anchor_layout.frame_h,
         )
         for name in EXPECTED_FRAME_NAMES
     ]
+    class_geometry = resolve_class_frame_geometry(motion_class)
+    class_layout = StripLayout(
+        frame_w=class_geometry.frame_w,
+        frame_h=class_geometry.frame_h,
+        frame_count=anchor_layout.frame_count,
+        gutter=anchor_layout.gutter,
+    )
+    return _embed_frames_for_manifest_layout(
+        frames,
+        motion_class=motion_class,
+        layout=class_layout,
+        anchor_layout=anchor_layout,
+    )
 
 
 def _resolve_base_bundle_attestation(
@@ -2532,7 +2556,7 @@ def initialize_cell_authored_bundle(
         base_frame_mapping=base_frame_mapping,
     )
 
-    base_frames = _load_base_release_frames(base_bundle_root)
+    base_frames = _load_base_release_frames(base_bundle_root, motion_class)
     try:
         validate_cell_delta_ledger(base_frames, ledger)
     except CellDeltaError as exc:
