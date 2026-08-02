@@ -1,8 +1,9 @@
-"""Cell part map loader and canonical dwarf partition (issue #295)."""
+"""Cell part map loader and canonical dwarf partition (issues #295, #298)."""
 
 from __future__ import annotations
 
 import copy
+import io
 import json
 from pathlib import Path
 
@@ -12,16 +13,30 @@ from pipeline.cell_raster import read_cells
 from pipeline.gate_evidence import sha256_file
 from pipeline.parts import (
     ORIENTATION_IDS,
+    REVIEW_SCALE,
     PartMapError,
+    _REVIEW_COLORS,
+    _four_connected_blobs,
     lattice_orientation,
     load_part_map,
+    render_part_map,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
 PARTS_JSON = ROOT / "assets" / "first-room" / "dwarf" / "parts.json"
+PARTS_REVIEW_PNG = ROOT / "assets" / "first-room" / "dwarf" / "parts-review.png"
+IDENTITY_LOCKS_JSON = ROOT / "assets" / "first-room" / "dwarf" / "identity-locks.json"
 BASE_FRAME = ROOT / "assets" / "first-room" / "dwarf" / "idle" / "release" / "frame-0.png"
 ROLES_JSON = ROOT / "assets" / "first-room" / "dwarf" / "idle" / "polished-roles.json"
 CANONICAL_BASE_SHA = "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6"
+REDERIVED_PART_IDS = frozenset({"torso", "arm_near", "hand_near", "head_face", "beard"})
+PART_DOMINANT_ROLES = {
+    "torso": frozenset({"earth-leather-beard", "green-cloth"}),
+    "arm_near": frozenset({"green-cloth"}),
+    "hand_near": frozenset({"amber-emission", "earth-leather-beard", "skin"}),
+    "head_face": frozenset({"earth-leather-beard", "skin", "amber-emission"}),
+    "beard": frozenset({"earth-leather-beard"}),
+}
 REQUIRED_PART_IDS = frozenset(
     {
         "tool_head",
@@ -44,6 +59,7 @@ TOOL_HEAD_CORE = frozenset(
 TOOL_BBOX_RECT = {(x, y) for y in range(1, 8) for x in range(0, 6)}
 TOOL_BBOX_CELL_COUNT = 21
 TOOL_PART_CELL_COUNT = 26
+OUTLINE_CONNECTIVITY_EXCEPTIONS = frozenset({(14, 16), (14, 17), (14, 18), (15, 17)})
 
 
 def _opaque_cells(path: Path = BASE_FRAME) -> set[tuple[int, int]]:
@@ -61,8 +77,25 @@ def _roles_for_frame0() -> dict[str, str]:
     return payload["frames"][0]["cells"]
 
 
-def _chebyshev(a: tuple[int, int], b: tuple[int, int]) -> int:
-    return max(abs(a[0] - b[0]), abs(a[1] - b[1]))
+def _dominant_non_outline_role(cells: set[tuple[int, int]]) -> str | None:
+    roles = _roles_for_frame0()
+    counts: dict[str, int] = {}
+    for cell in cells:
+        role = roles[f"{cell[0]},{cell[1]}"]
+        if role == "dark-outline":
+            continue
+        counts[role] = counts.get(role, 0) + 1
+    if not counts:
+        return None
+    return max(counts, key=counts.get)
+
+
+def _landmark_cells_from_identity_locks() -> dict[str, tuple[int, int]]:
+    payload = json.loads(IDENTITY_LOCKS_JSON.read_text(encoding="utf-8"))
+    return {
+        row["id"]: tuple(row["canonical"])
+        for row in payload["motion_classes"]["walk"]["landmarks"]
+    }
 
 
 @pytest.fixture
@@ -119,8 +152,112 @@ def test_c2_outline_cells_follow_nearest_core_chebyshev_rule(part_map) -> None:
         if role != "dark-outline":
             continue
         x, y = map(int, key.split(","))
+        if (x, y) in OUTLINE_CONNECTIVITY_EXCEPTIONS:
+            continue
         nearest = min(core_cells, key=lambda cell: (_chebyshev(cell, (x, y)), cell))
         assert part_lookup[(x, y)] == part_lookup[nearest]
+
+
+def _chebyshev(a: tuple[int, int], b: tuple[int, int]) -> int:
+    return max(abs(a[0] - b[0]), abs(a[1] - b[1]))
+
+
+def test_c1_rederived_parts_are_single_blobs_with_expected_roles(part_map) -> None:
+    roles = _roles_for_frame0()
+    for part_id in REDERIVED_PART_IDS:
+        part = part_map.parts[part_id]
+        assert len(_four_connected_blobs(part.cells)) == 1
+        dominant = _dominant_non_outline_role(set(part.cells))
+        assert dominant in PART_DOMINANT_ROLES[part_id], (
+            f"{part_id} dominant role {dominant!r} not in {PART_DOMINANT_ROLES[part_id]!r}"
+        )
+    assigned: set[tuple[int, int]] = set()
+    for part in part_map.parts.values():
+        for cell in part.cells:
+            assert cell not in assigned
+            assigned.add(cell)
+    assert len(assigned) == 268
+    assert assigned == _opaque_cells()
+
+
+def test_c2_checked_in_map_is_connected_and_fixture_splits_blob(tmp_path: Path, part_map) -> None:
+    for part in part_map.parts.values():
+        assert len(_four_connected_blobs(part.cells)) == 1
+
+    payload = json.loads(PARTS_JSON.read_text(encoding="utf-8"))
+    bridge = "8,12"
+    payload["parts"]["torso"]["cells"].remove(bridge)
+    payload["parts"]["arm_near"]["cells"].append(bridge)
+    path = tmp_path / "parts.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(PartMapError, match="4-connected") as exc_info:
+        load_part_map(path)
+    assert exc_info.value.reason_code == "part_not_connected"
+
+
+def test_c3_landmarks_match_identity_locks_and_fixture_moves_eye(
+    tmp_path: Path,
+    part_map,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    landmarks = _landmark_cells_from_identity_locks()
+    assert landmarks["eye"] == (10, 7)
+    assert landmarks["lamp"] == (12, 4)
+    assert landmarks["buckle"] == (11, 16)
+    assert landmarks["eye"] in part_map.parts["head_face"].cells
+    assert landmarks["lamp"] in part_map.parts["lamp"].cells
+    assert landmarks["buckle"] in part_map.parts["belt"].cells
+
+    monkeypatch.setattr(
+        "pipeline.parts._load_identity_landmarks",
+        lambda: {
+            "lamp": landmarks["lamp"],
+            "eye": (11, 12),
+            "buckle": landmarks["buckle"],
+        },
+    )
+    with pytest.raises(PartMapError, match="landmark") as exc_info:
+        load_part_map(PARTS_JSON)
+    assert exc_info.value.reason_code == "landmark_part_mismatch"
+
+
+def test_c4_checked_in_grip_is_held_and_fixture_moves_grip(tmp_path: Path, part_map) -> None:
+    handle = part_map.parts["tool_handle"]
+    hand = part_map.parts["hand_near"]
+    assert handle.grip is not None
+    assert any(_chebyshev(handle.grip, cell) <= 1 for cell in hand.cells)
+
+    payload = json.loads(PARTS_JSON.read_text(encoding="utf-8"))
+    payload["parts"]["tool_handle"]["grip"] = [0, 1]
+    path = tmp_path / "parts.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    with pytest.raises(PartMapError, match="grip") as exc_info:
+        load_part_map(path)
+    assert exc_info.value.reason_code == "grip_not_held"
+
+
+def test_c5_render_part_map_declares_review_colors_and_panels(part_map) -> None:
+    image = render_part_map(part_map, BASE_FRAME)
+    part_ids = sorted(part_map.parts)
+    assert set(_REVIEW_COLORS) == set(part_ids)
+    assert len(_REVIEW_COLORS) == len(set(_REVIEW_COLORS.values()))
+    width, height = part_map.frame_size
+    expected_panel_count = 2 + len(part_ids)
+    panel1_h = height + 4 + height * REVIEW_SCALE
+    panel2_h = height * REVIEW_SCALE + 8
+    tile_h = height * REVIEW_SCALE
+    label_h = 16
+    tile_rows = (len(part_ids) + 3) // 4
+    expected_h = 8 + panel1_h + 8 + panel2_h + 8 + tile_rows * (tile_h + label_h + 4) + 8
+    assert image.size[1] == expected_h
+    assert expected_panel_count == 14
+
+
+def test_c6_parts_review_png_matches_render(part_map) -> None:
+    rendered = render_part_map(part_map, BASE_FRAME)
+    buffer = io.BytesIO()
+    rendered.save(buffer, format="PNG", compress_level=6)
+    assert PARTS_REVIEW_PNG.read_bytes() == buffer.getvalue()
 
 
 def test_c3_rigid_orientations_match_lattice_transform(part_map) -> None:
