@@ -25,7 +25,7 @@ POLISHED_ROLES_JSON = IDLE_BUNDLE / "polished-roles.json"
 MASTER_PALETTE_PATH = ROOT / "assets" / "palettes" / "first-room.json"
 
 # Palette-exact since #179 collapsed the two identities onto the canonical path.
-CANONICAL_IDENTITY_SHA = "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6"
+CANONICAL_IDENTITY_SHA = "707442d156b96b862f801a5e81febdbb5ca47c82e0d3587dffc255c7e02b4357"
 
 PRE_SLICE_ALPHA_SHA256 = {
     0: "46be406c2de591036a943d2d5bf2962a4ea82cae62ae1a49222957da92ce2d57",
@@ -36,7 +36,7 @@ PRE_SLICE_ALPHA_SHA256 = {
 PRE_SLICE_OCCUPANCY = [0.698, 0.701, 0.677, 0.688]
 
 PRE_CLEANUP_CELL_SHA256 = {
-    0: "cabcc1ff3725dcb3370d0e699ef7ac1af1db5ea1a3e9e6dbee03cc08806ff2f9",
+    0: "6160cb94751f397f3ca64acaf2fb76dcba7e93e50ecda343d9e360e39a147639",
     1: "3a26a19cb46e452aa3dbde29b299158dd0dc133d9c397b4a21718d4c36bdaafe",
     2: "91f818f850044eabb50d6190ce6986920f2a960df6e4917fc1fc8ca39bddaa5d",
     3: "a1bec61b77e2aa6d4bfc6b4d300d013fd395e01b299b888301a95666c824ae76",

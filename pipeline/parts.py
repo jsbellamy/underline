@@ -385,7 +385,55 @@ def _footprint_from_part_cells(
     )
 
 
-def load_part_map(path: Path | str) -> PartMap:
+def _validate_material_part_alignment(
+    parsed_parts: dict[str, Part],
+    identity_roles_path: Path,
+) -> None:
+    try:
+        doc = json.loads(identity_roles_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise PartMapError(
+            f"invalid identity role map: {identity_roles_path}",
+            reason_code="invalid_identity_roles",
+        ) from exc
+    cells_doc = doc.get("cells")
+    if not isinstance(cells_doc, dict):
+        raise PartMapError(
+            "identity role map requires cells object",
+            reason_code="invalid_identity_roles",
+        )
+    role_cells = {
+        (int(x_text), int(y_text)): role
+        for key, role in cells_doc.items()
+        if isinstance(role, str)
+        for x_text, y_text in [str(key).split(",", maxsplit=1)]
+    }
+    stone_cells = frozenset(cell for cell, role in role_cells.items() if role == "stone")
+    skin_cells = frozenset(cell for cell, role in role_cells.items() if role == "skin")
+    tool_cells = frozenset(
+        parsed_parts["tool_head"].cells | parsed_parts["tool_handle"].cells
+    )
+    head_face = frozenset(parsed_parts["head_face"].cells)
+    hand_cells = frozenset(
+        parsed_parts["hand_near"].cells | parsed_parts["hand_far"].cells
+    )
+    if stone_cells != tool_cells:
+        raise PartMapError(
+            "stone role cells must equal tool_head union tool_handle material cells",
+            reason_code="material_part_mismatch",
+        )
+    if skin_cells - head_face != hand_cells:
+        raise PartMapError(
+            "skin role cells outside head_face must equal hand_near union hand_far material cells",
+            reason_code="material_part_mismatch",
+        )
+
+
+def load_part_map(
+    path: Path | str,
+    *,
+    identity_roles_path: Path | str | None = None,
+) -> PartMap:
     document_path = Path(path)
     document = json.loads(document_path.read_text(encoding="utf-8"))
     schema = document.get("schema")
@@ -574,6 +622,12 @@ def load_part_map(path: Path | str) -> PartMap:
     _validate_part_connectivity(parsed_parts)
     _validate_landmark_parts(parsed_parts)
     _validate_tool_carried(parsed_parts)
+    roles_path = (
+        Path(identity_roles_path)
+        if identity_roles_path is not None
+        else _REPO_ROOT / "assets" / "first-room" / "dwarf" / "identity-roles.json"
+    )
+    _validate_material_part_alignment(parsed_parts, roles_path)
 
     return PartMap(
         schema=SCHEMA,

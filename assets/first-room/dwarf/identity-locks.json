@@ -1,59 +1,108 @@
 {
   "schema": "identity-lock/2",
-  "identity_sha256": "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6",
-  "frame_size": [16, 24],
+  "identity_sha256": "707442d156b96b862f801a5e81febdbb5ca47c82e0d3587dffc255c7e02b4357",
+  "frame_size": [
+    16,
+    24
+  ],
   "master_palette": {
     "relative_path": "assets/palettes/first-room.json",
     "sha256": "b21e2a2a85cf8e25c1cbdc69f8f0ffc4cfda7dc7f1f0a451ef7ed9d1fa7d6041"
   },
   "palette_exact_identity": {
     "relative_path": "assets/first-room/dwarf/identity.png",
-    "identity_sha256": "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6",
+    "identity_sha256": "707442d156b96b862f801a5e81febdbb5ca47c82e0d3587dffc255c7e02b4357",
     "role_map_relative_path": "assets/first-room/dwarf/identity-roles.json",
-    "frame_size": [16, 24]
+    "frame_size": [
+      16,
+      24
+    ]
   },
   "motion_classes": {
     "walk": {
       "locks": [
         {
           "id": "upper_body",
-          "rectangle": { "x0": 0, "x1": 15, "y0": 1, "y1": 18 },
-          "permitted_offsets": [[0, -1], [0, 0], [0, 1]],
+          "rectangle": {
+            "x0": 0,
+            "x1": 15,
+            "y0": 1,
+            "y1": 18
+          },
+          "permitted_offsets": [
+            [
+              0,
+              -1
+            ],
+            [
+              0,
+              0
+            ],
+            [
+              0,
+              1
+            ]
+          ],
           "comparison": "registered-structure",
-          "max_occupancy_difference": 0.20,
-          "max_palette_role_distance": 0.20
+          "max_occupancy_difference": 0.2,
+          "max_palette_role_distance": 0.2
         }
       ],
       "landmarks": [
         {
           "id": "lamp",
-          "canonical": [12, 4],
+          "canonical": [
+            12,
+            4
+          ],
           "palette_role": "amber-emission",
           "max_distance": 2
         },
         {
           "id": "eye",
-          "canonical": [10, 7],
+          "canonical": [
+            10,
+            7
+          ],
           "palette_role": "dark-outline",
           "max_distance": 1
         },
         {
           "id": "buckle",
-          "canonical": [11, 16],
+          "canonical": [
+            11,
+            16
+          ],
           "palette_role": "amber-emission",
           "max_distance": 2
         }
       ]
     },
     "swing": {
-      "frame_size": [24, 24],
+      "frame_size": [
+        24,
+        24
+      ],
       "locks": [
         {
           "id": "helmet_face",
-          "rectangle": { "x0": 9, "x1": 16, "y0": 1, "y1": 10 },
+          "rectangle": {
+            "x0": 9,
+            "x1": 16,
+            "y0": 1,
+            "y1": 10
+          },
           "permitted_offsets": {
-            "dx": [-1, 0, 1],
-            "dy": [-1, 0, 1]
+            "dx": [
+              -1,
+              0,
+              1
+            ],
+            "dy": [
+              -1,
+              0,
+              1
+            ]
           },
           "comparison": "registered-structure",
           "max_occupancy_difference": 0.25,
@@ -61,45 +110,79 @@
         },
         {
           "id": "belt_core",
-          "rectangle": { "x0": 8, "x1": 16, "y0": 15, "y1": 18 },
+          "rectangle": {
+            "x0": 8,
+            "x1": 16,
+            "y0": 15,
+            "y1": 18
+          },
           "permitted_offsets": {
-            "dx": [-1, 0, 1],
-            "dy": [0, 1]
+            "dx": [
+              -1,
+              0,
+              1
+            ],
+            "dy": [
+              0,
+              1
+            ]
           },
           "comparison": "registered-structure",
           "max_occupancy_difference": 0.25,
-          "max_palette_role_distance": 0.30
+          "max_palette_role_distance": 0.3
         },
         {
           "id": "boots",
-          "rectangle": { "x0": 7, "x1": 18, "y0": 21, "y1": 23 },
-          "permitted_offsets": [[0, 0]],
+          "rectangle": {
+            "x0": 7,
+            "x1": 18,
+            "y0": 21,
+            "y1": 23
+          },
+          "permitted_offsets": [
+            [
+              0,
+              0
+            ]
+          ],
           "comparison": "exact-occupancy"
         }
       ],
       "landmarks": [
         {
           "id": "lamp",
-          "canonical": [16, 4],
+          "canonical": [
+            16,
+            4
+          ],
           "palette_role": "amber-emission",
           "max_distance": 2
         },
         {
           "id": "eye",
-          "canonical": [14, 7],
+          "canonical": [
+            14,
+            7
+          ],
           "palette_role": "dark-outline",
           "max_distance": 1
         },
         {
           "id": "buckle",
-          "canonical": [15, 16],
+          "canonical": [
+            15,
+            16
+          ],
           "palette_role": "amber-emission",
           "max_distance": 2
         }
       ],
       "relational_constraints": [
         {
-          "anchors": ["helmet_face", "belt_core"],
+          "anchors": [
+            "helmet_face",
+            "belt_core"
+          ],
           "max_dx_delta": 1,
           "max_vertical_separation_delta": 1
         }

@@ -5,6 +5,7 @@ from __future__ import annotations
 import copy
 import io
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -27,10 +28,13 @@ from pipeline.parts import (
 ROOT = Path(__file__).resolve().parents[1]
 PARTS_JSON = ROOT / "assets" / "first-room" / "dwarf" / "parts.json"
 PARTS_REVIEW_PNG = ROOT / "assets" / "first-room" / "dwarf" / "parts-review.png"
+IDENTITY_ROLES_JSON = ROOT / "assets" / "first-room" / "dwarf" / "identity-roles.json"
+IDENTITY_JSON = ROOT / "assets" / "first-room" / "dwarf" / "identity.json"
+MASTER_PALETTE_JSON = ROOT / "assets" / "palettes" / "first-room.json"
 IDENTITY_LOCKS_JSON = ROOT / "assets" / "first-room" / "dwarf" / "identity-locks.json"
 BASE_FRAME = ROOT / "assets" / "first-room" / "dwarf" / "idle" / "release" / "frame-0.png"
 ROLES_JSON = ROOT / "assets" / "first-room" / "dwarf" / "idle" / "polished-roles.json"
-CANONICAL_BASE_SHA = "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6"
+CANONICAL_BASE_SHA = "707442d156b96b862f801a5e81febdbb5ca47c82e0d3587dffc255c7e02b4357"
 REDERIVED_PART_IDS = frozenset({"arm_near", "hand_near", "head_face", "beard"})
 PART_DOMINANT_ROLES = {
     "arm_near": frozenset({"green-cloth", "skin", "earth-leather-beard"}),
@@ -58,10 +62,24 @@ TOOL_HEAD_CORE = frozenset(
     {(4, 3), (3, 3), (3, 4), (2, 4), (2, 5), (1, 6), (1, 7)}
 )
 TOOL_BBOX_RECT = {(x, y) for y in range(1, 8) for x in range(0, 6)}
-TOOL_BBOX_CELL_COUNT = 21
-TOOL_PART_CELL_COUNT = 34
+TOOL_BBOX_CELL_COUNT = 17
+TOOL_PART_CELL_COUNT = 28
 OUTLINE_CONNECTIVITY_EXCEPTIONS = frozenset(
-    {(5, 15), (6, 11), (6, 14), (9, 12), (9, 13), (14, 16), (14, 17), (14, 18), (15, 17)}
+    {
+        (5, 6),
+        (5, 5),
+        (5, 15),
+        (6, 6),
+        (6, 11),
+        (6, 14),
+        (6, 16),
+        (9, 12),
+        (9, 13),
+        (14, 16),
+        (14, 17),
+        (14, 18),
+        (15, 17),
+    }
 )
 
 
@@ -135,7 +153,7 @@ def test_c2_required_part_ids_and_outline_cells_assigned(part_map) -> None:
         for cell in part.cells
         if roles[f"{cell[0]},{cell[1]}"] == "dark-outline"
     }
-    assert len(outline_cells) == 86
+    assert len(outline_cells) == 73
     assert assigned_outline == outline_cells
 
 
@@ -482,3 +500,95 @@ def test_c6_rejects_unknown_parent(tmp_path: Path) -> None:
     with pytest.raises(PartMapError, match="parent") as exc_info:
         load_part_map(path)
     assert exc_info.value.reason_code == "unknown_parent"
+
+
+def _identity_role_cells() -> dict[tuple[int, int], str]:
+    payload = json.loads(IDENTITY_ROLES_JSON.read_text(encoding="utf-8"))
+    return {
+        (int(x_text), int(y_text)): role
+        for key, role in payload["cells"].items()
+        for x_text, y_text in [key.split(",", maxsplit=1)]
+    }
+
+
+def test_c300_c1_stone_roles_cover_tool_parts_only(part_map) -> None:
+    roles = _identity_role_cells()
+    stone_cells = {cell for cell, role in roles.items() if role == "stone"}
+    tool_cells = set(part_map.parts["tool_head"].cells) | set(part_map.parts["tool_handle"].cells)
+    assert stone_cells == tool_cells
+    rationales = json.loads(IDENTITY_ROLES_JSON.read_text(encoding="utf-8")).get(
+        "cell_rationales", {}
+    )
+    assert rationales["11,2"]
+    assert rationales["11,3"]
+    assert (11, 2) not in stone_cells
+    assert (11, 3) not in stone_cells
+
+
+def test_c300_c1_tool_handle_keeps_the_thin_authored_trace(part_map) -> None:
+    assert part_map.parts["tool_handle"].cells == frozenset(
+        {
+            (3, 6),
+            (3, 7),
+            (4, 7),
+            (4, 8),
+            (5, 8),
+            (6, 8),
+            (6, 9),
+            (7, 9),
+            (7, 10),
+            (8, 10),
+        }
+    )
+
+
+def test_c300_c2_skin_roles_cover_gloves_only(part_map) -> None:
+    roles = _identity_role_cells()
+    skin_cells = {cell for cell, role in roles.items() if role == "skin"}
+    head_face = set(part_map.parts["head_face"].cells)
+    hand_near = set(part_map.parts["hand_near"].cells)
+    hand_far = set(part_map.parts["hand_far"].cells)
+    assert hand_near == {
+        (5, 12),
+        (5, 13),
+        (5, 14),
+        (5, 15),
+        (6, 12),
+        (6, 13),
+    }
+    assert hand_far == {
+        (7, 11),
+        (7, 12),
+        (7, 13),
+        (8, 11),
+        (8, 12),
+        (8, 13),
+    }
+    beard_cells = set(part_map.parts["beard"].cells)
+    assert beard_cells.isdisjoint(hand_near | hand_far)
+    assert {(6, 10), (6, 11)} <= set(part_map.parts["arm_near"].cells)
+    hand_cells = hand_near | hand_far
+    assert skin_cells - head_face == hand_cells
+    gloves_text = json.loads(IDENTITY_JSON.read_text(encoding="utf-8"))[
+        "canonical_description"
+    ]["gloves"]
+    assert "value" in gloves_text.lower() or "separat" in gloves_text.lower()
+
+
+def test_c300_c3_master_palette_is_unchanged() -> None:
+    baseline = subprocess.check_output(
+        ["git", "show", "main:assets/palettes/first-room.json"],
+        cwd=ROOT,
+    )
+    assert MASTER_PALETTE_JSON.read_bytes() == baseline
+
+
+def test_c300_c7_rejects_stone_cell_moved_into_beard(part_map, tmp_path: Path) -> None:
+    roles_doc = json.loads(IDENTITY_ROLES_JSON.read_text(encoding="utf-8"))
+    stone_cell = sorted(part_map.parts["tool_handle"].cells)[0]
+    roles_doc["cells"][f"{stone_cell[0]},{stone_cell[1]}"] = "beard"
+    roles_path = tmp_path / "identity-roles.json"
+    roles_path.write_text(json.dumps(roles_doc), encoding="utf-8")
+    with pytest.raises(PartMapError, match="stone") as exc_info:
+        load_part_map(PARTS_JSON, identity_roles_path=roles_path)
+    assert exc_info.value.reason_code == "material_part_mismatch"

@@ -8,7 +8,7 @@
     "eye": "one black eye Cell when exposed, no white sclera",
     "tunic": "GREEN work tunic",
     "belt": "dark leather belt with small amber buckle",
-    "gloves": "thick gloves",
+    "gloves": "thick gloves in dark-tan skin ramp (#6C3D31 / #A45F46), value-separated from earth-leather-beard",
     "boots": "broad brown boots",
     "pickaxe": "compact heavy pickaxe resting behind the right shoulder",
     "facing": "right",
@@ -19,7 +19,7 @@
   },
   "identity_png": {
     "relative_path": "assets/first-room/dwarf/identity.png",
-    "sha256": "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6",
+    "sha256": "707442d156b96b862f801a5e81febdbb5ca47c82e0d3587dffc255c7e02b4357",
     "source": "assets/first-room/dwarf/idle/release/frame-0.png"
   },
   "generation_source": {
@@ -32,14 +32,14 @@
     "relative_path": "assets/first-room/dwarf/idle",
     "motion_class": "idle",
     "polish_profile": "dwarf-miner",
-    "report_relative_path": "assets/first-room/dwarf/idle/reports/c95fd35dec103433e2fdfdc65ef4c7133d6b2496b5fd7bd7db98991d98d1fe3c.json",
-    "report_sha256": "756493795710c219a93c0190f0cddf9f7f5a69af3925af3498d592458cee72bf",
-    "report_fingerprint": "c95fd35dec103433e2fdfdc65ef4c7133d6b2496b5fd7bd7db98991d98d1fe3c",
-    "release_frame_0_sha256": "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6"
+    "report_relative_path": "assets/first-room/dwarf/idle/reports/68a6da7df8697a262035afe45e44da869d4776d69d9c8e23588beae35d599bc5.json",
+    "report_sha256": "48219a500e1c632b971e8245594f35c4dec6a098eef271692674783eebf3d517",
+    "report_fingerprint": "68a6da7df8697a262035afe45e44da869d4776d69d9c8e23588beae35d599bc5",
+    "release_frame_0_sha256": "707442d156b96b862f801a5e81febdbb5ca47c82e0d3587dffc255c7e02b4357"
   },
   "visual_reference_for": [
     "walk",
     "swing"
   ],
-  "notes": "Walk image-edit uses TWO files. (1) generation_source = assets/first-room/dwarf/idle/provider/source.png — the provider transport strip with four identical idle Frames; seed via `npm run strip:polish -- seed --identity-declaration assets/first-room/dwarf/identity.json --out <seed.png>` (applies seed_pad_px: 64 magenta border around the generation_source interior) and submit <seed.png> as the image-edit base (edit_source_sha256 must equal the padded seed digest from seed --json, not raw generation_source.sha256; init/check verify that transform). generation_source is deliberately NOT palette-exact: the palette migration (#176-#179) requantized identity_png and the Release Frames onto the Master Palette but left this provider raster off-palette, because it is the walk image-edit generation base rather than a Release asset and _verify_release never inspects it. Do not assume it conforms to assets/palettes/first-room.json, and do not requantize it to make it match identity_png. (2) identity_png = assets/first-room/dwarf/identity.png — the 16x24 palette-exact post-ingest Release anchor for Identity Lock only; bind as --identity-reference, never upscale into a generation canvas. The seed command does NOT take identity.png as input. After generation, do not paint Identity Lock or flat identity colors into provider/source.png (nor wipe magenta / shift Frames) to force Gate PASS — regenerate until lock and baseline pass on the unmodified provider Attempt. Swing Cell-authored acquisition does NOT use generation_source or seed_pad_px. All four swing Frames start from assets/first-room/dwarf/idle/release/frame-0.png (Release Frame 0), whose bytes equal identity_png at planning time. Author the checked-in motion-pose-plan/0 through strip:author with base mapping [0, 0, 0, 0], then initialize via strip:polish init-cell. Do not submit a swing provider edit, upscale identity.png, or generate a pose-reference image."
+  "notes": "Walk image-edit uses TWO files. (1) generation_source = assets/first-room/dwarf/idle/provider/source.png \u2014 the provider transport strip with four identical idle Frames; seed via `npm run strip:polish -- seed --identity-declaration assets/first-room/dwarf/identity.json --out <seed.png>` (applies seed_pad_px: 64 magenta border around the generation_source interior) and submit <seed.png> as the image-edit base (edit_source_sha256 must equal the padded seed digest from seed --json, not raw generation_source.sha256; init/check verify that transform). generation_source is deliberately NOT palette-exact: the palette migration (#176-#179) requantized identity_png and the Release Frames onto the Master Palette but left this provider raster off-palette, because it is the walk image-edit generation base rather than a Release asset and _verify_release never inspects it. Do not assume it conforms to assets/palettes/first-room.json, and do not requantize it to make it match identity_png. (2) identity_png = assets/first-room/dwarf/identity.png \u2014 the 16x24 palette-exact post-ingest Release anchor for Identity Lock only; bind as --identity-reference, never upscale into a generation canvas. The seed command does NOT take identity.png as input. After generation, do not paint Identity Lock or flat identity colors into provider/source.png (nor wipe magenta / shift Frames) to force Gate PASS \u2014 regenerate until lock and baseline pass on the unmodified provider Attempt. Swing Cell-authored acquisition does NOT use generation_source or seed_pad_px. All four swing Frames start from assets/first-room/dwarf/idle/release/frame-0.png (Release Frame 0), whose bytes equal identity_png at planning time. Author the checked-in motion-pose-plan/0 through strip:author with base mapping [0, 0, 0, 0], then initialize via strip:polish init-cell. Do not submit a swing provider edit, upscale identity.png, or generate a pose-reference image."
 }
