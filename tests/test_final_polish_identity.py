@@ -25,10 +25,7 @@ from pipeline.final_polish import (
     check_bundle as polish_check_bundle,
 )
 from pipeline.gate_evidence import sha256_file
-from pipeline.identity_lock import (
-    build_identity_seed,
-    load_canonical_cells,
-)
+from pipeline.identity_lock import load_canonical_cells
 from pipeline.strip import load_provider_frames
 from tests.final_polish_harness import bundle_store_env_context
 from tests.support import polish_bundle as pb
@@ -44,20 +41,26 @@ from tests.support.final_polish_fixtures import (
     _check_bundle,
     _finalize_bundle,
     _identity_doc_with_seed_pad_px,
-    _init_bundle,
-    _provenance_for,
     _set_opaque_rgb,
     _swing_provider_strip,
-    _walk_provider_on_edit_canvas,
 )
 
 
-def _init_passing_bundle(tmp_path: Path) -> Path:
-    """Idle bundle construction via the polish_bundle seam (issue #249).
+def _init_bundle_polish(
+    strip: Path,
+    motion_class: str,
+    bundle: Path,
+    tmp_path: Path,
+    *,
+    polish_profile: str | None = None,
+) -> None:
+    """Bundle construction via the polish_bundle seam (issues #249, #250)."""
+    attempt = pb.prepare(strip, motion_class, tmp_path, polish_profile=polish_profile)
+    pb.init_bundle(attempt, bundle)
 
-    The walk and swing call sites in this module still build through the
-    interim `tests.support.final_polish_fixtures._init_bundle`.
-    """
+
+def _init_passing_bundle(tmp_path: Path) -> Path:
+    """Idle bundle construction via the polish_bundle seam (issue #249)."""
     bundle = tmp_path / "bundle"
     attempt = pb.prepare(PASS_STRIP, "idle", tmp_path)
     pb.init_bundle(attempt, bundle)
@@ -192,7 +195,7 @@ def test_dwarf_walk_check_rejects_edit_source_that_is_not_generation_source(
     tmp_path: Path,
 ) -> None:
     bundle = tmp_path / "bundle"
-    _init_bundle(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="dwarf-miner")
+    _init_bundle_polish(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="dwarf-miner")
     wrong_seed = _write_tiled_identity_seed(tmp_path / "tiled-identity-seed.png")
     edit_dest = bundle / "provider" / "edit-source.png"
     shutil.copy2(wrong_seed, edit_dest)
@@ -215,43 +218,21 @@ def test_dwarf_walk_check_accepts_correct_padded_edit_source_when_seed_pad_px_se
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    identity_doc = _identity_doc_with_seed_pad_px()
+    # identity.json's production seed_pad_px is already 64 (this monkeypatch's
+    # value), so the default polish_bundle seam already exercises this case
+    # with no override needed.
     monkeypatch.setattr(
         "pipeline.final_polish._load_dwarf_identity_doc",
-        lambda: identity_doc,
+        lambda: _identity_doc_with_seed_pad_px(),
     )
-    declaration_path = tmp_path / "identity.json"
-    declaration_path.write_text(json.dumps(identity_doc), encoding="utf-8")
-    padded_seed = tmp_path / "padded-seed.png"
-    build_identity_seed(declaration_path, padded_seed)
-
     bundle = tmp_path / "bundle"
-    walk_provider = _walk_provider_on_edit_canvas(tmp_path)
-    provenance_path = _provenance_for(
-        walk_provider,
-        tmp_path,
-        "walk",
-        polish_profile="dwarf-miner",
-    )
-    record = json.loads(provenance_path.read_text())
-    record["edit_source_sha256"] = sha256_file(padded_seed)
-    provenance_path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
-    _init_bundle(
-        WALK_STRIP,
-        "walk",
-        bundle,
-        tmp_path,
-        polish_profile="dwarf-miner",
-        provenance_path=provenance_path,
-        identity_reference=IDENTITY_PNG,
-        edit_source=padded_seed,
-    )
+    _init_bundle_polish(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="dwarf-miner")
     _check_bundle_slicing_from(bundle, WALK_STRIP)
 
 
 def test_dwarf_walk_check_exposes_identity_lock_report(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    _init_bundle(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="dwarf-miner")
+    _init_bundle_polish(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="dwarf-miner")
     result = _check_bundle_slicing_from(bundle, WALK_STRIP)
     assert result.identity_lock is not None
     assert result.identity_lock.motion_class == "walk"
@@ -308,7 +289,7 @@ def test_production_swing_audit_records_interim_re_canvas_status() -> None:
 
 def test_dwarf_swing_check_exposes_identity_lock_report(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    _init_bundle(
+    _init_bundle_polish(
         _swing_provider_strip(tmp_path),
         "swing",
         bundle,
@@ -334,7 +315,7 @@ def test_dwarf_swing_check_does_not_trip_magenta_wipe_with_padded_edit_source(
     import numpy as np
 
     bundle = tmp_path / "bundle"
-    _init_bundle(
+    _init_bundle_polish(
         _swing_provider_strip(tmp_path),
         "swing",
         bundle,
@@ -396,7 +377,7 @@ def test_identity_lock_fail_blocks_release_despite_passing_structural_and_cohere
     tmp_path: Path,
 ) -> None:
     bundle = tmp_path / "bundle"
-    _init_bundle(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="dwarf-miner")
+    _init_bundle_polish(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="dwarf-miner")
     allowed_palette: set[tuple[int, int, int]] = set()
     for index in range(FRAME_COUNT):
         with Image.open(bundle / "draft" / f"frame-{index}.png") as image:
