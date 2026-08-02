@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
@@ -31,7 +32,7 @@ def write_review(
     if not packet_path.is_file():
         build_packet(bundle, review_dir=target)
     packet = pr.review_packet_from_manifest(
-        __import__("json").loads(packet_path.read_text(encoding="utf-8"))
+        json.loads(packet_path.read_text(encoding="utf-8"))
     )
     if answers is None:
         answers = {
@@ -77,7 +78,7 @@ def write_passing_reviews(
     target = review_dir or pr.bundle_reviews_dir(bundle)
     build_packet(bundle, review_dir=target)
     packet = pr.review_packet_from_manifest(
-        __import__("json").loads((target / "packet.json").read_text(encoding="utf-8"))
+        json.loads((target / "packet.json").read_text(encoding="utf-8"))
     )
     first = write_review(
         bundle,

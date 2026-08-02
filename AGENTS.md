@@ -98,6 +98,14 @@ Cell edits for `EDIT` verdicts, regenerate the preview, and run
 `npm run strip:polish -- check <bundle>`. A profile guides visual judgment; it
 does not override structural locks, coherence Gates, or PASS-only finalization.
 
+Non-legacy bundles require independent blinded visual review before `finalize`.
+Build the immutable packet with
+`npm run strip:polish -- review-packet <bundle> [--json]`, author each
+`reviews/review--NN.json` record in a separate session (two reviews when Motion
+overrides apply or review 1 is unresolved), then validate with
+`npm run strip:polish -- validate-reviews <bundle> [--json]` before release.
+`check` stays structural and does not substitute for validated review evidence.
+
 ### Strip acquisition contract
 
 `docs/strip-acquisition-contract.md` is the authority for motion classes, gates,

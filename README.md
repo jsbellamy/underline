@@ -50,6 +50,8 @@ npm run strip:polish -- init <provider.png> --provenance <source.json> \
   [--edit-source <seed-strip.png>] [--json]
 npm run strip:polish -- brief <bundle> [--json]
 npm run strip:polish -- check <bundle> [--json]
+npm run strip:polish -- review-packet <bundle> [--json]
+npm run strip:polish -- validate-reviews <bundle> [--json]
 npm run strip:polish -- finalize <bundle> [--json]
 ```
 
@@ -104,7 +106,11 @@ For a prompt-independent miner audit, initialize with `--polish-profile miner`.
 The profile is copied into the Polish Bundle and hash-bound by its manifest.
 Before editing, a cold-start agent runs `brief` to read the fixed visual
 questions, applicable Motion-class questions, editing rules, and audit workflow.
-The verdicts are `PASS`, `EDIT`, and `UNCERTAIN`; an agent reports `UNCERTAIN`
+Before `finalize` on a non-legacy bundle, build `reviews/packet.json` and
+`reviews/packet.png` with `review-packet`, record immutable blinded
+`reviews/review--NN.json` answers in separate sessions, and run
+`validate-reviews` until `ok` is true. Legacy allowlisted bundles remain exempt
+until re-acquired. The verdicts are `PASS`, `EDIT`, and `UNCERTAIN`; an agent reports `UNCERTAIN`
 instead of inventing intent. The profile guides visual judgment but does not
 add deterministic Gates or replace `check`.
 

@@ -97,10 +97,6 @@ def _load_json(path: Path) -> dict[str, Any]:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def _binding_sha256(binding: Mapping[str, Any]) -> str:
-    return str(binding["sha256"])
-
-
 def _question_rows(rows: Sequence[Mapping[str, Any]]) -> tuple[dict[str, str], ...]:
     return tuple({"id": str(row["id"]), "question": str(row["question"])} for row in rows)
 
