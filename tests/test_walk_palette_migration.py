@@ -149,7 +149,7 @@ WALK_STALE_IDENTITY_BINDING = pytest.mark.xfail(
         "lamp - and only 3-4 of the 28 tool Cells land on any opaque Cell at all. The walk "
         "strip is not a pose of the canonical character, so any re-role would be free-hand "
         "authoring, which this slice's Invariants forbid. Walk must be re-derived from the "
-        "part map instead; strict=True so this fails loudly once it is."
+        "part map instead (#304); strict=True so this fails loudly once it is. The lock's silent drop of the occupancy ceiling, which let this bundle pass at an occupancy difference of ~0.48 against a declared 0.2, is #302."
     ),
 )
 
