@@ -21,7 +21,9 @@ __all__ = [
     "_REVIEW_COLORS",
     "lattice_orientation",
     "load_part_map",
+    "minimum_review_color_delta_e",
     "render_part_map",
+    "review_tile_label",
 ]
 
 SCHEMA = "cell-part-map/0"
@@ -39,18 +41,17 @@ ORIENTATION_IDS = (
 )
 REVIEW_SCALE = 12
 _REVIEW_COLORS: dict[str, tuple[int, int, int, int]] = {
-    "tool_head": (220, 60, 60, 255),
-    "tool_handle": (240, 120, 60, 255),
-    "helmet": (80, 140, 220, 255),
-    "lamp": (255, 200, 40, 255),
-    "head_face": (240, 200, 180, 255),
-    "beard": (160, 100, 60, 255),
-    "torso": (80, 180, 80, 255),
-    "arm_near": (60, 160, 120, 255),
-    "hand_near": (255, 180, 200, 255),
-    "belt": (180, 60, 180, 255),
-    "legs": (100, 100, 200, 255),
-    "boots": (120, 80, 60, 255),
+    "tool_head": (165, 8, 8, 255),
+    "tool_handle": (204, 115, 10, 255),
+    "helmet": (128, 140, 7, 255),
+    "lamp": (12, 242, 18, 255),
+    "head_face": (9, 192, 87, 255),
+    "beard": (8, 165, 147, 255),
+    "arm_near": (10, 160, 216, 255),
+    "hand_near": (45, 11, 230, 255),
+    "belt": (76, 6, 133, 255),
+    "legs": (219, 10, 184, 255),
+    "boots": (186, 9, 95, 255),
 }
 _LANDMARK_PART_IDS: dict[str, str] = {
     "lamp": "lamp",
@@ -67,7 +68,6 @@ _REQUIRED_PART_IDS = frozenset(
         "lamp",
         "head_face",
         "beard",
-        "torso",
         "arm_near",
         "hand_near",
         "belt",
@@ -318,29 +318,28 @@ def _validate_landmark_parts(parsed_parts: dict[str, Part]) -> None:
             )
 
 
-def _validate_grip_held(parsed_parts: dict[str, Part]) -> None:
+def _validate_tool_carried(parsed_parts: dict[str, Part]) -> None:
     handle = parsed_parts["tool_handle"]
-    if handle.grip is None:
-        raise PartMapError(
-            "tool_handle must declare a grip",
-            reason_code="grip_not_held",
-        )
     parent_id = handle.parent
     if parent_id is None:
         raise PartMapError(
-            "tool_handle must declare a parent hand",
-            reason_code="grip_not_held",
+            "tool_handle must declare a parent part",
+            reason_code="tool_not_carried",
         )
-    hand = parsed_parts.get(parent_id)
-    if hand is None:
+    parent = parsed_parts.get(parent_id)
+    if parent is None:
         raise PartMapError(
             f"tool_handle parent {parent_id!r} is unknown",
-            reason_code="grip_not_held",
+            reason_code="tool_not_carried",
         )
-    if not any(_chebyshev(handle.grip, cell) <= 1 for cell in hand.cells):
+    if not any(
+        _chebyshev(handle_cell, parent_cell) <= 1
+        for handle_cell in handle.cells
+        for parent_cell in parent.cells
+    ):
         raise PartMapError(
-            f"tool_handle grip {handle.grip[0]},{handle.grip[1]} is not held by parent {parent_id!r}",
-            reason_code="grip_not_held",
+            f"tool_handle is not carried by parent {parent_id!r}",
+            reason_code="tool_not_carried",
         )
 
 
@@ -474,13 +473,7 @@ def load_part_map(path: Path | str) -> PartMap:
             pivot_raw,
             where=f"parts.{part_id}.pivot",
         )
-        if parent is None:
-            if pivot is not None:
-                raise PartMapError(
-                    f"part {part_id!r} root cannot declare a pivot",
-                    reason_code="invalid_part_map_parent",
-                )
-        elif pivot is None:
+        if parent is not None and pivot is None:
             raise PartMapError(
                 f"part {part_id!r} must declare a pivot",
                 reason_code="invalid_part_map_parent",
@@ -578,7 +571,7 @@ def load_part_map(path: Path | str) -> PartMap:
 
     _validate_part_connectivity(parsed_parts)
     _validate_landmark_parts(parsed_parts)
-    _validate_grip_held(parsed_parts)
+    _validate_tool_carried(parsed_parts)
 
     return PartMap(
         schema=SCHEMA,
@@ -597,6 +590,60 @@ def build_rigid_orientations(
         orientation_id: _footprint_to_payload(lattice_orientation(rot0, orientation_id))
         for orientation_id in ORIENTATION_IDS
     }
+
+
+def _rgb_to_lab(r: int, g: int, b: int) -> tuple[float, float, float]:
+    def pivot(channel: float) -> float:
+        return ((channel + 0.055) / 1.055) ** 2.4 if channel > 0.04045 else channel / 12.92
+
+    red, green, blue = (
+        pivot(r / 255.0),
+        pivot(g / 255.0),
+        pivot(b / 255.0),
+    )
+    x = red * 0.4124 + green * 0.3576 + blue * 0.1805
+    y = red * 0.2126 + green * 0.7152 + blue * 0.0722
+    z = red * 0.0193 + green * 0.1192 + blue * 0.9505
+    x /= 0.95047
+    z /= 1.08883
+
+    def f(channel: float) -> float:
+        return channel ** (1 / 3) if channel > 0.008856 else (7.787 * channel) + (16 / 116)
+
+    fx, fy, fz = f(x), f(y), f(z)
+    return (116.0 * fy) - 16.0, 500.0 * (fx - fy), 200.0 * (fy - fz)
+
+
+def _cie76_delta_e(
+    left: tuple[int, int, int, int],
+    right: tuple[int, int, int, int],
+) -> float:
+    lab_left = _rgb_to_lab(left[0], left[1], left[2])
+    lab_right = _rgb_to_lab(right[0], right[1], right[2])
+    return sum((a - b) ** 2 for a, b in zip(lab_left, lab_right)) ** 0.5
+
+
+def minimum_review_color_delta_e() -> float:
+    colors = list(_REVIEW_COLORS.values())
+    return min(
+        _cie76_delta_e(colors[index], colors[other])
+        for index in range(len(colors))
+        for other in range(index + 1, len(colors))
+    )
+
+
+def review_tile_label(part_id: str, part: Part) -> str:
+    count = len(part.cells)
+    if part.parent is None:
+        return f"{part_id} (root) ({count})"
+    return f"{part_id} \u2190 {part.parent} ({count})"
+
+
+def _contrast_border_rgba(color: tuple[int, int, int, int]) -> tuple[int, int, int, int]:
+    luminance = 0.299 * color[0] + 0.587 * color[1] + 0.114 * color[2]
+    if luminance < 128:
+        return (255, 255, 255, 255)
+    return (0, 0, 0, 255)
 
 
 def render_part_map(part_map: PartMap, base_path: Path | str) -> "Image.Image":
@@ -667,6 +714,13 @@ def render_part_map(part_map: PartMap, base_path: Path | str) -> "Image.Image":
         tile_y = y + row * (tile_h + label_h + 4)
         part = part_map.parts[part_id]
         part_color = _REVIEW_COLORS[part_id]
+        border_color = _contrast_border_rgba(part_color)
+        border_cells: set[tuple[int, int]] = set()
+        for cell_x, cell_y in part.cells:
+            for dx, dy in ((0, 1), (0, -1), (1, 0), (-1, 0)):
+                neighbor = (cell_x + dx, cell_y + dy)
+                if neighbor not in part.cells and base_cells[cell_y][cell_x] is not None:
+                    border_cells.add(neighbor)
         tile_lookup: dict[tuple[int, int], tuple[int, int, int, int]] = {}
         for cell_y, row_cells in enumerate(base_cells):
             for cell_x, cell in enumerate(row_cells):
@@ -675,11 +729,13 @@ def render_part_map(part_map: PartMap, base_path: Path | str) -> "Image.Image":
                 coord = (cell_x, cell_y)
                 if coord in part.cells:
                     tile_lookup[coord] = part_color
+                elif coord in border_cells:
+                    tile_lookup[coord] = border_color
                 else:
                     tile_lookup[coord] = _NEUTRAL_REVIEW_RGBA
         tile = frame_from_rgba(tile_lookup).resize((tile_w, tile_h), Image.NEAREST)
         sheet.paste(tile, (x, tile_y))
-        label = f"{part_id} ({len(part.cells)})"
+        label = review_tile_label(part_id, part)
         draw.text((x, tile_y + tile_h + 2), label, fill=(220, 220, 220, 255), font=font)
 
     return sheet

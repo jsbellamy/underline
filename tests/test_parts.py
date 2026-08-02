@@ -19,7 +19,9 @@ from pipeline.parts import (
     _four_connected_blobs,
     lattice_orientation,
     load_part_map,
+    minimum_review_color_delta_e,
     render_part_map,
+    review_tile_label,
 )
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,11 +31,10 @@ IDENTITY_LOCKS_JSON = ROOT / "assets" / "first-room" / "dwarf" / "identity-locks
 BASE_FRAME = ROOT / "assets" / "first-room" / "dwarf" / "idle" / "release" / "frame-0.png"
 ROLES_JSON = ROOT / "assets" / "first-room" / "dwarf" / "idle" / "polished-roles.json"
 CANONICAL_BASE_SHA = "7495a733c11be50fff2d2a16d5842d56d6a79cb7642da7a344bc699290f7c9c6"
-REDERIVED_PART_IDS = frozenset({"torso", "arm_near", "hand_near", "head_face", "beard"})
+REDERIVED_PART_IDS = frozenset({"arm_near", "hand_near", "head_face", "beard"})
 PART_DOMINANT_ROLES = {
-    "torso": frozenset({"earth-leather-beard", "green-cloth"}),
-    "arm_near": frozenset({"green-cloth"}),
-    "hand_near": frozenset({"amber-emission", "earth-leather-beard", "skin"}),
+    "arm_near": frozenset({"green-cloth", "skin", "earth-leather-beard"}),
+    "hand_near": frozenset({"skin", "earth-leather-beard", "dark-outline"}),
     "head_face": frozenset({"earth-leather-beard", "skin", "amber-emission"}),
     "beard": frozenset({"earth-leather-beard"}),
 }
@@ -45,7 +46,6 @@ REQUIRED_PART_IDS = frozenset(
         "lamp",
         "head_face",
         "beard",
-        "torso",
         "arm_near",
         "hand_near",
         "belt",
@@ -59,7 +59,7 @@ TOOL_HEAD_CORE = frozenset(
 TOOL_BBOX_RECT = {(x, y) for y in range(1, 8) for x in range(0, 6)}
 TOOL_BBOX_CELL_COUNT = 21
 TOOL_PART_CELL_COUNT = 26
-OUTLINE_CONNECTIVITY_EXCEPTIONS = frozenset({(14, 16), (14, 17), (14, 18), (15, 17)})
+OUTLINE_CONNECTIVITY_EXCEPTIONS = frozenset({(5, 15), (14, 16), (14, 17), (14, 18), (15, 17)})
 
 
 def _opaque_cells(path: Path = BASE_FRAME) -> set[tuple[int, int]]:
@@ -180,13 +180,23 @@ def test_c1_rederived_parts_are_single_blobs_with_expected_roles(part_map) -> No
     assert assigned == _opaque_cells()
 
 
+def test_c1_belt_is_root_and_hand_near_covers_skin_cells(part_map) -> None:
+    assert "torso" not in part_map.parts
+    belt = part_map.parts["belt"]
+    assert belt.parent is None
+    assert belt.pivot == (11, 16)
+    hand = part_map.parts["hand_near"]
+    assert (5, 12) in hand.cells
+    assert (5, 13) in hand.cells
+
+
 def test_c2_checked_in_map_is_connected_and_fixture_splits_blob(tmp_path: Path, part_map) -> None:
     for part in part_map.parts.values():
         assert len(_four_connected_blobs(part.cells)) == 1
 
     payload = json.loads(PARTS_JSON.read_text(encoding="utf-8"))
-    bridge = "8,12"
-    payload["parts"]["torso"]["cells"].remove(bridge)
+    bridge = "10,14"
+    payload["parts"]["beard"]["cells"].remove(bridge)
     payload["parts"]["arm_near"]["cells"].append(bridge)
     path = tmp_path / "parts.json"
     path.write_text(json.dumps(payload), encoding="utf-8")
@@ -221,19 +231,24 @@ def test_c3_landmarks_match_identity_locks_and_fixture_moves_eye(
     assert exc_info.value.reason_code == "landmark_part_mismatch"
 
 
-def test_c4_checked_in_grip_is_held_and_fixture_moves_grip(tmp_path: Path, part_map) -> None:
+def test_c4_tool_handle_is_carried_and_fixture_breaks_contact(tmp_path: Path, part_map) -> None:
     handle = part_map.parts["tool_handle"]
-    hand = part_map.parts["hand_near"]
-    assert handle.grip is not None
-    assert any(_chebyshev(handle.grip, cell) <= 1 for cell in hand.cells)
+    assert handle.parent == "arm_near"
+    assert handle.parent != "hand_near"
+    parent = part_map.parts[handle.parent]
+    assert any(
+        _chebyshev(handle_cell, parent_cell) <= 1
+        for handle_cell in handle.cells
+        for parent_cell in parent.cells
+    )
 
     payload = json.loads(PARTS_JSON.read_text(encoding="utf-8"))
-    payload["parts"]["tool_handle"]["grip"] = [0, 1]
+    payload["parts"]["tool_handle"]["parent"] = "boots"
     path = tmp_path / "parts.json"
     path.write_text(json.dumps(payload), encoding="utf-8")
-    with pytest.raises(PartMapError, match="grip") as exc_info:
+    with pytest.raises(PartMapError, match="carried") as exc_info:
         load_part_map(path)
-    assert exc_info.value.reason_code == "grip_not_held"
+    assert exc_info.value.reason_code == "tool_not_carried"
 
 
 def test_c5_render_part_map_declares_review_colors_and_panels(part_map) -> None:
@@ -250,7 +265,17 @@ def test_c5_render_part_map_declares_review_colors_and_panels(part_map) -> None:
     tile_rows = (len(part_ids) + 3) // 4
     expected_h = 8 + panel1_h + 8 + panel2_h + 8 + tile_rows * (tile_h + label_h + 4) + 8
     assert image.size[1] == expected_h
-    assert expected_panel_count == 14
+    assert expected_panel_count == 13
+
+
+def test_c7_review_colors_are_separated() -> None:
+    assert minimum_review_color_delta_e() >= 40
+
+
+def test_c8_review_tile_labels_name_parent_chain(part_map) -> None:
+    assert review_tile_label("belt", part_map.parts["belt"]) == "belt (root) (46)"
+    hand = part_map.parts["hand_near"]
+    assert review_tile_label("hand_near", hand) == f"hand_near \u2190 arm_near ({len(hand.cells)})"
 
 
 def test_c6_parts_review_png_matches_render(part_map) -> None:
@@ -288,7 +313,7 @@ def test_c3_tool_footprint_matches_measured_bbox(part_map) -> None:
     assert TOOL_HEAD_CORE <= part_map.parts["tool_head"].cells
 
 
-def test_c4_parent_chain_reaches_torso_without_cycle(part_map) -> None:
+def test_c4_parent_chain_reaches_belt_without_cycle(part_map) -> None:
     seen: set[str] = set()
 
     def walk(part_id: str) -> None:
@@ -303,12 +328,16 @@ def test_c4_parent_chain_reaches_torso_without_cycle(part_map) -> None:
 
     walk("tool_head")
     assert part_map.parts["tool_head"].parent == "tool_handle"
-    assert part_map.parts["tool_handle"].parent == "hand_near"
+    assert part_map.parts["tool_handle"].parent == "arm_near"
     assert part_map.parts["hand_near"].parent == "arm_near"
-    assert part_map.parts["arm_near"].parent == "torso"
-    assert part_map.parts["torso"].parent is None
-    for child in ("helmet", "beard", "belt", "legs", "boots", "head_face", "lamp"):
-        assert part_map.parts[child].parent == "torso"
+    assert part_map.parts["arm_near"].parent == "belt"
+    assert part_map.parts["belt"].parent is None
+    assert part_map.parts["legs"].parent == "belt"
+    assert part_map.parts["boots"].parent == "legs"
+    assert part_map.parts["head_face"].parent == "belt"
+    assert part_map.parts["helmet"].parent == "head_face"
+    assert part_map.parts["lamp"].parent == "helmet"
+    assert part_map.parts["beard"].parent == "head_face"
 
 
 def test_c5_tool_handle_grip_is_authored_and_inside_part(part_map) -> None:
@@ -332,8 +361,8 @@ def test_c6_rejects_base_digest_mismatch(tmp_path: Path) -> None:
 
 def test_c6_rejects_unassigned_opaque_cell(tmp_path: Path) -> None:
     payload = json.loads(PARTS_JSON.read_text(encoding="utf-8"))
-    torso_cells = payload["parts"]["torso"]["cells"]
-    payload["parts"]["torso"]["cells"] = torso_cells[:-1]
+    belt_cells = payload["parts"]["belt"]["cells"]
+    payload["parts"]["belt"]["cells"] = belt_cells[:-1]
     path = tmp_path / "parts.json"
     path.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(PartMapError, match="unassigned") as exc_info:
@@ -343,7 +372,7 @@ def test_c6_rejects_unassigned_opaque_cell(tmp_path: Path) -> None:
 
 def test_c6_rejects_duplicate_cell_claim(tmp_path: Path) -> None:
     payload = json.loads(PARTS_JSON.read_text(encoding="utf-8"))
-    stolen = payload["parts"]["torso"]["cells"][0]
+    stolen = payload["parts"]["belt"]["cells"][0]
     payload["parts"]["helmet"]["cells"].append(stolen)
     path = tmp_path / "parts.json"
     path.write_text(json.dumps(payload), encoding="utf-8")
@@ -355,7 +384,7 @@ def test_c6_rejects_duplicate_cell_claim(tmp_path: Path) -> None:
 def test_c6_rejects_missing_required_part(tmp_path: Path) -> None:
     payload = json.loads(PARTS_JSON.read_text(encoding="utf-8"))
     beard_cells = payload["parts"].pop("beard")["cells"]
-    payload["parts"]["torso"]["cells"].extend(beard_cells)
+    payload["parts"]["belt"]["cells"].extend(beard_cells)
     path = tmp_path / "parts.json"
     path.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(PartMapError, match="missing required part") as exc_info:
