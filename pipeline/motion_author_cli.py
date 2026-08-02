@@ -17,12 +17,7 @@ from pipeline.strip import Cell
 
 
 def _discover_base_frames(base_bundle: Path, motion_class: str) -> list[list[list[Cell]]]:
-    """Load base Frames from ``base_bundle``, embedded onto ``motion_class``'s canvas.
-
-    Accepts either a Polish Bundle root (read via the shared C1 embedding rule
-    in `final_polish._load_base_release_frames`) or a bare directory of
-    `frame-*.png` files, unchanged for backward compatibility.
-    """
+    """Load base Frames from ``base_bundle``, embedded onto ``motion_class``'s canvas."""
     if (base_bundle / "manifest.json").is_file():
         try:
             return _load_base_release_frames(base_bundle, motion_class)

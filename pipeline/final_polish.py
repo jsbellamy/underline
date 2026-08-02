@@ -1254,13 +1254,7 @@ def _binding_sha256_dict(binding: Mapping[str, Any]) -> str:
 def _load_base_release_frames(
     base_bundle_root: Path, motion_class: str
 ) -> list[list[list[Cell]]]:
-    """Load a base Bundle's release Frames, embedded onto ``motion_class``'s canvas.
-
-    Shared by the Motion Author CLI and `initialize_cell_authored_bundle` so both
-    derive byte-identical base Frames (issue #290 C1): the base Bundle's own
-    manifest layout is the anchor raster, and the target class's
-    ``canonical_origin`` is the embedding offset.
-    """
+    """Load a base Bundle's release Frames, embedded onto ``motion_class``'s canvas."""
     manifest = _load_manifest(base_bundle_root)
     anchor_layout = _layout_from_manifest(manifest)
     release_dir = _frame_dir(base_bundle_root, "release")

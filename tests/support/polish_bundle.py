@@ -276,13 +276,9 @@ def prepare_cell_author(
 ) -> PreparedCellAuthor:
     """Build a cell-author fixture from a finalized provider base bundle.
 
-    `base_bundle_root`, when given, is used directly as the base Bundle
-    instead of synthesizing one from `motion_class`'s own strip — letting the
-    base Bundle's Motion class differ from the authored `motion_class` (issue
-    #290). The base Bundle's release Frames are embedded onto the target
-    class canvas via the same shared rule `initialize_cell_authored_bundle`
-    uses (`pipeline.final_polish._load_base_release_frames`), so a 16x24 base
-    can author a 24x24 target.
+    `base_bundle_root`, when given, is used directly instead of synthesizing
+    one from `motion_class`'s own strip — letting the base Bundle's own
+    Motion class differ from the authored `motion_class`.
     """
     if base_bundle_root is not None:
         base_bundle = base_bundle_root
