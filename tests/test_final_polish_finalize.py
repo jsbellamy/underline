@@ -24,16 +24,17 @@ from pipeline.strip import (
     ingest_strip_provider,
 )
 from tests.support import polish_bundle as pb
-
 from tests.support.final_polish_testkit import (
     FRAME_COUNT,
     LANTERN_STRIP,
     PASS_STRIP,
+    ROOT,
     check_bundle,
     corpus_layout,
     finalize_bundle,
     set_opaque_rgb,
 )
+from tests.support.polish_review_fixture import write_passing_reviews
 
 
 def _init_bundle_polish(
@@ -55,7 +56,8 @@ def _init_bundle_polish(
 
 def _init_passing_bundle(tmp_path: Path) -> Path:
     bundle = tmp_path / "bundle"
-    _init_bundle_polish(PASS_STRIP, "idle", bundle, tmp_path)
+    attempt = pb.prepare(PASS_STRIP, "idle", tmp_path, polish_profile="miner")
+    pb.init_bundle(attempt, bundle)
     return bundle
 
 
@@ -74,6 +76,7 @@ def test_production_check_and_final_report_bind_embedded_profile(
 ) -> None:
     bundle = tmp_path / "bundle"
     _init_bundle_polish(strip, motion_class, bundle, tmp_path, polish_profile=profile_id)
+    write_passing_reviews(bundle)
     result = check_bundle(bundle)
     profile_hash = sha256_file(bundle / "profile.json")
     assert result.profile_id == profile_id
@@ -89,6 +92,7 @@ def test_production_check_and_final_report_bind_embedded_profile(
 def test_check_and_final_report_bind_embedded_profile(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
     _init_bundle_polish(PASS_STRIP, "idle", bundle, tmp_path, polish_profile="miner")
+    write_passing_reviews(bundle)
     result = check_bundle(bundle)
     profile_hash = sha256_file(bundle / "profile.json")
     assert result.profile_id == "miner"
@@ -103,6 +107,7 @@ def test_check_and_final_report_bind_embedded_profile(tmp_path: Path) -> None:
 
 def test_provider_currently_review_is_reportable_without_release(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
+    write_passing_reviews(bundle)
     base = ingest_strip_provider(bundle / "provider" / "source.png", corpus_layout(), motion_class="idle")
     review = IngestResult(
         layout=base.layout,
@@ -125,6 +130,7 @@ def test_provider_currently_review_is_reportable_without_release(tmp_path: Path)
 
 def test_finalize_records_immutable_report_and_pass_release(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
+    write_passing_reviews(bundle)
     result = check_bundle(bundle)
     report_path = finalize_bundle(bundle)
 
@@ -146,6 +152,7 @@ def test_finalize_fail_outcome_writes_report_without_release(tmp_path: Path) -> 
     bundle = _init_passing_bundle(tmp_path)
     polished = bundle / "polished" / "frame-1.png"
     set_opaque_rgb(polished, 3, 5, (250, 1, 2))
+    write_passing_reviews(bundle)
     result = check_bundle(bundle)
     report_path = finalize_bundle(bundle)
 
@@ -156,6 +163,7 @@ def test_finalize_fail_outcome_writes_report_without_release(tmp_path: Path) -> 
 
 def test_repeat_finalize_is_idempotent(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
+    write_passing_reviews(bundle)
     result = check_bundle(bundle)
     first = finalize_bundle(bundle)
     second = finalize_bundle(bundle)
@@ -165,6 +173,7 @@ def test_repeat_finalize_is_idempotent(tmp_path: Path) -> None:
 
 def test_conflicting_report_fails_closed(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
+    write_passing_reviews(bundle)
     result = check_bundle(bundle)
     report_path = finalize_bundle(bundle)
     tampered = json.loads(report_path.read_text())
@@ -178,6 +187,7 @@ def test_conflicting_report_fails_closed(tmp_path: Path) -> None:
 
 def test_conflicting_release_fails_closed(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
+    write_passing_reviews(bundle)
     result = check_bundle(bundle)
     finalize_bundle(bundle)
     release = bundle / "release" / "frame-0.png"
@@ -201,3 +211,70 @@ def test_tampered_v2_provenance_blocks_check_and_finalize(tmp_path: Path) -> Non
 
     with pytest.raises(InvalidBundleError):
         finalize_bundle(bundle)
+
+
+def test_finalize_missing_visual_review_writes_nothing(tmp_path: Path) -> None:
+    bundle = _init_passing_bundle(tmp_path)
+    with pytest.raises(InvalidBundleError) as exc:
+        finalize_bundle(bundle)
+    assert exc.value.reason_code == "visual_review_missing"
+    assert not (bundle / "release").exists()
+    assert list((bundle / "reports").glob("*.json")) == []
+
+
+def test_finalize_with_valid_reviews_succeeds(tmp_path: Path) -> None:
+    bundle = _init_passing_bundle(tmp_path)
+    write_passing_reviews(bundle)
+    report_path = finalize_bundle(bundle)
+    assert report_path.is_file()
+    assert (bundle / "release" / "frame-0.png").is_file()
+
+
+def test_finalize_edit_or_uncertain_blocks_even_when_structurally_passing(tmp_path: Path) -> None:
+    bundle = _init_passing_bundle(tmp_path)
+    from pipeline import polish_review as pr
+    from tests.support.polish_review_fixture import _packet_questions, build_packet, write_review
+
+    packet = build_packet(bundle)
+    answers = {row["id"]: ("EDIT", "needs edit") for row in _packet_questions(packet)}
+    write_review(
+        bundle,
+        ordinal=1,
+        reviewer_id="r1",
+        reviewer_session_id="s1",
+        answers=answers,
+    )
+    write_review(
+        bundle,
+        ordinal=2,
+        reviewer_id="r2",
+        reviewer_session_id="s2",
+        answers=answers,
+        review_dir=pr.bundle_reviews_dir(bundle),
+    )
+    with pytest.raises(InvalidBundleError) as exc:
+        finalize_bundle(bundle)
+    assert exc.value.reason_code == "visual_review_unresolved"
+    assert not (bundle / "release").exists()
+    assert list((bundle / "reports").glob("*.json")) == []
+    report = pr.validate_bundle_review_dir(pr.bundle_reviews_dir(bundle), bundle)
+    assert report["unresolved_question_ids"]
+
+
+def test_legacy_bundle_finalizes_without_reviews(tmp_path: Path) -> None:
+    import shutil
+
+    legacy_bundle = ROOT / "assets" / "first-room" / "dwarf" / "idle"
+    bundle = tmp_path / "legacy-idle"
+    shutil.copytree(legacy_bundle, bundle)
+    reports = bundle / "reports"
+    if reports.is_dir():
+        for path in reports.iterdir():
+            if path.name != "audit.json":
+                path.unlink()
+    release = bundle / "release"
+    if release.is_dir():
+        for path in release.iterdir():
+            path.unlink()
+    report_path = finalize_bundle(bundle)
+    assert report_path.is_file()

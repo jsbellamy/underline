@@ -25,6 +25,11 @@ from pipeline.final_polish import (
 )
 from pipeline.gate_evidence import sha256_file
 from pipeline.identity_lock import build_identity_seed, identity_lock_report_payload
+from pipeline.polish_review import (
+    PolishReviewError,
+    validate_bundle_review_dir,
+    write_review_packet,
+)
 from pipeline.strip import (
     DEFAULT_LAYOUT,
     IngestResult,
@@ -513,6 +518,64 @@ def _handle_finalize(args: argparse.Namespace) -> int:
     return _exit_code(result.outcome)
 
 
+def _handle_review_packet(args: argparse.Namespace) -> int:
+    try:
+        packet = write_review_packet(args.bundle)
+    except (InvalidBundleError, FinalPolishError, PolishReviewError) as exc:
+        reason_code = getattr(exc, "reason_code", None)
+        if args.json:
+            _emit_json(
+                {
+                    "ok": False,
+                    "error": str(exc),
+                    "reason_code": reason_code,
+                }
+            )
+        print(str(exc), file=sys.stderr)
+        return 2
+    review_dir = args.bundle / "reviews"
+    payload = {
+        "ok": True,
+        "packet_sha256": packet["packet_sha256"],
+        "packet_json": str((review_dir / "packet.json").resolve()),
+        "packet_png": str((review_dir / "packet.png").resolve()),
+    }
+    if args.json:
+        _emit_json(payload)
+    else:
+        print(f"Packet    {payload['packet_json']}")
+        print(f"PNG       {payload['packet_png']}")
+        print(f"SHA-256   {payload['packet_sha256']}")
+    return 0
+
+
+def _handle_validate_reviews(args: argparse.Namespace) -> int:
+    review_dir = args.bundle / "reviews"
+    try:
+        report = validate_bundle_review_dir(review_dir, args.bundle)
+    except PolishReviewError as exc:
+        report = {
+            "ok": False,
+            "error": str(exc),
+            "review_dir": str(review_dir.resolve()),
+        }
+    if args.json:
+        _emit_json(report)
+    else:
+        print(f"Reviews   {report.get('review_dir', review_dir)}")
+        print(f"OK        {report.get('ok')}")
+        if report.get("required_review_count") is not None:
+            print(f"Required  {report['required_review_count']}")
+        if report.get("record_digests"):
+            for digest in report["record_digests"]:
+                print(f"  {digest}")
+        if report.get("unresolved_question_ids"):
+            print(f"Unresolved {', '.join(report['unresolved_question_ids'])}")
+        if report.get("error"):
+            print(report["error"], file=sys.stderr)
+    return 0 if report.get("ok") else 1
+
+
 def _handle_seed(args: argparse.Namespace) -> int:
     try:
         meta = build_identity_seed(
@@ -692,6 +755,20 @@ def _configure_parser(parser: argparse.ArgumentParser) -> None:
     finalize.add_argument("bundle", type=pathlib.Path, help="Final-polish bundle directory")
     finalize.add_argument("--json", action="store_true", help="Emit machine-readable JSON on stdout")
 
+    review_packet = sub.add_parser(
+        "review-packet",
+        help="Build blinded visual-review packet evidence under reviews/",
+    )
+    review_packet.add_argument("bundle", type=pathlib.Path, help="Final-polish bundle directory")
+    review_packet.add_argument("--json", action="store_true", help="Emit machine-readable JSON on stdout")
+
+    validate_reviews = sub.add_parser(
+        "validate-reviews",
+        help="Validate immutable visual-review records for a bundle",
+    )
+    validate_reviews.add_argument("bundle", type=pathlib.Path, help="Final-polish bundle directory")
+    validate_reviews.add_argument("--json", action="store_true", help="Emit machine-readable JSON on stdout")
+
     seed = sub.add_parser(
         "seed",
         help=(
@@ -786,6 +863,10 @@ def main(argv: list[str] | None = None) -> int:
         return _handle_brief(args)
     if args.command == "finalize":
         return _handle_finalize(args)
+    if args.command == "review-packet":
+        return _handle_review_packet(args)
+    if args.command == "validate-reviews":
+        return _handle_validate_reviews(args)
     if args.command == "seed":
         return _handle_seed(args)
     if args.command == "acquire":

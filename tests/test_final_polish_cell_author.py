@@ -38,6 +38,7 @@ from tests.support.final_polish_testkit import (
     write_animation_provenance,
 )
 from tests.support.polish_bundle import acquisition_store_env
+from tests.support.polish_review_fixture import write_passing_reviews
 from pipeline.final_polish import MOTION_POSE_PLAN_SCHEMA
 
 
@@ -321,6 +322,7 @@ def test_check_summary_json_exposes_cell_author_attestation(
 
 def test_finalize_report_exposes_cell_author_bindings(tmp_path: Path) -> None:
     prepared, bundle = _init_cell(tmp_path)
+    write_passing_reviews(bundle)
     report_path = finalize_bundle(bundle)
     report = json.loads(report_path.read_text())
     ledger = json.loads(prepared.cell_delta_ledger.read_text())

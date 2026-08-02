@@ -49,6 +49,7 @@ from tests.support.final_polish_testkit import (
     write_animation_provenance,
 )
 from tests.support.polish_bundle import acquisition_store_env, record_store_attempt
+from tests.support.polish_review_fixture import write_passing_reviews
 
 
 DWARF_IDLE_BUNDLE = ROOT / "assets" / "first-room" / "dwarf" / "idle"
@@ -947,15 +948,23 @@ def test_attestation_report_payloads(tmp_path: Path, capsys: pytest.CaptureFixtu
         motion_class="idle",
         attempt_id=row["attempt_id"],
         predecessor_attempt_id=row["predecessor_attempt_id"],
+        fixture_polish_profile="miner",
     )
     bundle = tmp_path / "bundle"
     with patch.dict("os.environ", acquisition_store_env(store_root)):
-        initialize_bundle(provider, "idle", bundle, provenance_sidecar=provenance_path)
+        initialize_bundle(
+            provider,
+            "idle",
+            bundle,
+            provenance_sidecar=provenance_path,
+            polish_profile="miner",
+        )
         result = check_bundle(bundle)
     assert result.attestation is not None
     assert result.attestation.state == "attested"
     assert result.attestation.attempt_id == row["attempt_id"]
 
+    write_passing_reviews(bundle)
     report_path = finalize_bundle(bundle)
     report = json.loads(report_path.read_text())
     assert report["attestation"]["state"] == "attested"

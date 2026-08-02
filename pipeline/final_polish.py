@@ -2970,6 +2970,12 @@ def _canonical_json(value: object) -> object:
 def finalize_bundle(bundle_root: Path) -> Path:
     """Write an immutable report; on PASS, copy polished Frames to release/."""
     check = check_bundle(bundle_root)
+    from pipeline.polish_review import attestation_state_name, ensure_visual_reviews_for_finalize
+
+    ensure_visual_reviews_for_finalize(
+        bundle_root,
+        attestation_state_name(check.attestation),
+    )
     report_path = _reports_dir(bundle_root) / f"{check.fingerprint}.json"
     payload = _report_payload(bundle_root, check)
 

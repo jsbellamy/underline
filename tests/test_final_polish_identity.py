@@ -43,6 +43,7 @@ from tests.support.final_polish_testkit import (
     swing_provider_strip,
 )
 from tests.support.polish_bundle import bundle_store_env_context
+from tests.support.polish_review_fixture import write_passing_reviews
 
 
 def _init_bundle_polish(
@@ -406,6 +407,7 @@ def test_identity_lock_fail_blocks_release_despite_passing_structural_and_cohere
         assert result.structural.pass_
         assert result.coherence.get("outcome") == "PASS"
         assert result.outcome == "FAIL"
+        write_passing_reviews(bundle)
         report_path = finalize_bundle(bundle)
     report = json.loads(report_path.read_text())
     assert report["identity_lock"]["outcome"] == "FAIL"
