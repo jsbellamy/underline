@@ -46,6 +46,25 @@ def test_a_changed_test_file_selects_itself() -> None:
     assert result.files == ("tests/test_strip.py",)
 
 
+def test_a_deleted_split_test_file_selects_its_surviving_modules() -> None:
+    result = select_test_files(
+        ["tests/test_final_polish_cli.py"],
+        existing_tests={
+            "tests/test_final_polish_cli_init.py",
+            "tests/test_final_polish_cli_check.py",
+            "tests/test_final_polish_cli_finalize.py",
+            "tests/test_strip.py",
+        },
+    )
+
+    assert result.kind == "selected"
+    assert result.files == (
+        "tests/test_final_polish_cli_check.py",
+        "tests/test_final_polish_cli_finalize.py",
+        "tests/test_final_polish_cli_init.py",
+    )
+
+
 def test_a_changed_pipeline_module_selects_its_test_and_split_variants() -> None:
     result = select_test_files(
         ["pipeline/asset_pack.py"],
