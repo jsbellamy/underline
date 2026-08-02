@@ -237,7 +237,15 @@ def select_test_files(
             and path.name.startswith("test_")
             and path.suffix == ".py"
         ):
-            selected.add(posix)
+            if posix in existing:
+                selected.add(posix)
+            else:
+                # The changed test file no longer exists -- e.g. it was
+                # split into several modules. Fall back to any surviving
+                # module that shares its name as a prefix, the same shape
+                # a split leaves behind for a changed pipeline module.
+                prefix = f"{posix[:-len('.py')]}_"
+                selected.update(t for t in existing if t.startswith(prefix))
             continue
 
         if path.parts and path.parts[0] == "acquisition-controls":
