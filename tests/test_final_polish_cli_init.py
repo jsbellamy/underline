@@ -24,6 +24,7 @@ from pipeline.strip import (
     IngestResult,
     ingest_strip_provider,
 )
+from tests.support import polish_bundle as pb
 from tests.support.final_polish_fixtures import (
     CANONICAL_IDENTITY_SHA,
     IDENTITY_JSON,
@@ -33,7 +34,6 @@ from tests.support.final_polish_fixtures import (
     PASS_STRIP,
     ROOT,
     _corpus_layout,
-    _init_cli_args,
     _run_cli,
     _write_cli_animation_provenance,
 )
@@ -46,8 +46,9 @@ PADDED_SEED_DIMENSIONS = [1664, 1152]
 
 def test_init_creates_bundle_via_module_entrypoint(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
-    args, env = _init_cli_args(tmp_path, PASS_STRIP, "idle", bundle)
-    result = _run_cli(capsys, args, env=env)
+    attempt = pb.prepare(PASS_STRIP, "idle", tmp_path)
+    args = pb.init_argv(attempt, bundle)
+    result = _run_cli(capsys, args, env=dict(attempt.env))
     assert result.returncode == 0, result.stderr
     assert (bundle / "manifest.json").is_file()
     assert (bundle / "polished" / "frame-0.png").is_file()
@@ -55,8 +56,9 @@ def test_init_creates_bundle_via_module_entrypoint(tmp_path: Path, capsys: pytes
 
 def test_init_fail_strip_exit_1(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
-    args, env = _init_cli_args(tmp_path, FAIL_STRIP, "idle", bundle)
-    result = _run_cli(capsys, args, env=env)
+    attempt = pb.prepare(FAIL_STRIP, "idle", tmp_path)
+    args = pb.init_argv(attempt, bundle)
+    result = _run_cli(capsys, args, env=dict(attempt.env))
     assert result.returncode == 1
     assert not bundle.exists()
     assert "FAIL" in result.stdout
@@ -65,8 +67,9 @@ def test_init_fail_strip_exit_1(tmp_path: Path, capsys: pytest.CaptureFixture[st
 
 def test_init_fail_strip_json_exit_1(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
-    args, env = _init_cli_args(tmp_path, FAIL_STRIP, "idle", bundle, json_mode=True)
-    result = _run_cli(capsys, args, env=env)
+    attempt = pb.prepare(FAIL_STRIP, "idle", tmp_path)
+    args = pb.init_argv(attempt, bundle, json_mode=True)
+    result = _run_cli(capsys, args, env=dict(attempt.env))
     assert result.returncode == 1
     assert not bundle.exists()
     data = json.loads(result.stdout)
@@ -78,8 +81,9 @@ def test_init_fail_strip_json_exit_1(tmp_path: Path, capsys: pytest.CaptureFixtu
 
 def test_init_pass_json_exit_0(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
-    args, env = _init_cli_args(tmp_path, PASS_STRIP, "idle", bundle, json_mode=True)
-    result = _run_cli(capsys, args, env=env)
+    attempt = pb.prepare(PASS_STRIP, "idle", tmp_path)
+    args = pb.init_argv(attempt, bundle, json_mode=True)
+    result = _run_cli(capsys, args, env=dict(attempt.env))
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
     assert data["outcome"] == "PASS"
@@ -89,15 +93,9 @@ def test_init_pass_json_exit_0(tmp_path: Path, capsys: pytest.CaptureFixture[str
 
 def test_init_with_profile_binds_profile_in_json_result(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
-    args, env = _init_cli_args(
-        tmp_path,
-        PASS_STRIP,
-        "idle",
-        bundle,
-        polish_profile="miner",
-        json_mode=True,
-    )
-    result = _run_cli(capsys, args, env=env)
+    attempt = pb.prepare(PASS_STRIP, "idle", tmp_path, polish_profile="miner")
+    args = pb.init_argv(attempt, bundle, json_mode=True)
+    result = _run_cli(capsys, args, env=dict(attempt.env))
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
     assert data["polish_profile"] == {
@@ -121,15 +119,9 @@ def test_init_with_production_profile_binds_profile_in_json_result(
     motion_class: str,
 ) -> None:
     bundle = tmp_path / "bundle"
-    args, env = _init_cli_args(
-        tmp_path,
-        strip,
-        motion_class,
-        bundle,
-        polish_profile=profile_id,
-        json_mode=True,
-    )
-    result = _run_cli(capsys, args, env=env)
+    attempt = pb.prepare(strip, motion_class, tmp_path, polish_profile=profile_id)
+    args = pb.init_argv(attempt, bundle, json_mode=True)
+    result = _run_cli(capsys, args, env=dict(attempt.env))
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
     assert data["polish_profile"] == {
@@ -140,14 +132,9 @@ def test_init_with_production_profile_binds_profile_in_json_result(
 
 def test_init_unknown_profile_exit_2_without_partial_bundle(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
-    args, env = _init_cli_args(
-        tmp_path,
-        PASS_STRIP,
-        "idle",
-        bundle,
-        polish_profile="missing",
-    )
-    result = _run_cli(capsys, args, env=env)
+    attempt = pb.prepare(PASS_STRIP, "idle", tmp_path, polish_profile="missing")
+    args = pb.init_argv(attempt, bundle)
+    result = _run_cli(capsys, args, env=dict(attempt.env))
     assert result.returncode == 2
     assert "unknown Polish profile" in result.stderr
     assert not bundle.exists()
@@ -169,9 +156,10 @@ def test_init_review_strip_json_exit_3(tmp_path: Path, capsys) -> None:
         patch("pipeline.final_polish.ingest_strip_provider", return_value=review),
         patch("pipeline.final_polish_cli.ingest_strip_provider", return_value=review),
     ):
-        args, env = _init_cli_args(tmp_path, PASS_STRIP, "idle", bundle, json_mode=True)
+        attempt = pb.prepare(PASS_STRIP, "idle", tmp_path)
+        args = pb.init_argv(attempt, bundle, json_mode=True)
 
-        with patch.dict("os.environ", env):
+        with patch.dict("os.environ", dict(attempt.env)):
 
             code = main(args)
     assert code == 3
@@ -196,9 +184,10 @@ def test_init_review_strip_exit_3(tmp_path: Path, capsys) -> None:
         patch("pipeline.final_polish.ingest_strip_provider", return_value=review),
         patch("pipeline.final_polish_cli.ingest_strip_provider", return_value=review),
     ):
-        args, env = _init_cli_args(tmp_path, PASS_STRIP, "idle", bundle)
+        attempt = pb.prepare(PASS_STRIP, "idle", tmp_path)
+        args = pb.init_argv(attempt, bundle)
 
-        with patch.dict("os.environ", env):
+        with patch.dict("os.environ", dict(attempt.env)):
 
             code = main(args)
     assert code == 3
@@ -230,8 +219,11 @@ def test_init_invalid_provider_exit_2(tmp_path: Path, capsys: pytest.CaptureFixt
 
 def test_init_unknown_motion_class_exit_2(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
-    args, env = _init_cli_args(tmp_path, PASS_STRIP, "nonsense", bundle)
-    result = _run_cli(capsys, args, env=env)
+    attempt = pb.prepare(PASS_STRIP, "idle", tmp_path)
+    args = pb.init_argv(attempt, bundle)
+    motion_class_index = args.index("--motion-class")
+    args[motion_class_index + 1] = "nonsense"
+    result = _run_cli(capsys, args, env=dict(attempt.env))
     assert result.returncode == 2
     assert "unknown motion_class" in result.stderr
 
@@ -239,8 +231,9 @@ def test_init_unknown_motion_class_exit_2(tmp_path: Path, capsys: pytest.Capture
 def test_init_existing_bundle_exit_2(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
     bundle.mkdir()
-    args, env = _init_cli_args(tmp_path, PASS_STRIP, "idle", bundle)
-    result = _run_cli(capsys, args, env=env)
+    attempt = pb.prepare(PASS_STRIP, "idle", tmp_path)
+    args = pb.init_argv(attempt, bundle)
+    result = _run_cli(capsys, args, env=dict(attempt.env))
     assert result.returncode == 2
     assert "already exists" in result.stderr
 
