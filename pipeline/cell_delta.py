@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 import copy
-import io
 import re
+import tempfile
+from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from PIL import Image
-
-from pipeline.gate_evidence import sha256_bytes
-from pipeline.recovery import MAGENTA
-from pipeline.strip import Cell, canonicalize_frame
+from pipeline.cell_raster import write_cells
+from pipeline.gate_evidence import sha256_file
+from pipeline.strip import Cell
 
 __all__ = [
     "CellDeltaError",
@@ -54,27 +53,11 @@ def _rgba_to_cell(rgba: Sequence[int]) -> Cell:
     return (rgba[0], rgba[1], rgba[2])
 
 
-def _frame_png_bytes(cells: list[list[Cell]]) -> bytes:
-    frame_h = len(cells)
-    frame_w = len(cells[0]) if cells else 0
-    logical = canonicalize_frame(cells, frame_w=frame_w, frame_h=frame_h)
-    height = len(logical)
-    width = len(logical[0]) if logical else 0
-    image = Image.new("RGBA", (width, height), (*MAGENTA, 0))
-    pixels = image.load()
-    assert pixels is not None
-    for row_y in range(height):
-        for col_x in range(width):
-            rgb = logical[row_y][col_x]
-            if rgb is not None:
-                pixels[col_x, row_y] = (*rgb, 255)
-    buffer = io.BytesIO()
-    image.save(buffer, format="PNG")
-    return buffer.getvalue()
-
-
 def _frame_sha256(cells: list[list[Cell]]) -> str:
-    return sha256_bytes(_frame_png_bytes(cells))
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        path = Path(tmp_dir) / "frame.png"
+        write_cells(path, cells)
+        return sha256_file(path)
 
 
 def _frame_dimensions(frame: list[list[Cell]]) -> tuple[int, int]:
