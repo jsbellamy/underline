@@ -19,6 +19,7 @@ not delete history.
 | [0003](0003-swing-action-canvas.md) | Swing action canvas (24×24, canonical origin at column 4) |
 | [0004](0004-pre-attestation-acquisitions.md) | Pre-attestation acquisitions (retain `/1` and legacy allowlist) |
 | [0005](0005-isolation-sweep-throughput-target.md) | Isolation-sweep throughput target (`wall_s` ≤ 180s on CI, per-file ceiling retired) |
+| [0006](0006-final-polish-lifecycle-boundary.md) | Final-polish lifecycle boundary |
 
 Earlier decisions settled only in `docs/strip-acquisition-contract.md` or
 `prototype/strip-coherence/NOTES.md` should be promoted here when they start
