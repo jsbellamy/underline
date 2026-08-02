@@ -171,9 +171,26 @@ animation, so the Acceptance profile omits the Gate entirely.
 _Avoid_: Unseparated, disabled
 
 **Polish Bundle**:
-The self-contained provenance and working context connecting one accepted
-provider Strip to its Draft, Polished, and Release Frames.
+The self-contained provenance and working context for one Motion-class animation
+bundle — its Draft, Polished, and Release Frames plus the evidence chain that
+produced them. Provider `init` bundles begin from an accepted provider Strip;
+`init-cell` bundles begin from Cell-authored acquisition with no provider raster.
 _Avoid_: polish workspace, edit session
+
+**Cell-authored acquisition**:
+Production Frames derived from declared base Release Frames through a replayable
+Cell delta ledger, with no provider transport raster and no provider Attempt.
+_Avoid_: cell edit, hand-painted strip
+
+**Motion Author**:
+The deterministic authoring boundary that applies a declarative pose plan under
+identity, palette, and geometry constraints.
+_Avoid_: pose generator, AI redraw
+
+**Pose plan**:
+The reviewable declaration of intended Frame operations and base mapping, schema
+`motion-pose-plan/0`.
+_Avoid_: animation script, keyframe list
 
 **Pre-attestation acquisition**:
 A Polish Bundle whose provider bytes were acquired before attested intake, so
@@ -197,7 +214,7 @@ _Avoid_: identity anchor audit, canonical redraw check
 
 **Generation source**:
 The detailed, hash-bound provider artwork used as the image-edit base for a new
-Motion-class Attempt. For dwarf walk and swing this is explicitly
+provider Motion-class Attempt. For dwarf walk this is explicitly
 `assets/first-room/dwarf/idle/provider/source.png`, declared in
 `identity.json` → `generation_source` and copied by
 `strip:polish seed --identity-declaration identity.json`. It is **not**
@@ -220,8 +237,8 @@ post-ingest identity anchor used as external validation evidence.
 _Avoid_: post-ingest identity anchor, generation source
 
 **Draft Frame**:
-An immutable-by-hash canonical Frame exported from the accepted provider Strip
-before art edits.
+An immutable-by-hash canonical Frame before art edits — exported from an accepted
+provider Strip (provider `init`) or from Cell-authored acquisition (`init-cell`).
 _Avoid_: source frame, baseline frame
 
 **Polished Frame**:

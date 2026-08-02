@@ -87,11 +87,16 @@ Frame durations are milliseconds per Frame slot in order:
 Swing is a one-shot: Frame 3 is the strike pose; the game returns to idle after
 the final hold rather than looping swing→swing.
 
-## Dwarf walk and swing — edit source vs identity anchor
+## Dwarf walk and swing — distinct acquisition paths
 
-Production dwarf **walk** and **swing** are acquired by **image-edit** from the
-idle provider Strip, not by redrawing from `identity.png`. Two files serve
-different roles:
+Production dwarf **walk** and **swing** use **different authoritative workflows**
+(ADR 0007). Walk remains identity-locked provider image-edit; swing uses
+Cell-authored acquisition from canonical idle Release Frame 0.
+
+### Walk — image-edit from idle provider
+
+Production dwarf **walk** is acquired by **image-edit** from the idle provider
+Strip, not by redrawing from `identity.png`. Two files serve different roles:
 
 | File | Role |
 |------|------|
@@ -110,14 +115,31 @@ border). Provenance `edit_source_sha256` must equal the padded seed digest from
 `identity.png` seed is rejected. Keep `provider/source.png` as the unmodified
 provider Attempt — do not paint Identity Lock cells, wipe magenta, or shift
 Frames in the transport raster to clear Gates; regenerate until lock and
-baseline pass cleanly. Keep walk and swing subjects inside a safe empty magenta
-inset away from provider canvas edges — `provider_clipping` requires
-regeneration, not provider painting. Visual audit for walk and swing must
-compare Release
-Frames to the idle provider Strip and idle Release Frames — Identity Lock PASS
-alone does not prove the edit came from idle or that the provider raster was
-unpainted. Full rules:
-`prompts/production/animation-strip.md` § Dwarf-miner walk and swing.
+baseline pass cleanly. Keep walk subjects inside a safe empty magenta inset away
+from provider canvas edges — `provider_clipping` requires regeneration, not
+provider painting. Visual audit for walk must compare Release Frames to the idle
+provider Strip and idle Release Frames — Identity Lock PASS alone does not prove
+the edit came from idle or that the provider raster was unpainted. Full rules:
+`prompts/production/animation-strip.md` § Dwarf-miner walk.
+
+### Swing — Cell-authored acquisition
+
+Production dwarf **swing** is acquired by **Cell-authored acquisition** — not
+image-edit, not fresh text-to-image, and not a newly generated pose reference.
+
+1. Start all four target Frames from canonical idle **Release Frame 0** (the
+   palette-exact post-ingest identity anchor at `identity.png`).
+2. Run the checked-in pose plan through `strip:author` (Motion Author) to emit
+   authored Frames and a `cell-delta-ledger/0` sidecar.
+3. Initialize with `strip:polish init-cell` — no provider directory, no Attempt
+   ledger, no provider transport raster.
+4. Bind `--identity-reference assets/first-room/dwarf/identity.png` for Identity
+   Lock validation only; it is never a generation canvas.
+
+Swing uses base mapping `[0, 0, 0, 0]` from idle Release Frame 0. Existing
+corpus motion samples and PR #169 are reference evidence for pose readability;
+generating new pose concepts is out of scope. Full rules:
+`prompts/production/animation-strip.md` § Dwarf-miner swing.
 
 ## Corpus miner Strips — motion evidence, not identity
 
