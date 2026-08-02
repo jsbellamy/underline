@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -13,13 +14,20 @@ from unittest.mock import patch
 from PIL import Image
 
 from pipeline import asset_acquire as aa
-from pipeline.final_polish import PROVENANCE_SCHEMA, initialize_bundle
+from pipeline.cell_delta import build_cell_delta_ledger
+from pipeline.cell_raster import read_cells, write_cells
+from pipeline.final_polish import (
+    MOTION_POSE_PLAN_SCHEMA,
+    PROVENANCE_SCHEMA,
+    initialize_bundle,
+)
 from pipeline.gate_evidence import sha256_bytes, sha256_file
 from pipeline.identity_lock import build_identity_seed, magenta_pad_generation_source_png
 from pipeline.strip import ingest_strip_provider, layout_for_motion_class, load_provider_frames
 
 ROOT = Path(__file__).resolve().parents[2]
 INBOX = ROOT / "prototype" / "strip-coherence" / "inbox"
+PASS_STRIP = INBOX / "01-miner-idle.png"
 WALK_STRIP = INBOX / "05-miner-walk.png"
 SWING_STRIP = INBOX / "06-miner-swing.png"
 IDENTITY_PNG = ROOT / "assets" / "first-room" / "dwarf" / "identity.png"
@@ -216,6 +224,178 @@ def init_bundle(attempt: PreparedAttempt, bundle: Path) -> None:
             bundle,
             **init_kwargs,
         )
+
+
+
+@dataclass(frozen=True)
+class PreparedCellAuthor:
+    authored_frames_dir: Path
+    base_bundle: Path
+    cell_delta_ledger: Path
+    pose_plan: Path
+    identity_reference: Path | None
+    polish_profile: str
+    specification_id: str
+    motion_class: str
+    authoring_agent: str
+    authoring_session_id: str
+
+
+def write_pose_plan(
+    path: Path,
+    *,
+    motion_class: str,
+    base_specification_id: str,
+    base_frame_mapping: list[int],
+    frame_w: int = 16,
+    frame_h: int = 24,
+) -> None:
+    frame_count = len(base_frame_mapping)
+    record = {
+        "schema": MOTION_POSE_PLAN_SCHEMA,
+        "motion_class": motion_class,
+        "frame_size": [frame_w, frame_h],
+        "frame_count": frame_count,
+        "canonical_origin": [0, 0],
+        "base_specification_id": base_specification_id,
+        "base_frame_mapping": base_frame_mapping,
+        "frames": [{"operations": []} for _ in range(frame_count)],
+    }
+    path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def prepare_cell_author(
+    motion_class: str,
+    tmp_path: Path,
+    *,
+    polish_profile: str | None = None,
+    base_frame_mapping: list[int] | None = None,
+    mutate_frame: tuple[int, int, int, tuple[int, int, int]] | None = None,
+) -> PreparedCellAuthor:
+    """Build a cell-author fixture from a finalized provider base bundle."""
+    base_bundle = tmp_path / "base-bundle"
+    attempt = prepare(
+        PASS_STRIP if motion_class == "idle" else WALK_STRIP,
+        motion_class,
+        tmp_path,
+        polish_profile=polish_profile,
+    )
+    init_bundle(attempt, base_bundle)
+    layout = layout_for_motion_class(motion_class, margin_cells=0)
+    release_dir = base_bundle / "release"
+    release_dir.mkdir(exist_ok=True)
+    for index in range(layout.frame_count):
+        shutil.copy2(
+            base_bundle / "polished" / f"frame-{index}.png",
+            release_dir / f"frame-{index}.png",
+        )
+
+    provenance = json.loads((base_bundle / "provider" / "source.source.json").read_text())
+    specification_id = str(provenance["specification_id"])
+    layout = layout_for_motion_class(motion_class, margin_cells=0)
+    if base_frame_mapping is None:
+        base_frame_mapping = [0] * layout.frame_count
+
+    release_frames = [
+        read_cells(base_bundle / "release" / f"frame-{index}.png")
+        for index in range(layout.frame_count)
+    ]
+    target_frames = [frame[:] for frame in release_frames]
+    if mutate_frame is not None:
+        frame_index, x, y, rgb = mutate_frame
+        target_frames[frame_index] = [row[:] for row in target_frames[frame_index]]
+        target_frames[frame_index][y][x] = rgb
+
+    ledger_path = tmp_path / "cell-delta-ledger.json"
+    ledger = build_cell_delta_ledger(
+        release_frames,
+        target_frames,
+        base_specification_id=specification_id,
+        base_frame_mapping=base_frame_mapping,
+    )
+    ledger_path.write_text(json.dumps(ledger, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+    pose_plan_path = tmp_path / "pose-plan.json"
+    write_pose_plan(
+        pose_plan_path,
+        motion_class=motion_class,
+        base_specification_id=specification_id,
+        base_frame_mapping=base_frame_mapping,
+        frame_w=layout.frame_w,
+        frame_h=layout.frame_h,
+    )
+
+    authored_dir = tmp_path / "authored-frames"
+    authored_dir.mkdir()
+    for index, frame in enumerate(target_frames):
+        write_cells(authored_dir / f"frame-{index}.png", frame)
+
+    profile = polish_profile or ("dwarf-miner" if motion_class in {"walk", "swing"} else "miner")
+    identity_reference = IDENTITY_PNG if motion_class in {"walk", "swing"} else None
+
+    return PreparedCellAuthor(
+        authored_frames_dir=authored_dir,
+        base_bundle=base_bundle,
+        cell_delta_ledger=ledger_path,
+        pose_plan=pose_plan_path,
+        identity_reference=identity_reference,
+        polish_profile=profile,
+        specification_id=f"test/{motion_class}-authored",
+        motion_class=motion_class,
+        authoring_agent="pytest",
+        authoring_session_id="pytest-session-001",
+    )
+
+
+def init_cell_bundle(prepared: PreparedCellAuthor, bundle: Path) -> None:
+    from pipeline.final_polish import initialize_cell_authored_bundle
+
+    store_root = prepared.base_bundle.parent / "acquisition-controls"
+    env = acquisition_store_env(store_root) if store_root.is_dir() else {}
+    with patch.dict("os.environ", env):
+        initialize_cell_authored_bundle(
+            prepared.authored_frames_dir,
+            prepared.motion_class,
+            bundle,
+            specification_id=prepared.specification_id,
+            base_bundle_root=prepared.base_bundle,
+            cell_delta_ledger=prepared.cell_delta_ledger,
+            pose_plan=prepared.pose_plan,
+            polish_profile=prepared.polish_profile,
+            identity_reference=prepared.identity_reference,
+            authoring_agent=prepared.authoring_agent,
+            authoring_session_id=prepared.authoring_session_id,
+        )
+
+
+def init_cell_argv(prepared: PreparedCellAuthor, bundle: Path, *, json_mode: bool = False) -> list[str]:
+    args = [
+        "init-cell",
+        str(prepared.authored_frames_dir),
+        "--base-bundle",
+        str(prepared.base_bundle),
+        "--cell-delta-ledger",
+        str(prepared.cell_delta_ledger),
+        "--pose-plan",
+        str(prepared.pose_plan),
+        "--specification-id",
+        prepared.specification_id,
+        "--motion-class",
+        prepared.motion_class,
+        "--out",
+        str(bundle),
+        "--polish-profile",
+        prepared.polish_profile,
+        "--authoring-agent",
+        prepared.authoring_agent,
+        "--authoring-session-id",
+        prepared.authoring_session_id,
+    ]
+    if prepared.identity_reference is not None:
+        args.extend(["--identity-reference", str(prepared.identity_reference)])
+    if json_mode:
+        args.append("--json")
+    return args
 
 
 def init_argv(
