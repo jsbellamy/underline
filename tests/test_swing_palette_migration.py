@@ -12,6 +12,7 @@ from pipeline.gate_evidence import sha256_file
 from pipeline.identity_lock import evaluate_identity_lock
 from pipeline.palette_quantize import load_master_palette, quantize_cells
 from pipeline.strip import DEFAULT_LAYOUT, resolve_class_frame_geometry
+from tests.support.polish_review_fixture import write_passing_reviews
 
 ROOT = Path(__file__).resolve().parents[1]
 SWING_BUNDLE = ROOT / "assets" / "first-room" / "dwarf" / "swing"
@@ -136,6 +137,7 @@ def test_swing_finalize_rebinds_release_and_report(tmp_path: Path) -> None:
     bundle = tmp_path / "swing"
     shutil.copytree(SWING_BUNDLE, bundle)
     _strip_finalize_outputs(bundle)
+    write_passing_reviews(bundle)
     report_path = finalize_bundle(bundle)
     report = json.loads(report_path.read_text(encoding="utf-8"))
     assert report["outcome"] == "PASS"
