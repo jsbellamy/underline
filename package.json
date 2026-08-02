@@ -10,6 +10,7 @@
     "prototype:strip": "PYTHONPATH=. python3 prototype/strip-coherence/tui.py",
     "prototype:strip:smoke": "PYTHONPATH=. python3 prototype/strip-coherence/smoke.py",
     "strip:ingest": "PYTHONPATH=. python3 -m pipeline.ingest_strip",
+    "strip:author": "PYTHONPATH=. python3 -m pipeline.motion_author_cli",
     "strip:polish": "PYTHONPATH=. python3 -m pipeline.final_polish_cli",
     "asset:static": "PYTHONPATH=. python3 -m pipeline.static_asset_cli",
     "asset:pack": "PYTHONPATH=. python3 -m pipeline.asset_pack_cli",
