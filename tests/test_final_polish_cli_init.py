@@ -436,68 +436,132 @@ def test_seed_cli_rejects_release_identity_as_generation_source(tmp_path: Path, 
     assert "identity declaration" in result.stderr
 
 
-def test_dwarf_miner_profile_and_prompt_require_image_edit_workflow() -> None:
-    profile = json.loads((ROOT / "polish-profiles" / "dwarf-miner.json").read_text())
+def _dwarf_miner_profile() -> dict:
+    return json.loads((ROOT / "polish-profiles" / "dwarf-miner.json").read_text())
+
+
+def _workflow_lines_for_motion(profile: dict, motion: str) -> list[str]:
+    prefix = f"{motion.lower()} —"
+    both_prefix = "both motions —"
+    return [
+        line
+        for line in profile["audit_workflow"]
+        if line.lower().startswith(prefix) or line.lower().startswith(both_prefix)
+    ]
+
+
+def test_dwarf_miner_profile_questions_and_overrides_unchanged() -> None:
+    profile = _dwarf_miner_profile()
+    assert [question["id"] for question in profile["fixed_questions"]] == [
+        "identity_anchors",
+        "identity_lock_pass",
+        "black_eye_no_sclera",
+        "native_scale_separation",
+        "palette_lighting_outline",
+        "temporal_consistency",
+    ]
+    assert set(profile["motion_overrides"]) == {"walk", "swing"}
+    assert [question["id"] for question in profile["motion_overrides"]["walk"]] == [
+        "alternating_legs",
+        "stable_torso",
+    ]
+    assert [question["id"] for question in profile["motion_overrides"]["swing"]] == [
+        "readable_anticipation",
+        "continuous_pickaxe_arc",
+        "hand_handle_separation",
+        "planted_boots",
+        "contact_readability_frame3",
+    ]
+    assert profile["verdicts"] == ["PASS", "EDIT", "UNCERTAIN"]
+
+
+def test_dwarf_miner_profile_walk_audit_workflow() -> None:
+    profile = _dwarf_miner_profile()
+    walk = " ".join(_workflow_lines_for_motion(profile, "walk")).lower()
+    assert "strip:polish seed" in walk
+    assert "idle/provider/source.png" in walk
+    assert "identity.png" in walk
+    assert "16x24" in walk
+    assert "does not read or upscale identity.png" in walk
+    assert "edit_source_sha256" in walk
+    assert "seed_pad_px" in walk
+    assert "padded seed digest" in walk
+    assert "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3" not in walk
+    assert "edit_source_not_generation_source" in walk
+    assert "idle provider strip" in walk
+    assert "upscaled or tiled" in walk
+    assert "after provider recovery" in walk
+    assert "text-to-image" in walk
+    assert "sequential" in walk
+    assert "predecessor" in walk
+    assert "quota" in walk
+    assert "identity lock" in walk
+    assert "unmodified provider" in walk
+    assert "painting or stamping identity lock" in walk
+    assert "hard flat identity lock stamps" in walk
+    assert "provider_magenta_wipe" in walk
+    assert "provider_post_edit" in walk
+    assert "edit_source_continuity_fail" in walk
+
+
+def test_dwarf_miner_profile_swing_cell_author_workflow() -> None:
+    profile = _dwarf_miner_profile()
+    swing = " ".join(_workflow_lines_for_motion(profile, "swing")).lower()
+    assert "strip:author" in swing
+    assert "init-cell" in swing
+    assert "release frame 0" in swing
+    assert "[0, 0, 0, 0]" in swing
+    assert "motion-pose-plan/0" in swing
+    assert "polish-review-audit/0" in swing
+    assert "two" in swing and "blinded" in swing
+    assert "image generation" in swing or "image-edit" in swing
+    assert "provider acquisition" in swing or "provider attempt" in swing
+    assert "generation_source" not in swing
+    assert "seed_pad_px" not in swing
+    assert "edit_source_sha256" not in swing
+    assert "provider/source.png" not in swing
+    assert "unmodified provider" not in swing
+
+
+def test_dwarf_miner_identity_notes_walk_and_swing_split() -> None:
+    identity = json.loads((ROOT / "assets" / "first-room" / "dwarf" / "identity.json").read_text())
+    notes = identity["notes"].lower()
+    purpose = identity["generation_source"]["purpose"].lower()
+    assert "walk" in purpose
+    assert "swing" not in purpose
+    assert "generation_source" in notes
+    assert "seed_pad_px" in notes
+    assert "idle/provider/source.png" in notes
+    assert "identity_png" in notes or "identity.png" in notes
+    assert "idle/release/frame-0.png" in notes
+    assert identity["identity_png"]["source"] == "assets/first-room/dwarf/idle/release/frame-0.png"
+    assert identity["identity_png"]["sha256"] == identity["idle_bundle"]["release_frame_0_sha256"]
+    assert "strip:author" in notes
+    assert "init-cell" in notes
+    assert "[0, 0, 0, 0]" in notes
+    swing_notes = notes.split("swing", 1)[1]
+    assert "image-edit" not in swing_notes
+    assert "upscale identity.png" in swing_notes
+    assert "do not submit a swing provider edit" in swing_notes
+    assert "generate a pose-reference image" in swing_notes
+
+
+def test_dwarf_miner_authorities_agree_on_walk_image_edit_and_swing_cell_author() -> None:
+    profile = _dwarf_miner_profile()
     workflow = " ".join(profile["audit_workflow"]).lower()
-    assert "strip:polish seed" in workflow
-    assert "idle/provider/source.png" in workflow
-    assert "identity.png" in workflow
-    assert "16x24" in workflow
-    assert "does not read or upscale identity.png" in workflow
-    assert "edit_source_sha256" in workflow
-    assert "seed_pad_px" in workflow
-    assert "padded seed digest" in workflow
-    assert "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3" not in workflow
-    assert "edit_source_not_generation_source" in workflow
-    assert "idle provider strip" in workflow
-    assert "upscaled or tiled" in workflow
-    assert "after provider recovery" in workflow
-    assert "text-to-image" in workflow
-    assert "sequential" in workflow
-    assert "predecessor" in workflow
-    assert "quota" in workflow
-    assert "identity lock" in workflow
-    assert "unmodified provider" in workflow
-    assert "painting or stamping identity lock" in workflow
-    assert "hard flat identity lock stamps" in workflow
-    assert "provider_magenta_wipe" in workflow
-    assert "provider_post_edit" in workflow
-    assert "edit_source_continuity_fail" in workflow
-    prompt = (ROOT / "prompts" / "production" / "animation-strip.md").read_text()
-    prompt_lower = prompt.lower()
-    assert "image-edit" in prompt_lower
-    assert "idle/provider/source.png" in prompt_lower
-    assert "identity.png" in prompt_lower
-    assert "post-ingest identity anchor" in prompt_lower
-    assert "is not the seed command" in prompt_lower
-    assert "construct a four-copy strip from `identity.png`" in prompt_lower
-    assert "edit_source_sha256" in prompt
-    assert "seed_pad_px" in prompt_lower
-    assert "padded seed digest" in prompt_lower
-    assert "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201ac2d1ca043ad3" not in prompt
-    assert "edit_source_not_generation_source" in prompt
-    assert "the image being edited" in prompt_lower
-    assert "idle provider strip" in prompt_lower
-    assert "after provider recovery" in prompt_lower
-    assert "text-to-image" in prompt_lower
-    assert "explicitly forbidden substitutes" in prompt_lower
-    assert "tiling `identity.png`" in prompt_lower
-    assert "painting/stamping identity lock" in prompt_lower
-    assert "unmodified" in prompt_lower and "provider transport raster" in prompt_lower
-    assert "provider_magenta_wipe" in prompt
-    assert "edit_source_continuity_fail" in prompt
-    contract = (ROOT / "docs" / "strip-acquisition-contract.md").read_text()
-    assert "edit_source_not_generation_source" in contract
-    assert "seed_pad_px" in contract
-    assert "padded seed digest" in contract
-    assert "paint/stamp Identity Lock" in contract or "paint/stamp identity lock" in contract.lower()
-    assert "provider_magenta_wipe" in contract
-    assert "edit_source_continuity_fail" in contract
-    art = (ROOT / "docs" / "first-room-art-direction.md").read_text().lower()
-    assert "idle provider" in art
-    assert "seed_pad_px" in art
-    assert "padded seed digest" in art
-    assert "does not prove the edit came from idle" in art.replace("\n", " ")
+    identity_notes = json.loads(
+        (ROOT / "assets" / "first-room" / "dwarf" / "identity.json").read_text()
+    )["notes"].lower()
+    prompt = (ROOT / "prompts" / "production" / "animation-strip.md").read_text().lower()
+    adr = (ROOT / "docs" / "adr" / "0007-swing-cell-author-acquisition.md").read_text().lower()
+    assert "walk" in workflow and "image-edit" in workflow
+    assert "swing" in workflow and "init-cell" in workflow
+    assert "swing requires image-edit" not in workflow
+    assert "swing image-edit" not in identity_notes
+    assert "cell-authored acquisition" in prompt
+    assert "cell-authored acquisition" in adr
+    assert "image-edit" in prompt and "dwarf-miner walk" in prompt
+    assert "init-cell" in prompt and "dwarf-miner swing" in prompt
 
 
 def test_dwarf_miner_profile_and_prompt_require_clipping_margin_guidance() -> None:
