@@ -342,27 +342,43 @@ def _handle_init_cell(args: argparse.Namespace) -> int:
             authoring_session_id=args.authoring_session_id,
         )
     except BundleExistsError as exc:
+        if args.json:
+            _emit_json(
+                _init_cell_rejection_json_payload(
+                    args.motion_class,
+                    exc.reason_code or "bundle_exists",
+                )
+            )
         print(str(exc), file=sys.stderr)
         return 2
     except InitializationRejectedError as exc:
         if args.json:
             _emit_json(
-                {
-                    "pass": False,
-                    "motion_class": args.motion_class,
-                    "outcome": "FAIL",
-                    "reason_code": exc.reason_code or "unknown",
-                }
+                _init_cell_rejection_json_payload(
+                    args.motion_class,
+                    exc.reason_code or "unknown",
+                )
             )
         print(str(exc), file=sys.stderr)
         return 2
     except ValueError as exc:
+        if args.json:
+            _emit_json(
+                _init_cell_rejection_json_payload(args.motion_class, "invalid_arguments")
+            )
         print(str(exc), file=sys.stderr)
         return 2
 
     try:
         result = check_bundle(args.out)
     except (InvalidBundleError, FinalPolishError) as exc:
+        if args.json:
+            _emit_json(
+                _init_cell_rejection_json_payload(
+                    args.motion_class,
+                    exc.reason_code or "invalid_bundle",
+                )
+            )
         print(str(exc), file=sys.stderr)
         return 2
 
@@ -552,6 +568,14 @@ def _handle_acquire(args: argparse.Namespace) -> int:
             rejection_reason=args.reject,
         )
     except AssetAcquisitionError as exc:
+        if args.json:
+            _emit_json(
+                {
+                    "pass": False,
+                    "outcome": "FAIL",
+                    "reason_code": exc.reason_code or "asset_acquisition_error",
+                }
+            )
         print(str(exc), file=sys.stderr)
         return 2
 

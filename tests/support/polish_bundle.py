@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from collections.abc import Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -17,7 +18,6 @@ from pipeline.cell_delta import build_cell_delta_ledger
 from pipeline.cell_raster import read_cells, write_cells
 from pipeline.final_polish import (
     PROVENANCE_SCHEMA,
-    finalize_bundle,
     initialize_bundle,
 )
 from pipeline.gate_evidence import sha256_bytes, sha256_file
@@ -282,8 +282,14 @@ def prepare_cell_author(
         polish_profile=polish_profile,
     )
     init_bundle(attempt, base_bundle)
-    with patch.dict("os.environ", attempt.env):
-        finalize_bundle(base_bundle)
+    layout = layout_for_motion_class(motion_class, margin_cells=0)
+    release_dir = base_bundle / "release"
+    release_dir.mkdir(exist_ok=True)
+    for index in range(layout.frame_count):
+        shutil.copy2(
+            base_bundle / "polished" / f"frame-{index}.png",
+            release_dir / f"frame-{index}.png",
+        )
 
     provenance = json.loads((base_bundle / "provider" / "source.source.json").read_text())
     specification_id = str(provenance["specification_id"])

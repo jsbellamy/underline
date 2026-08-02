@@ -28,9 +28,13 @@ from pipeline.final_polish_cli import main as final_polish_cli_main
 from pipeline.gate_evidence import sha256_file
 from tests.support import polish_bundle as pb
 from tests.support.final_polish_testkit import (
+    FRAME_COUNT,
+    LOGICAL_SIZE,
     PASS_STRIP,
     ROOT,
+    WALK_STRIP,
     run_cli,
+    set_opaque_rgb,
     write_animation_provenance,
 )
 from tests.support.polish_bundle import MOTION_POSE_PLAN_SCHEMA, acquisition_store_env
@@ -158,6 +162,30 @@ def test_init_rejects_wrong_base_digest(tmp_path: Path) -> None:
                 authoring_session_id=prepared.authoring_session_id,
             )
     assert exc.value.reason_code == "base_frame_hash_mismatch"
+
+
+def test_init_rejects_unattested_provider_base(tmp_path: Path) -> None:
+    prepared = pb.prepare_cell_author("idle", tmp_path)
+    shutil.rmtree(prepared.base_bundle.parent / "acquisition-controls")
+    with patch.dict("os.environ", {}, clear=False):
+        import os
+
+        os.environ.pop("UNDERLINE_ACQUISITION_CONTROLS_ROOT", None)
+        with pytest.raises(InitializationRejectedError) as exc:
+            initialize_cell_authored_bundle(
+                prepared.authored_frames_dir,
+                prepared.motion_class,
+                tmp_path / "bundle",
+                specification_id=prepared.specification_id,
+                base_bundle_root=prepared.base_bundle,
+                cell_delta_ledger=prepared.cell_delta_ledger,
+                pose_plan=prepared.pose_plan,
+                polish_profile=prepared.polish_profile,
+                identity_reference=prepared.identity_reference,
+                authoring_agent=prepared.authoring_agent,
+                authoring_session_id=prepared.authoring_session_id,
+            )
+    assert exc.value.reason_code == "unattested_base_bundle"
 
 
 def test_init_rejects_cell_authored_base(tmp_path: Path) -> None:
@@ -294,12 +322,41 @@ def test_finalize_report_exposes_cell_author_bindings(tmp_path: Path) -> None:
     prepared, bundle = _init_cell(tmp_path)
     report_path = finalize_bundle(bundle)
     report = json.loads(report_path.read_text())
+    ledger = json.loads(prepared.cell_delta_ledger.read_text())
     assert report["attestation"]["state"] == CELL_AUTHOR_GENERATION_MODE
     assert report["generation_mode"] == CELL_AUTHOR_GENERATION_MODE
-    assert report["base_specification_id"] == json.loads(
-        prepared.cell_delta_ledger.read_text()
-    )["base_specification_id"]
+    assert report["base_specification_id"] == ledger["base_specification_id"]
+    assert report["attestation"]["base_frames_sha256"] == ledger["base_frames_sha256"]
+    assert report["attestation"]["base_frame_mapping"] == ledger["base_frame_mapping"]
+    assert report["attestation"]["cell_delta_ledger_sha256"] == sha256_file(
+        prepared.cell_delta_ledger
+    )
     assert "provider" not in report
+
+
+def test_cell_author_identity_lock_failure_is_fail(tmp_path: Path) -> None:
+    prepared, bundle = _init_cell_from_walk(tmp_path)
+    polished = bundle / "polished" / "frame-0.png"
+    set_opaque_rgb(polished, 8, 10, (250, 1, 2))
+    result = check_bundle(bundle)
+    assert result.identity_lock is not None
+    assert result.identity_lock.outcome == "FAIL"
+    assert result.outcome == "FAIL"
+
+
+def test_cell_author_check_runs_motion_class_gates(tmp_path: Path) -> None:
+    _, bundle = _init_cell(tmp_path)
+    result = check_bundle(bundle)
+    assert "gate_outcomes" in result.coherence
+    assert len(result.coherence["gate_outcomes"]) > 0
+    assert result.coherence["outcome"] in {"PASS", "REVIEW", "FAIL"}
+
+
+def _init_cell_from_walk(tmp_path: Path) -> tuple[pb.PreparedCellAuthor, Path]:
+    prepared = pb.prepare_cell_author("walk", tmp_path, polish_profile="dwarf-miner")
+    bundle = tmp_path / "walk-cell-bundle"
+    pb.init_cell_bundle(prepared, bundle)
+    return prepared, bundle
 
 
 def test_init_cell_cli_success(

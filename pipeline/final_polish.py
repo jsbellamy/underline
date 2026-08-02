@@ -529,10 +529,8 @@ def _bundle_master_palette_rgb_set(bundle_root: Path) -> set[tuple[int, int, int
     """Master Palette colours bound by provenance, if any."""
     manifest = _load_manifest(bundle_root)
     if _is_cell_authored_manifest(manifest):
-        provenance_binding = manifest["cell_authoring"]["provenance"]
-        sidecar = bundle_root / str(provenance_binding["relative_path"])
-    else:
-        sidecar = bundle_root / "provider" / "source.source.json"
+        return set()
+    sidecar = bundle_root / "provider" / "source.source.json"
     if not sidecar.is_file():
         return set()
     try:
@@ -542,10 +540,7 @@ def _bundle_master_palette_rgb_set(bundle_root: Path) -> set[tuple[int, int, int
             f"invalid provenance sidecar: {sidecar}",
             reason_code="invalid_provenance",
         ) from exc
-    if _is_cell_authored_manifest(manifest):
-        palette_id = "first-room"
-    else:
-        palette_id = doc.get("master_palette_id")
+    palette_id = doc.get("master_palette_id")
     if not isinstance(palette_id, str) or not palette_id:
         return set()
     palette_path = _REPO_ROOT / "assets" / "palettes" / f"{palette_id}.json"
@@ -1283,11 +1278,23 @@ def _resolve_base_bundle_attestation(
             reason_code="cell_author_base_forbidden",
         )
     provenance = _bundle_provenance_record(base_bundle_root, manifest)
-    attestation = _resolve_bundle_attestation(
-        base_bundle_root,
-        manifest,
-        provenance=provenance,
-    )
+    try:
+        attestation = _resolve_bundle_attestation(
+            base_bundle_root,
+            manifest,
+            provenance=provenance,
+        )
+    except InvalidBundleError as exc:
+        if exc.reason_code in {
+            "attempt_not_registered",
+            "missing_attempt_ledger",
+            "attempt_ledger_not_attested",
+        }:
+            raise InitializationRejectedError(
+                "base bundle is not attested or legacy-allowlisted",
+                reason_code="unattested_base_bundle",
+            ) from exc
+        raise
     if attestation is None or attestation.state not in {"attested", "legacy"}:
         raise InitializationRejectedError(
             "base bundle is not attested or legacy-allowlisted",
@@ -2041,16 +2048,16 @@ def _replay_cell_author_drafts(
     return draft_frames
 
 
-def _resolve_cell_author_base_bundle(
-    bundle_root: Path,
-    manifest: Mapping[str, Any],
-    ledger: Mapping[str, Any],
-) -> Path:
-    del bundle_root, manifest, ledger
-    raise InvalidBundleError(
-        "cell-author replay uses embedded base release frames",
-        reason_code="missing_base_bundle",
-    )
+def _init_cell_rejection_json_payload(
+    motion_class: str,
+    reason_code: str,
+) -> dict[str, Any]:
+    return {
+        "pass": False,
+        "motion_class": motion_class,
+        "outcome": "FAIL",
+        "reason_code": reason_code,
+    }
 
 
 def _init_ingest_allowed(ingest: IngestResult) -> bool:
