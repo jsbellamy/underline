@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import inspect
 import json
+from dataclasses import replace
 from pathlib import Path
 from unittest.mock import patch
 
@@ -41,6 +42,7 @@ from tests.final_polish_harness import (
     acquisition_store_env,
     record_store_attempt,
 )
+from tests.support import polish_bundle as pb
 
 from tests.support.final_polish_fixtures import (
     CANONICAL_IDENTITY_SHA,
@@ -59,7 +61,6 @@ from tests.support.final_polish_fixtures import (
     _corpus_layout,
     _identity_doc_with_seed_pad_px,
     _init_bundle,
-    _init_passing_bundle,
     _padded_edit_source_seed,
     _provenance_for,
     _provider_dimensions,
@@ -76,9 +77,33 @@ FAIL_STRIP = INBOX / "08-NEG-identity-drift.png"
 IDLE_SEED_STRIP = ROOT / "assets" / "first-room" / "dwarf" / "idle" / "provider" / "source.png"
 
 
+def _init_bundle_polish(
+    strip: Path,
+    motion_class: str,
+    bundle: Path,
+    tmp_path: Path,
+    *,
+    polish_profile: str | None = None,
+) -> None:
+    """Idle/blob_idle/emissive/lantern bundle construction via the polish_bundle seam.
+
+    Walk and swing call sites in this module still build through the interim
+    `tests.support.final_polish_fixtures._init_bundle`; only idle, blob_idle,
+    emissive, and lantern-Strip sites route through this seam (issue #249).
+    """
+    attempt = pb.prepare(strip, motion_class, tmp_path, polish_profile=polish_profile)
+    pb.init_bundle(attempt, bundle)
+
+
+def _init_passing_bundle(tmp_path: Path) -> Path:
+    bundle = tmp_path / "bundle"
+    _init_bundle_polish(PASS_STRIP, "idle", bundle, tmp_path)
+    return bundle
+
+
 def test_passing_corpus_strip_initializes_bundle(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    _init_bundle(PASS_STRIP, "idle", bundle, tmp_path)
+    _init_bundle_polish(PASS_STRIP, "idle", bundle, tmp_path)
 
     assert bundle.is_dir()
     assert (bundle / "manifest.json").is_file()
@@ -92,7 +117,7 @@ def test_passing_corpus_strip_initializes_bundle(tmp_path: Path) -> None:
 
 def test_profiled_bundle_embeds_hash_bound_miner_profile(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    _init_bundle(PASS_STRIP, "idle", bundle, tmp_path, polish_profile="miner")
+    _init_bundle_polish(PASS_STRIP, "idle", bundle, tmp_path, polish_profile="miner")
 
     manifest = json.loads((bundle / "manifest.json").read_text())
     profile = json.loads((bundle / "profile.json").read_text())
@@ -111,7 +136,7 @@ def test_miner_profile_declares_fixed_questions_and_motion_overrides(
     tmp_path: Path,
 ) -> None:
     bundle = tmp_path / "bundle"
-    _init_bundle(PASS_STRIP, "idle", bundle, tmp_path, polish_profile="miner")
+    _init_bundle_polish(PASS_STRIP, "idle", bundle, tmp_path, polish_profile="miner")
     profile = json.loads((bundle / "profile.json").read_text())
 
     assert profile["verdicts"] == ["PASS", "EDIT", "UNCERTAIN"]
@@ -193,7 +218,7 @@ def test_production_profile_declares_fixed_questions_and_motion_overrides(
     motion_ids: list[str],
 ) -> None:
     bundle = tmp_path / "bundle"
-    _init_bundle(strip, motion_class, bundle, tmp_path, polish_profile=profile_id)
+    _init_bundle_polish(strip, motion_class, bundle, tmp_path, polish_profile=profile_id)
     profile = json.loads((bundle / "profile.json").read_text())
 
     assert profile["schema"] == "polish-profile/0"
@@ -220,7 +245,7 @@ def test_production_profiled_bundle_embeds_hash_bound_profile(
     motion_class: str,
 ) -> None:
     bundle = tmp_path / "bundle"
-    _init_bundle(strip, motion_class, bundle, tmp_path, polish_profile=profile_id)
+    _init_bundle_polish(strip, motion_class, bundle, tmp_path, polish_profile=profile_id)
 
     manifest = json.loads((bundle / "manifest.json").read_text())
     profile = json.loads((bundle / "profile.json").read_text())
@@ -251,7 +276,7 @@ def test_production_polish_brief_selects_motion_overrides(
 ) -> None:
     bundle = tmp_path / "bundle"
     provider_path = _swing_provider_strip(tmp_path) if strip == "swing" else strip
-    _init_bundle(provider_path, motion_class, bundle, tmp_path, polish_profile=profile_id)
+    _init_bundle_polish(provider_path, motion_class, bundle, tmp_path, polish_profile=profile_id)
 
     brief = load_polish_brief(bundle)
     assert brief["profile"]["id"] == profile_id
@@ -283,7 +308,7 @@ def test_strip_contract_documents_animation_provenance_enforcement() -> None:
 def test_unknown_profile_creates_no_partial_bundle(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
     with pytest.raises(FinalPolishError) as exc:
-        _init_bundle(PASS_STRIP, "idle", bundle, tmp_path, polish_profile="missing")
+        _init_bundle_polish(PASS_STRIP, "idle", bundle, tmp_path, polish_profile="missing")
     assert exc.value.reason_code == "unknown_polish_profile"
     assert not bundle.exists()
 
@@ -317,7 +342,7 @@ def test_polish_brief_selects_fixed_questions_and_walk_overrides(
 def test_fail_strip_creates_nothing(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
     with pytest.raises(InitializationRejectedError):
-        _init_bundle(FAIL_STRIP, "idle", bundle, tmp_path)
+        _init_bundle_polish(FAIL_STRIP, "idle", bundle, tmp_path)
     assert not bundle.exists()
 
 
@@ -333,9 +358,14 @@ def test_review_strip_creates_nothing(tmp_path: Path) -> None:
         pass_=False,
         outcome="REVIEW",
     )
-    with patch("pipeline.final_polish.ingest_strip_provider", return_value=review):
+    # pb.init_bundle always recomputes its own ingest result from
+    # tests.support.polish_bundle's imported ingest_strip_provider before
+    # re-patching pipeline.final_polish's reference (see init_bundle's
+    # base_ingest branch), so the REVIEW outcome must be injected at that
+    # source rather than at pipeline.final_polish.ingest_strip_provider.
+    with patch("tests.support.polish_bundle.ingest_strip_provider", return_value=review):
         with pytest.raises(InitializationRejectedError):
-            _init_bundle(PASS_STRIP, "idle", bundle, tmp_path)
+            _init_bundle_polish(PASS_STRIP, "idle", bundle, tmp_path)
     assert not bundle.exists()
 
 
@@ -419,7 +449,7 @@ def test_existing_destination_is_preserved(tmp_path: Path) -> None:
     marker.write_text("stay", encoding="utf-8")
 
     with pytest.raises(BundleExistsError):
-        _init_bundle(PASS_STRIP, "idle", bundle, tmp_path)
+        _init_bundle_polish(PASS_STRIP, "idle", bundle, tmp_path)
 
     assert marker.read_text(encoding="utf-8") == "stay"
 
@@ -631,13 +661,8 @@ def test_edit_source_geometry_match_initializes(tmp_path: Path) -> None:
 def test_text_to_image_skips_edit_source_geometry_check(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
     mismatched_edit = _padded_edit_source_seed(tmp_path, "swing")
-    _init_bundle(
-        PASS_STRIP,
-        "idle",
-        bundle,
-        tmp_path,
-        edit_source=mismatched_edit,
-    )
+    attempt = replace(pb.prepare(PASS_STRIP, "idle", tmp_path), edit_source=mismatched_edit)
+    pb.init_bundle(attempt, bundle)
     assert bundle.exists()
 
 
@@ -954,7 +979,7 @@ def test_dwarf_walk_init_accepts_16_cell_pad_edit_source(
 
 def test_initialize_bundle_leaves_no_frame_staging_directory(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    _init_bundle(PASS_STRIP, "idle", bundle, tmp_path)
+    _init_bundle_polish(PASS_STRIP, "idle", bundle, tmp_path)
     staging_dirs = [
         path
         for path in bundle.rglob("*")

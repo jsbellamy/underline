@@ -31,11 +31,13 @@ from pipeline.identity_lock import (
 )
 from pipeline.strip import load_provider_frames
 from tests.final_polish_harness import bundle_store_env_context
+from tests.support import polish_bundle as pb
 
 from tests.support.final_polish_fixtures import (
     FRAME_COUNT,
     IDENTITY_PNG,
     LOGICAL_SIZE,
+    PASS_STRIP,
     SWING_BUNDLE,
     SWING_POLISHED,
     WALK_STRIP,
@@ -43,12 +45,23 @@ from tests.support.final_polish_fixtures import (
     _finalize_bundle,
     _identity_doc_with_seed_pad_px,
     _init_bundle,
-    _init_passing_bundle,
     _provenance_for,
     _set_opaque_rgb,
     _swing_provider_strip,
     _walk_provider_on_edit_canvas,
 )
+
+
+def _init_passing_bundle(tmp_path: Path) -> Path:
+    """Idle bundle construction via the polish_bundle seam (issue #249).
+
+    The walk and swing call sites in this module still build through the
+    interim `tests.support.final_polish_fixtures._init_bundle`.
+    """
+    bundle = tmp_path / "bundle"
+    attempt = pb.prepare(PASS_STRIP, "idle", tmp_path)
+    pb.init_bundle(attempt, bundle)
+    return bundle
 
 
 SWING_24X24_ALPHA_BBOX = (

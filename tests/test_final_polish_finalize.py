@@ -23,6 +23,7 @@ from pipeline.strip import (
     IngestResult,
     ingest_strip_provider,
 )
+from tests.support import polish_bundle as pb
 
 from tests.support.final_polish_fixtures import (
     FRAME_COUNT,
@@ -31,10 +32,31 @@ from tests.support.final_polish_fixtures import (
     _check_bundle,
     _corpus_layout,
     _finalize_bundle,
-    _init_bundle,
-    _init_passing_bundle,
     _set_opaque_rgb,
 )
+
+
+def _init_bundle_polish(
+    strip: Path,
+    motion_class: str,
+    bundle: Path,
+    tmp_path: Path,
+    *,
+    polish_profile: str | None = None,
+) -> None:
+    """Idle/emissive/lantern bundle construction via the polish_bundle seam (issue #249).
+
+    This module has no walk or swing call sites, so it no longer needs the
+    interim `tests.support.final_polish_fixtures._init_bundle` at all.
+    """
+    attempt = pb.prepare(strip, motion_class, tmp_path, polish_profile=polish_profile)
+    pb.init_bundle(attempt, bundle)
+
+
+def _init_passing_bundle(tmp_path: Path) -> Path:
+    bundle = tmp_path / "bundle"
+    _init_bundle_polish(PASS_STRIP, "idle", bundle, tmp_path)
+    return bundle
 
 
 @pytest.mark.parametrize(
@@ -51,7 +73,7 @@ def test_production_check_and_final_report_bind_embedded_profile(
     motion_class: str,
 ) -> None:
     bundle = tmp_path / "bundle"
-    _init_bundle(strip, motion_class, bundle, tmp_path, polish_profile=profile_id)
+    _init_bundle_polish(strip, motion_class, bundle, tmp_path, polish_profile=profile_id)
     result = _check_bundle(bundle)
     profile_hash = sha256_file(bundle / "profile.json")
     assert result.profile_id == profile_id
@@ -66,7 +88,7 @@ def test_production_check_and_final_report_bind_embedded_profile(
 
 def test_check_and_final_report_bind_embedded_profile(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
-    _init_bundle(PASS_STRIP, "idle", bundle, tmp_path, polish_profile="miner")
+    _init_bundle_polish(PASS_STRIP, "idle", bundle, tmp_path, polish_profile="miner")
     result = _check_bundle(bundle)
     profile_hash = sha256_file(bundle / "profile.json")
     assert result.profile_id == "miner"
