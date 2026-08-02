@@ -42,7 +42,7 @@ LANTERN_STRIP = INBOX / "14-lantern-flicker.png"
 IDENTITY_PNG = ROOT / "assets" / "first-room" / "dwarf" / "identity.png"
 IDENTITY_JSON = ROOT / "assets" / "first-room" / "dwarf" / "identity.json"
 IDLE_SEED_STRIP = ROOT / "assets" / "first-room" / "dwarf" / "idle" / "provider" / "source.png"
-from tests.test_final_polish import (
+from tests.support.final_polish_fixtures import (
     _dwarf_miner_ingest_source,
     _effective_dwarf_miner_provider,
     _padded_inbox_provider,
