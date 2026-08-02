@@ -502,6 +502,8 @@ def test_dwarf_miner_profile_walk_audit_workflow() -> None:
     assert "provider_magenta_wipe" in walk
     assert "provider_post_edit" in walk
     assert "edit_source_continuity_fail" in walk
+    assert "native scale" in walk
+    assert "nearest-neighbor" in walk
 
 
 def test_dwarf_miner_profile_swing_cell_author_workflow() -> None:
@@ -514,8 +516,12 @@ def test_dwarf_miner_profile_swing_cell_author_workflow() -> None:
     assert "motion-pose-plan/0" in swing
     assert "polish-review-audit/0" in swing
     assert "two" in swing and "blinded" in swing
-    assert "image generation" in swing or "image-edit" in swing
-    assert "provider acquisition" in swing or "provider attempt" in swing
+    assert "do not run image generation" in swing
+    assert "provider acquisition" in swing
+    assert "no provider attempt" in swing
+    assert "native scale" in swing
+    assert "nearest-neighbor" in swing
+    assert "image-edit" not in swing
     assert "generation_source" not in swing
     assert "seed_pad_px" not in swing
     assert "edit_source_sha256" not in swing
