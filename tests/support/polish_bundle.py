@@ -17,6 +17,7 @@ from pipeline import asset_acquire as aa
 from pipeline.cell_delta import build_cell_delta_ledger
 from pipeline.cell_raster import read_cells, write_cells
 from pipeline.final_polish import (
+    MOTION_POSE_PLAN_SCHEMA,
     PROVENANCE_SCHEMA,
     initialize_bundle,
 )
@@ -224,8 +225,6 @@ def init_bundle(attempt: PreparedAttempt, bundle: Path) -> None:
             **init_kwargs,
         )
 
-
-MOTION_POSE_PLAN_SCHEMA = "motion-pose-plan/0"
 
 
 @dataclass(frozen=True)

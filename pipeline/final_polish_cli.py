@@ -214,6 +214,18 @@ def _init_provenance_rejection_json_payload(
     }
 
 
+def _init_cell_rejection_json_payload(
+    motion_class: str,
+    reason_code: str,
+) -> dict[str, Any]:
+    return {
+        "pass": False,
+        "motion_class": motion_class,
+        "outcome": "FAIL",
+        "reason_code": reason_code,
+    }
+
+
 def _format_provider_post_edit(payload: dict[str, Any] | None) -> str:
     if payload is None:
         return "(n/a)"

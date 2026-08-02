@@ -2048,18 +2048,6 @@ def _replay_cell_author_drafts(
     return draft_frames
 
 
-def _init_cell_rejection_json_payload(
-    motion_class: str,
-    reason_code: str,
-) -> dict[str, Any]:
-    return {
-        "pass": False,
-        "motion_class": motion_class,
-        "outcome": "FAIL",
-        "reason_code": reason_code,
-    }
-
-
 def _init_ingest_allowed(ingest: IngestResult) -> bool:
     """Allow bundle init on PASS or UNSEPARATED-only REVIEW (issue #173)."""
     if ingest.outcome == "PASS":

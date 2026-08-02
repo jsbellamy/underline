@@ -37,7 +37,8 @@ from tests.support.final_polish_testkit import (
     set_opaque_rgb,
     write_animation_provenance,
 )
-from tests.support.polish_bundle import MOTION_POSE_PLAN_SCHEMA, acquisition_store_env
+from tests.support.polish_bundle import acquisition_store_env
+from pipeline.final_polish import MOTION_POSE_PLAN_SCHEMA
 
 
 def _store_env(prepared: pb.PreparedCellAuthor) -> dict[str, str]:
@@ -405,6 +406,23 @@ def test_init_cell_cli_rejection_leaves_no_partial_bundle(
     result = run_cli(capsys, argv, env=_store_env(prepared))
     assert result.returncode == 2, result.stderr
     assert not bundle.exists()
+
+
+def test_init_cell_cli_rejection_emits_json(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    prepared = pb.prepare_cell_author("idle", tmp_path)
+    bundle = tmp_path / "cli-bundle"
+    pb.init_cell_bundle(prepared, bundle)
+    result = run_cli(
+        capsys,
+        pb.init_cell_argv(prepared, bundle, json_mode=True),
+        env=_store_env(prepared),
+    )
+    assert result.returncode == 2
+    payload = json.loads(result.stdout)
+    assert payload["reason_code"] == "bundle_exists"
 
 
 def test_dwarf_walk_provider_init_unchanged(tmp_path: Path) -> None:
