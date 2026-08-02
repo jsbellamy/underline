@@ -25,14 +25,14 @@ from pipeline.strip import (
 )
 from tests.support import polish_bundle as pb
 
-from tests.support.final_polish_fixtures import (
+from tests.support.final_polish_testkit import (
     FRAME_COUNT,
     LANTERN_STRIP,
     PASS_STRIP,
-    _check_bundle,
-    _corpus_layout,
-    _finalize_bundle,
-    _set_opaque_rgb,
+    check_bundle,
+    corpus_layout,
+    finalize_bundle,
+    set_opaque_rgb,
 )
 
 
@@ -46,8 +46,8 @@ def _init_bundle_polish(
 ) -> None:
     """Idle/emissive/lantern bundle construction via the polish_bundle seam (issue #249).
 
-    This module has no walk or swing call sites, so it no longer needs the
-    interim `tests.support.final_polish_fixtures._init_bundle` at all.
+    This module has no walk or swing call sites; bundle construction uses
+    `tests.support.polish_bundle` exclusively (issue #249).
     """
     attempt = pb.prepare(strip, motion_class, tmp_path, polish_profile=polish_profile)
     pb.init_bundle(attempt, bundle)
@@ -74,12 +74,12 @@ def test_production_check_and_final_report_bind_embedded_profile(
 ) -> None:
     bundle = tmp_path / "bundle"
     _init_bundle_polish(strip, motion_class, bundle, tmp_path, polish_profile=profile_id)
-    result = _check_bundle(bundle)
+    result = check_bundle(bundle)
     profile_hash = sha256_file(bundle / "profile.json")
     assert result.profile_id == profile_id
     assert result.profile_sha256 == profile_hash
 
-    report = json.loads(_finalize_bundle(bundle).read_text())
+    report = json.loads(finalize_bundle(bundle).read_text())
     assert report["polish_profile"] == {
         "id": profile_id,
         "sha256": profile_hash,
@@ -89,12 +89,12 @@ def test_production_check_and_final_report_bind_embedded_profile(
 def test_check_and_final_report_bind_embedded_profile(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
     _init_bundle_polish(PASS_STRIP, "idle", bundle, tmp_path, polish_profile="miner")
-    result = _check_bundle(bundle)
+    result = check_bundle(bundle)
     profile_hash = sha256_file(bundle / "profile.json")
     assert result.profile_id == "miner"
     assert result.profile_sha256 == profile_hash
 
-    report = json.loads(_finalize_bundle(bundle).read_text())
+    report = json.loads(finalize_bundle(bundle).read_text())
     assert report["polish_profile"] == {
         "id": "miner",
         "sha256": profile_hash,
@@ -103,7 +103,7 @@ def test_check_and_final_report_bind_embedded_profile(tmp_path: Path) -> None:
 
 def test_provider_currently_review_is_reportable_without_release(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
-    base = ingest_strip_provider(bundle / "provider" / "source.png", _corpus_layout(), motion_class="idle")
+    base = ingest_strip_provider(bundle / "provider" / "source.png", corpus_layout(), motion_class="idle")
     review = IngestResult(
         layout=base.layout,
         source=base.source,
@@ -114,19 +114,19 @@ def test_provider_currently_review_is_reportable_without_release(tmp_path: Path)
         outcome="REVIEW",
     )
     with patch("pipeline.final_polish.ingest_strip_provider", return_value=review):
-        result = _check_bundle(bundle)
+        result = check_bundle(bundle)
         assert result.provider_outcome == "REVIEW"
         assert result.outcome == "REVIEW"
 
-        _finalize_bundle(bundle)
+        finalize_bundle(bundle)
     assert not (bundle / "release").exists()
     assert len(list((bundle / "reports").glob("*.json"))) == 1
 
 
 def test_finalize_records_immutable_report_and_pass_release(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
-    result = _check_bundle(bundle)
-    report_path = _finalize_bundle(bundle)
+    result = check_bundle(bundle)
+    report_path = finalize_bundle(bundle)
 
     assert report_path.is_file()
     report = json.loads(report_path.read_text())
@@ -145,9 +145,9 @@ def test_finalize_records_immutable_report_and_pass_release(tmp_path: Path) -> N
 def test_finalize_fail_outcome_writes_report_without_release(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
     polished = bundle / "polished" / "frame-1.png"
-    _set_opaque_rgb(polished, 3, 5, (250, 1, 2))
-    result = _check_bundle(bundle)
-    report_path = _finalize_bundle(bundle)
+    set_opaque_rgb(polished, 3, 5, (250, 1, 2))
+    result = check_bundle(bundle)
+    report_path = finalize_bundle(bundle)
 
     report = json.loads(report_path.read_text())
     assert report["outcome"] == "FAIL"
@@ -156,35 +156,35 @@ def test_finalize_fail_outcome_writes_report_without_release(tmp_path: Path) -> 
 
 def test_repeat_finalize_is_idempotent(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
-    result = _check_bundle(bundle)
-    first = _finalize_bundle(bundle)
-    second = _finalize_bundle(bundle)
+    result = check_bundle(bundle)
+    first = finalize_bundle(bundle)
+    second = finalize_bundle(bundle)
     assert first == second
     assert json.loads(first.read_text()) == json.loads(second.read_text())
 
 
 def test_conflicting_report_fails_closed(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
-    result = _check_bundle(bundle)
-    report_path = _finalize_bundle(bundle)
+    result = check_bundle(bundle)
+    report_path = finalize_bundle(bundle)
     tampered = json.loads(report_path.read_text())
     tampered["outcome"] = "FAIL"
     report_path.write_text(json.dumps(tampered) + "\n", encoding="utf-8")
 
     with pytest.raises(InvalidBundleError) as exc:
-        _finalize_bundle(bundle)
+        finalize_bundle(bundle)
     assert exc.value.reason_code == "report_conflict"
 
 
 def test_conflicting_release_fails_closed(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
-    result = _check_bundle(bundle)
-    _finalize_bundle(bundle)
+    result = check_bundle(bundle)
+    finalize_bundle(bundle)
     release = bundle / "release" / "frame-0.png"
     release.write_bytes(release.read_bytes() + b"x")
 
     with pytest.raises(InvalidBundleError) as exc:
-        _finalize_bundle(bundle)
+        finalize_bundle(bundle)
     assert exc.value.reason_code == "release_conflict"
 
 
@@ -196,8 +196,8 @@ def test_tampered_v2_provenance_blocks_check_and_finalize(tmp_path: Path) -> Non
     provenance.write_text(json.dumps(record) + "\n")
 
     with pytest.raises(InvalidBundleError) as exc:
-        _check_bundle(bundle)
+        check_bundle(bundle)
     assert exc.value.reason_code == "provenance_hash_mismatch"
 
     with pytest.raises(InvalidBundleError):
-        _finalize_bundle(bundle)
+        finalize_bundle(bundle)

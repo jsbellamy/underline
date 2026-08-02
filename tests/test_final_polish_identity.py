@@ -27,10 +27,8 @@ from pipeline.final_polish import (
 from pipeline.gate_evidence import sha256_file
 from pipeline.identity_lock import load_canonical_cells
 from pipeline.strip import load_provider_frames
-from tests.final_polish_harness import bundle_store_env_context
 from tests.support import polish_bundle as pb
-
-from tests.support.final_polish_fixtures import (
+from tests.support.final_polish_testkit import (
     FRAME_COUNT,
     IDENTITY_PNG,
     LOGICAL_SIZE,
@@ -38,12 +36,13 @@ from tests.support.final_polish_fixtures import (
     SWING_BUNDLE,
     SWING_POLISHED,
     WALK_STRIP,
-    _check_bundle,
-    _finalize_bundle,
-    _identity_doc_with_seed_pad_px,
-    _set_opaque_rgb,
-    _swing_provider_strip,
+    check_bundle,
+    finalize_bundle,
+    identity_doc_with_seed_pad_px,
+    set_opaque_rgb,
+    swing_provider_strip,
 )
+from tests.support.polish_bundle import bundle_store_env_context
 
 
 def _init_bundle_polish(
@@ -210,7 +209,7 @@ def test_dwarf_walk_check_rejects_edit_source_that_is_not_generation_source(
     manifest_path.write_text(json.dumps(manifest, indent=2, sort_keys=True) + "\n")
 
     with pytest.raises(InvalidBundleError) as exc:
-        _check_bundle(bundle)
+        check_bundle(bundle)
     assert exc.value.reason_code == "edit_source_not_generation_source"
 
 
@@ -223,7 +222,7 @@ def test_dwarf_walk_check_accepts_correct_padded_edit_source_when_seed_pad_px_se
     # with no override needed.
     monkeypatch.setattr(
         "pipeline.final_polish._load_dwarf_identity_doc",
-        lambda: _identity_doc_with_seed_pad_px(),
+        lambda: identity_doc_with_seed_pad_px(),
     )
     bundle = tmp_path / "bundle"
     _init_bundle_polish(WALK_STRIP, "walk", bundle, tmp_path, polish_profile="dwarf-miner")
@@ -290,13 +289,13 @@ def test_production_swing_audit_records_interim_re_canvas_status() -> None:
 def test_dwarf_swing_check_exposes_identity_lock_report(tmp_path: Path) -> None:
     bundle = tmp_path / "bundle"
     _init_bundle_polish(
-        _swing_provider_strip(tmp_path),
+        swing_provider_strip(tmp_path),
         "swing",
         bundle,
         tmp_path,
         polish_profile="dwarf-miner",
     )
-    swing_strip = _swing_provider_strip(tmp_path)
+    swing_strip = swing_provider_strip(tmp_path)
     result = _check_bundle_slicing_from(bundle, swing_strip)
     assert result.identity_lock is not None
     assert result.identity_lock.motion_class == "swing"
@@ -316,7 +315,7 @@ def test_dwarf_swing_check_does_not_trip_magenta_wipe_with_padded_edit_source(
 
     bundle = tmp_path / "bundle"
     _init_bundle_polish(
-        _swing_provider_strip(tmp_path),
+        swing_provider_strip(tmp_path),
         "swing",
         bundle,
         tmp_path,
@@ -366,7 +365,7 @@ def test_dwarf_swing_check_does_not_trip_magenta_wipe_with_padded_edit_source(
         updated.append(json.dumps(row, sort_keys=True))
     attempts_path.write_text("\n".join(updated) + "\n")
 
-    swing_strip = _swing_provider_strip(tmp_path)
+    swing_strip = swing_provider_strip(tmp_path)
     result = _check_bundle_slicing_from(bundle, swing_strip)
     assert result.outcome == "FAIL"
     assert result.provider_post_edit is not None
@@ -396,18 +395,18 @@ def test_identity_lock_fail_blocks_release_despite_passing_structural_and_cohere
         rgb for rgb in allowed_palette if rgb != canonical_rgb
     )
     polished = bundle / "polished" / "frame-0.png"
-    _set_opaque_rgb(polished, locked_x, locked_y, replacement)
+    set_opaque_rgb(polished, locked_x, locked_y, replacement)
     with patch(
         "pipeline.final_polish.load_provider_frames",
         side_effect=lambda path, layout: load_provider_frames(WALK_STRIP, layout),
     ):
-        result = _check_bundle(bundle)
+        result = check_bundle(bundle)
         assert result.identity_lock is not None
         assert result.identity_lock.outcome == "FAIL"
         assert result.structural.pass_
         assert result.coherence.get("outcome") == "PASS"
         assert result.outcome == "FAIL"
-        report_path = _finalize_bundle(bundle)
+        report_path = finalize_bundle(bundle)
     report = json.loads(report_path.read_text())
     assert report["identity_lock"]["outcome"] == "FAIL"
     assert report["outcome"] == "FAIL"
@@ -417,5 +416,5 @@ def test_identity_lock_fail_blocks_release_despite_passing_structural_and_cohere
 
 def test_idle_bundle_has_no_identity_lock(tmp_path: Path) -> None:
     bundle = _init_passing_bundle(tmp_path)
-    result = _check_bundle(bundle)
+    result = check_bundle(bundle)
     assert result.identity_lock is None

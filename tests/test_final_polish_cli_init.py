@@ -19,13 +19,14 @@ import pytest
 from PIL import Image
 
 from pipeline.final_polish_cli import main
-from pipeline.gate_evidence import sha256_file
+from pipeline.gate_evidence import sha256_bytes, sha256_file
 from pipeline.strip import (
     IngestResult,
     ingest_strip_provider,
+    layout_for_motion_class,
 )
 from tests.support import polish_bundle as pb
-from tests.support.final_polish_fixtures import (
+from tests.support.final_polish_testkit import (
     CANONICAL_IDENTITY_SHA,
     IDENTITY_JSON,
     IDENTITY_PNG,
@@ -33,9 +34,10 @@ from tests.support.final_polish_fixtures import (
     LANTERN_STRIP,
     PASS_STRIP,
     ROOT,
-    _corpus_layout,
-    _run_cli,
-    _write_cli_animation_provenance,
+    corpus_layout,
+    provider_dimensions,
+    run_cli,
+    write_animation_provenance,
 )
 
 FAIL_STRIP = INBOX / "08-NEG-identity-drift.png"
@@ -44,11 +46,69 @@ GENERATION_SOURCE_SHA256 = "655b8ff6a560d0e36ac008872d37239e33e25e51d70e77f4201a
 PADDED_SEED_DIMENSIONS = [1664, 1152]
 
 
+def item_geometry_for(motion_class: str) -> dict[str, int]:
+    try:
+        layout = layout_for_motion_class(motion_class, margin_cells=0)
+    except ValueError:
+        layout = corpus_layout()
+    return {
+        "frame_w": layout.frame_w,
+        "frame_h": layout.frame_h,
+        "frame_count": layout.frame_count,
+        "gutter": layout.gutter,
+    }
+
+
+def write_cli_animation_provenance(
+    provider_path: Path,
+    provenance_path: Path,
+    *,
+    motion_class: str,
+    generation_mode: str = "text-to-image",
+    attempt_id: str = "cli-test--001",
+    predecessor_attempt_id: str | None = None,
+    reference_image_sha256: list[str] | None = None,
+    edit_source_sha256: str | None = None,
+    **overrides: object,
+) -> None:
+    if reference_image_sha256 is None:
+        reference_image_sha256 = []
+    prompt_text = "underline cli test provenance prompt"
+    record: dict[str, object] = {
+        "schema": "animation-strip-provenance/0",
+        "specification_id": f"test/{motion_class}",
+        "attempt_id": attempt_id,
+        "predecessor_attempt_id": predecessor_attempt_id,
+        "generator": "cursor-image-gen",
+        "model": "cursor-image-gen",
+        "prompt_text": prompt_text,
+        "prompt_sha256": sha256_bytes(prompt_text.encode("utf-8")),
+        "generation_mode": generation_mode,
+        "reference_image_sha256": reference_image_sha256,
+        "edit_source_sha256": edit_source_sha256,
+        "generated_at": "2026-07-27T22:00:00+00:00",
+        "acquiring_agent": "pytest",
+        "repository_commit": "0000000000000000000000000000000000000000",
+        "raw_path": str(provider_path),
+        "raw_sha256": sha256_file(provider_path),
+        "media_type": "image/png",
+        "dimensions": provider_dimensions(provider_path),
+        "motion_class": motion_class,
+        "master_palette_id": "first-room",
+        "item_geometry": item_geometry_for(motion_class),
+    }
+    record.update(overrides)
+    provenance_path.write_text(
+        json.dumps(record, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+
 def test_init_creates_bundle_via_module_entrypoint(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     bundle = tmp_path / "bundle"
     attempt = pb.prepare(PASS_STRIP, "idle", tmp_path)
     args = pb.init_argv(attempt, bundle)
-    result = _run_cli(capsys, args, env=dict(attempt.env))
+    result = run_cli(capsys, args, env=dict(attempt.env))
     assert result.returncode == 0, result.stderr
     assert (bundle / "manifest.json").is_file()
     assert (bundle / "polished" / "frame-0.png").is_file()
@@ -58,7 +118,7 @@ def test_init_fail_strip_exit_1(tmp_path: Path, capsys: pytest.CaptureFixture[st
     bundle = tmp_path / "bundle"
     attempt = pb.prepare(FAIL_STRIP, "idle", tmp_path)
     args = pb.init_argv(attempt, bundle)
-    result = _run_cli(capsys, args, env=dict(attempt.env))
+    result = run_cli(capsys, args, env=dict(attempt.env))
     assert result.returncode == 1
     assert not bundle.exists()
     assert "FAIL" in result.stdout
@@ -69,7 +129,7 @@ def test_init_fail_strip_json_exit_1(tmp_path: Path, capsys: pytest.CaptureFixtu
     bundle = tmp_path / "bundle"
     attempt = pb.prepare(FAIL_STRIP, "idle", tmp_path)
     args = pb.init_argv(attempt, bundle, json_mode=True)
-    result = _run_cli(capsys, args, env=dict(attempt.env))
+    result = run_cli(capsys, args, env=dict(attempt.env))
     assert result.returncode == 1
     assert not bundle.exists()
     data = json.loads(result.stdout)
@@ -83,7 +143,7 @@ def test_init_pass_json_exit_0(tmp_path: Path, capsys: pytest.CaptureFixture[str
     bundle = tmp_path / "bundle"
     attempt = pb.prepare(PASS_STRIP, "idle", tmp_path)
     args = pb.init_argv(attempt, bundle, json_mode=True)
-    result = _run_cli(capsys, args, env=dict(attempt.env))
+    result = run_cli(capsys, args, env=dict(attempt.env))
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
     assert data["outcome"] == "PASS"
@@ -95,7 +155,7 @@ def test_init_with_profile_binds_profile_in_json_result(tmp_path: Path, capsys: 
     bundle = tmp_path / "bundle"
     attempt = pb.prepare(PASS_STRIP, "idle", tmp_path, polish_profile="miner")
     args = pb.init_argv(attempt, bundle, json_mode=True)
-    result = _run_cli(capsys, args, env=dict(attempt.env))
+    result = run_cli(capsys, args, env=dict(attempt.env))
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
     assert data["polish_profile"] == {
@@ -121,7 +181,7 @@ def test_init_with_production_profile_binds_profile_in_json_result(
     bundle = tmp_path / "bundle"
     attempt = pb.prepare(strip, motion_class, tmp_path, polish_profile=profile_id)
     args = pb.init_argv(attempt, bundle, json_mode=True)
-    result = _run_cli(capsys, args, env=dict(attempt.env))
+    result = run_cli(capsys, args, env=dict(attempt.env))
     assert result.returncode == 0, result.stderr
     data = json.loads(result.stdout)
     assert data["polish_profile"] == {
@@ -134,7 +194,7 @@ def test_init_unknown_profile_exit_2_without_partial_bundle(tmp_path: Path, caps
     bundle = tmp_path / "bundle"
     attempt = pb.prepare(PASS_STRIP, "idle", tmp_path, polish_profile="missing")
     args = pb.init_argv(attempt, bundle)
-    result = _run_cli(capsys, args, env=dict(attempt.env))
+    result = run_cli(capsys, args, env=dict(attempt.env))
     assert result.returncode == 2
     assert "unknown Polish profile" in result.stderr
     assert not bundle.exists()
@@ -142,7 +202,7 @@ def test_init_unknown_profile_exit_2_without_partial_bundle(tmp_path: Path, caps
 
 def test_init_review_strip_json_exit_3(tmp_path: Path, capsys) -> None:
     bundle = tmp_path / "bundle"
-    base = ingest_strip_provider(PASS_STRIP, _corpus_layout(), motion_class="idle")
+    base = ingest_strip_provider(PASS_STRIP, corpus_layout(), motion_class="idle")
     review = IngestResult(
         layout=base.layout,
         source=base.source,
@@ -170,7 +230,7 @@ def test_init_review_strip_json_exit_3(tmp_path: Path, capsys) -> None:
 
 def test_init_review_strip_exit_3(tmp_path: Path, capsys) -> None:
     bundle = tmp_path / "bundle"
-    base = ingest_strip_provider(PASS_STRIP, _corpus_layout(), motion_class="idle")
+    base = ingest_strip_provider(PASS_STRIP, corpus_layout(), motion_class="idle")
     review = IngestResult(
         layout=base.layout,
         source=base.source,
@@ -199,8 +259,8 @@ def test_init_invalid_provider_exit_2(tmp_path: Path, capsys: pytest.CaptureFixt
     bundle = tmp_path / "bundle"
     missing = tmp_path / "missing.png"
     provenance_path = tmp_path / "missing.source.json"
-    _write_cli_animation_provenance(PASS_STRIP, provenance_path, motion_class="idle")
-    result = _run_cli(capsys,
+    write_cli_animation_provenance(PASS_STRIP, provenance_path, motion_class="idle")
+    result = run_cli(capsys,
         [
             "init",
             str(missing),
@@ -223,7 +283,7 @@ def test_init_unknown_motion_class_exit_2(tmp_path: Path, capsys: pytest.Capture
     args = pb.init_argv(attempt, bundle)
     motion_class_index = args.index("--motion-class")
     args[motion_class_index + 1] = "nonsense"
-    result = _run_cli(capsys, args, env=dict(attempt.env))
+    result = run_cli(capsys, args, env=dict(attempt.env))
     assert result.returncode == 2
     assert "unknown motion_class" in result.stderr
 
@@ -233,7 +293,7 @@ def test_init_existing_bundle_exit_2(tmp_path: Path, capsys: pytest.CaptureFixtu
     bundle.mkdir()
     attempt = pb.prepare(PASS_STRIP, "idle", tmp_path)
     args = pb.init_argv(attempt, bundle)
-    result = _run_cli(capsys, args, env=dict(attempt.env))
+    result = run_cli(capsys, args, env=dict(attempt.env))
     assert result.returncode == 2
     assert "already exists" in result.stderr
 
@@ -255,7 +315,7 @@ def test_no_override_flags_in_parser() -> None:
 
 def test_seed_cli_swing_motion_class_writes_24_cell_canvas(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     out_path = tmp_path / "swing-seed.png"
-    result = _run_cli(
+    result = run_cli(
         capsys,
         [
             "seed",
@@ -282,7 +342,7 @@ def test_seed_cli_without_motion_class_reproduces_current_digest(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     baseline_path = tmp_path / "baseline-seed.png"
-    baseline = _run_cli(
+    baseline = run_cli(
         capsys,
         [
             "seed",
@@ -296,7 +356,7 @@ def test_seed_cli_without_motion_class_reproduces_current_digest(
     assert baseline.returncode == 0, baseline.stderr
     baseline_digest = json.loads(baseline.stdout)["sha256"]
     checked_in = tmp_path / "checked-in-seed.png"
-    result = _run_cli(
+    result = run_cli(
         capsys,
         [
             "seed",
@@ -316,7 +376,7 @@ def test_seed_cli_without_motion_class_reproduces_current_digest(
 def test_seed_cli_emits_json_and_is_deterministic_on_rerun(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
     out_a = tmp_path / "seed-a.png"
     out_b = tmp_path / "seed-b.png"
-    result = _run_cli(capsys,
+    result = run_cli(capsys,
         [
             "seed",
             "--identity-declaration",
@@ -335,7 +395,7 @@ def test_seed_cli_emits_json_and_is_deterministic_on_rerun(tmp_path: Path, capsy
     assert data["sha256"] != data["generation_source_sha256"]
     assert data["identity_anchor_sha256"] == CANONICAL_IDENTITY_SHA
     assert out_a.read_bytes() != IDLE_SEED_STRIP.read_bytes()
-    rerun = _run_cli(capsys,
+    rerun = run_cli(capsys,
         [
             "seed",
             "--identity-declaration",
@@ -362,7 +422,7 @@ def test_seed_cli_emits_json_and_is_deterministic_on_rerun(tmp_path: Path, capsy
 
 
 def test_seed_cli_rejects_release_identity_as_generation_source(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
-    result = _run_cli(capsys,
+    result = run_cli(capsys,
         [
             "seed",
             "--identity-declaration",
@@ -497,7 +557,7 @@ def test_acquire_json_payload_has_the_contract_keys(
     candidate = _acquire_candidate(tmp_path)
     prompt = _acquire_prompt(tmp_path)
     with patch.dict("os.environ", {"UNDERLINE_ACQUISITION_CONTROLS_ROOT": str(store_root)}):
-        result = _run_cli(
+        result = run_cli(
             capsys,
             [
                 "acquire",
@@ -538,7 +598,7 @@ def test_acquire_reject_records_rejected_outcome_and_exits_zero(
     candidate = _acquire_candidate(tmp_path)
     prompt = _acquire_prompt(tmp_path)
     with patch.dict("os.environ", {"UNDERLINE_ACQUISITION_CONTROLS_ROOT": str(store_root)}):
-        result = _run_cli(
+        result = run_cli(
             capsys,
             [
                 "acquire",
@@ -568,7 +628,7 @@ def test_acquire_exits_two_on_asset_acquisition_error(
     candidate = _acquire_candidate(tmp_path)
     prompt = _acquire_prompt(tmp_path)
     with patch.dict("os.environ", {"UNDERLINE_ACQUISITION_CONTROLS_ROOT": str(store_root)}):
-        result = _run_cli(
+        result = run_cli(
             capsys,
             [
                 "acquire",
