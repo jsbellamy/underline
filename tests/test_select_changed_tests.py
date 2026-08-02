@@ -7,7 +7,12 @@ scan. One test per `## Contract` C2 row, plus the C3 whole-suite fallback.
 
 from __future__ import annotations
 
+import pathlib
+import subprocess
+
 from scripts.select_changed_tests import Selection, select_test_files
+
+ROOT = pathlib.Path(__file__).resolve().parents[1]
 
 _ACQUISITION_CONTROL_COMPANIONS = (
     "tests/test_asset_acquire.py",
@@ -239,6 +244,16 @@ def test_a_changed_package_lock_selects_the_whole_suite_explicitly() -> None:
         kind="whole_suite",
         reason="package-lock.json changed, which always selects the whole suite",
     )
+
+
+def test_implementer_tmp_artifacts_are_ignored_by_git() -> None:
+    result = subprocess.run(
+        ["git", "check-ignore", "--quiet", "tmp/completion-matrix.md"],
+        cwd=ROOT,
+        check=False,
+    )
+
+    assert result.returncode == 0
 
 
 def test_a_changed_asset_file_selects_the_whole_suite() -> None:
