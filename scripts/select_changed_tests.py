@@ -28,6 +28,7 @@ _WHOLE_SUITE_PATHS = {
     "pytest.ini",
     "requirements.txt",
     "package.json",
+    "package-lock.json",
 }
 
 # Changed paths under these top-level directories require the whole suite
