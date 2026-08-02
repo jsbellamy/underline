@@ -7,7 +7,7 @@
   ],
   "base_raster_relative_path": "assets/first-room/dwarf/idle/release/frame-0.png",
   "grip_rationale": "The canonical idle carries the pickaxe over the right shoulder with the gripping hand occluded behind the torso. No geometric rule recovers the haft hold point, so grip is pinned to anchor Cell (5, 7) at the visible shoulder contact on the haft.",
-  "assignment_rationale": "Non-outline core Cells are classified from polished material roles and anchor-space regions aligned with identity-lock rectangles. tool_head is the seven stone head Cells along (4,3)->(1,7); remaining opaque Cells in the measured 6x7 tool rectangle are tool_handle cores. hand_near claims Cells within Chebyshev distance 1 of tool_handle.grip on the near shoulder; head_face covers the face rectangle y<=9 and x in 8..13; beard hangs from y 11..15 at x>=9; arm_near is the left sleeve at x<=5; torso is the chest block at x in 5..12 and y in 10..16. Every dark-outline Cell inherits the part of its nearest core Cell under Chebyshev distance (ties broken toward smaller x then y), except anchor Cells (14,16), (14,17), (14,18), and (15,17) which stay with beard or legs so belt and legs each remain one 4-connected component. Disconnected boundary blobs on the five re-derived parts are reassigned to the adjacent part with the strongest shared edge. Anchor Cell (12,5) moves from helmet to lamp so the lamp emission stays one 4-connected component.",
+  "assignment_rationale": "Non-outline core Cells are classified from polished material roles and anchor-space regions aligned with identity-lock rectangles. hand_near is the visible near hand: skin Cells (5,12) and (5,13) plus outline and leather Cells that 4-connect to them. The former torso strip x6..8 y7..14 is shoulder and upper arm in arm_near; the run (9,10)..(13,10) is the top of the beard mass. belt is the kinematic root; its buckle landmark is verified by identity-locks. tool_handle parents to arm_near at the shoulder contact where the haft meets the body. Every dark-outline Cell inherits the part of its nearest core Cell under Chebyshev distance (ties broken toward smaller x then y), except anchor Cells (14,16)..(15,17) which stay with beard or legs so belt and legs each remain one 4-connected component. Anchor Cell (12,5) is in lamp so the emission stays one component.",
   "parts": {
     "tool_head": {
       "rigid": true,
@@ -809,7 +809,7 @@
     },
     "tool_handle": {
       "rigid": true,
-      "parent": "hand_near",
+      "parent": "arm_near",
       "cells": [
         "3,6",
         "3,7",
@@ -1203,19 +1203,20 @@
       "rigid": false,
       "parent": "arm_near",
       "cells": [
-        "4,8",
-        "5,8",
-        "6,7",
-        "6,8"
+        "5,12",
+        "5,13",
+        "5,14",
+        "6,14",
+        "5,15"
       ],
       "pivot": [
-        7,
-        11
+        5,
+        12
       ]
     },
     "arm_near": {
       "rigid": false,
-      "parent": "torso",
+      "parent": "belt",
       "cells": [
         "1,13",
         "1,14",
@@ -1229,33 +1230,22 @@
         "3,12",
         "3,13",
         "3,14",
+        "4,8",
         "4,9",
         "4,10",
         "4,11",
         "4,12",
         "4,13",
         "4,14",
+        "5,8",
         "5,9",
         "5,10",
         "5,11",
-        "5,12",
-        "5,13",
-        "5,14",
-        "5,15",
-        "6,11",
-        "6,14"
-      ],
-      "pivot": [
-        9,
-        10
-      ]
-    },
-    "torso": {
-      "rigid": false,
-      "parent": null,
-      "cells": [
+        "6,7",
+        "6,8",
         "6,9",
         "6,10",
+        "6,11",
         "6,12",
         "6,13",
         "7,7",
@@ -1271,18 +1261,17 @@
         "8,12",
         "8,13",
         "8,14",
-        "9,10",
         "9,12",
-        "9,13",
-        "10,10",
-        "11,10",
-        "12,10",
-        "13,10"
+        "9,13"
+      ],
+      "pivot": [
+        9,
+        10
       ]
     },
     "helmet": {
       "rigid": false,
-      "parent": "torso",
+      "parent": "head_face",
       "cells": [
         "6,2",
         "6,3",
@@ -1322,7 +1311,7 @@
     },
     "lamp": {
       "rigid": false,
-      "parent": "torso",
+      "parent": "helmet",
       "cells": [
         "12,2",
         "12,3",
@@ -1338,7 +1327,7 @@
     },
     "head_face": {
       "rigid": false,
-      "parent": "torso",
+      "parent": "belt",
       "cells": [
         "8,7",
         "8,8",
@@ -1368,23 +1357,28 @@
     },
     "beard": {
       "rigid": false,
-      "parent": "torso",
+      "parent": "head_face",
       "cells": [
+        "9,10",
         "9,11",
         "9,14",
+        "10,10",
         "10,11",
         "10,12",
         "10,13",
         "10,14",
+        "11,10",
         "11,11",
         "11,12",
         "11,13",
         "11,14",
+        "12,10",
         "12,11",
         "12,12",
         "12,13",
         "12,14",
         "12,15",
+        "13,10",
         "13,11",
         "13,12",
         "13,13",
@@ -1405,7 +1399,7 @@
     },
     "belt": {
       "rigid": false,
-      "parent": "torso",
+      "parent": null,
       "cells": [
         "2,15",
         "2,16",
@@ -1461,7 +1455,7 @@
     },
     "legs": {
       "rigid": false,
-      "parent": "torso",
+      "parent": "belt",
       "cells": [
         "3,20",
         "3,21",
@@ -1503,7 +1497,7 @@
     },
     "boots": {
       "rigid": false,
-      "parent": "torso",
+      "parent": "legs",
       "cells": [
         "3,22",
         "3,23",
