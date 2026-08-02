@@ -14,6 +14,7 @@ import pytest
 from pipeline.canonical import packet_bytes
 from pipeline.cell_delta import SCHEMA as LEDGER_SCHEMA
 from pipeline.cell_raster import read_cells, write_cells
+from pipeline.final_polish import _load_base_release_frames
 from pipeline.motion_author import (
     MOTION_POSE_PLAN_SCHEMA,
     AuthoredMotion,
@@ -21,6 +22,7 @@ from pipeline.motion_author import (
     author_motion,
 )
 from pipeline.palette_quantize import load_master_palette
+from tests.support import polish_bundle as pb
 
 ROOT = Path(__file__).resolve().parents[1]
 PALETTE_PATH = ROOT / "assets" / "palettes" / "first-room.json"
@@ -162,6 +164,33 @@ def _swing_base_frame() -> list[list[tuple[int, int, int] | None]]:
         for x in range(7, 19):
             frame[y][x] = (98, 81, 93)
     return frame
+
+
+def test_embedded_idle_base_authors_a_cross_dimension_swing_plan(tmp_path: Path) -> None:
+    """C2: a 16x24 idle base embeds onto the 24x24 swing canvas before authoring."""
+    prepared = pb.prepare_cell_author("idle", tmp_path)
+    base_frames = _load_base_release_frames(prepared.base_bundle, "swing")
+    assert len(base_frames) == 4
+    for frame in base_frames:
+        assert len(frame) == 24
+        assert len(frame[0]) == 24
+
+    pose_plan = _swing_pose_plan(
+        frame_ops=[
+            [{"op": "paint", "x": 2, "y": 22, "palette_role": "amber-emission", "color": "#F0A33A"}],
+            [{"op": "paint", "x": 2, "y": 23, "palette_role": "amber-emission", "color": "#F0A33A"}],
+            [{"op": "paint", "x": 21, "y": 22, "palette_role": "amber-emission", "color": "#F0A33A"}],
+            [{"op": "paint", "x": 21, "y": 23, "palette_role": "amber-emission", "color": "#F0A33A"}],
+        ]
+    )
+    palette = load_master_palette(PALETTE_PATH)
+    result = author_motion(base_frames, pose_plan, _load_identity_lock_spec(), palette)
+
+    assert len(result.frames) == 4
+    for frame in result.frames:
+        assert len(frame) == 24
+        assert len(frame[0]) == 24
+    assert result.frames[0][22][2] == (240, 163, 58)
 
 
 def test_direct_locked_write_rejects_with_identity_lock_write() -> None:
