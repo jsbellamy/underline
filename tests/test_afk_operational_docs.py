@@ -236,6 +236,19 @@ def test_agents_md_names_completion_and_asset_slice_rules() -> None:
     assert "asset slice may not modify pipeline code" in normalized
 
 
+def test_agents_md_evidence_links_isolation_sweep_adr() -> None:
+    text = AGENTS_MD.read_text()
+    evidence = text.split("### Evidence")[1]
+    assert "0005-isolation-sweep-throughput-target.md" in evidence
+    assert "isolation sweep" in evidence.lower()
+
+
+def test_adr_readme_indexes_isolation_sweep_throughput_target() -> None:
+    adr_readme = (ROOT / "docs" / "adr" / "README.md").read_text()
+    assert "[0005](0005-isolation-sweep-throughput-target.md)" in adr_readme
+    assert "throughput" in adr_readme.lower()
+
+
 def test_afk_spec_documents_exactly_two_bat_flap_adversarial_gaps() -> None:
     text = AFK_SPEC.read_text()
     assert "04-bat-flap" in text
