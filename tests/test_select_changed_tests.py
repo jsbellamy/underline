@@ -437,3 +437,25 @@ def test_pr_240_changed_paths_select_companions_without_widening() -> None:
 
     assert result.kind == "selected"
     assert result.files == _ACQUISITION_CONTROL_COMPANIONS
+
+
+def test_a_game_only_change_selects_no_pipeline_tests() -> None:
+    # The game is TypeScript under `src/` and its tests live beside it, so a
+    # game-only diff has nothing for pytest to run -- it must not widen to the
+    # whole suite the way an unmapped path does.
+    result = select_test_files(
+        ["src/core/simulation.ts", "src/ui/hud.ts"],
+        existing_tests={"tests/test_strip.py"},
+    )
+
+    assert result.kind == "nothing"
+
+
+def test_a_game_change_alongside_a_pipeline_change_selects_only_the_pipeline_test() -> None:
+    result = select_test_files(
+        ["src/core/simulation.ts", "pipeline/strip.py"],
+        existing_tests={"tests/test_strip.py", "tests/test_parts.py"},
+    )
+
+    assert result.kind == "selected"
+    assert result.files == ("tests/test_strip.py",)

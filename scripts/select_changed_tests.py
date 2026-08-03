@@ -19,6 +19,8 @@ import sys
 from dataclasses import dataclass
 from typing import Iterable, Mapping
 
+from scripts.ci_surfaces import is_game_surface
+
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 TESTS_DIR = ROOT / "tests"
 
@@ -249,6 +251,13 @@ def select_test_files(
                 selected.update(t for t in existing if t.startswith(prefix))
             continue
 
+        # The game is TypeScript and its tests live beside it, so a game path
+        # contributes no pytest file. It is skipped rather than widened, which
+        # is the same isolation `.github/workflows/ci.yml` applies to the
+        # pipeline jobs -- both read `is_game_surface`.
+        if is_game_surface(path):
+            continue
+
         if path.parts and path.parts[0] == "acquisition-controls":
             selected.update(_tests_for_acquisition_controls(sources, existing))
             continue
@@ -288,7 +297,10 @@ def select_test_files(
     if not selected:
         return Selection(
             kind="nothing",
-            reason="the changed files are documentation no test reads",
+            reason=(
+                "the changed files are game surface or documentation no test "
+                "reads"
+            ),
         )
 
     return Selection(

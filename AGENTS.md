@@ -162,8 +162,21 @@ npm run prototype:strip:sharpness       # alignment-minimum margins, corpus-wide
 ```
 
 `.github/workflows/ci.yml` runs the full suite (`npm test`) and the per-file
-isolation sweep on every PR; `test:changed` is the fast local gate, not a
-substitute for that CI run. The isolation sweep's throughput model and budget
+isolation sweep on every PR that touches the asset pipeline; `test:changed` is
+the fast local gate, not a substitute for that CI run.
+
+The pipeline jobs are gated on a surface check. The game is TypeScript under
+`src/` and Python is confined to the asset pipeline, so a PR whose every
+changed path is game surface skips the suite, the isolation sweep, and
+external-acceptance — they have nothing to prove about it. `scripts/ci_surfaces.py`
+owns that rule for both CI and `test:changed`, and it is fail-safe: a single
+non-game path anywhere in the diff runs everything, an unrecognised top-level
+directory is not game surface, and a diff CI cannot compute runs everything.
+Pushes to `main` always run the full set. A skipped job reports as skipped and
+still satisfies a required status check, which is why the gate is a job-level
+`if:` and not a workflow-level `paths:` filter.
+
+The isolation sweep's throughput model and budget
 are recorded in
 `docs/adr/0005-isolation-sweep-throughput-target.md`: CI's reported `wall_s`
 is the measurement of record, `wall_s` ≤ 180s is the standing budget, and
