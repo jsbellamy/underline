@@ -55,19 +55,21 @@ export function createMiningAudio(deps: MiningAudioDeps): MiningAudio {
   }
 
   function playClip(id: AudioClipId): void {
-    if (!enabled || !context) {
+    if (!enabled) {
       return;
     }
-    void ensureLoaded().then(() => {
-      const buffer = buffers.get(id);
-      if (!buffer || !context) {
-        return;
-      }
-      const source = context.createBufferSource();
-      source.buffer = buffer;
-      source.connect(context.destination);
-      source.start();
-    });
+    void ensureLoaded()
+      .then(() => {
+        const buffer = buffers.get(id);
+        if (!buffer || !context) {
+          return;
+        }
+        const source = context.createBufferSource();
+        source.buffer = buffer;
+        source.connect(context.destination);
+        source.start();
+      })
+      .catch(() => {});
   }
 
   return {
@@ -77,24 +79,18 @@ export function createMiningAudio(deps: MiningAudioDeps): MiningAudio {
     setEnabled(next: boolean) {
       enabled = next;
       if (next) {
-        void ensureLoaded();
+        void ensureLoaded().catch(() => {});
       }
     },
     swing(count: number) {
       if (!enabled || count < 1) {
         return;
       }
-      if (!context) {
-        context = deps.createAudioContext();
-      }
       playClip("swing");
     },
     faceBroken(count: number) {
       if (!enabled || count < 1) {
         return;
-      }
-      if (!context) {
-        context = deps.createAudioContext();
       }
       playClip("break");
     },

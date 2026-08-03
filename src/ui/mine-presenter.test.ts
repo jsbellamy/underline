@@ -76,7 +76,7 @@ describe("mine presenter", () => {
     expect(presenter.snapshot().animation).toBe("walk");
   });
 
-  it("emits swing counts from elapsed ms at Dig Rate 1 (C4)", () => {
+  it("emits swing counts from elapsed ms at Dig Rate 1", () => {
     const session = createMiningSession({
       store: memoryStore(),
       now: () => 0,
@@ -95,7 +95,7 @@ describe("mine presenter", () => {
     expect(audio.swings).toEqual([1, 1]);
   });
 
-  it("is chunk-neutral for swing counts (C4)", () => {
+  it("is chunk-neutral for swing counts", () => {
     const sessionA = createMiningSession({
       store: memoryStore(),
       now: () => 0,
@@ -123,7 +123,7 @@ describe("mine presenter", () => {
     expect(totalA).toBe(totalB);
   });
 
-  it("emits faceBroken with Face breaks gained in the tick (C5)", () => {
+  it("emits faceBroken with Face breaks gained in the tick", () => {
     const session = createMiningSession({
       store: memoryStore(),
       now: () => 0,
@@ -136,7 +136,7 @@ describe("mine presenter", () => {
     expect(audio.breaks).toEqual([1]);
   });
 
-  it("constructs audio enabled from persisted settings (C7)", () => {
+  it("constructs audio enabled from persisted settings", () => {
     const store = memoryStore();
     persistSettings({ schemaVersion: 1, soundEnabled: true }, store);
     vi.stubGlobal(
@@ -164,7 +164,7 @@ describe("mine presenter", () => {
     vi.unstubAllGlobals();
   });
 
-  it("defaults audio off when settings are absent (C7)", () => {
+  it("defaults audio off when settings are absent", () => {
     const store = memoryStore();
     const createAudioContext = vi.fn();
     const session = createMiningSession({ store, now: () => 0 });
@@ -172,7 +172,7 @@ describe("mine presenter", () => {
     expect(createAudioContext).not.toHaveBeenCalled();
   });
 
-  it("delegates setSoundEnabled to mining audio (C7)", () => {
+  it("delegates setSoundEnabled to mining audio", () => {
     const store = memoryStore();
     vi.stubGlobal(
       "fetch",
@@ -200,7 +200,7 @@ describe("mine presenter", () => {
     vi.unstubAllGlobals();
   });
 
-  it("advances normally without injectable audio (C8)", () => {
+  it("advances normally without injectable audio", () => {
     const session = createMiningSession({
       store: memoryStore(),
       now: () => 0,
