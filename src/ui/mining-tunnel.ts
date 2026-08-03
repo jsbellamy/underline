@@ -27,6 +27,22 @@ const FACE_DEEP = "#176873";
 const CRACK = "#72E2D2";
 const FLOOR = "#3B2F3A";
 
+const VISIBLE_COLUMNS = Math.ceil(PANE_WIDTH / BLOCK_SIZE) + 2;
+
+export const MINING_TUNNEL_VISIBLE_COLUMNS = VISIBLE_COLUMNS;
+
+function snapEquals(a: DemoMineSnapshot, b: DemoMineSnapshot): boolean {
+  return (
+    a.animation === b.animation &&
+    a.facing === b.facing &&
+    a.frameIndex === b.frameIndex &&
+    a.advance === b.advance &&
+    a.faceSwingProgress === b.faceSwingProgress &&
+    a.swingFraction === b.swingFraction &&
+    a.digRate === b.digRate
+  );
+}
+
 export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
   const layout = dwarfLayout(DWARF_PACK);
   const dwarfW = layout.frameW * DWARF_SCALE;
@@ -39,6 +55,19 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
 
   const world = document.createElement("div");
   world.className = "pane-tunnel-world";
+
+  const columns: HTMLElement[] = [];
+  for (let i = 0; i < VISIBLE_COLUMNS; i += 1) {
+    const col = document.createElement("div");
+    col.className = "pane-block";
+    columns.push(col);
+    world.append(col);
+  }
+
+  const floor = document.createElement("div");
+  floor.className = "pane-tunnel-floor";
+  floor.style.background = FLOOR;
+  world.append(floor);
 
   const dwarf = document.createElement("img");
   dwarf.className = "pane-dwarf";
@@ -71,23 +100,38 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
   tunnel.append(world, dwarf);
   host.replaceChildren(tunnel);
 
+  let lastSnap: DemoMineSnapshot | null = null;
+
   function render(snap: DemoMineSnapshot): void {
+    if (lastSnap !== null && snapEquals(lastSnap, snap)) {
+      return;
+    }
+    lastSnap = { ...snap };
+
     const faceScreenX = PANE_WIDTH - BLOCK_SIZE - 16;
-    const scrollX = Math.max(0, snap.advance * BLOCK_SIZE - (faceScreenX - BLOCK_SIZE));
+    const scrollX = Math.max(
+      0,
+      snap.advance * BLOCK_SIZE - (faceScreenX - BLOCK_SIZE),
+    );
     world.style.transform = `translateX(${-scrollX}px)`;
 
-    const total = snap.advance + 14;
-    world.replaceChildren();
-    for (let i = 0; i < total; i += 1) {
-      const col = document.createElement("div");
-      col.className = "pane-block";
-      col.style.left = `${i * BLOCK_SIZE}px`;
+    const startIndex = Math.floor(scrollX / BLOCK_SIZE) - 1;
+
+    for (let j = 0; j < VISIBLE_COLUMNS; j += 1) {
+      const worldIndex = startIndex + j;
+      const col = columns[j]!;
+      col.style.left = `${worldIndex * BLOCK_SIZE}px`;
       col.style.width = `${BLOCK_SIZE}px`;
       col.style.height = `${PANE_HEIGHT}px`;
-      if (i < snap.advance) {
+
+      const existingCrack = col.querySelector(".pane-face-crack");
+      if (existingCrack) {
+        existingCrack.remove();
+      }
+
+      if (worldIndex < snap.advance) {
         col.style.background = HOLLOW;
-      } else if (i === snap.advance) {
-        col.style.background = FACE;
+      } else if (worldIndex === snap.advance) {
         const hardness = hardnessFor(snap.advance);
         const crackProgress =
           (snap.faceSwingProgress + snap.swingFraction) / hardness;
@@ -98,18 +142,16 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
           crack.style.background = CRACK;
           col.style.background = FACE_DEEP;
           col.append(crack);
+        } else {
+          col.style.background = FACE;
         }
       } else {
         col.style.background = SOLID;
       }
-      world.append(col);
     }
 
-    const floor = document.createElement("div");
-    floor.className = "pane-tunnel-floor";
-    floor.style.width = `${total * BLOCK_SIZE}px`;
-    floor.style.background = FLOOR;
-    world.append(floor);
+    floor.style.left = `${startIndex * BLOCK_SIZE}px`;
+    floor.style.width = `${VISIBLE_COLUMNS * BLOCK_SIZE}px`;
 
     const urls = urlsFor(snap.animation, snap.facing);
     const frame = urls[snap.frameIndex] ?? urls[0];
