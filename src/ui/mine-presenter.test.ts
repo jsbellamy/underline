@@ -1,7 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { createMiningSession } from "../core/mining-session";
 import { initialSnapshot } from "../core/mining-engine";
+import {
+  persistSettings,
+} from "../core/settings-save";
 import { createMinePresenter } from "./mine-presenter";
+import type { MiningAudio } from "./mining-audio";
 
 function memoryStore() {
   const data: Record<string, string> = {};
@@ -15,6 +19,29 @@ function memoryStore() {
     removeItem(key: string) {
       delete data[key];
     },
+  };
+}
+
+function spyMiningAudio(): MiningAudio & {
+  swings: number[];
+  breaks: number[];
+} {
+  const swings: number[] = [];
+  const breaks: number[] = [];
+  return {
+    swings,
+    breaks,
+    swing(count: number) {
+      swings.push(count);
+    },
+    faceBroken(count: number) {
+      breaks.push(count);
+    },
+    setEnabled() {},
+    isEnabled() {
+      return true;
+    },
+    destroy() {},
   };
 }
 
@@ -47,5 +74,140 @@ describe("mine presenter", () => {
     }
     expect(presenter.snapshot().advance).toBe(1);
     expect(presenter.snapshot().animation).toBe("walk");
+  });
+
+  it("emits swing counts from elapsed ms at Dig Rate 1", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+    });
+    const audio = spyMiningAudio();
+    const presenter = createMinePresenter(session, { audio });
+    presenter.start();
+
+    presenter.advanceMs(1000);
+    expect(audio.swings).toEqual([1]);
+
+    presenter.advanceMs(500);
+    expect(audio.swings).toEqual([1]);
+
+    presenter.advanceMs(500);
+    expect(audio.swings).toEqual([1, 1]);
+  });
+
+  it("is chunk-neutral for swing counts", () => {
+    const sessionA = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+    });
+    const audioA = spyMiningAudio();
+    const presenterA = createMinePresenter(sessionA, { audio: audioA });
+    presenterA.start();
+    for (let i = 0; i < 100; i += 1) {
+      presenterA.advanceMs(10);
+    }
+
+    const sessionB = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+    });
+    const audioB = spyMiningAudio();
+    const presenterB = createMinePresenter(sessionB, { audio: audioB });
+    presenterB.start();
+    presenterB.advanceMs(1000);
+
+    const totalA = audioA.swings.reduce((sum, n) => sum + n, 0);
+    const totalB = audioB.swings.reduce((sum, n) => sum + n, 0);
+    expect(totalA).toBe(1);
+    expect(totalB).toBe(1);
+    expect(totalA).toBe(totalB);
+  });
+
+  it("emits faceBroken with Face breaks gained in the tick", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+    });
+    const audio = spyMiningAudio();
+    const presenter = createMinePresenter(session, { audio });
+    presenter.start();
+
+    presenter.advanceMs(4000);
+    expect(audio.breaks).toEqual([1]);
+  });
+
+  it("constructs audio enabled from persisted settings", () => {
+    const store = memoryStore();
+    persistSettings({ schemaVersion: 1, soundEnabled: true }, store);
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        arrayBuffer: async () => new ArrayBuffer(8),
+      })),
+    );
+    const createAudioContext = vi.fn(
+      () =>
+        ({
+          decodeAudioData: vi.fn(async () => ({} as AudioBuffer)),
+          createBufferSource: vi.fn(() => ({
+            connect: vi.fn(),
+            start: vi.fn(),
+          })),
+          destination: {},
+          close: vi.fn(),
+        }) as unknown as AudioContext,
+    );
+    const session = createMiningSession({ store, now: () => 0 });
+    createMinePresenter(session, { store, createAudioContext });
+    expect(createAudioContext).toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it("defaults audio off when settings are absent", () => {
+    const store = memoryStore();
+    const createAudioContext = vi.fn();
+    const session = createMiningSession({ store, now: () => 0 });
+    createMinePresenter(session, { store, createAudioContext });
+    expect(createAudioContext).not.toHaveBeenCalled();
+  });
+
+  it("delegates setSoundEnabled to mining audio", () => {
+    const store = memoryStore();
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => ({
+        ok: true,
+        arrayBuffer: async () => new ArrayBuffer(8),
+      })),
+    );
+    const createAudioContext = vi.fn(
+      () =>
+        ({
+          decodeAudioData: vi.fn(async () => ({} as AudioBuffer)),
+          createBufferSource: vi.fn(() => ({
+            connect: vi.fn(),
+            start: vi.fn(),
+          })),
+          destination: {},
+          close: vi.fn(),
+        }) as unknown as AudioContext,
+    );
+    const session = createMiningSession({ store, now: () => 0 });
+    const presenter = createMinePresenter(session, { store, createAudioContext });
+    presenter.setSoundEnabled(true);
+    expect(createAudioContext).toHaveBeenCalled();
+    vi.unstubAllGlobals();
+  });
+
+  it("advances normally without injectable audio", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+    presenter.advanceMs(250);
+    expect(presenter.snapshot().faceSwingProgress).toBeGreaterThanOrEqual(0);
   });
 });

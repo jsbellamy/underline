@@ -32,6 +32,7 @@ import {
   type FrameMetrics,
   type FrameMetricsReport,
 } from "./frame-metrics";
+import { browserSaveStore } from "../core/mining-save";
 import { createMinePresenter, type MinePresenter } from "./mine-presenter";
 import { mountMiningTunnel, type MiningTunnelView } from "./mining-tunnel";
 import { mountPaneControls, type PaneControlsView } from "./pane-controls";
@@ -98,9 +99,12 @@ export function mountPaneShell(
 
   let bus: BusEndpoint | null = null;
 
+  const store = browserSaveStore();
+
   const session =
     options.session ??
     createMiningSession({
+      store,
       now: clockNow,
       onPublish(wire) {
         bus?.publish({ type: "snapshot", snapshot: wire });
@@ -109,7 +113,17 @@ export function mountPaneShell(
 
   const appExit = resolveAppExit(options, session);
 
-  const presenter = options.presenter ?? createMinePresenter(session);
+  const createAudioContext =
+    typeof AudioContext !== "undefined"
+      ? () => new AudioContext()
+      : undefined;
+
+  const presenter =
+    options.presenter ??
+    createMinePresenter(
+      session,
+      createAudioContext ? { store, createAudioContext } : {},
+    );
 
   let tunnel: MiningTunnelView | null = null;
   let controls: PaneControlsView | null = null;
