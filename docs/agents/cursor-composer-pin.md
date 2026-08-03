@@ -23,7 +23,8 @@ Standard mode must be expressed as slug **plus** `model_params`:
 }
 ```
 
-`gate-task-spawn.sh` injects this shape on every Composer Task spawn.
+Use this shape when spawning a Task with an inline `model` (pinned subagents
+omit `model` and inherit from agent frontmatter).
 
 ## Orchestrator (parent chat)
 
@@ -43,17 +44,6 @@ model: "composer-2.5[fast=false]"
 Keep the bracket form in frontmatter so the agent settings UI shows **Composer
 2.5** (standard), not **Composer 2.5 Fast**. Bare `composer-2.5` in frontmatter
 selects fast mode in the UI.
-
-At Task spawn time, `gate-task-spawn.sh` rewrites that intent to the spawnable
-API shape (`composer-2.5` + `fast=false` param). Frontmatter alone does not
-reach the Task API — hooks do.
-
-## Hooks
-
-`preToolUse` on Task (`.cursor/hooks/gate-task-spawn.sh`) rewrites every Composer
-Task spawn to `composer-2.5` + `fast=false`. `subagentStart`
-(`.cursor/hooks/deny-fast-subagents.sh`) denies any Composer subagent that still
-starts in fast mode. User-level wiring: `~/.cursor/hooks.json`.
 
 ## Pinned subagents
 
