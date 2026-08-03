@@ -2,7 +2,9 @@
 
 import { describe, expect, it, vi } from "vitest";
 import {
+  carryCapacityFor,
   initialSnapshot,
+  nextCarryCapacityUpgradeCost,
   nextSmelterUpgradeCost,
 } from "../core/mining-engine";
 import { toWireSnapshot } from "../core/wire-snapshot";
@@ -129,6 +131,69 @@ describe("Colony Dock surface", () => {
       ?.click();
     expect(onBuy).toHaveBeenCalledOnce();
     expect(onBuy).toHaveBeenCalledWith("smelter");
+    view.destroy();
+  });
+
+  it("shows Bag loads against Carry Capacity", () => {
+    const host = document.createElement("div");
+    const view = mountColonyView(host);
+    view.render(toWireSnapshot(initialSnapshot()));
+    expect(host.querySelector("[data-bag]")?.textContent).toBe("0 / 10 loads");
+    view.render(
+      toWireSnapshot({
+        ...initialSnapshot(),
+        bagLoads: 3,
+        carryCapacityUpgradeCount: 1,
+      }),
+    );
+    expect(host.querySelector("[data-bag]")?.textContent).toBe(
+      `3 / ${carryCapacityFor(1)} loads`,
+    );
+    view.destroy();
+  });
+
+  it("shows Face progress as advance plus one and percent complete", () => {
+    const host = document.createElement("div");
+    const view = mountColonyView(host);
+    view.render(toWireSnapshot(initialSnapshot()));
+    expect(host.querySelector("[data-face]")?.textContent).toBe("1 — 0%");
+    view.render(
+      toWireSnapshot({
+        ...initialSnapshot(),
+        advance: 0,
+        faceSwingProgress: 430,
+      }),
+    );
+    expect(host.querySelector("[data-face]")?.textContent).toBe("1 — 43%");
+    view.destroy();
+  });
+
+  it("shows the Carry Capacity Upgrade offer and disables it when Ingots are short", () => {
+    const host = document.createElement("div");
+    const view = mountColonyView(host);
+    view.render(toWireSnapshot({ ...initialSnapshot(), ingots: 4 }));
+    const carryBuy = host.querySelector<HTMLButtonElement>(
+      "[data-buy-carry-capacity-upgrade]",
+    );
+    expect(carryBuy?.textContent).toBe(
+      `Buy Carry Capacity Upgrade (+5 loads) — ${nextCarryCapacityUpgradeCost(0)} Ingots`,
+    );
+    expect(carryBuy?.disabled).toBe(true);
+    view.render(toWireSnapshot({ ...initialSnapshot(), ingots: 5 }));
+    expect(carryBuy?.disabled).toBe(false);
+    view.destroy();
+  });
+
+  it("fires onBuyUpgrade with carryCapacity when the Carry Capacity Upgrade is pressed", () => {
+    const onBuy = vi.fn();
+    const host = document.createElement("div");
+    const view = mountColonyView(host, { onBuyUpgrade: onBuy });
+    view.render(toWireSnapshot({ ...initialSnapshot(), ingots: 5 }));
+    host
+      .querySelector<HTMLButtonElement>("[data-buy-carry-capacity-upgrade]")
+      ?.click();
+    expect(onBuy).toHaveBeenCalledOnce();
+    expect(onBuy).toHaveBeenCalledWith("carryCapacity");
     view.destroy();
   });
 });

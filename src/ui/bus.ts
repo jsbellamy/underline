@@ -37,7 +37,9 @@ function isSchemaVersion(value: unknown): value is typeof SCHEMA_VERSION {
 }
 
 function isUpgradeId(value: unknown): value is UpgradeId {
-  return value === "digRate" || value === "smelter";
+  return (
+    value === "digRate" || value === "smelter" || value === "carryCapacity"
+  );
 }
 
 /** True when a Dock command carries schemaVersion 2. */

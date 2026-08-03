@@ -139,6 +139,10 @@ export function mountPaneShell(
   let lastPublishedIngots = session.snapshot.ingots;
   let lastPublishedUpgrades = session.snapshot.digRateUpgradeCount;
   let lastPublishedSmelterUpgrades = session.snapshot.smelterUpgradeCount;
+  let lastPublishedBagLoads = session.snapshot.bagLoads;
+  let lastPublishedBagOre = session.snapshot.bagOre;
+  let lastPublishedCarryCapacityUpgrades =
+    session.snapshot.carryCapacityUpgradeCount;
 
   const pane = document.createElement("div");
   pane.className = "pane";
@@ -184,6 +188,10 @@ export function mountPaneShell(
     lastPublishedIngots = session.snapshot.ingots;
     lastPublishedUpgrades = session.snapshot.digRateUpgradeCount;
     lastPublishedSmelterUpgrades = session.snapshot.smelterUpgradeCount;
+    lastPublishedBagLoads = session.snapshot.bagLoads;
+    lastPublishedBagOre = session.snapshot.bagOre;
+    lastPublishedCarryCapacityUpgrades =
+      session.snapshot.carryCapacityUpgradeCount;
   }
 
   function handleCommand(
@@ -241,7 +249,10 @@ export function mountPaneShell(
       snap.ore !== lastPublishedOre ||
       snap.ingots !== lastPublishedIngots ||
       snap.digRateUpgradeCount !== lastPublishedUpgrades ||
-      snap.smelterUpgradeCount !== lastPublishedSmelterUpgrades
+      snap.smelterUpgradeCount !== lastPublishedSmelterUpgrades ||
+      snap.bagLoads !== lastPublishedBagLoads ||
+      snap.bagOre !== lastPublishedBagOre ||
+      snap.carryCapacityUpgradeCount !== lastPublishedCarryCapacityUpgrades
     ) {
       publishSnapshot();
     }

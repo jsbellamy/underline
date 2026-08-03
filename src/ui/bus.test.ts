@@ -18,6 +18,7 @@ describe("isDockCommand", () => {
   it.each([
     { upgrade: "digRate" as const },
     { upgrade: "smelter" as const },
+    { upgrade: "carryCapacity" as const },
   ])("accepts buyUpgrade with upgrade $upgrade", ({ upgrade }) => {
     expect(
       isDockCommand({ schemaVersion: SCHEMA_VERSION, name: "buyUpgrade", upgrade }),
