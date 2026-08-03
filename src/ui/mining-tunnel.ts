@@ -39,7 +39,9 @@ function snapEquals(a: TunnelSnapshot, b: TunnelSnapshot): boolean {
     a.advance === b.advance &&
     a.faceSwingProgress === b.faceSwingProgress &&
     a.swingFraction === b.swingFraction &&
-    a.digRate === b.digRate
+    a.digRate === b.digRate &&
+    a.haulPhase === b.haulPhase &&
+    a.haulProgress === b.haulProgress
   );
 }
 
