@@ -22,6 +22,7 @@ not delete history.
 | [0006](0006-final-polish-lifecycle-boundary.md) | Final-polish lifecycle boundary |
 | [0007](0007-swing-cell-author-acquisition.md) | Swing Cell-author acquisition |
 | [0008](0008-anatomy-first-character-acquisition.md) | Anatomy-first character acquisition (compile/pose seam; amends 0007 for walk) |
+| [0009](0009-vendored-pane-dock-shell.md) | Vendored Pane+Dock shell from Nightglass |
 
 Earlier decisions settled only in `docs/strip-acquisition-contract.md` or
 `prototype/strip-coherence/NOTES.md` should be promoted here when they start

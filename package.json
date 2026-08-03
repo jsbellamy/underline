@@ -2,10 +2,18 @@
   "name": "underline",
   "private": true,
   "version": "0.0.0",
+  "type": "module",
   "scripts": {
-    "test": "PYTHONPATH=. python3 -m pytest -q",
-    "test:fast": "PYTHONPATH=. python3 -m pytest -q -m 'not slow'",
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run test:unit && npm run test:python",
+    "test:unit": "vitest run",
+    "test:python": "PYTHONPATH=. python3 -m pytest -q",
+    "test:fast": "npm run test:unit && PYTHONPATH=. python3 -m pytest -q -m 'not slow'",
     "test:changed": "PYTHONPATH=. python3 scripts/select_changed_tests.py",
+    "tauri": "tauri",
     "agents:anchors": "PYTHONPATH=. python3 scripts/extract_anchors.py",
     "prototype:strip": "PYTHONPATH=. python3 prototype/strip-coherence/tui.py",
     "prototype:strip:smoke": "PYTHONPATH=. python3 prototype/strip-coherence/smoke.py",
@@ -25,5 +33,16 @@
     "gate-control:review": "PYTHONPATH=. python3 -m pipeline.gate_review",
     "gate-control:verify": "PYTHONPATH=. python3 -m pipeline.gate_verification",
     "parts:render": "PYTHONPATH=. python3 -m pipeline.parts_cli render"
+  },
+  "dependencies": {
+    "@tauri-apps/api": "^2.11.1"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.4",
+    "@types/node": "^26.1.2",
+    "happy-dom": "^20.11.1",
+    "typescript": "~5.6",
+    "vite": "^6.4.3",
+    "vitest": "^4.1.10"
   }
 }

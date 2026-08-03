@@ -22,11 +22,22 @@ jobs:
           cache: 'pip'
           cache-dependency-path: requirements.txt
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
-      - name: Run test suite
-        run: PYTHONPATH=. python3 -m pytest -q --durations=25
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Typecheck TypeScript
+        run: npm run typecheck
+
+      - name: Run test suite (Vitest + pytest)
+        run: npm test
 
       - name: Fail if the suite dirtied the working tree
         run: |
