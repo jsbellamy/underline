@@ -135,19 +135,19 @@ def test_schema_validates_structural_policy_palette_landmarks_and_grounded_ancho
     swing_landmarks = [
         {
             "id": "lamp",
-            "canonical": [16, 4],
+            "canonical": [13, 4],
             "palette_role": "amber-emission",
             "max_distance": 2,
         },
         {
             "id": "eye",
-            "canonical": [14, 7],
+            "canonical": [11, 7],
             "palette_role": "dark-outline",
             "max_distance": 1,
         },
         {
             "id": "buckle",
-            "canonical": [15, 16],
+            "canonical": [12, 16],
             "palette_role": "amber-emission",
             "max_distance": 2,
         },
@@ -379,7 +379,7 @@ def test_swing_permitted_anchor_motion_passes() -> None:
     for _ in range(4):
         shifted = _embed_canonical_on_swing_canvas(canonical)
         for y in range(2, 12):
-            for x in range(9, 17):
+            for x in range(6, 14):
                 shifted[y - 1][x] = canonical[y - SWING_CANONICAL_ORIGIN[1]][
                     x - SWING_CANONICAL_ORIGIN[0]
                 ]
@@ -390,7 +390,7 @@ def test_swing_permitted_anchor_motion_passes() -> None:
 
 def test_swing_registered_anchor_allows_non_identical_rgb() -> None:
     frames = _swing_frames()
-    _set_cell(frames, 0, 11, 4, (47, 96, 117))
+    _set_cell(frames, 0, 10, 4, (47, 96, 117))
     result = evaluate_identity_lock(frames, "swing")
     assert result.outcome == "PASS"
     assert result.per_frame[0].check_results["helmet_face"]["palette_role_distance"] == 0.0
@@ -447,7 +447,7 @@ def test_swing_boot_occupancy_change_fails() -> None:
 def test_missing_eye_landmark_fails() -> None:
     frames = _swing_frames()
     for y in range(6, 9):
-        for x in range(13, 16):
+        for x in range(10, 13):
             if frames[0][y][x] is not None:
                 _set_cell(frames, 0, x, y, (240, 163, 58))
     result = evaluate_identity_lock(frames, "swing")
@@ -464,7 +464,7 @@ def test_swing_excess_offset_fails() -> None:
     frames = _swing_frames()
     for frame_index in range(4):
         for y in range(2, 12):
-            for x in range(9, 17):
+            for x in range(6, 14):
                 frames[frame_index][y][x] = frames[frame_index][y - 2][x]
     result = evaluate_identity_lock(frames, "swing")
     assert result.outcome == "FAIL"
@@ -474,7 +474,7 @@ def test_swing_scale_relation_change_fails() -> None:
     frames = _swing_frames()
     for frame_index in range(4):
         for y in range(2, 12):
-            for x in range(9, 17):
+            for x in range(6, 14):
                 frames[frame_index][y][x] = frames[frame_index][y - 1][x]
         for y in range(15, 19):
             for x in range(8, 17):
@@ -685,7 +685,7 @@ def test_swing_seed_geometry_is_2432x1152_with_block_copy(tmp_path: Path) -> Non
     cell_px = _generation_source_cell_px()
     source_block_w = ANCHOR_FRAME_W * cell_px
     dest_block_w = 24 * cell_px
-    origin_x_px = 4 * cell_px
+    origin_x_px = 1 * cell_px
 
     assert meta["motion_class"] == "swing"
     assert meta["dimensions"] == list(SWING_SEED_DIMENSIONS)
@@ -719,7 +719,7 @@ def test_swing_seed_block_copy_is_pixel_exact_not_resampled(tmp_path: Path) -> N
     cell_px = _generation_source_cell_px()
     source_block_w = ANCHOR_FRAME_W * cell_px
     dest_block_w = 24 * cell_px
-    origin_x_px = 4 * cell_px
+    origin_x_px = 1 * cell_px
 
     with Image.open(IDLE_PROVIDER_SOURCE) as source:
         source_rgba = np.asarray(source.convert("RGBA"))
@@ -1292,16 +1292,16 @@ def test_canonical_read_outside_anchor_raises_identity_lock_error(
 
 
 SWING_FRAME_SIZE = (24, 24)
-SWING_CANONICAL_ORIGIN = (4, 0)
+SWING_CANONICAL_ORIGIN = (1, 0)
 SWING_SHIFTED_RECTANGLES = {
-    "helmet_face": {"x0": 9, "x1": 16, "y0": 1, "y1": 10},
-    "belt_core": {"x0": 8, "x1": 16, "y0": 15, "y1": 18},
-    "boots": {"x0": 7, "x1": 18, "y0": 21, "y1": 23},
+    "helmet_face": {"x0": 6, "x1": 13, "y0": 1, "y1": 10},
+    "belt_core": {"x0": 5, "x1": 13, "y0": 15, "y1": 18},
+    "boots": {"x0": 4, "x1": 15, "y0": 21, "y1": 23},
 }
 SWING_SHIFTED_LANDMARKS = {
-    "lamp": [16, 4],
-    "eye": [14, 7],
-    "buckle": [15, 16],
+    "lamp": [13, 4],
+    "eye": [11, 7],
+    "buckle": [12, 16],
 }
 
 

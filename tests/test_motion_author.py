@@ -33,7 +33,7 @@ PARTS_JSON = ROOT / "assets" / "first-room" / "dwarf" / "parts.json"
 IDLE_RELEASE_FRAME = ROOT / "assets" / "first-room" / "dwarf" / "idle" / "release" / "frame-0.png"
 REAL_DWARF_IDLE_BUNDLE = ROOT / "assets" / "first-room" / "dwarf" / "idle"
 CHECKED_IN_SWING_POSE_PLAN_V0_LEDGER_DIGEST = (
-    "6dde1365aad9fb30b6b4edb333033e24b280af0f406fb96efd7b9b3c5b3eccb5"
+    "23688960a129994ba933cfc062b75b915ca4d420a9d59035f854d3e6791139cc"
 )
 STONE = (74, 59, 72)
 OUTLINE = (17, 16, 24)
@@ -158,7 +158,7 @@ def _swing_pose_plan(
         "motion_class": "swing",
         "frame_size": [24, 24],
         "frame_count": len(frame_ops),
-        "canonical_origin": [4, 0],
+        "canonical_origin": [1, 0],
         "base_specification_id": "first-room/dwarf/swing",
         "base_frame_mapping": [0] * len(frame_ops),
         "frames": frame_ops,
@@ -170,7 +170,7 @@ def _swing_pose_plan(
 
 def _embedded_swing_part_map() -> PartMap:
     part_map = load_part_map(PARTS_JSON)
-    origin_x, origin_y = 4, 0
+    origin_x, origin_y = 1, 0
     embedded_parts = {}
     for part_id, part in part_map.parts.items():
         embedded_parts[part_id] = part.__class__(
@@ -283,13 +283,13 @@ def _swing_v1_pose_plan(
 def _swing_base_frame() -> list[list[tuple[int, int, int] | None]]:
     frame = _blank_frame(24, 24)
     for y in range(1, 11):
-        for x in range(9, 17):
+        for x in range(6, 14):
             frame[y][x] = STONE
     for y in range(15, 19):
-        for x in range(8, 17):
+        for x in range(5, 14):
             frame[y][x] = OUTLINE
     for y in range(21, 24):
-        for x in range(7, 19):
+        for x in range(4, 16):
             frame[y][x] = (98, 81, 93)
     return frame
 
@@ -307,8 +307,8 @@ def test_embedded_idle_base_authors_a_cross_dimension_swing_plan(tmp_path: Path)
         frame_ops=[
             [{"op": "paint", "x": 2, "y": 22, "palette_role": "amber-emission", "color": "#F0A33A"}],
             [{"op": "paint", "x": 2, "y": 23, "palette_role": "amber-emission", "color": "#F0A33A"}],
-            [{"op": "paint", "x": 21, "y": 22, "palette_role": "amber-emission", "color": "#F0A33A"}],
-            [{"op": "paint", "x": 21, "y": 23, "palette_role": "amber-emission", "color": "#F0A33A"}],
+            [{"op": "paint", "x": 18, "y": 22, "palette_role": "amber-emission", "color": "#F0A33A"}],
+            [{"op": "paint", "x": 18, "y": 23, "palette_role": "amber-emission", "color": "#F0A33A"}],
         ]
     )
     palette = load_master_palette(PALETTE_PATH)
@@ -349,12 +349,12 @@ def test_permitted_lock_relocation_preserves_exact_cells() -> None:
     shifted = {
         (x + 1, y): color
         for (x, y), color in before.items()
-        if 9 <= x <= 16 and 1 <= y <= 10
+        if 6 <= x <= 13 and 1 <= y <= 10
     }
     remaining = {
         (x, y): color
         for (x, y), color in before.items()
-        if not (9 <= x <= 16 and 1 <= y <= 10)
+        if not (6 <= x <= 13 and 1 <= y <= 10)
     }
     assert after == {**remaining, **shifted}
 
@@ -432,8 +432,8 @@ def test_checked_in_swing_pose_plan_v0_reproduces_pinned_ledger_digest() -> None
         frame_ops=[
             [{"op": "paint", "x": 2, "y": 22, "palette_role": "amber-emission", "color": "#F0A33A"}],
             [{"op": "paint", "x": 2, "y": 23, "palette_role": "amber-emission", "color": "#F0A33A"}],
-            [{"op": "paint", "x": 21, "y": 22, "palette_role": "amber-emission", "color": "#F0A33A"}],
-            [{"op": "paint", "x": 21, "y": 23, "palette_role": "amber-emission", "color": "#F0A33A"}],
+            [{"op": "paint", "x": 18, "y": 22, "palette_role": "amber-emission", "color": "#F0A33A"}],
+            [{"op": "paint", "x": 18, "y": 23, "palette_role": "amber-emission", "color": "#F0A33A"}],
         ]
     )
     palette = load_master_palette(PALETTE_PATH)
@@ -443,7 +443,7 @@ def test_checked_in_swing_pose_plan_v0_reproduces_pinned_ledger_digest() -> None
 
 def _hand_grip_fixture() -> tuple[list[list[tuple[int, int, int] | None]], PartMap]:
     frame, tool_map = _tool_chain_fixture()
-    hand_cells = frozenset({(5, 14), (6, 14), (6, 15)})
+    hand_cells = frozenset({(4, 12), (5, 12), (6, 12)})
     for x, y in hand_cells:
         frame[y][x] = (98, 81, 93)
     tool_handle = tool_map.parts["tool_handle"]
@@ -457,7 +457,7 @@ def _hand_grip_fixture() -> tuple[list[list[tuple[int, int, int] | None]], PartM
                 part_id="hand_far",
                 rigid=False,
                 parent=None,
-                pivot=(6, 14),
+                pivot=(5, 12),
                 grip=None,
                 cells=hand_cells,
                 orientations=None,

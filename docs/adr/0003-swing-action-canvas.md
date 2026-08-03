@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-08-01, issue #210).
+Accepted (2026-08-01, issue #210). Amended 2026-08-02 (issue #293).
 
 ## Context
 
@@ -31,12 +31,14 @@ this ADR is the first class-specific size override.
 
 Adopt a **24×24 action canvas** for swing:
 
-- `_CLASS_META.swing`: `frame_w: 24`, `frame_h: 24`, `canonical_origin: (4, 0)`.
+- `_CLASS_META.swing`: `frame_w: 24`, `frame_h: 24`, `canonical_origin: (1, 0)`.
 - `identity-locks.json` `motion_classes.swing`: `frame_size: [24, 24]`; every
-  lock rectangle and landmark x coordinate shifts +4. Y coordinates, permitted
-  offsets, tolerances, and relational constraints are unchanged.
+  lock rectangle and landmark x coordinate shifts +1 relative to the 16×24 walk
+  baseline (issue #293 moved the origin from column 4 to column 1; lock
+  rectangles and landmarks followed −3 in x). Y coordinates, permitted offsets,
+  tolerances, and relational constraints are unchanged.
 - Walk, idle, blob_idle, airborne, and emissive remain 16×24 with origin `(0, 0)`.
-- The identity anchor (`identity.png`) stays 16×24; swing embeds it at column 4.
+- The identity anchor (`identity.png`) stays 16×24; swing embeds it at column 1.
 
 Height is unchanged. The spike measured Frame 0 spanning `y1–23` at 16×24 and did
 not evaluate a taller canvas.
@@ -45,8 +47,9 @@ not evaluate a taller canvas.
 
 ### Positive
 
-- Swing Frames gain symmetric horizontal margin without changing the planted-boot
-  row or the 16×24 identity anchor.
+- Swing Frames gain horizontal margin without changing the planted-boot row or
+  the 16×24 identity anchor; origin 1 shifts three columns of symmetric margin
+  to the right flank where the authored chop needs them (issue #293).
 - Per-class geometry is now exercised in production metadata and Identity Lock,
   not only in the resolver from #209.
 - The #170 measurements and rejection rationale are retained here after the
@@ -59,7 +62,7 @@ not evaluate a taller canvas.
   swing Attempts are recovered at 24 logical Cells; legacy `/0` and `/1` bundles
   keep the 16×24 provenance expectation on `check`.
 - Identity Lock swing evaluation requires 24×24 attempt Frames with the anchor
-  embedded at `(4, 0)` — callers cannot pass bare 16×24 rasters for swing.
+  embedded at `(1, 0)` — callers cannot pass bare 16×24 rasters for swing.
 - Strip pitch and gutter semantics for swing differ from the global default
   (`pitch_px` still derives from per-class `frame_w`).
 
@@ -68,6 +71,15 @@ not evaluate a taller canvas.
 Boundary clearance is assumed, not re-measured on re-authored art. If a
 re-authored swing arc still clips at 24×24, the canvas decision must be
 revisited with fresh measurements.
+
+**Origin amendment (issue #293).** The Limit clause above was tested against the
+re-authored swing arc. The arc does not clip at 24×24, but at origin `(4, 0)` it
+cannot satisfy ground-contact clearance ahead of the boots while keeping column
+23 clear (issue #127 C5). The pickaxe tool footprint in the idle release
+Frame — 21 `stone` Cells in a 6×7 bounding box — needs a seven-column window
+between the boots lock's right edge and column 22; only origin `(1, 0)` keeps
+all eight lattice-exact contact orientations available. Width stays 24; 32×24
+remains rejected.
 
 A general `recanvas` or `migrate-layout` command is deliberately deferred. New
 bundles now materialize the class canvas during initialization, and swing is the

@@ -15,10 +15,10 @@
   },
   "machine_check": {
     "command": "npm run strip:polish -- check assets/first-room/dwarf/swing --json",
-    "outcome": "PASS",
-    "fingerprint": "3bcc86581abdabf943d89b9b5c36eddf5ffae25c873f76ccaf34d3584661499e",
+    "outcome": "FAIL",
+    "fingerprint": "53fbd8fa5b0ea8e5d8c61272d1572882d156067ded9e05dca1a4993fe8cf384f",
     "visible_cell_edits": 610,
-    "edit_summary": "Interim mechanical re-canvas of the palette-exact 16×24 swing pose onto 24×24 at column 4; no subject pixels changed. Identity Lock PASS at canonical origin (4, 0). Approved 24×24 swing art is deferred to the re-authoring wave — this bundle is padding only, not final art direction."
+    "edit_summary": "Interim mechanical re-canvas of the palette-exact 16×24 swing pose onto 24×24 at column 1 (issue #293); subject Cells translated −3 columns with no pixel edits. Lock rectangles and landmarks shifted −3 in x to frame the same subject. Approved 24×24 swing art is deferred to the re-authoring wave — this bundle is padding only, not final art direction."
   },
   "answers": [
     {
