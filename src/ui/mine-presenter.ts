@@ -3,8 +3,9 @@
 import {
   createDwarfAnimController,
   type DwarfAnimController,
+  type DwarfAnimId,
+  type DwarfFacing,
 } from "../core/dwarf-anim-state";
-import type { DemoMineSnapshot } from "../core/demo-mine-loop";
 import { digRateFor } from "../core/mining-engine";
 import type { MiningSession } from "../core/mining-session";
 import type { SaveStore } from "../core/mining-save";
@@ -14,8 +15,20 @@ import {
   type MiningAudio,
 } from "./mining-audio";
 
+export interface TunnelSnapshot {
+  animation: DwarfAnimId;
+  facing: DwarfFacing;
+  frameIndex: number;
+  advance: number;
+  /** Completed Swings on the current Face (`0…Hardness`). */
+  faceSwingProgress: number;
+  /** Fraction of the in-progress Swing (`0…1`) while swinging. */
+  swingFraction: number;
+  digRate: number;
+}
+
 export interface MinePresenter {
-  snapshot(): DemoMineSnapshot;
+  snapshot(): TunnelSnapshot;
   start(): void;
   advanceMs(dtMs: number): void;
   syncDigRate(): void;
@@ -55,7 +68,7 @@ export function createMinePresenter(
     return 1000 / anim.digRate;
   }
 
-  function snapshot(): DemoMineSnapshot {
+  function snapshot(): TunnelSnapshot {
     const snap = session.snapshot;
     const whole = Math.floor(snap.faceSwingProgress);
     const frac = snap.faceSwingProgress - whole;
