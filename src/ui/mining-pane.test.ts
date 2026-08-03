@@ -296,6 +296,7 @@ describe("mountPaneShell mining Pane", () => {
 
   describe("Sound toggle", () => {
     beforeEach(() => {
+      window.localStorage.clear();
       vi.stubGlobal(
         "fetch",
         vi.fn(async () => ({
