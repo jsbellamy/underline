@@ -196,4 +196,5 @@ gate — green tests and a scope-matching file list are necessary but never
 sufficient.
 
 **Cursor orchestrators:** spawn pinned subagents by subagent name with no inline
-`model`.
+`model` — use `issue-implementer-code` or `issue-implementer-asset`, not
+`generalPurpose`.
