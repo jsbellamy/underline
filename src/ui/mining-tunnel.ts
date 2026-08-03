@@ -4,7 +4,7 @@ Composition from [Prototype the mining scene at 480x112](#318): full-band Tunnel
 Colony corner chip, cyan Face, no Dig Rate / Ore / Ingots on the Pane.
 */
 import type { DemoMineSnapshot } from "../core/demo-mine-loop";
-import { HARDNESS } from "../core/mining-engine";
+import { hardnessFor } from "../core/mining-engine";
 import { dwarfLayout } from "../data/external-sprite-pack";
 import { DWARF_PACK, dwarfFrameUrlsFor } from "./dwarf-frames";
 import {
@@ -88,8 +88,9 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
         col.style.background = HOLLOW;
       } else if (i === snap.advance) {
         col.style.background = FACE;
+        const hardness = hardnessFor(snap.advance);
         const crackProgress =
-          (snap.faceSwingProgress + snap.swingFraction) / HARDNESS;
+          (snap.faceSwingProgress + snap.swingFraction) / hardness;
         if (crackProgress > 0) {
           const crack = document.createElement("div");
           crack.className = "pane-face-crack";

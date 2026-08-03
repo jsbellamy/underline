@@ -5,6 +5,7 @@ import dwarfManifest from "../../assets/characters/dwarf/manifest.json";
 import { dwarfFramePaths, type ExternalSpritePack } from "../data/external-sprite-pack";
 import { dwarfFrameUrl, dwarfFrameUrlsFor } from "./dwarf-frames";
 import { mountPaneShell } from "./pane-root";
+import { mountMiningTunnel } from "./mining-tunnel";
 import { DWARF_SCALE, PANE_HEIGHT, PANE_WIDTH, TUNNEL_HEIGHT } from "./pane-layout";
 
 describe("dwarfFrameUrl", () => {
@@ -90,5 +91,35 @@ describe("mountPaneShell mining Pane", () => {
     expect(dwarf?.src).toMatch(/swing\/east\/frame_/);
 
     shell.destroy();
+  });
+
+  it("scales Face crack progress by the Hardness band at Advance 24 vs 25", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    const base = {
+      animation: "swing" as const,
+      facing: "east" as const,
+      frameIndex: 0,
+      faceSwingProgress: 2,
+      swingFraction: 0,
+      digRate: 1,
+    };
+
+    tunnel.render({ ...base, advance: 24 });
+    const crackAt24 = host.querySelector<HTMLElement>(".pane-face-crack");
+    expect(crackAt24).not.toBeNull();
+    const opacityAt24 = Number(crackAt24!.style.opacity);
+
+    tunnel.render({ ...base, advance: 25 });
+    const crackAt25 = host.querySelector<HTMLElement>(".pane-face-crack");
+    expect(crackAt25).not.toBeNull();
+    const opacityAt25 = Number(crackAt25!.style.opacity);
+
+    // Band 0 Hardness 4 vs band 1 Hardness 5 — same Swings, lower crack fill at 25.
+    expect(opacityAt24).toBeCloseTo(0.625, 5);
+    expect(opacityAt25).toBeCloseTo(0.55, 5);
+    expect(opacityAt24).toBeGreaterThan(opacityAt25);
+
+    tunnel.destroy();
   });
 });
