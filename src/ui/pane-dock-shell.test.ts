@@ -5,7 +5,7 @@ import { mountDockShell } from "./dock-root";
 import { mountPaneShell, startPaneRoot } from "./pane-root";
 
 describe("mountPaneShell", () => {
-  it("mounts Dig Rate line, empty Tunnel band, and an open-dock control", () => {
+  it("mounts full-band Tunnel, Colony chip, and an open-dock control", () => {
     const root = document.createElement("main");
     const shell = mountPaneShell(root, {
       dockWindow: {
@@ -21,12 +21,14 @@ describe("mountPaneShell", () => {
         publish: vi.fn(),
         close: vi.fn(),
       }),
+      deferPump: true,
     });
 
     expect(root.querySelector(".pane")).not.toBeNull();
-    expect(root.querySelector(".pane-dig-rate-line")).not.toBeNull();
-    expect(root.querySelector(".pane-tunnel-band")).not.toBeNull();
+    expect(root.querySelector(".pane-dig-rate-line")).toBeNull();
+    expect(root.querySelector(".pane-tunnel")).not.toBeNull();
     expect(root.querySelector("[data-open-dock]")).not.toBeNull();
+    expect(root.querySelector("[data-dwarf]")).not.toBeNull();
 
     shell.destroy();
   });
@@ -49,6 +51,7 @@ describe("mountPaneShell", () => {
         publish,
         close: vi.fn(),
       }),
+      deferPump: true,
     });
 
     const button = root.querySelector<HTMLButtonElement>("[data-open-dock]");
@@ -81,7 +84,7 @@ describe("mountDockShell", () => {
 });
 
 describe("startPaneRoot", () => {
-  it("mounts the empty Pane shell", () => {
+  it("mounts the mining Pane shell", () => {
     const root = document.createElement("main");
     const result = startPaneRoot(root, {
       dockWindow: {

@@ -4,16 +4,18 @@ Source: nightglass/src/ui/tile-root.ts
 Nightglass commit: 7047b2a28565d28598a4420b8762c7f49b1898f5
 Vendored: 2026-08-03
 
-Empty Pane shell scaffold: Dig Rate line + Tunnel band, Dock toggle via bus.
-No mining Engine / combat Battle Tile.
+Pane shell: full-band Tunnel with mining Dwarf + Colony chip. Dig Rate chrome
+removed per #318. Demo dig loop drives presentation until the Engine (#322).
 */
 
+import { createDemoMineLoop, type DemoMineLoop } from "../core/demo-mine-loop";
 import { createBusEndpoint, type BusEndpoint } from "./bus";
 import {
   createProductionDockWindowPort,
   type DockWindowPort,
 } from "./dock-window";
 import { bindPressable } from "./keyboard";
+import { mountMiningTunnel, type MiningTunnelView } from "./mining-tunnel";
 import { startPump, type PumpController, type PumpDeps } from "./pump";
 
 export interface PaneShell {
@@ -27,6 +29,7 @@ export interface PaneShellOptions {
   busFactory?: typeof createBusEndpoint;
   deferPump?: boolean;
   now?: () => number;
+  mineLoop?: DemoMineLoop;
   pumpSchedule?: Partial<
     Pick<
       PumpDeps,
@@ -64,33 +67,30 @@ export function mountPaneShell(
 ): PaneShell {
   const dockWindow = options.dockWindow ?? createProductionDockWindowPort();
   const busFactory = options.busFactory ?? createBusEndpoint;
+  const mine = options.mineLoop ?? createDemoMineLoop();
 
   let bus: BusEndpoint | null = null;
+  let tunnel: MiningTunnelView | null = null;
 
   const pane = document.createElement("div");
   pane.className = "pane";
 
-  const digRateLine = document.createElement("div");
-  digRateLine.className = "pane-dig-rate-line";
-
-  const digRateLabel = document.createElement("span");
-  digRateLabel.className = "pane-dig-rate-label";
-  digRateLabel.textContent = "Dig Rate —";
+  const tunnelHost = document.createElement("div");
+  tunnelHost.className = "pane-tunnel-host";
 
   const openDockButton = document.createElement("button");
   openDockButton.type = "button";
-  openDockButton.className = "pane-open-dock";
+  openDockButton.className = "pane-colony-chip";
   openDockButton.dataset["openDock"] = "";
   openDockButton.textContent = "Colony";
   openDockButton.setAttribute("aria-label", "Open Colony Dock");
 
-  digRateLine.append(digRateLabel, openDockButton);
-
-  const tunnelBand = document.createElement("div");
-  tunnelBand.className = "pane-tunnel-band";
-
-  pane.append(digRateLine, tunnelBand);
+  pane.append(tunnelHost, openDockButton);
   root.replaceChildren(pane);
+
+  tunnel = mountMiningTunnel(tunnelHost);
+  mine.start();
+  tunnel.render(mine.snapshot());
 
   bus = busFactory({
     "dock-closed"() {
@@ -120,9 +120,14 @@ export function mountPaneShell(
     }
     const schedule = options.pumpSchedule;
     const pumpOptions: PumpDeps = {
-      advanceBy: () => [],
+      advanceBy: (ms) => {
+        mine.advanceMs(ms);
+        return [];
+      },
       onAdvance: () => {},
-      render: () => {},
+      render: () => {
+        tunnel?.render(mine.snapshot());
+      },
       now: schedule?.now ?? clockNow,
     };
     if (schedule?.setInterval) {
@@ -158,6 +163,8 @@ export function mountPaneShell(
       pump = null;
       bus?.close();
       dockWindow.destroy();
+      tunnel?.destroy();
+      tunnel = null;
       bus = null;
       root.replaceChildren();
     },
