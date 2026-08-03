@@ -317,8 +317,9 @@ _Avoid_: health, HP, durability, toughness
 
 **Dig Rate**:
 Swings per second — the headline production number, and the one thing an Upgrade
-raises. It was chosen as the headline because it is the only production quantity
-the Pane can show: a faster Dig Rate is a visibly faster Dwarf.
+raises. A faster Dig Rate is a visibly faster Dwarf on the Pane; the numeric
+readout lives in the Dock with Ore and Ingots so the Pane stays a clean dig
+scene.
 _Avoid_: speed, mining rate, DPS, production rate (ambiguous once the Smelter
 also has a rate)
 
