@@ -1,6 +1,6 @@
 /** Pane→Dock wire Snapshot helpers (`docs/research/pane-dock-bus-schema.md`). */
 
-import { SCHEMA_VERSION, YIELD, type MiningSnapshot } from "./mining-engine";
+import { SCHEMA_VERSION, type MiningSnapshot } from "./mining-engine";
 
 export interface OfflineSummary {
   offlineMs: number;
@@ -48,8 +48,8 @@ export function buildOfflineSummary(args: {
   offlineMs: number;
 }): OfflineSummary {
   const advanceGained = args.after.advance - args.before.advance;
-  const oreProduced = advanceGained * YIELD;
   const oreSmelted = args.after.ingots - args.before.ingots;
+  const oreProduced = args.after.ore - args.before.ore + oreSmelted;
   return {
     offlineMs: args.offlineMs,
     advanceGained,

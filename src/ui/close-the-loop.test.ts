@@ -147,7 +147,7 @@ describe("Pane↔Dock close-the-loop bus", () => {
     // Advance 30 → Math.round(1000 × 1.15^30) = 66212
     expect(dockRoot.querySelector("[data-hardness]")?.textContent).toBe("66212");
     expect(dockRoot.querySelector("[data-smelter]")?.textContent).toContain(
-      "0.15",
+      "0.06",
     );
 
     dockRoot
@@ -162,7 +162,7 @@ describe("Pane↔Dock close-the-loop bus", () => {
     expect(session.snapshot.smelterUpgradeCount).toBe(1);
     expect(session.snapshot.ingots).toBe(0);
     expect(dockRoot.querySelector("[data-smelter]")?.textContent).toContain(
-      "0.20",
+      "0.08",
     );
 
     pane.destroy();

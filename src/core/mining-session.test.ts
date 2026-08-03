@@ -76,7 +76,7 @@ describe("mining session", () => {
     expect(session.tryBuyUpgrade("smelter")).toBe(true);
     expect(session.snapshot.smelterUpgradeCount).toBe(1);
     expect(session.snapshot.ingots).toBe(0);
-    expect(smelterThroughputFor(session.snapshot.smelterUpgradeCount)).toBe(0.2);
+    expect(smelterThroughputFor(session.snapshot.smelterUpgradeCount)).toBe(0.08);
     expect(store.data["underline-save-v1"]).toContain('"smelterUpgradeCount":1');
   });
 

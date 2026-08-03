@@ -40,9 +40,21 @@ describe("wire Snapshot", () => {
     expect(summary).toEqual({
       offlineMs: 2_000_000,
       advanceGained: 1,
-      oreProduced: 1,
-      oreSmelted: 1,
+      oreProduced: after.ore - before.ore + (after.ingots - before.ingots),
+      oreSmelted: after.ingots - before.ingots,
       oreBacklog: after.ore,
     });
+  });
+
+  it("counts Ore drops that never break a Face toward oreProduced", () => {
+    const before = initialSnapshot();
+    const after = advance(before, 10_000);
+    const summary = buildOfflineSummary({
+      before,
+      after,
+      offlineMs: 10_000,
+    });
+    expect(summary.advanceGained).toBe(0);
+    expect(summary.oreProduced).toBeCloseTo(1, 10);
   });
 });
