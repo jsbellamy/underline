@@ -1,6 +1,8 @@
 // @vitest-environment happy-dom
 
 import { describe, expect, it, vi } from "vitest";
+import { initialSnapshot } from "../core/mining-engine";
+import { toWireSnapshot } from "../core/wire-snapshot";
 import { createBusEndpoint, type BusMessage } from "./bus";
 
 /** Drain BroadcastChannel delivery (command hop + snapshot hop). */
@@ -37,7 +39,7 @@ describe("underline BroadcastChannel bus", () => {
     dockBus.close();
   });
 
-  it("round-trips a snapshot message to dock listeners", async () => {
+  it("round-trips a schemaVersion 1 Snapshot to dock listeners", async () => {
     const busChannel = `underline-test-${crypto.randomUUID()}`;
     const received: BusMessage[] = [];
     const dockBus = createBusEndpoint(
@@ -50,12 +52,36 @@ describe("underline BroadcastChannel bus", () => {
     );
 
     const paneBus = createBusEndpoint({}, busChannel);
-    const snapshot = { digRate: 1, ore: 0 };
+    const snapshot = toWireSnapshot(initialSnapshot());
     paneBus.publish({ type: "snapshot", snapshot });
     await flushBus();
 
     expect(received).toHaveLength(1);
     expect(received[0]).toEqual({ type: "snapshot", snapshot });
+
+    paneBus.close();
+    dockBus.close();
+  });
+
+  it("ignores Snapshots with a mismatched schemaVersion", async () => {
+    const busChannel = `underline-test-${crypto.randomUUID()}`;
+    const received: BusMessage[] = [];
+    const dockBus = createBusEndpoint(
+      {
+        snapshot: (message) => {
+          received.push(message);
+        },
+      },
+      busChannel,
+    );
+
+    const paneBus = createBusEndpoint({}, busChannel);
+    paneBus.publish({
+      type: "snapshot",
+      snapshot: { schemaVersion: 99 } as never,
+    });
+    await flushBus();
+    expect(received).toHaveLength(0);
 
     paneBus.close();
     dockBus.close();

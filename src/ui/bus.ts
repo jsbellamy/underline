@@ -4,17 +4,22 @@ Source: nightglass/src/ui/bus.ts
 Nightglass commit: 7047b2a28565d28598a4420b8762c7f49b1898f5
 Vendored: 2026-08-03
 
-Transport-only BroadcastChannel endpoint. Channel renamed to `underline`;
-BusMessage payloads are opaque until the mining command schema lands (#323).
-Dropped TileCommand* / applyTileCommand / Engine imports.
+BroadcastChannel endpoint for Pane↔Dock. Channel `underline`; payloads follow
+`docs/research/pane-dock-bus-schema.md`.
 */
+
+import type { WireSnapshot } from "../core/wire-snapshot";
+import { SCHEMA_VERSION } from "../core/mining-engine";
 
 export const UNDERLINE_BUS_CHANNEL = "underline";
 
+export type DockCommand =
+  | { schemaVersion: typeof SCHEMA_VERSION; name: "buyUpgrade" }
+  | { schemaVersion: typeof SCHEMA_VERSION; name: "requestSnapshot" };
+
 export type BusMessage =
-  | { type: "command"; command: unknown }
-  | { type: "snapshot"; snapshot: unknown }
-  | { type: "pump"; events: unknown[]; snapshot: unknown }
+  | { type: "command"; command: DockCommand }
+  | { type: "snapshot"; snapshot: WireSnapshot }
   | { type: "dock-opened" }
   | { type: "dock-closed" };
 
@@ -27,6 +32,30 @@ export interface BusEndpoint {
   close(): void;
 }
 
+function isSchemaVersion(value: unknown): value is typeof SCHEMA_VERSION {
+  return value === SCHEMA_VERSION;
+}
+
+/** True when a Dock command carries schemaVersion 1. */
+export function isDockCommand(value: unknown): value is DockCommand {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const command = value as { schemaVersion?: unknown; name?: unknown };
+  if (!isSchemaVersion(command.schemaVersion)) {
+    return false;
+  }
+  return command.name === "buyUpgrade" || command.name === "requestSnapshot";
+}
+
+/** True when a wire Snapshot carries schemaVersion 1. */
+export function isWireSnapshot(value: unknown): value is WireSnapshot {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  return isSchemaVersion((value as WireSnapshot).schemaVersion);
+}
+
 export function createBusEndpoint(
   handlers: BusHandlerMap,
   channelName: string = UNDERLINE_BUS_CHANNEL,
@@ -35,6 +64,15 @@ export function createBusEndpoint(
 
   channel.onmessage = (event: MessageEvent<BusMessage>) => {
     const message = event.data;
+    if (!message || typeof message !== "object" || !("type" in message)) {
+      return;
+    }
+    if (message.type === "snapshot" && !isWireSnapshot(message.snapshot)) {
+      return;
+    }
+    if (message.type === "command" && !isDockCommand(message.command)) {
+      return;
+    }
     const handler = handlers[message.type];
     if (handler) {
       handler(message as never);

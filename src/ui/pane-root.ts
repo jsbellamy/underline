@@ -4,17 +4,27 @@ Source: nightglass/src/ui/tile-root.ts
 Nightglass commit: 7047b2a28565d28598a4420b8762c7f49b1898f5
 Vendored: 2026-08-03
 
-Pane shell: full-band Tunnel with mining Dwarf + Colony chip. Dig Rate chrome
-removed per #318. Demo dig loop drives presentation until the Engine (#322).
+Pane shell: owns the mining Engine + save, presents the Tunnel, broadcasts
+Snapshots to the Dock.
 */
 
-import { createDemoMineLoop, type DemoMineLoop } from "../core/demo-mine-loop";
-import { createBusEndpoint, type BusEndpoint } from "./bus";
+import {
+  AUTOSAVE_MS,
+  createMiningSession,
+  type MiningSession,
+} from "../core/mining-session";
+import {
+  createBusEndpoint,
+  isDockCommand,
+  type BusEndpoint,
+  type BusMessage,
+} from "./bus";
 import {
   createProductionDockWindowPort,
   type DockWindowPort,
 } from "./dock-window";
 import { bindPressable } from "./keyboard";
+import { createMinePresenter, type MinePresenter } from "./mine-presenter";
 import { mountMiningTunnel, type MiningTunnelView } from "./mining-tunnel";
 import { startPump, type PumpController, type PumpDeps } from "./pump";
 
@@ -29,7 +39,8 @@ export interface PaneShellOptions {
   busFactory?: typeof createBusEndpoint;
   deferPump?: boolean;
   now?: () => number;
-  mineLoop?: DemoMineLoop;
+  session?: MiningSession;
+  presenter?: MinePresenter;
   pumpSchedule?: Partial<
     Pick<
       PumpDeps,
@@ -67,10 +78,27 @@ export function mountPaneShell(
 ): PaneShell {
   const dockWindow = options.dockWindow ?? createProductionDockWindowPort();
   const busFactory = options.busFactory ?? createBusEndpoint;
-  const mine = options.mineLoop ?? createDemoMineLoop();
+  const clockNow = options.now ?? Date.now;
 
   let bus: BusEndpoint | null = null;
+
+  const session =
+    options.session ??
+    createMiningSession({
+      now: clockNow,
+      onPublish(wire) {
+        bus?.publish({ type: "snapshot", snapshot: wire });
+      },
+    });
+
+  const presenter = options.presenter ?? createMinePresenter(session);
+
   let tunnel: MiningTunnelView | null = null;
+  let autosaveTimer: ReturnType<typeof setInterval> | null = null;
+  let lastPublishedAdvance = session.snapshot.advance;
+  let lastPublishedOre = session.snapshot.ore;
+  let lastPublishedIngots = session.snapshot.ingots;
+  let lastPublishedUpgrades = session.snapshot.upgradeCount;
 
   const pane = document.createElement("div");
   pane.className = "pane";
@@ -89,8 +117,42 @@ export function mountPaneShell(
   root.replaceChildren(pane);
 
   tunnel = mountMiningTunnel(tunnelHost);
-  mine.start();
-  tunnel.render(mine.snapshot());
+  presenter.start();
+  tunnel.render(presenter.snapshot());
+
+  function publishSnapshot(): void {
+    const wire = session.wireSnapshot();
+    bus?.publish({ type: "snapshot", snapshot: wire });
+    lastPublishedAdvance = session.snapshot.advance;
+    lastPublishedOre = session.snapshot.ore;
+    lastPublishedIngots = session.snapshot.ingots;
+    lastPublishedUpgrades = session.snapshot.upgradeCount;
+  }
+
+  function handleCommand(
+    message: Extract<BusMessage, { type: "command" }>,
+  ): void {
+    if (!isDockCommand(message.command)) {
+      return;
+    }
+    if (message.command.name === "buyUpgrade") {
+      const beforeCount = session.snapshot.upgradeCount;
+      if (session.tryBuyUpgrade()) {
+        // tryBuyUpgrade already publish()es via session onPublish when set;
+        // always mirror on the bus for injected sessions without onPublish.
+        if (session.snapshot.upgradeCount !== beforeCount) {
+          presenter.syncDigRate();
+        }
+        publishSnapshot();
+      } else {
+        publishSnapshot();
+      }
+      return;
+    }
+    if (message.command.name === "requestSnapshot") {
+      publishSnapshot();
+    }
+  }
 
   bus = busFactory({
     "dock-closed"() {
@@ -98,21 +160,42 @@ export function mountPaneShell(
     },
     "dock-opened"() {
       void dockWindow.open();
+      publishSnapshot();
     },
+    command: handleCommand,
   });
+
+  publishSnapshot();
 
   bindPressable(openDockButton, () => {
     void dockWindow.toggle().then((opened) => {
       if (opened) {
         bus?.publish({ type: "dock-opened" });
+        publishSnapshot();
       } else {
         bus?.publish({ type: "dock-closed" });
       }
     });
   });
 
-  const clockNow = options.now ?? Date.now;
+  const onPageHide = (): void => {
+    session.persist();
+  };
+  window.addEventListener("pagehide", onPageHide);
+
   let pump: PumpController | null = null;
+
+  function maybePublishEconomy(): void {
+    const snap = session.snapshot;
+    if (
+      snap.advance !== lastPublishedAdvance ||
+      snap.ore !== lastPublishedOre ||
+      snap.ingots !== lastPublishedIngots ||
+      snap.upgradeCount !== lastPublishedUpgrades
+    ) {
+      publishSnapshot();
+    }
+  }
 
   function startLivePump(): void {
     if (pump) {
@@ -121,12 +204,13 @@ export function mountPaneShell(
     const schedule = options.pumpSchedule;
     const pumpOptions: PumpDeps = {
       advanceBy: (ms) => {
-        mine.advanceMs(ms);
+        presenter.advanceMs(ms);
+        maybePublishEconomy();
         return [];
       },
       onAdvance: () => {},
       render: () => {
-        tunnel?.render(mine.snapshot());
+        tunnel?.render(presenter.snapshot());
       },
       now: schedule?.now ?? clockNow,
     };
@@ -146,6 +230,12 @@ export function mountPaneShell(
       pumpOptions.document = schedule.document;
     }
     pump = startPump(pumpOptions);
+
+    if (!autosaveTimer) {
+      autosaveTimer = setInterval(() => {
+        session.persist();
+      }, AUTOSAVE_MS);
+    }
   }
 
   if (!options.deferPump) {
@@ -161,6 +251,12 @@ export function mountPaneShell(
     destroy() {
       pump?.stop();
       pump = null;
+      if (autosaveTimer) {
+        clearInterval(autosaveTimer);
+        autosaveTimer = null;
+      }
+      window.removeEventListener("pagehide", onPageHide);
+      session.persist();
       bus?.close();
       dockWindow.destroy();
       tunnel?.destroy();

@@ -4,7 +4,7 @@ Composition from [Prototype the mining scene at 480x112](#318): full-band Tunnel
 Colony corner chip, cyan Face, no Dig Rate / Ore / Ingots on the Pane.
 */
 import type { DemoMineSnapshot } from "../core/demo-mine-loop";
-import { HARDNESS } from "../core/demo-mine-loop";
+import { HARDNESS } from "../core/mining-engine";
 import { dwarfLayout } from "../data/external-sprite-pack";
 import { DWARF_PACK, dwarfFrameUrlsFor } from "./dwarf-frames";
 import {
