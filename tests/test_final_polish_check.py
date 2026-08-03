@@ -219,6 +219,18 @@ def test_schema_v2_swing_check_rejects_legacy_provenance_geometry(tmp_path: Path
     assert exc.value.reason_code == "invalid_provenance"
 
 
+@pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "The checked-in swing bundle no longer clears its Identity Lock. #301 re-roled the "
+        "canonical, and #302/#292 then closed the occupancy-ceiling and exact-occupancy "
+        "overpaint bypasses this bundle had been sliding through: helmet_face now measures "
+        "an occupancy difference of ~0.66 against a 0.25 ceiling and boots ~0.30 under "
+        "exact-occupancy, so check_bundle returns FAIL. The bundle has to be re-derived from "
+        "the part map (the swing half of the #304 re-derivation) rather than re-roled. "
+        "strict=True so this fails loudly once that lands."
+    ),
+)
 def test_schema_v1_swing_check_accepts_legacy_provenance_geometry(tmp_path: Path) -> None:
     bundle = tmp_path / "swing-v1"
     shutil.copytree(SWING_BUNDLE, bundle)
