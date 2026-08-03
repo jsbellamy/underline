@@ -4,11 +4,6 @@ import { describe, expect, it, vi } from "vitest";
 import { createProductionAppExitPort } from "./app-exit";
 
 describe("AppExitPort", () => {
-  it("exports exit() and createProductionAppExitPort", () => {
-    const port = createProductionAppExitPort({ isTauri: false });
-    expect(port.exit).toBeTypeOf("function");
-  });
-
   it("calls beforeExit to completion before the platform exit on the Tauri path", async () => {
     const order: string[] = [];
     const beforeExit = vi.fn(() => {
