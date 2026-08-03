@@ -72,5 +72,5 @@ Wall clock is stamped only at the persistence boundary (`savedAtMs = Date.now()`
 
 - Save-schema migration past `schemaVersion: 1` (map fog).
 - Presentation clock between 250ms ticks for Swing / walk smoothness (map fog).
-- Exact bus message shapes ([Define the Pane↔Dock bus message schema](https://github.com/jsbellamy/underline/issues/323)).
+- Exact bus message shapes — locked in [`pane-dock-bus-schema.md`](./pane-dock-bus-schema.md) ([Define the Pane↔Dock bus message schema](https://github.com/jsbellamy/underline/issues/323)).
 - Walk duration as a real Ore/sec delay (presentation / #321); economy `advance` does not model walk time for the slice.
