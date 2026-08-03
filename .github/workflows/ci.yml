@@ -11,12 +11,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Surface gate. The game is TypeScript under `src/`; Python is confined to
-  # the asset pipeline, so a PR that only moves game code has nothing for the
-  # three pipeline jobs below to prove. `scripts/ci_surfaces.py` owns the rule
-  # and is fail-safe: it skips them only when *every* changed path is game
-  # surface, and a diff it cannot compute runs them. `push` to main writes no
-  # changed-file list at all, so main always gets the full suite.
+  # Surface gate. The game is TypeScript under `src/` and the Tauri shell under
+  # `src-tauri/`; Python is confined to the asset pipeline. A PR that only
+  # moves game code has nothing for the three pipeline jobs below to prove, and
+  # a PR that only moves pipeline or asset files has nothing for the game job.
+  # `scripts/ci_surfaces.py` owns both decisions and is fail-safe: it skips a
+  # job group only when every changed path is outside that group's surface, and
+  # a diff it cannot compute runs everything. `push` to main writes no changed-
+  # file list at all, so main always gets the full suite.
   #
   # The gate is a job-level `if:`, not a workflow-level `paths:` filter, on
   # purpose: a job skipped by `if:` reports as skipped and satisfies a required
@@ -25,8 +27,9 @@ jobs:
   changes:
     runs-on: ubuntu-latest
     outputs:
-      pipeline: ${{ steps.classify.outputs.needed }}
-      reason: ${{ steps.classify.outputs.reason }}
+      pipeline: ${{ steps.classify.outputs.pipeline_needed }}
+      game: ${{ steps.classify.outputs.game_needed }}
+      reason: ${{ steps.classify.outputs.pipeline_reason }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -58,6 +61,27 @@ jobs:
           PYTHONPATH=. python3 scripts/ci_surfaces.py
           --changed-from "$RUNNER_TEMP/changed.txt"
 
+  game-test:
+    needs: changes
+    if: needs.changes.outputs.game == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Typecheck TypeScript
+        run: npm run typecheck
+
+      - name: Run Vitest suite
+        run: npm run test:unit
+
   test:
     needs: changes
     if: needs.changes.outputs.pipeline == 'true'
@@ -71,22 +95,11 @@ jobs:
           cache: 'pip'
           cache-dependency-path: requirements.txt
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
-      - name: Install npm dependencies
-        run: npm ci
-
-      - name: Typecheck TypeScript
-        run: npm run typecheck
-
-      - name: Run test suite (Vitest + pytest)
-        run: npm test
+      - name: Run pytest suite
+        run: npm run test:python
 
       - name: Fail if the suite dirtied the working tree
         run: |
