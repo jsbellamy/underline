@@ -6,8 +6,11 @@ import {
   advance,
   buyUpgrade,
   digRateFor,
+  hardnessFor,
   initialSnapshot,
   nextUpgradeCost,
+  nextSmelterUpgradeCost,
+  smelterThroughputFor,
   type MiningSnapshot,
 } from "./mining-engine";
 
@@ -94,5 +97,92 @@ describe("mining engine offline catch-up", () => {
 describe("mining engine Hardness constant", () => {
   it("keeps Hardness at 4 Swings per Mineable Block", () => {
     expect(HARDNESS).toBe(4);
+  });
+});
+
+describe("mining engine Hardness bands", () => {
+  it("maps advance to banded Hardness per economy contract", () => {
+    expect(hardnessFor(0)).toBe(4);
+    expect(hardnessFor(24)).toBe(4);
+    expect(hardnessFor(25)).toBe(5);
+    expect(hardnessFor(74)).toBe(5);
+    expect(hardnessFor(75)).toBe(6);
+    expect(hardnessFor(149)).toBe(6);
+    expect(hardnessFor(150)).toBe(7);
+    expect(hardnessFor(999)).toBe(7);
+  });
+});
+
+describe("mining engine Smelter Upgrade", () => {
+  it("derives throughput and next cost from smelterUpgradeCount", () => {
+    expect(smelterThroughputFor(0)).toBe(0.15);
+    expect(smelterThroughputFor(1)).toBe(0.2);
+    expect(nextSmelterUpgradeCost(0)).toBe(5);
+    expect(nextSmelterUpgradeCost(1)).toBe(10);
+  });
+
+  it("initializes smelterUpgradeCount to 0", () => {
+    expect(initialSnapshot().smelterUpgradeCount).toBe(0);
+  });
+
+  it("buys a Smelter Upgrade when Ingots cover the cost", () => {
+    const rich = snap({ ingots: 5 });
+    const bought = buyUpgrade(rich, "smelter");
+    expect(bought.ingots).toBe(0);
+    expect(bought.smelterUpgradeCount).toBe(1);
+    expect(bought.upgradeCount).toBe(0);
+  });
+
+  it("throws when the Smelter Upgrade is unaffordable", () => {
+    expect(() => buyUpgrade(snap({ ingots: 4 }), "smelter")).toThrow(/Upgrade/);
+  });
+
+  it("is chunk-neutral for Smelter drain at upgraded throughput", () => {
+    const rich = snap({ ore: 100, smelterUpgradeCount: 1 });
+    const once = advance(rich, 2_000);
+    let many = rich;
+    for (let i = 0; i < 4; i += 1) {
+      many = advance(many, 500);
+    }
+    expect(many.ore).toBeCloseTo(once.ore, 10);
+    expect(many.smelterProgress).toBeCloseTo(once.smelterProgress, 10);
+    expect(many.ingots).toBe(once.ingots);
+  });
+});
+
+describe("mining engine buyUpgrade default", () => {
+  it("defaults to Dig Rate when upgrade id is omitted", () => {
+    const rich = snap({ ingots: 5 });
+    const bought = buyUpgrade(rich);
+    expect(bought.upgradeCount).toBe(1);
+    expect(bought.smelterUpgradeCount).toBe(0);
+  });
+});
+
+describe("mining engine multi-break Hardness bands", () => {
+  it("uses rising Hardness as advance crosses band boundaries in one window", () => {
+    // advance 24 → hardness 4; break → 25 → hardness 5 for the next Face.
+    const atBandEdge = snap({ advance: 24, faceSwingProgress: 3 });
+    const afterOneBreak = advance(atBandEdge, 1_000);
+    expect(afterOneBreak.advance).toBe(25);
+    expect(afterOneBreak.faceSwingProgress).toBe(0);
+
+    // One more second at Dig Rate 1.0 needs 5 Swings to break at hardness 5.
+    const afterSecondBreak = advance(afterOneBreak, 5_000);
+    expect(afterSecondBreak.advance).toBe(26);
+    expect(afterSecondBreak.faceSwingProgress).toBe(0);
+  });
+
+  it("is chunk-neutral across a band boundary for dig progress", () => {
+    const atBandEdge = snap({ advance: 24, faceSwingProgress: 3 });
+    const once = advance(atBandEdge, 6_000);
+    let many = atBandEdge;
+    for (let i = 0; i < 12; i += 1) {
+      many = advance(many, 500);
+    }
+    expect(many.advance).toBe(once.advance);
+    expect(many.faceSwingProgress).toBe(once.faceSwingProgress);
+    expect(once.advance).toBe(26);
+    expect(once.faceSwingProgress).toBe(0);
   });
 });
