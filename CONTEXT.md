@@ -367,6 +367,15 @@ but the Pane is not one.
 _Avoid_: tile (already reserved — see Rendering Tile and Mineable Block), strip
 (reserved by the pipeline), widget, overlay, HUD
 
+**Pane control cluster**:
+The Pane's single corner group of controls — Colony, Sound, Quit.
+_Avoid_: toolbar, menu bar, settings bar, HUD controls
+
+**Sound**:
+The game's audio feedback for a Swing and a Face break; off until the player enables it.
+The setting is a player preference, never economy state.
+_Avoid_: music, ambience, SFX (too generic), mute (the toggle is named Sound)
+
 **Dock**:
 The tabbed window where the player spends Ingots on Upgrades. Its first and
 only slice surface is the Colony.

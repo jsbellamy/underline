@@ -33,6 +33,11 @@ import {
   type FrameMetricsReport,
 } from "./frame-metrics";
 import { browserSaveStore } from "../core/mining-save";
+import {
+  loadSettings,
+  persistSettings,
+  type PlayerSettings,
+} from "../core/settings-save";
 import { createMinePresenter, type MinePresenter } from "./mine-presenter";
 import { mountMiningTunnel, type MiningTunnelView } from "./mining-tunnel";
 import { mountPaneControls, type PaneControlsView } from "./pane-controls";
@@ -100,6 +105,7 @@ export function mountPaneShell(
   let bus: BusEndpoint | null = null;
 
   const store = browserSaveStore();
+  const settings = loadSettings(store);
 
   const session =
     options.session ??
@@ -144,6 +150,7 @@ export function mountPaneShell(
   root.replaceChildren(pane);
 
   controls = mountPaneControls(pane, {
+    soundEnabled: settings.soundEnabled,
     onOpenDock: () => {
       void dockWindow.toggle().then((opened) => {
         if (opened) {
@@ -153,6 +160,12 @@ export function mountPaneShell(
           bus?.publish({ type: "dock-closed" });
         }
       });
+    },
+    onToggleSound: (next) => {
+      const updated: PlayerSettings = { schemaVersion: 1, soundEnabled: next };
+      persistSettings(updated, store);
+      presenter.setSoundEnabled(next);
+      controls?.setSoundEnabled(next);
     },
     onQuit: () => {
       void appExit.exit();

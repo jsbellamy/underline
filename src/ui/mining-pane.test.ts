@@ -1,14 +1,130 @@
 // @vitest-environment happy-dom
 
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import dwarfManifest from "../../assets/characters/dwarf/manifest.json";
+import { browserSaveStore } from "../core/mining-save";
 import { createMiningSession } from "../core/mining-session";
 import { initialSnapshot } from "../core/mining-engine";
+import {
+  persistSettings,
+  SETTINGS_KEY,
+} from "../core/settings-save";
+import { createDwarfAnimController } from "../core/dwarf-anim-state";
 import { dwarfFramePaths, type ExternalSpritePack } from "../data/external-sprite-pack";
 import { dwarfFrameUrl, dwarfFrameUrlsFor } from "./dwarf-frames";
 import { mountPaneShell } from "./pane-root";
 import { mountMiningTunnel } from "./mining-tunnel";
+import { PUMP_INTERVAL_MS } from "./pump";
 import { DWARF_SCALE, PANE_HEIGHT, PANE_WIDTH, TUNNEL_HEIGHT } from "./pane-layout";
+
+function stubPresenter(setSoundEnabled = vi.fn()) {
+  const anim = createDwarfAnimController({ digRate: 1 });
+  return {
+    anim,
+    snapshot: () => ({
+      animation: "swing" as const,
+      facing: "east" as const,
+      frameIndex: 0,
+      advance: 0,
+      faceSwingProgress: 0,
+      swingFraction: 0,
+      digRate: 1,
+    }),
+    start: vi.fn(),
+    advanceMs: vi.fn(),
+    syncDigRate: vi.fn(),
+    setSoundEnabled,
+  };
+}
+
+function stubDockWindow() {
+  return {
+    open: vi.fn(async () => {}),
+    close: vi.fn(async () => {}),
+    toggle: vi.fn(async () => true),
+    isOpen: () => false,
+    reposition: vi.fn(async () => {}),
+    syncPositionFromPane: vi.fn(async () => {}),
+    destroy: vi.fn(),
+  };
+}
+
+function stubBusFactory() {
+  return () => ({
+    publish: vi.fn(),
+    close: vi.fn(),
+  });
+}
+
+function stubAudioContextFactory() {
+  const createAudioContext = vi.fn(
+    () =>
+      ({
+        decodeAudioData: vi.fn(async () => ({} as AudioBuffer)),
+        createBufferSource: vi.fn(() => ({
+          connect: vi.fn(),
+          start: vi.fn(),
+        })),
+        destination: {},
+        close: vi.fn(),
+      }) as unknown as AudioContext,
+  );
+  vi.stubGlobal(
+    "AudioContext",
+    vi.fn(function AudioContextStub(this: unknown) {
+      return createAudioContext();
+    }),
+  );
+  return createAudioContext;
+}
+
+function createPanePumpSchedule() {
+  let clock = 0;
+  const rafCallbacks: FrameRequestCallback[] = [];
+  const intervalCallbacks: Array<() => void> = [];
+  let intervalId = 0;
+  const doc = {
+    hidden: false,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  } as unknown as Document;
+
+  const pumpSchedule = {
+    now: () => clock,
+    requestAnimationFrame: (callback: FrameRequestCallback) => {
+      rafCallbacks.push(callback);
+      return rafCallbacks.length;
+    },
+    cancelAnimationFrame: vi.fn(),
+    setInterval: ((callback: TimerHandler) => {
+      const fn = typeof callback === "function" ? callback : () => {};
+      intervalCallbacks.push(fn as () => void);
+      intervalId += 1;
+      return intervalId;
+    }) as typeof setInterval,
+    clearInterval: vi.fn(),
+    document: doc,
+  };
+
+  return {
+    pumpSchedule,
+    setClock(ms: number) {
+      clock = ms;
+    },
+    runIntervals() {
+      for (const callback of [...intervalCallbacks]) {
+        callback();
+      }
+    },
+    runRafAt(at: number) {
+      clock = at;
+      const callbacks = rafCallbacks.splice(0);
+      for (const callback of callbacks) {
+        callback(at);
+      }
+    },
+  };
+}
 
 describe("dwarfFrameUrl", () => {
   const pack = dwarfManifest as ExternalSpritePack;
@@ -176,5 +292,118 @@ describe("mountPaneShell mining Pane", () => {
     expect(opacityAt24).toBeGreaterThan(opacityAt25);
 
     tunnel.destroy();
+  });
+
+  describe("Sound toggle", () => {
+    beforeEach(() => {
+      window.localStorage.clear();
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => ({
+          ok: true,
+          arrayBuffer: async () => new ArrayBuffer(8),
+        })),
+      );
+    });
+
+    afterEach(() => {
+      vi.unstubAllGlobals();
+    });
+
+    it("toggles sound off to on, persists, calls presenter, and updates the chip in one press", () => {
+      const store = browserSaveStore();
+      const setSoundEnabled = vi.fn();
+      const root = document.createElement("main");
+      const shell = mountPaneShell(root, {
+        dockWindow: stubDockWindow(),
+        busFactory: stubBusFactory(),
+        deferPump: true,
+        presenter: stubPresenter(setSoundEnabled),
+      });
+
+      const sound = root.querySelector<HTMLButtonElement>("[data-sound]")!;
+      expect(sound.dataset["soundState"]).toBe("off");
+
+      sound.click();
+
+      const persisted = JSON.parse(store.getItem(SETTINGS_KEY)!);
+      expect(persisted.soundEnabled).toBe(true);
+      expect(setSoundEnabled).toHaveBeenCalledOnce();
+      expect(setSoundEnabled).toHaveBeenCalledWith(true);
+      expect(sound.dataset["soundState"]).toBe("on");
+      expect(sound.getAttribute("aria-pressed")).toBe("true");
+      expect(sound.getAttribute("aria-label")).toBe("Sound on");
+
+      shell.destroy();
+    });
+
+    it("renders sound on from persisted settings and constructs audio on mount", () => {
+      const createAudioContext = stubAudioContextFactory();
+      const store = browserSaveStore();
+      persistSettings({ schemaVersion: 1, soundEnabled: true }, store);
+
+      const root = document.createElement("main");
+      const shell = mountPaneShell(root, {
+        dockWindow: stubDockWindow(),
+        busFactory: stubBusFactory(),
+        deferPump: true,
+      });
+
+      const sound = root.querySelector<HTMLButtonElement>("[data-sound]")!;
+      expect(sound.dataset["soundState"]).toBe("on");
+      expect(createAudioContext).toHaveBeenCalled();
+
+      shell.destroy();
+    });
+
+    it("renders sound off when no settings key is present", () => {
+      const createAudioContext = stubAudioContextFactory();
+      const store = browserSaveStore();
+      expect(store.getItem(SETTINGS_KEY)).toBeNull();
+
+      const root = document.createElement("main");
+      const shell = mountPaneShell(root, {
+        dockWindow: stubDockWindow(),
+        busFactory: stubBusFactory(),
+        deferPump: true,
+      });
+
+      const sound = root.querySelector<HTMLButtonElement>("[data-sound]")!;
+      expect(sound.dataset["soundState"]).toBe("off");
+      expect(createAudioContext).not.toHaveBeenCalled();
+
+      shell.destroy();
+    });
+
+    it("does not construct AudioContext until sound is enabled", () => {
+      const createAudioContext = stubAudioContextFactory();
+      const pump = createPanePumpSchedule();
+      const root = document.createElement("main");
+      const shell = mountPaneShell(root, {
+        dockWindow: stubDockWindow(),
+        busFactory: stubBusFactory(),
+        deferPump: true,
+        pumpSchedule: pump.pumpSchedule,
+      });
+
+      expect(createAudioContext).not.toHaveBeenCalled();
+
+      shell.startPump();
+      pump.setClock(PUMP_INTERVAL_MS);
+      pump.runIntervals();
+      pump.runRafAt(PUMP_INTERVAL_MS);
+      pump.setClock(PUMP_INTERVAL_MS * 2);
+      pump.runIntervals();
+      pump.runRafAt(PUMP_INTERVAL_MS * 2);
+
+      expect(createAudioContext).not.toHaveBeenCalled();
+
+      const sound = root.querySelector<HTMLButtonElement>("[data-sound]")!;
+      sound.click();
+
+      expect(createAudioContext).toHaveBeenCalledTimes(1);
+
+      shell.destroy();
+    });
   });
 });
