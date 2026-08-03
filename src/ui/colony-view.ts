@@ -1,12 +1,13 @@
 /** Colony Dock surface: Dig Rate, Ore, Ingots, Hardness, Smelter, Upgrades. */
 
 import {
-  YIELD,
+  oreForDrop,
   digRateFor,
   hardnessFor,
   nextDigRateUpgradeCost,
   nextSmelterUpgradeCost,
   smelterThroughputFor,
+  DROPS_PER_FACE,
   type UpgradeId,
 } from "../core/mining-engine";
 import type { WireSnapshot } from "../core/wire-snapshot";
@@ -119,7 +120,7 @@ export function mountColonyView(
 
   const constants = document.createElement("p");
   constants.className = "dock-colony-constants";
-  constants.textContent = `Yield ${YIELD}`;
+  constants.dataset["colonyConstants"] = "";
 
   root.append(title, status, upgradeRow, offline, constants);
   host.replaceChildren(root);
@@ -137,8 +138,11 @@ export function mountColonyView(
     digRateUpgradeBtn.textContent = `Buy Upgrade (+0.25 Dig Rate) — ${digCost} Ingots`;
     digRateUpgradeBtn.disabled = snapshot.ingots < digCost;
     smelterUpgradeBtn.textContent =
-      `Buy Smelter Upgrade (+0.05 Ore/sec) — ${smelterCost} Ingots`;
+      `Buy Smelter Upgrade (+0.02 Ore/sec) — ${smelterCost} Ingots`;
     smelterUpgradeBtn.disabled = snapshot.ingots < smelterCost;
+
+    constants.textContent =
+      `Ore per drop ${formatAmount(oreForDrop(snapshot.advance))} — ${DROPS_PER_FACE} drops per Face`;
 
     if (snapshot.offlineSummary) {
       const s = snapshot.offlineSummary;

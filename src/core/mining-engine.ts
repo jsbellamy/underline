@@ -15,8 +15,11 @@ export const HARDNESS_GROWTH = 1.15;
 /** Damage dealt per Swing (Pick). */
 export const PICK_DAMAGE = 1;
 
-/** Ore yielded per Face break. */
-export const YIELD = 1;
+/** Ore drops credited per Face before it breaks. */
+export const DROPS_PER_FACE = 100;
+
+/** Ore per drop at Advance 0 before the Hardness growth multiplier. */
+export const BASE_ORE_PER_DROP = 1;
 
 /** Opening Dig Rate (Swing/sec) before Upgrades. */
 export const OPENING_DIG_RATE = 1;
@@ -25,10 +28,10 @@ export const OPENING_DIG_RATE = 1;
 export const UPGRADE_DIG_RATE = 0.25;
 
 /** Opening Smelter Ore→Ingot throughput (Ore/sec). */
-export const SMELTER_THROUGHPUT = 0.15;
+export const SMELTER_THROUGHPUT = 0.06;
 
 /** Smelter throughput gained per Smelter Upgrade. */
-export const UPGRADE_SMELTER_THROUGHPUT = 0.05;
+export const UPGRADE_SMELTER_THROUGHPUT = 0.02;
 
 /** First Upgrade cost in Ingots; doubles each buy. */
 export const FIRST_UPGRADE_COST = 5;
@@ -58,6 +61,14 @@ export interface AdvanceOptions {
 
 export function hardnessFor(advance: number): number {
   return FACE_BASE_HARDNESS * HARDNESS_GROWTH ** advance;
+}
+
+export function dropDamageFor(advance: number): number {
+  return hardnessFor(advance) / DROPS_PER_FACE;
+}
+
+export function oreForDrop(advance: number): number {
+  return BASE_ORE_PER_DROP * HARDNESS_GROWTH ** advance;
 }
 
 export function initialSnapshot(): MiningSnapshot {
@@ -90,8 +101,9 @@ export function nextSmelterUpgradeCost(smelterUpgradeCount: number): number {
 }
 
 /**
- * Dig-all Face breaks for `dtMs`, then Smelter-drain for the same window.
- * Matches the offline closed-form order in the engine contract.
+ * Event-jump mining for `dtMs` with per-segment Smelter drain (ADR 0012).
+ * Fractional Ore drops require interleaved Smelter feed so C4 chunk neutrality
+ * holds; Ore is smelted from stock present before each drop credits.
  */
 export function advance(
   snapshot: MiningSnapshot,
@@ -118,19 +130,54 @@ export function advance(
   } = snapshot;
 
   const digRate = digRateFor(digRateUpgradeCount);
-  let damage = faceSwingProgress + digRate * PICK_DAMAGE * dtSec;
-  while (damage >= hardnessFor(advanceCount)) {
-    const hardness = hardnessFor(advanceCount);
-    damage -= hardness;
-    advanceCount += 1;
-    ore += YIELD;
-  }
-  faceSwingProgress = damage;
-
+  const damagePerSec = digRate * PICK_DAMAGE;
   const throughput = smelterThroughputFor(smelterUpgradeCount);
-  const fed = Math.min(ore, throughput * dtSec);
-  ore -= fed;
-  smelterProgress += fed;
+  let remaining = dtSec;
+
+  const feedSmelter = (segmentSec: number): void => {
+    const fed = Math.min(ore, throughput * segmentSec);
+    ore -= fed;
+    smelterProgress += fed;
+  };
+
+  while (remaining > 0 && damagePerSec > 0) {
+    const hardness = hardnessFor(advanceCount);
+    const dropDamage = dropDamageFor(advanceCount);
+    const orePerDrop = oreForDrop(advanceCount);
+
+    const dropsSoFar = Math.min(
+      DROPS_PER_FACE,
+      Math.floor(faceSwingProgress / dropDamage + 1e-9),
+    );
+    const nextDropAt = (dropsSoFar + 1) * dropDamage;
+    const damageToNextDrop = nextDropAt - faceSwingProgress;
+    const damageToBreak = hardness - faceSwingProgress;
+    const eventDamage = Math.min(damageToNextDrop, damageToBreak);
+    const timeToEvent = eventDamage / damagePerSec;
+
+    if (timeToEvent > remaining) {
+      feedSmelter(remaining);
+      faceSwingProgress += damagePerSec * remaining;
+      remaining = 0;
+      continue;
+    }
+
+    feedSmelter(timeToEvent);
+    remaining -= timeToEvent;
+    ore += orePerDrop;
+    const landedDrop = dropsSoFar + 1;
+    faceSwingProgress = Math.min(landedDrop * dropDamage, hardness);
+
+    if (faceSwingProgress >= hardness) {
+      advanceCount += 1;
+      faceSwingProgress = 0;
+    }
+  }
+
+  if (remaining > 0) {
+    feedSmelter(remaining);
+  }
+
   const minted = Math.floor(smelterProgress);
   ingots += minted;
   smelterProgress -= minted;

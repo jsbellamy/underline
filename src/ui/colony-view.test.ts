@@ -27,7 +27,7 @@ describe("Colony Dock surface", () => {
     expect(host.querySelector("[data-ore]")?.textContent).toBe("2.50");
     expect(host.querySelector("[data-ingots]")?.textContent).toBe("12");
     expect(host.querySelector("[data-hardness]")?.textContent).toBe("1000");
-    expect(host.querySelector("[data-smelter]")?.textContent).toContain("0.20");
+    expect(host.querySelector("[data-smelter]")?.textContent).toContain("0.08");
     expect(host.querySelector("[data-smelter]")?.textContent).toContain("Ore/sec");
     const digBuy = host.querySelector<HTMLButtonElement>("[data-buy-upgrade]");
     expect(digBuy?.textContent).toContain("+0.25 Dig Rate");
@@ -36,7 +36,7 @@ describe("Colony Dock surface", () => {
     const smelterBuy = host.querySelector<HTMLButtonElement>(
       "[data-buy-smelter-upgrade]",
     );
-    expect(smelterBuy?.textContent).toContain("+0.05 Ore/sec");
+    expect(smelterBuy?.textContent).toContain("+0.02 Ore/sec");
     expect(smelterBuy?.textContent).toContain(
       `${nextSmelterUpgradeCost(1)} Ingots`,
     );
@@ -68,6 +68,21 @@ describe("Colony Dock surface", () => {
       host.querySelector<HTMLButtonElement>("[data-buy-smelter-upgrade]")
         ?.disabled,
     ).toBe(true);
+    view.destroy();
+  });
+
+  it("shows Ore per drop and drops per Face from the live Advance", () => {
+    const host = document.createElement("div");
+    const view = mountColonyView(host);
+    view.render(
+      toWireSnapshot({
+        ...initialSnapshot(),
+        advance: 10,
+      }),
+    );
+    expect(host.querySelector("[data-colony-constants]")?.textContent).toBe(
+      "Ore per drop 4.05 — 100 drops per Face",
+    );
     view.destroy();
   });
 
