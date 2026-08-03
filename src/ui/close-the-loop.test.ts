@@ -144,6 +144,7 @@ describe("Pane↔Dock close-the-loop bus", () => {
     });
 
     await flushBus();
+    // Advance 30 → Math.round(1000 × 1.15^30) = 66212
     expect(dockRoot.querySelector("[data-hardness]")?.textContent).toBe("66212");
     expect(dockRoot.querySelector("[data-smelter]")?.textContent).toContain(
       "0.15",

@@ -120,7 +120,7 @@ describe("mining engine offline catch-up", () => {
 });
 
 describe("mining engine Hardness curve", () => {
-  it("exports exponential Face Hardness constants and Pick Damage", () => {
+  it("pins opening Face capacity and Pick Damage per economy contract", () => {
     expect(FACE_BASE_HARDNESS).toBe(1000);
     expect(HARDNESS_GROWTH).toBe(1.15);
     expect(PICK_DAMAGE).toBe(1);
