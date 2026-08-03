@@ -1,7 +1,7 @@
 # Produce-and-spend economy (slice numbers)
 
 **Issue:** [Pin down the produce-and-spend economy](https://github.com/jsbellamy/underline/issues/319)  
-**Vocabulary:** `CONTEXT.md` § Game language — Hardness, Yield, Pick Damage, Load, Bag, Carry Capacity, Haul, Dig Rate, Ore, Smelter, Ingot, Upgrade, Advance.  
+**Vocabulary:** `CONTEXT.md` § Game language — Hardness, Yield, Pick Damage, Load, Bag, Carry Capacity, Haul, Haul Speed, Cart, Dig Rate, Ore, Smelter, Ingot, Upgrade, Advance.  
 **Status:** Provisional numbers for the vertical slice; justified for idle-game feel, not final balance.
 
 Hardness grows exponentially with Advance; Yield scales with Hardness. Ore drops during mining; only Ore delivered by a Haul reaches the Colony.

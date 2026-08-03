@@ -389,8 +389,10 @@ later without renaming.
 _Avoid_: bar (collides with UI vocabulary), bullion, coin, gold, currency
 
 **Upgrade**:
-A purchased Colony improvement bought with Ingots in the Dock. Two Upgrades
-exist for current play: **Dig Rate Upgrade** (raises Dig Rate) and **Smelter Upgrade** (raises Smelter throughput).
+A purchased Colony improvement bought with Ingots in the Dock. Three Upgrades
+exist for current play: **Dig Rate Upgrade** (raises Dig Rate), **Smelter Upgrade**
+(raises Smelter throughput), and **Carry Capacity Upgrade** (raises Carry
+Capacity).
 _Avoid_: perk, buff, unlock, research, upgrade tree
 
 **Pane**:

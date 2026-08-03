@@ -56,16 +56,16 @@ Persist-aligned fields only — Dock derives the rest.
 
 `savedAtMs` is save-boundary only — **not** on the wire.
 
-### Dock derives (both Upgrade counts + Advance bands)
+### Dock derives (Upgrade counts + exponential Hardness)
 
 | Derived | Formula |
 | --- | --- |
 | Dig Rate | `1.0 + 0.25 × digRateUpgradeCount` |
 | Dig Rate next Upgrade cost | `5 × 2^digRateUpgradeCount` |
-| Smelter throughput | `0.15 + 0.05 × smelterUpgradeCount` Ore/sec |
+| Smelter throughput | `0.06 + 0.02 × smelterUpgradeCount` Ore/sec |
 | Smelter next Upgrade cost | `5 × 2^smelterUpgradeCount` |
-| Hardness | `hardnessFor(advance)` — Advance bands in [`produce-and-spend-economy.md`](./produce-and-spend-economy.md) |
-| Yield | `1` |
+| Hardness | `hardnessFor(advance)` — exponential curve in [`produce-and-spend-economy.md`](./produce-and-spend-economy.md) |
+| Yield | `100 × 1.15^advance` Ore per Face (scales with Hardness) |
 
 ### When the Pane publishes `snapshot`
 
