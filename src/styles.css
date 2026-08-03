@@ -105,12 +105,19 @@ html.dock-window body {
   object-fit: fill;
 }
 
-.pane-colony-chip {
-  appearance: none;
+.pane-controls {
   position: absolute;
   right: 6px;
   top: 6px;
   z-index: 10;
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+}
+
+.pane-colony-chip,
+.pane-quit-chip {
+  appearance: none;
   border: 1px solid rgba(255, 249, 233, 0.28);
   border-radius: 4px;
   background: rgba(15, 17, 24, 0.82);
@@ -123,7 +130,9 @@ html.dock-window body {
 }
 
 .pane-colony-chip:hover,
-.pane-colony-chip:focus-visible {
+.pane-colony-chip:focus-visible,
+.pane-quit-chip:hover,
+.pane-quit-chip:focus-visible {
   background: rgba(255, 249, 233, 0.16);
 }
 
