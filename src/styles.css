@@ -116,6 +116,7 @@ html.dock-window body {
 }
 
 .pane-colony-chip,
+.pane-sound-chip,
 .pane-quit-chip {
   appearance: none;
   border: 1px solid rgba(255, 249, 233, 0.28);
@@ -131,6 +132,8 @@ html.dock-window body {
 
 .pane-colony-chip:hover,
 .pane-colony-chip:focus-visible,
+.pane-sound-chip:hover,
+.pane-sound-chip:focus-visible,
 .pane-quit-chip:hover,
 .pane-quit-chip:focus-visible {
   background: rgba(255, 249, 233, 0.16);

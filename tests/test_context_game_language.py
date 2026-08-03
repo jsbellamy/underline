@@ -61,3 +61,24 @@ def test_game_language_smelter_throughput_raised_by_upgrade() -> None:
     assert "Smelter Upgrade" in body
     assert "fixed for the slice" not in body.lower()
     assert "status on the Colony surface" in body
+
+
+def test_game_language_sound_off_until_player_enables() -> None:
+    section = _game_language_section()
+    body = _entry_body(section, "Sound")
+    assert "Swing" in body
+    assert "Face break" in body
+    assert "off until the player enables it" in body
+    assert "player preference" in body
+    assert "economy state" in body
+    assert "_Avoid_:" in body
+
+
+def test_game_language_pane_control_cluster_names_colony_sound_quit() -> None:
+    section = _game_language_section()
+    body = _entry_body(section, "Pane control cluster")
+    assert "Colony" in body
+    assert "Sound" in body
+    assert "Quit" in body
+    assert "corner group" in body
+    assert "_Avoid_:" in body
