@@ -3,8 +3,8 @@
 Underline is a mining game. The game is TypeScript; the asset pipeline is Python.
 The pipeline is what exists today: it takes a provider-rendered animation
 **Strip**, recovers and slices it, and accepts or rejects it with deterministic
-**Gates**. The terms below are the pipeline's; game vocabulary is added here as
-it is settled.
+**Gates**. The terms in `## Language` are the pipeline's; the game's own terms
+are in `## Game language`, and are added there as they are settled.
 
 Authority for the numbers behind these terms is
 `docs/strip-acquisition-contract.md`. The agent-ready AFK acceptance
@@ -271,3 +271,99 @@ _Avoid_: tile, ore tile, destructible tile
 The four-bit north/east/south/west neighbor signature selecting a Mineable Block
 edge treatment. Bit values: north=1, east=2, south=4, west=8.
 _Avoid_: bitmask, neighbor mask
+
+## Game language
+
+The game's terms. **Mineable Block**, **Rendering Tile**, and **Autotile Mask**
+are declared above because the pipeline's art work already cites them; they are
+game terms too, and Mineable Block is simulation state, not only art.
+
+**Colony**:
+The container the player grows — everything Ingots are spent on. It is the
+Dock's first surface.
+_Avoid_: base, camp, settlement, town
+
+**Dwarf**:
+The mining character. A being, not a job: the Dwarf digs because the slice has
+only one of them, so "Miner" stays free for a job term if jobs ever arrive.
+The art is `assets/characters/dwarf/` — east/west facing only.
+_Avoid_: miner (that is a job, not a being), worker, unit, character
+
+**Tunnel**:
+The horizontal passage the Dwarf digs east, extending indefinitely. Broken
+Mineable Blocks never return and the Tunnel never refills, so the Dwarf always
+advances into fresh rock.
+_Avoid_: drift (collides with the `palette_drift_pass` Gate), shaft (implies
+vertical, and shaft-depth progression is a separate future concern), corridor,
+mine, level
+
+**Face**:
+The single Mineable Block currently being broken — the east end of the Tunnel,
+where the Dwarf stands and Swings. Exactly one Face exists at a time; breaking
+it makes the next Mineable Block the Face.
+_Avoid_: facing (that is a Motion class property, a direction, not a block),
+front, wall, target
+
+**Swing**:
+One strike of the Dwarf's pick against the Face. The pipeline's `swing` Motion
+class is the animation of this act — the two terms describe the same thing from
+the art side and the simulation side, and are meant to agree.
+_Avoid_: hit, strike, attack (nothing here is combat), tick
+
+**Hardness**:
+The number of Swings required to break one Mineable Block. Constant for the
+slice; it is the rock's property, never the Dwarf's.
+_Avoid_: health, HP, durability, toughness
+
+**Dig Rate**:
+Swings per second — the headline production number, and the one thing an Upgrade
+raises. It was chosen as the headline because it is the only production quantity
+the Pane can show: a faster Dig Rate is a visibly faster Dwarf.
+_Avoid_: speed, mining rate, DPS, production rate (ambiguous once the Smelter
+also has a rate)
+
+**Advance**:
+The count of Mineable Blocks broken so far — the Tunnel's length, and the single
+quantity offline progress has to resolve.
+_Avoid_: depth (the Tunnel is horizontal, and depth is reserved for future
+shaft-depth progression), distance, progress, score
+
+**Ore**:
+The raw yield of a broken Mineable Block. Ore is **not** spendable; it is the
+Smelter's input. It is also the material a Mineable Block is made of, which is
+why #112 calls the block's art its "ore states".
+_Avoid_: gold, currency, coins, resources, minerals
+
+**Yield**:
+The Ore produced by breaking one Mineable Block. Constant for the slice.
+_Avoid_: drop, reward, loot, payout
+
+**Smelter**:
+Converts Ore into Ingots over time at a throughput, so Ore can back up when the
+Dwarf out-produces it. It is a second timed loop, deliberately — not an instant
+conversion.
+_Avoid_: forge (that shapes Ingots into goods, a step the game does not have),
+furnace, refinery, kiln
+
+**Ingot**:
+The refined, spendable unit — the Smelter's output and the only thing an Upgrade
+costs. A material rather than abstract money, leaving room for a currency tier
+later without renaming.
+_Avoid_: bar (collides with UI vocabulary), bullion, coin, gold, currency
+
+**Upgrade**:
+One purchased improvement that raises Dig Rate, bought with Ingots in the Dock.
+Singular by design: this is a purchase, not a position in a graph.
+_Avoid_: perk, buff, unlock, research, upgrade tree
+
+**Pane**:
+The always-on-top window showing the Dwarf digging the Tunnel. A window word,
+never a world word — the scene *inside* the Pane is drawn from Rendering Tiles,
+but the Pane is not one.
+_Avoid_: tile (already reserved — see Rendering Tile and Mineable Block), strip
+(reserved by the pipeline), widget, overlay, HUD
+
+**Dock**:
+The tabbed window where the player spends Ingots on Upgrades. Its first and
+only slice surface is the Colony.
+_Avoid_: panel, drawer, sidebar, main window
