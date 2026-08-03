@@ -18,7 +18,7 @@ describe("wire Snapshot", () => {
       smelterProgress: 0.3,
     };
     expect(toWireSnapshot(snap)).toEqual({
-      schemaVersion: 2,
+      schemaVersion: 3,
       advance: 2,
       ore: 1.25,
       ingots: 3,
@@ -31,16 +31,20 @@ describe("wire Snapshot", () => {
 
   it("builds an offlineSummary from before/after catch-up", () => {
     const before = initialSnapshot();
-    const after = advance(before, 2_000_000, { rateScale: OFFLINE_RATE_SCALE });
+    const after = advance(before, 2_160_000, { rateScale: OFFLINE_RATE_SCALE });
     const summary = buildOfflineSummary({
       before,
       after,
-      offlineMs: 2_000_000,
+      offlineMs: 2_160_000,
     });
     expect(summary).toEqual({
-      offlineMs: 2_000_000,
+      offlineMs: 2_160_000,
       advanceGained: 1,
-      oreProduced: after.ore - before.ore + (after.ingots - before.ingots),
+      oreProduced:
+        after.ore -
+        before.ore +
+        (after.bagOre - before.bagOre) +
+        (after.ingots - before.ingots),
       oreSmelted: after.ingots - before.ingots,
       oreBacklog: after.ore,
     });

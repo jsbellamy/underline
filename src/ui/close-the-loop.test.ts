@@ -86,7 +86,7 @@ describe("Pane↔Dock close-the-loop bus", () => {
 
     expect(commands).toContainEqual({
       type: "command",
-      command: { schemaVersion: 2, name: "buyUpgrade", upgrade: "digRate" },
+      command: { schemaVersion: 3, name: "buyUpgrade", upgrade: "digRate" },
     });
     expect(session.snapshot.digRateUpgradeCount).toBe(1);
     expect(session.snapshot.ingots).toBe(0);
@@ -157,7 +157,7 @@ describe("Pane↔Dock close-the-loop bus", () => {
 
     expect(commands).toContainEqual({
       type: "command",
-      command: { schemaVersion: 2, name: "buyUpgrade", upgrade: "smelter" },
+      command: { schemaVersion: 3, name: "buyUpgrade", upgrade: "smelter" },
     });
     expect(session.snapshot.smelterUpgradeCount).toBe(1);
     expect(session.snapshot.ingots).toBe(0);

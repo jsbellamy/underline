@@ -33,7 +33,7 @@ describe("mining save seam", () => {
     store = memoryStore();
   });
 
-  it("round-trips authoritative v2 fields through underline-save-v1", () => {
+  it("round-trips authoritative v3 fields through underline-save-v1", () => {
     const snap: MiningSnapshot = {
       schemaVersion: SCHEMA_VERSION,
       advance: 3,
@@ -41,8 +41,12 @@ describe("mining save seam", () => {
       ingots: 7,
       digRateUpgradeCount: 2,
       smelterUpgradeCount: 1,
+      carryCapacityUpgradeCount: 1,
       faceSwingProgress: 1.25,
       smelterProgress: 0.4,
+      bagOre: 3.5,
+      bagLoads: 4,
+      haulRemainingMs: 2000,
     };
     persistSave(snap, 1_700_000_000_000, store);
     expect(store.data[SAVE_KEY]).toBeTruthy();
@@ -53,7 +57,40 @@ describe("mining save seam", () => {
     });
   });
 
-  it("migrates schemaVersion 1 upgradeCount to v2 upgrade counts in memory", () => {
+  it("migrates schemaVersion 2 to v3 with Bag fields defaulted to zero", () => {
+    store.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        schemaVersion: 2,
+        savedAtMs: 1_700_000_000_000,
+        advance: 3,
+        ore: 1.5,
+        ingots: 7,
+        digRateUpgradeCount: 2,
+        smelterUpgradeCount: 1,
+        faceSwingProgress: 1.25,
+        smelterProgress: 0.4,
+      }),
+    );
+    const loaded = loadSave(store);
+    expect(loaded.snapshot).toEqual({
+      schemaVersion: 3,
+      advance: 3,
+      ore: 1.5,
+      ingots: 7,
+      digRateUpgradeCount: 2,
+      smelterUpgradeCount: 1,
+      carryCapacityUpgradeCount: 0,
+      faceSwingProgress: 1.25,
+      smelterProgress: 0.4,
+      bagOre: 0,
+      bagLoads: 0,
+      haulRemainingMs: 0,
+    });
+    expect(loaded.savedAtMs).toBe(1_700_000_000_000);
+  });
+
+  it("migrates schemaVersion 1 upgradeCount through v2 shape to v3", () => {
     store.setItem(
       SAVE_KEY,
       JSON.stringify({
@@ -69,19 +106,23 @@ describe("mining save seam", () => {
     );
     const loaded = loadSave(store);
     expect(loaded.snapshot).toEqual({
-      schemaVersion: 2,
+      schemaVersion: 3,
       advance: 3,
       ore: 1.5,
       ingots: 7,
       digRateUpgradeCount: 2,
       smelterUpgradeCount: 0,
+      carryCapacityUpgradeCount: 0,
       faceSwingProgress: 1.25,
       smelterProgress: 0.4,
+      bagOre: 0,
+      bagLoads: 0,
+      haulRemainingMs: 0,
     });
     expect(loaded.savedAtMs).toBe(1_700_000_000_000);
   });
 
-  it("rewrites v2 on persist after loading a v1 save", () => {
+  it("rewrites v3 on persist after loading a v1 save", () => {
     store.setItem(
       SAVE_KEY,
       JSON.stringify({
@@ -98,9 +139,13 @@ describe("mining save seam", () => {
     const { snapshot } = loadSave(store);
     persistSave(snapshot, 200, store);
     const raw = JSON.parse(store.data[SAVE_KEY]!);
-    expect(raw.schemaVersion).toBe(2);
+    expect(raw.schemaVersion).toBe(3);
     expect(raw.digRateUpgradeCount).toBe(1);
     expect(raw.smelterUpgradeCount).toBe(0);
+    expect(raw.carryCapacityUpgradeCount).toBe(0);
+    expect(raw.bagOre).toBe(0);
+    expect(raw.bagLoads).toBe(0);
+    expect(raw.haulRemainingMs).toBe(0);
     expect(raw.upgradeCount).toBeUndefined();
   });
 
