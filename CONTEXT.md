@@ -311,13 +311,13 @@ the art side and the simulation side, and are meant to agree.
 _Avoid_: hit, strike, attack (nothing here is combat), tick
 
 **Hardness**:
-The number of Swings required to break one Mineable Block. Constant for the
-slice; it is the rock's property, never the Dwarf's.
+The number of Swings required to break one Mineable Block. Derived from Advance
+via fixed bands; it is the rock's property, never the Dwarf's.
 _Avoid_: health, HP, durability, toughness
 
 **Dig Rate**:
-Swings per second — the headline production number, and the one thing an Upgrade
-raises. A faster Dig Rate is a visibly faster Dwarf on the Pane; the numeric
+Swings per second — the headline production number. Dig Rate Upgrade raises Dig
+Rate. A faster Dig Rate is a visibly faster Dwarf on the Pane; the numeric
 readout lives in the Dock with Ore and Ingots so the Pane stays a clean dig
 scene.
 _Avoid_: speed, mining rate, DPS, production rate (ambiguous once the Smelter
@@ -341,10 +341,11 @@ _Avoid_: drop, reward, loot, payout
 
 **Smelter**:
 Converts Ore into Ingots over time at a throughput, so Ore can back up when the
-Dwarf out-produces it. It is a second timed loop, deliberately — not an instant
-conversion. On the Dock it is **status on the Colony surface** — Ore, Ingots,
-Dig Rate, and a labeled Smelter throughput — not its own tab; fractional
-progress toward the next Ingot stays engine-internal for the slice.
+Dwarf out-produces it. Smelter Upgrade raises Smelter throughput. It is a
+second timed loop, deliberately — not an instant conversion. On the Dock it is
+**status on the Colony surface** — Ore, Ingots, Dig Rate, and a labeled Smelter
+throughput — not its own tab; fractional progress toward the next Ingot stays
+engine-internal for the slice.
 _Avoid_: forge (that shapes Ingots into goods, a step the game does not have),
 furnace, refinery, kiln
 
@@ -355,8 +356,8 @@ later without renaming.
 _Avoid_: bar (collides with UI vocabulary), bullion, coin, gold, currency
 
 **Upgrade**:
-One purchased improvement that raises Dig Rate, bought with Ingots in the Dock.
-Singular by design: this is a purchase, not a position in a graph.
+A purchased Colony improvement bought with Ingots in the Dock. Two Upgrades
+exist for current play: **Dig Rate Upgrade** (raises Dig Rate) and **Smelter Upgrade** (raises Smelter throughput).
 _Avoid_: perk, buff, unlock, research, upgrade tree
 
 **Pane**:
