@@ -9,12 +9,33 @@ import {
   persistSettings,
   SETTINGS_KEY,
 } from "../core/settings-save";
+import { createDwarfAnimController } from "../core/dwarf-anim-state";
 import { dwarfFramePaths, type ExternalSpritePack } from "../data/external-sprite-pack";
 import { dwarfFrameUrl, dwarfFrameUrlsFor } from "./dwarf-frames";
 import { mountPaneShell } from "./pane-root";
 import { mountMiningTunnel } from "./mining-tunnel";
 import { PUMP_INTERVAL_MS } from "./pump";
 import { DWARF_SCALE, PANE_HEIGHT, PANE_WIDTH, TUNNEL_HEIGHT } from "./pane-layout";
+
+function stubPresenter(setSoundEnabled = vi.fn()) {
+  const anim = createDwarfAnimController({ digRate: 1 });
+  return {
+    anim,
+    snapshot: () => ({
+      animation: "swing" as const,
+      facing: "east" as const,
+      frameIndex: 0,
+      advance: 0,
+      faceSwingProgress: 0,
+      swingFraction: 0,
+      digRate: 1,
+    }),
+    start: vi.fn(),
+    advanceMs: vi.fn(),
+    syncDigRate: vi.fn(),
+    setSoundEnabled,
+  };
+}
 
 function stubDockWindow() {
   return {
@@ -288,13 +309,15 @@ describe("mountPaneShell mining Pane", () => {
       vi.unstubAllGlobals();
     });
 
-    it("toggles sound off to on, persists, and updates the chip in one press", () => {
+    it("toggles sound off to on, persists, calls presenter, and updates the chip in one press", () => {
       const store = browserSaveStore();
+      const setSoundEnabled = vi.fn();
       const root = document.createElement("main");
       const shell = mountPaneShell(root, {
         dockWindow: stubDockWindow(),
         busFactory: stubBusFactory(),
         deferPump: true,
+        presenter: stubPresenter(setSoundEnabled),
       });
 
       const sound = root.querySelector<HTMLButtonElement>("[data-sound]")!;
@@ -304,6 +327,8 @@ describe("mountPaneShell mining Pane", () => {
 
       const persisted = JSON.parse(store.getItem(SETTINGS_KEY)!);
       expect(persisted.soundEnabled).toBe(true);
+      expect(setSoundEnabled).toHaveBeenCalledOnce();
+      expect(setSoundEnabled).toHaveBeenCalledWith(true);
       expect(sound.dataset["soundState"]).toBe("on");
       expect(sound.getAttribute("aria-pressed")).toBe("true");
       expect(sound.getAttribute("aria-label")).toBe("Sound on");
