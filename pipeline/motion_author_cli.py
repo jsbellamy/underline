@@ -12,6 +12,7 @@ from pipeline.cell_raster import read_cells, write_cells
 from pipeline.final_polish import FinalPolishError, _load_base_release_frames
 from pipeline.identity_lock import load_identity_lock_spec
 from pipeline.motion_author import MotionAuthorError, author_motion
+from pipeline.parts import load_part_map
 from pipeline.palette_quantize import load_master_palette
 from pipeline.strip import Cell
 
@@ -61,6 +62,7 @@ def run(argv: list[str] | None = None) -> int:
     parser.add_argument("--pose-plan", type=Path, required=True)
     parser.add_argument("--identity-locks", type=Path, required=True)
     parser.add_argument("--palette", type=Path, required=True)
+    parser.add_argument("--part-map", type=Path, default=None)
     parser.add_argument("--frames-out", type=Path, required=True)
     parser.add_argument("--ledger-out", type=Path, required=True)
     parser.add_argument("--json", action="store_true")
@@ -75,8 +77,17 @@ def run(argv: list[str] | None = None) -> int:
             )
         identity_lock_spec = load_identity_lock_spec(args.identity_locks)
         palette = load_master_palette(args.palette)
+        part_map = None
+        if args.part_map is not None:
+            part_map = load_part_map(args.part_map)
         base_frames = _discover_base_frames(args.base_bundle, motion_class)
-        result = author_motion(base_frames, pose_plan, identity_lock_spec, palette)
+        result = author_motion(
+            base_frames,
+            pose_plan,
+            identity_lock_spec,
+            palette,
+            part_map=part_map,
+        )
 
         args.frames_out.mkdir(parents=True, exist_ok=True)
         for index, frame in enumerate(result.frames):

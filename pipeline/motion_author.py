@@ -11,17 +11,21 @@ from pipeline.canonical import packet_bytes
 from pipeline.cell_delta import build_cell_delta_ledger
 from pipeline.identity_lock import validate_identity_lock_spec
 from pipeline.palette_quantize import MasterPalette
+from pipeline.parts import Footprint, ORIENTATION_IDS, Part, PartMap
 from pipeline.strip import Cell, resolve_class_frame_geometry
 
 __all__ = [
     "AuthoredMotion",
     "MOTION_POSE_PLAN_SCHEMA",
+    "MOTION_POSE_PLAN_SCHEMA_V1",
     "MotionAuthorError",
     "author_motion",
 ]
 
 MOTION_POSE_PLAN_SCHEMA = "motion-pose-plan/0"
+MOTION_POSE_PLAN_SCHEMA_V1 = "motion-pose-plan/1"
 REPORT_SCHEMA = "motion-author-report/0"
+_PART_OPS = frozenset({"translate_part", "orient_part"})
 
 
 class MotionAuthorError(ValueError):
@@ -35,6 +39,18 @@ class AuthoredMotion:
     frames: tuple[list[list[Cell]], ...]
     ledger: dict[str, Any]
     report: dict[str, Any]
+    part_maps: tuple[dict[str, Any], ...] | None = None
+
+
+@dataclass
+class _MutablePart:
+    part_id: str
+    rigid: bool
+    parent: str | None
+    pivot: tuple[int, int] | None
+    grip: tuple[int, int] | None
+    cells: set[tuple[int, int]]
+    orientations: dict[str, Footprint] | None
 
 
 def _parse_hex_color(value: object, *, where: str) -> tuple[int, int, int]:
@@ -137,11 +153,11 @@ def _validate_pose_plan(
     pose_plan: Mapping[str, Any],
     *,
     identity_lock_spec: Mapping[str, Any],
-) -> tuple[str, int, int, tuple[int, int], str, list[int], list[list[dict[str, Any]]]]:
+) -> tuple[str, str, int, int, tuple[int, int], str, list[int], list[list[dict[str, Any]]]]:
     schema = pose_plan.get("schema")
-    if schema != MOTION_POSE_PLAN_SCHEMA:
+    if schema not in {MOTION_POSE_PLAN_SCHEMA, MOTION_POSE_PLAN_SCHEMA_V1}:
         raise MotionAuthorError(
-            f"schema must be {MOTION_POSE_PLAN_SCHEMA!r}",
+            f"schema must be {MOTION_POSE_PLAN_SCHEMA!r} or {MOTION_POSE_PLAN_SCHEMA_V1!r}",
             reason_code="authoring_boundary_violation",
         )
     motion_class = pose_plan.get("motion_class")
@@ -236,7 +252,16 @@ def _validate_pose_plan(
             ops.append(dict(operation))
         parsed_frames.append(ops)
 
-    return motion_class, frame_w, frame_h, origin, base_specification_id, mapping, parsed_frames
+    return (
+        str(schema),
+        motion_class,
+        frame_w,
+        frame_h,
+        origin,
+        base_specification_id,
+        mapping,
+        parsed_frames,
+    )
 
 
 def _lock_rectangle_at_offset(
@@ -348,6 +373,330 @@ def _changed_cell_count(base: list[list[Cell]], target: list[list[Cell]]) -> int
     )
 
 
+def _embed_part_map_on_canvas(
+    part_map: PartMap,
+    *,
+    origin: tuple[int, int],
+    frame_size: tuple[int, int],
+) -> PartMap:
+    if part_map.frame_size == frame_size:
+        return part_map
+    ox, oy = origin
+    embedded_parts: dict[str, Part] = {}
+    for part_id, part in part_map.parts.items():
+        embedded_parts[part_id] = Part(
+            part_id=part.part_id,
+            rigid=part.rigid,
+            parent=part.parent,
+            pivot=None
+            if part.pivot is None
+            else (part.pivot[0] + ox, part.pivot[1] + oy),
+            grip=None
+            if part.grip is None
+            else (part.grip[0] + ox, part.grip[1] + oy),
+            cells=frozenset((x + ox, y + oy) for x, y in part.cells),
+            orientations=part.orientations,
+        )
+    return PartMap(
+        schema=part_map.schema,
+        base_raster_sha256=part_map.base_raster_sha256,
+        frame_size=frame_size,
+        parts=embedded_parts,
+    )
+
+
+def _mutable_parts_from_map(part_map: PartMap) -> dict[str, _MutablePart]:
+    return {
+        part_id: _MutablePart(
+            part_id=part.part_id,
+            rigid=part.rigid,
+            parent=part.parent,
+            pivot=part.pivot,
+            grip=part.grip,
+            cells=set(part.cells),
+            orientations=part.orientations,
+        )
+        for part_id, part in part_map.parts.items()
+    }
+
+
+def _explicit_part_ids(operations: Sequence[Mapping[str, Any]]) -> set[str]:
+    explicit: set[str] = set()
+    for operation in operations:
+        if operation.get("op") in _PART_OPS:
+            part_id = operation.get("part_id")
+            if isinstance(part_id, str):
+                explicit.add(part_id)
+    return explicit
+
+
+def _descendants_in_parent_order(
+    part_id: str,
+    parts: Mapping[str, _MutablePart],
+    *,
+    explicit: set[str],
+) -> list[str]:
+    children = sorted(pid for pid, part in parts.items() if part.parent == part_id)
+    ordered: list[str] = []
+    for child in children:
+        if child in explicit:
+            continue
+        ordered.append(child)
+        ordered.extend(_descendants_in_parent_order(child, parts, explicit=explicit))
+    return ordered
+
+
+def _footprint_to_payload(footprint: Footprint) -> dict[str, Any]:
+    return {
+        "width": footprint.width,
+        "height": footprint.height,
+        "cells": {
+            f"{x},{y}": [rgba[0], rgba[1], rgba[2]]
+            for x, y, rgba in footprint.cells
+        },
+    }
+
+
+def _part_map_document(
+    parts: Mapping[str, _MutablePart],
+    *,
+    base_raster_sha256: str,
+    frame_size: tuple[int, int],
+) -> dict[str, Any]:
+    payload_parts: dict[str, Any] = {}
+    for part_id in sorted(parts):
+        part = parts[part_id]
+        entry: dict[str, Any] = {
+            "rigid": part.rigid,
+            "parent": part.parent,
+            "cells": [f"{x},{y}" for x, y in sorted(part.cells)],
+        }
+        if part.pivot is not None:
+            entry["pivot"] = [part.pivot[0], part.pivot[1]]
+        if part.grip is not None:
+            entry["grip"] = [part.grip[0], part.grip[1]]
+        if part.rigid and part.orientations is not None:
+            entry["orientations"] = {
+                orientation_id: _footprint_to_payload(footprint)
+                for orientation_id, footprint in part.orientations.items()
+            }
+        payload_parts[part_id] = entry
+    return {
+        "schema": "cell-part-map/0",
+        "base_raster_sha256": base_raster_sha256,
+        "frame_size": [frame_size[0], frame_size[1]],
+        "parts": payload_parts,
+    }
+
+
+def _validate_part_map_coverage(frame: list[list[Cell]], part_map_doc: Mapping[str, Any]) -> None:
+    opaque = {
+        (x, y)
+        for y, row in enumerate(frame)
+        for x, cell in enumerate(row)
+        if cell is not None
+    }
+    claimed: set[tuple[int, int]] = set()
+    parts = part_map_doc.get("parts")
+    if not isinstance(parts, Mapping):
+        raise MotionAuthorError("part map missing parts", reason_code="authoring_boundary_violation")
+    for part in parts.values():
+        if not isinstance(part, Mapping):
+            continue
+        raw_cells = part.get("cells")
+        if not isinstance(raw_cells, list):
+            continue
+        for key in raw_cells:
+            if not isinstance(key, str) or "," not in key:
+                continue
+            x_text, y_text = key.split(",", 1)
+            cell = (int(x_text), int(y_text))
+            if cell in claimed:
+                raise MotionAuthorError(
+                    f"duplicate cell assignment at {cell[0]},{cell[1]}",
+                    reason_code="authoring_boundary_violation",
+                )
+            claimed.add(cell)
+    if claimed != opaque:
+        raise MotionAuthorError(
+            "posed part map does not cover every opaque cell exactly once",
+            reason_code="authoring_boundary_violation",
+        )
+
+
+def _resolve_part_id(
+    operation: Mapping[str, Any],
+    *,
+    parts: Mapping[str, _MutablePart],
+    part_map_bound: bool,
+) -> str:
+    if not part_map_bound:
+        raise MotionAuthorError(
+            "part-addressed operation requires a bound part map",
+            reason_code="part_map_unbound",
+        )
+    part_id = operation.get("part_id")
+    if not isinstance(part_id, str) or not part_id:
+        raise MotionAuthorError("part_id required", reason_code="authoring_boundary_violation")
+    if part_id not in parts:
+        raise MotionAuthorError(
+            f"unknown part {part_id!r}",
+            reason_code="unknown_part_id",
+        )
+    return part_id
+
+
+def _footprint_origin(part_cells: set[tuple[int, int]], footprint: Footprint) -> tuple[int, int]:
+    fp_min_x = min(x for x, _, _ in footprint.cells)
+    fp_min_y = min(y for _, y, _ in footprint.cells)
+    part_min_x = min(x for x, _ in part_cells)
+    part_min_y = min(y for _, y in part_cells)
+    return part_min_x - fp_min_x, part_min_y - fp_min_y
+
+
+def _transform_local_point(
+    x: int,
+    y: int,
+    *,
+    width: int,
+    height: int,
+    orientation_id: str,
+) -> tuple[int, int]:
+    base_id, mirrored = orientation_id.split("+", 1) if "+" in orientation_id else (orientation_id, None)
+    quarter_turns = {"rot0": 0, "rot90": 1, "rot180": 2, "rot270": 3}[base_id]
+    rx, ry = x, y
+    in_width, in_height = width, height
+    for _ in range(quarter_turns):
+        rx, ry = in_height - 1 - ry, rx
+        in_width, in_height = in_height, in_width
+    if mirrored == "mirror":
+        rx = in_width - 1 - rx
+    return rx, ry
+
+
+def _world_cells_for_footprint(
+    footprint: Footprint,
+    origin: tuple[int, int],
+) -> dict[tuple[int, int], tuple[int, int, int]]:
+    ox, oy = origin
+    return {(ox + x, oy + y): rgba for x, y, rgba in footprint.cells}
+
+
+def _translate_part_cells(
+    frame: list[list[Cell]],
+    *,
+    part_ids: Sequence[str],
+    parts: dict[str, _MutablePart],
+    dx: int,
+    dy: int,
+    frame_w: int,
+    frame_h: int,
+    locked: set[tuple[int, int]],
+) -> None:
+    moving_cells: set[tuple[int, int]] = set()
+    for part_id in part_ids:
+        moving_cells.update(parts[part_id].cells)
+
+    extracted: dict[tuple[int, int], Cell] = {}
+    for x, y in sorted(moving_cells):
+        if (x, y) in locked:
+            raise MotionAuthorError(
+                f"cannot move locked cell at ({x}, {y})",
+                reason_code="identity_lock_write",
+            )
+        extracted[(x, y)] = frame[y][x]
+        frame[y][x] = None
+
+    for (x, y), cell in extracted.items():
+        nx, ny = x + dx, y + dy
+        _assert_in_bounds(nx, ny, frame_w=frame_w, frame_h=frame_h)
+        if (nx, ny) in locked:
+            raise MotionAuthorError(
+                f"cannot move into locked cell at ({nx}, {ny})",
+                reason_code="identity_lock_write",
+            )
+        if frame[ny][nx] is not None and (nx, ny) not in moving_cells:
+            raise MotionAuthorError(
+                f"part translation collides at ({nx}, {ny})",
+                reason_code="authoring_boundary_violation",
+            )
+        frame[ny][nx] = cell
+
+    for part_id in part_ids:
+        part = parts[part_id]
+        part.cells = {(x + dx, y + dy) for x, y in part.cells}
+        if part.pivot is not None:
+            part.pivot = (part.pivot[0] + dx, part.pivot[1] + dy)
+        if part.grip is not None:
+            part.grip = (part.grip[0] + dx, part.grip[1] + dy)
+
+
+def _orient_part_cells(
+    frame: list[list[Cell]],
+    *,
+    part: _MutablePart,
+    orientation_id: str,
+    frame_w: int,
+    frame_h: int,
+    locked: set[tuple[int, int]],
+) -> None:
+    if not part.rigid:
+        raise MotionAuthorError(
+            f"part {part.part_id!r} cannot be rigidly reoriented",
+            reason_code="non_rigid_part_orientation",
+        )
+    if part.orientations is None or orientation_id not in part.orientations:
+        raise MotionAuthorError(
+            f"unknown orientation {orientation_id!r} for part {part.part_id!r}",
+            reason_code="authoring_boundary_violation",
+        )
+    if part.pivot is None:
+        raise MotionAuthorError(
+            f"part {part.part_id!r} missing pivot",
+            reason_code="authoring_boundary_violation",
+        )
+    rot0 = part.orientations["rot0"]
+    target = part.orientations[orientation_id]
+    origin_rot0 = _footprint_origin(part.cells, rot0)
+    pivot_local_rot0 = (part.pivot[0] - origin_rot0[0], part.pivot[1] - origin_rot0[1])
+    pivot_local_target = _transform_local_point(
+        pivot_local_rot0[0],
+        pivot_local_rot0[1],
+        width=rot0.width,
+        height=rot0.height,
+        orientation_id=orientation_id,
+    )
+    origin_target = (
+        part.pivot[0] - pivot_local_target[0],
+        part.pivot[1] - pivot_local_target[1],
+    )
+    target_world = _world_cells_for_footprint(target, origin_target)
+
+    for x, y in sorted(part.cells):
+        if (x, y) in locked:
+            raise MotionAuthorError(
+                f"cannot reorient locked cell at ({x}, {y})",
+                reason_code="identity_lock_write",
+            )
+        frame[y][x] = None
+
+    for (x, y), rgba in target_world.items():
+        _assert_in_bounds(x, y, frame_w=frame_w, frame_h=frame_h)
+        if (x, y) in locked:
+            raise MotionAuthorError(
+                f"cannot reorient into locked cell at ({x}, {y})",
+                reason_code="identity_lock_write",
+            )
+        if frame[y][x] is not None and (x, y) not in part.cells:
+            raise MotionAuthorError(
+                f"part reorientation collides at ({x}, {y})",
+                reason_code="authoring_boundary_violation",
+            )
+        frame[y][x] = rgba
+
+    part.cells = set(target_world)
+
+
 def _apply_operation(
     frame: list[list[Cell]],
     operation: Mapping[str, Any],
@@ -358,8 +707,53 @@ def _apply_operation(
     lock_offsets: dict[str, tuple[int, int]],
     locked: set[tuple[int, int]],
     palette: MasterPalette,
+    parts: dict[str, _MutablePart] | None,
+    explicit_parts: set[str],
+    part_map_bound: bool,
 ) -> None:
     op = operation.get("op")
+    if op == "translate_part":
+        part_id = _resolve_part_id(operation, parts=parts or {}, part_map_bound=part_map_bound)
+        dx = operation.get("dx")
+        dy = operation.get("dy")
+        if not isinstance(dx, int) or not isinstance(dy, int):
+            raise MotionAuthorError(
+                "translate_part requires integer dx and dy",
+                reason_code="authoring_boundary_violation",
+            )
+        assert parts is not None
+        move_ids = [part_id, *_descendants_in_parent_order(part_id, parts, explicit=explicit_parts)]
+        _translate_part_cells(
+            frame,
+            part_ids=move_ids,
+            parts=parts,
+            dx=dx,
+            dy=dy,
+            frame_w=frame_w,
+            frame_h=frame_h,
+            locked=locked,
+        )
+        return
+
+    if op == "orient_part":
+        part_id = _resolve_part_id(operation, parts=parts or {}, part_map_bound=part_map_bound)
+        orientation_id = operation.get("orientation")
+        if not isinstance(orientation_id, str) or orientation_id not in ORIENTATION_IDS:
+            raise MotionAuthorError(
+                "orient_part requires a valid orientation id",
+                reason_code="authoring_boundary_violation",
+            )
+        assert parts is not None
+        _orient_part_cells(
+            frame,
+            part=parts[part_id],
+            orientation_id=orientation_id,
+            frame_w=frame_w,
+            frame_h=frame_h,
+            locked=locked,
+        )
+        return
+
     if op == "clear":
         x = operation.get("x")
         y = operation.get("y")
@@ -469,7 +863,37 @@ def _apply_operation(
         lock_offsets[lock_id] = target
         return
 
+    if op in _PART_OPS:
+        raise MotionAuthorError(
+            "part-addressed operation requires a bound part map",
+            reason_code="part_map_unbound",
+        )
+
     raise MotionAuthorError(f"unknown operation {op!r}", reason_code="authoring_boundary_violation")
+
+
+def _validate_part_map_binding(
+    pose_plan_schema: str,
+    pose_plan: Mapping[str, Any],
+    part_map: PartMap | None,
+) -> None:
+    if pose_plan_schema == MOTION_POSE_PLAN_SCHEMA_V1:
+        digest = pose_plan.get("part_map_digest")
+        if not isinstance(digest, str) or not digest:
+            raise MotionAuthorError(
+                "motion-pose-plan/1 requires part_map_digest",
+                reason_code="authoring_boundary_violation",
+            )
+        if part_map is None:
+            raise MotionAuthorError(
+                "motion-pose-plan/1 requires a bound part map",
+                reason_code="part_map_unbound",
+            )
+        if part_map.base_raster_sha256 != digest:
+            raise MotionAuthorError(
+                "bound part map digest does not match pose plan",
+                reason_code="authoring_boundary_violation",
+            )
 
 
 def author_motion(
@@ -477,18 +901,31 @@ def author_motion(
     pose_plan: Mapping[str, Any],
     identity_lock_spec: Mapping[str, Any],
     master_palette: MasterPalette,
+    *,
+    part_map: PartMap | None = None,
 ) -> AuthoredMotion:
     validate_identity_lock_spec(dict(identity_lock_spec))
     (
+        pose_plan_schema,
         motion_class,
         frame_w,
         frame_h,
-        _origin,
+        origin,
         base_specification_id,
         base_frame_mapping,
         frame_operations,
     ) = _validate_pose_plan(pose_plan, identity_lock_spec=identity_lock_spec)
+    _validate_part_map_binding(pose_plan_schema, pose_plan, part_map)
 
+    embedded_part_map: PartMap | None = None
+    if part_map is not None:
+        embedded_part_map = _embed_part_map_on_canvas(
+            part_map,
+            origin=origin,
+            frame_size=(frame_w, frame_h),
+        )
+
+    part_map_bound = embedded_part_map is not None
     locks = _parse_locks(identity_lock_spec, motion_class)
     lock_offsets = {lock_id: (0, 0) for lock_id in locks}
     for lock_id, lock in locks.items():
@@ -498,6 +935,7 @@ def author_motion(
     authored_frames: list[list[list[Cell]]] = []
     applied_lock_offsets: list[dict[str, list[int]]] = []
     frame_reports: list[dict[str, Any]] = []
+    emitted_part_maps: list[dict[str, Any]] = []
 
     for frame_index, operations in enumerate(frame_operations):
         base_index = base_frame_mapping[frame_index]
@@ -514,6 +952,10 @@ def author_motion(
             )
         frame = copy.deepcopy(base_frame)
         frame_lock_offsets = dict(lock_offsets)
+        mutable_parts = (
+            _mutable_parts_from_map(embedded_part_map) if embedded_part_map is not None else None
+        )
+        explicit_parts = _explicit_part_ids(operations)
         for operation in operations:
             locked = _locked_cells(locks, frame_lock_offsets)
             _apply_operation(
@@ -525,6 +967,9 @@ def author_motion(
                 lock_offsets=frame_lock_offsets,
                 locked=locked,
                 palette=master_palette,
+                parts=mutable_parts,
+                explicit_parts=explicit_parts,
+                part_map_bound=part_map_bound,
             )
         lock_offsets.update(frame_lock_offsets)
         authored_frames.append(frame)
@@ -547,6 +992,14 @@ def author_motion(
                 "lock_offsets": applied_lock_offsets[-1],
             }
         )
+        if mutable_parts is not None and embedded_part_map is not None:
+            part_map_doc = _part_map_document(
+                mutable_parts,
+                base_raster_sha256=embedded_part_map.base_raster_sha256,
+                frame_size=(frame_w, frame_h),
+            )
+            _validate_part_map_coverage(frame, part_map_doc)
+            emitted_part_maps.append(part_map_doc)
 
     ledger = build_cell_delta_ledger(
         list(base_frames),
@@ -558,7 +1011,7 @@ def author_motion(
     report = {
         "schema": REPORT_SCHEMA,
         "motion_class": motion_class,
-        "pose_plan_schema": MOTION_POSE_PLAN_SCHEMA,
+        "pose_plan_schema": pose_plan_schema,
         "frame_size": [frame_w, frame_h],
         "frame_count": len(authored_frames),
         "frames": frame_reports,
@@ -569,4 +1022,5 @@ def author_motion(
         frames=tuple(authored_frames),
         ledger=ledger,
         report=report,
+        part_maps=tuple(emitted_part_maps) if emitted_part_maps else None,
     )
