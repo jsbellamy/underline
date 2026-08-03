@@ -342,7 +342,9 @@ _Avoid_: drop, reward, loot, payout
 **Smelter**:
 Converts Ore into Ingots over time at a throughput, so Ore can back up when the
 Dwarf out-produces it. It is a second timed loop, deliberately — not an instant
-conversion.
+conversion. On the Dock it is **status on the Colony surface** — Ore, Ingots,
+Dig Rate, and a labeled Smelter throughput — not its own tab; fractional
+progress toward the next Ingot stays engine-internal for the slice.
 _Avoid_: forge (that shapes Ingots into goods, a step the game does not have),
 furnace, refinery, kiln
 
