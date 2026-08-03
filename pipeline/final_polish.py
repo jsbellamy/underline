@@ -64,7 +64,14 @@ GENERATION_MODES = frozenset({"text-to-image", "image-edit", "cell-author"})
 PROVIDER_GENERATION_MODES = frozenset({"text-to-image", "image-edit"})
 CELL_AUTHOR_GENERATION_MODE = "cell-author"
 CELL_AUTHOR_PROVENANCE_SCHEMA = "cell-author-provenance/0"
-MOTION_POSE_PLAN_SCHEMA = "motion-pose-plan/0"
+from pipeline.motion_author import (
+    MOTION_POSE_PLAN_SCHEMA,
+    MOTION_POSE_PLAN_SCHEMA_V1,
+)
+
+MOTION_POSE_PLAN_SCHEMAS = frozenset(
+    {MOTION_POSE_PLAN_SCHEMA, MOTION_POSE_PLAN_SCHEMA_V1}
+)
 CELL_AUTHOR_PROVENANCE_REQUIRED_FIELDS = (
     "schema",
     "generation_mode",
@@ -1343,9 +1350,10 @@ def _validate_pose_plan_document(
     base_specification_id: str,
     base_frame_mapping: Sequence[int],
 ) -> None:
-    if pose_plan.get("schema") != MOTION_POSE_PLAN_SCHEMA:
+    schema = pose_plan.get("schema")
+    if schema not in MOTION_POSE_PLAN_SCHEMAS:
         raise InitializationRejectedError(
-            f"pose plan schema must be {MOTION_POSE_PLAN_SCHEMA!r}",
+            f"pose plan schema must be one of {sorted(MOTION_POSE_PLAN_SCHEMAS)!r}",
             reason_code="invalid_pose_plan",
         )
     if str(pose_plan.get("motion_class")) != motion_class:

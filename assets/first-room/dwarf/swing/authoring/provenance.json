@@ -1,0 +1,30 @@
+{
+  "authoring_agent": "issue-305-builder",
+  "authoring_session_id": "issue-305-swing-pose-plan",
+  "base_frame_mapping": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "base_frames_sha256": [
+    "a635775c23727981c89cd7b7314841576998e3bf6fa3ab114f61edd2f2954b08",
+    "ea567bccddfb0194d5a6be4b5adb340740c32c34b0158f071880cb5e64cc2324",
+    "f6d9d105e9d437ec4ebfbb2a884d8ac1a7a0648931d74c0b081b8ce6638b4619",
+    "4292668fd1b6cf7389811b54913a733f7768042165228f504395e5af04d9ce42"
+  ],
+  "base_specification_id": "first-room/dwarf/idle",
+  "cell_delta_ledger": {
+    "relative_path": "authoring/cell-delta-ledger.json",
+    "sha256": "37076945c9a917f7e89e9e14c3cff705a8bb7b28faad36cba2e6b41497fb116f"
+  },
+  "generation_mode": "cell-author",
+  "motion_class": "swing",
+  "pose_plan": {
+    "relative_path": "authoring/pose-plan.json",
+    "sha256": "9e5c46720308c7b817c20b6a54103947d66251b532fe116799538c339f2aa2d5"
+  },
+  "repository_commit": "79666145f2d39029c543905a8f3d630ad098ce1f",
+  "schema": "cell-author-provenance/0",
+  "specification_id": "first-room/dwarf/swing"
+}

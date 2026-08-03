@@ -20,6 +20,7 @@ import adversarial
 from pipeline import strip as S
 from pipeline.final_polish import (
     ATTEMPT_LEDGER_SCHEMA,
+    BUNDLE_SCHEMA,
     BUNDLE_SCHEMA_LEGACY_1,
     InvalidBundleError,
     check_bundle as polish_check_bundle,
@@ -219,16 +220,19 @@ def test_schema_v2_swing_check_rejects_legacy_provenance_geometry(tmp_path: Path
     assert exc.value.reason_code == "invalid_provenance"
 
 
-def test_schema_v1_swing_check_accepts_legacy_provenance_geometry(tmp_path: Path) -> None:
-    bundle = tmp_path / "swing-v1"
+def test_schema_v1_swing_cell_author_check_passes_without_provider_manifest(
+    tmp_path: Path,
+) -> None:
+    """C7/C8: production swing is cell-authored; legacy provider provenance is retired."""
+    bundle = tmp_path / "swing-cell"
     shutil.copytree(SWING_BUNDLE, bundle)
-    provenance_path = bundle / "provider" / "source.source.json"
-    provenance = json.loads(provenance_path.read_text())
-    assert provenance["item_geometry"]["frame_w"] == 16
+    manifest = json.loads((bundle / "manifest.json").read_text())
+    assert manifest["schema"] == BUNDLE_SCHEMA
+    assert manifest["generation_mode"] == "cell-author"
+    assert "provider" not in manifest
+    assert manifest["cell_authoring"]["base_specification_id"] == "first-room/dwarf/idle"
     result = check_bundle(bundle)
     assert result.outcome == "PASS"
-    manifest = json.loads((bundle / "manifest.json").read_text())
-    assert manifest["schema"] == BUNDLE_SCHEMA_LEGACY_1
 
 
 def test_provider_tamper_raises_invalid_bundle(tmp_path: Path) -> None:

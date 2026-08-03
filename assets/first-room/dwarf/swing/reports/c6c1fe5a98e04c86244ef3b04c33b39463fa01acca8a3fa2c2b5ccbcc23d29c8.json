@@ -1,0 +1,773 @@
+{
+  "attestation": {
+    "base_frame_mapping": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "base_frames_sha256": [
+      "a635775c23727981c89cd7b7314841576998e3bf6fa3ab114f61edd2f2954b08",
+      "ea567bccddfb0194d5a6be4b5adb340740c32c34b0158f071880cb5e64cc2324",
+      "f6d9d105e9d437ec4ebfbb2a884d8ac1a7a0648931d74c0b081b8ce6638b4619",
+      "4292668fd1b6cf7389811b54913a733f7768042165228f504395e5af04d9ce42"
+    ],
+    "base_specification_id": "first-room/dwarf/idle",
+    "cell_delta_ledger_sha256": "37076945c9a917f7e89e9e14c3cff705a8bb7b28faad36cba2e6b41497fb116f",
+    "generation_mode": "cell-author",
+    "state": "cell-author"
+  },
+  "base_specification_id": "first-room/dwarf/idle",
+  "coherence": {
+    "alignment_sharpness": null,
+    "anchor_row": 23,
+    "baseline_row_inapplicable": false,
+    "baseline_row_reason": null,
+    "baseline_row_stable": true,
+    "baseline_rows": [
+      23,
+      23,
+      23,
+      23
+    ],
+    "budgets": {
+      "loop": null,
+      "min_alignment_sharpness": null,
+      "min_pair": null,
+      "palette_drift": 0.2294,
+      "silhouette": 0.586,
+      "static_silhouette": 0.88
+    },
+    "caveats": [],
+    "dimension_parity": true,
+    "dimensions": [
+      [
+        24,
+        24
+      ]
+    ],
+    "displacement_flags": [],
+    "displacement_inapplicable": false,
+    "displacement_pass": null,
+    "displacement_reason": null,
+    "gate_outcomes": {
+      "palette_drift_pass": {
+        "acceptance_status": "SEPARATED",
+        "budget": 0.2294,
+        "hard_fail": 0.2793,
+        "metric": 0.0,
+        "outcome": "PASS"
+      },
+      "silhouette_budget": {
+        "acceptance_status": "SEPARATED",
+        "budget": 0.586,
+        "hard_fail": 0.6067,
+        "metric": 0.0752,
+        "outcome": "PASS"
+      },
+      "static_silhouette_pass": {
+        "acceptance_status": "UNSEPARATED",
+        "budget": 0.88,
+        "hard_fail": null,
+        "metric": 0.9562,
+        "outcome": "REVIEW"
+      }
+    },
+    "grounded": true,
+    "loop_closure": {
+      "changed_cells": 10,
+      "frac": 0.0383,
+      "pair": [
+        3,
+        0
+      ],
+      "union_opaque": 261
+    },
+    "loop_closure_pass": null,
+    "min_pair_cohort_pass": null,
+    "motion_class": "swing",
+    "outcome": "REVIEW",
+    "palette_drift": [
+      {
+        "pair": [
+          0,
+          1
+        ],
+        "tv": 0.0
+      },
+      {
+        "pair": [
+          1,
+          2
+        ],
+        "tv": 0.0
+      },
+      {
+        "pair": [
+          2,
+          3
+        ],
+        "tv": 0.0
+      },
+      {
+        "pair": [
+          3,
+          0
+        ],
+        "tv": 0.0
+      }
+    ],
+    "palette_drift_pass": true,
+    "pass": false,
+    "quantize": {
+      "clusters": 9,
+      "input_unique": 24,
+      "merge_dist": 64,
+      "mode": "quantize-shared",
+      "palette": [
+        [
+          17,
+          16,
+          24
+        ],
+        [
+          74,
+          59,
+          72
+        ],
+        [
+          66,
+          128,
+          90
+        ],
+        [
+          147,
+          86,
+          49
+        ],
+        [
+          240,
+          163,
+          58
+        ],
+        [
+          78,
+          141,
+          160
+        ],
+        [
+          128,
+          106,
+          115
+        ],
+        [
+          255,
+          214,
+          107
+        ],
+        [
+          143,
+          196,
+          197
+        ]
+      ],
+      "palette_size": 9
+    },
+    "silhouette_adjacent": [
+      {
+        "changed_cells": 20,
+        "frac": 0.0752,
+        "pair": [
+          0,
+          1
+        ],
+        "union_opaque": 266
+      },
+      {
+        "changed_cells": 20,
+        "frac": 0.0752,
+        "pair": [
+          1,
+          2
+        ],
+        "union_opaque": 266
+      },
+      {
+        "changed_cells": 12,
+        "frac": 0.0458,
+        "pair": [
+          2,
+          3
+        ],
+        "union_opaque": 262
+      }
+    ],
+    "silhouette_adjacent_max": 0.0752,
+    "silhouette_budget": true,
+    "silhouette_pairwise": {
+      "max_pair": 0.0752,
+      "min_pair": 0.0383,
+      "orphan_max": 0.0532,
+      "pairs": [
+        {
+          "frac": 0.0752,
+          "pair": [
+            0,
+            1
+          ]
+        },
+        {
+          "frac": 0.0458,
+          "pair": [
+            0,
+            2
+          ]
+        },
+        {
+          "frac": 0.0383,
+          "pair": [
+            0,
+            3
+          ]
+        },
+        {
+          "frac": 0.0752,
+          "pair": [
+            1,
+            2
+          ]
+        },
+        {
+          "frac": 0.0532,
+          "pair": [
+            1,
+            3
+          ]
+        },
+        {
+          "frac": 0.0458,
+          "pair": [
+            2,
+            3
+          ]
+        }
+      ]
+    },
+    "static_silhouette_adjacent": [
+      {
+        "frac": 0.9281,
+        "pair": [
+          0,
+          1
+        ]
+      },
+      {
+        "frac": 0.9281,
+        "pair": [
+          1,
+          2
+        ]
+      },
+      {
+        "frac": 0.9562,
+        "pair": [
+          2,
+          3
+        ]
+      }
+    ],
+    "static_silhouette_adjacent_max": 0.9562,
+    "worst_palette_drift": 0.0
+  },
+  "draft_frames": [
+    {
+      "index": 0,
+      "sha256": "11e74c1780c58594782e74d8c2632f6b979559f2e318cb7b77548a5b046d0ae9"
+    },
+    {
+      "index": 1,
+      "sha256": "783f6e3fbd5edb5c37ff971bbf7b80b93b3f5d9aa51c9d1186042b087ff01cb7"
+    },
+    {
+      "index": 2,
+      "sha256": "d9ded5b48ad485626cd9569a5284f2dae01414855a4e34a595eadf756e15e62d"
+    },
+    {
+      "index": 3,
+      "sha256": "a8d23ef0f703d51846c50024190b75b1aa672984501d7fc0594f21a31cc00bae"
+    }
+  ],
+  "fingerprint": "c6c1fe5a98e04c86244ef3b04c33b39463fa01acca8a3fa2c2b5ccbcc23d29c8",
+  "generation_mode": "cell-author",
+  "identity_lock": {
+    "first_failure": null,
+    "first_mismatch": null,
+    "identity_sha256": "707442d156b96b862f801a5e81febdbb5ca47c82e0d3587dffc255c7e02b4357",
+    "lock_spec_sha256": "f9005e4b3fb89c5c91d76261518b70bd0dfee0ea4ddc9ddc73be550cbaa0e03e",
+    "motion_class": "swing",
+    "outcome": "PASS",
+    "per_frame": [
+      {
+        "anchor_results": {
+          "belt_core": "PASS",
+          "boots": "PASS",
+          "helmet_face": "PASS"
+        },
+        "check_results": {
+          "belt_core": {
+            "comparison": "registered-structure",
+            "max_occupancy_difference": 0.25,
+            "max_palette_role_distance": 0.3,
+            "occupancy_difference": 0.0,
+            "outcome": "PASS",
+            "palette_role_distance": 0.0
+          },
+          "boots": {
+            "comparison": "exact-occupancy",
+            "occupancy_difference": 0.0,
+            "outcome": "PASS",
+            "palette_role_distance": null
+          },
+          "helmet_face": {
+            "comparison": "registered-structure",
+            "max_occupancy_difference": 0.25,
+            "max_palette_role_distance": 0.25,
+            "occupancy_difference": 0.03896103896103896,
+            "outcome": "PASS",
+            "palette_role_distance": 0.011929824561403467
+          }
+        },
+        "first_failure": null,
+        "first_mismatch": null,
+        "landmark_results": {
+          "buckle": {
+            "actual_position": [
+              12,
+              16
+            ],
+            "actual_role": "amber-emission",
+            "anchor": "belt_core",
+            "expected_position": [
+              12,
+              16
+            ],
+            "expected_role": "amber-emission",
+            "max_distance": 2,
+            "outcome": "PASS"
+          },
+          "eye": {
+            "actual_position": [
+              11,
+              7
+            ],
+            "actual_role": "dark-outline",
+            "anchor": "helmet_face",
+            "expected_position": [
+              11,
+              7
+            ],
+            "expected_role": "dark-outline",
+            "max_distance": 1,
+            "outcome": "PASS"
+          },
+          "lamp": {
+            "actual_position": [
+              13,
+              4
+            ],
+            "actual_role": "amber-emission",
+            "anchor": "helmet_face",
+            "expected_position": [
+              13,
+              4
+            ],
+            "expected_role": "amber-emission",
+            "max_distance": 2,
+            "outcome": "PASS"
+          }
+        },
+        "selected_offsets": {
+          "belt_core": [
+            0,
+            0
+          ],
+          "boots": [
+            0,
+            0
+          ],
+          "helmet_face": [
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "anchor_results": {
+          "belt_core": "PASS",
+          "boots": "PASS",
+          "helmet_face": "PASS"
+        },
+        "check_results": {
+          "belt_core": {
+            "comparison": "registered-structure",
+            "max_occupancy_difference": 0.25,
+            "max_palette_role_distance": 0.3,
+            "occupancy_difference": 0.0,
+            "outcome": "PASS",
+            "palette_role_distance": 0.0
+          },
+          "boots": {
+            "comparison": "exact-occupancy",
+            "occupancy_difference": 0.0,
+            "outcome": "PASS",
+            "palette_role_distance": null
+          },
+          "helmet_face": {
+            "comparison": "registered-structure",
+            "max_occupancy_difference": 0.25,
+            "max_palette_role_distance": 0.25,
+            "occupancy_difference": 0.013333333333333334,
+            "outcome": "PASS",
+            "palette_role_distance": 0.01225225225225227
+          }
+        },
+        "first_failure": null,
+        "first_mismatch": null,
+        "landmark_results": {
+          "buckle": {
+            "actual_position": [
+              12,
+              16
+            ],
+            "actual_role": "amber-emission",
+            "anchor": "belt_core",
+            "expected_position": [
+              12,
+              16
+            ],
+            "expected_role": "amber-emission",
+            "max_distance": 2,
+            "outcome": "PASS"
+          },
+          "eye": {
+            "actual_position": [
+              11,
+              7
+            ],
+            "actual_role": "dark-outline",
+            "anchor": "helmet_face",
+            "expected_position": [
+              11,
+              7
+            ],
+            "expected_role": "dark-outline",
+            "max_distance": 1,
+            "outcome": "PASS"
+          },
+          "lamp": {
+            "actual_position": [
+              13,
+              4
+            ],
+            "actual_role": "amber-emission",
+            "anchor": "helmet_face",
+            "expected_position": [
+              13,
+              4
+            ],
+            "expected_role": "amber-emission",
+            "max_distance": 2,
+            "outcome": "PASS"
+          }
+        },
+        "selected_offsets": {
+          "belt_core": [
+            0,
+            0
+          ],
+          "boots": [
+            0,
+            0
+          ],
+          "helmet_face": [
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "anchor_results": {
+          "belt_core": "PASS",
+          "boots": "PASS",
+          "helmet_face": "PASS"
+        },
+        "check_results": {
+          "belt_core": {
+            "comparison": "registered-structure",
+            "max_occupancy_difference": 0.25,
+            "max_palette_role_distance": 0.3,
+            "occupancy_difference": 0.0,
+            "outcome": "PASS",
+            "palette_role_distance": 0.0
+          },
+          "boots": {
+            "comparison": "exact-occupancy",
+            "occupancy_difference": 0.0,
+            "outcome": "PASS",
+            "palette_role_distance": null
+          },
+          "helmet_face": {
+            "comparison": "registered-structure",
+            "max_occupancy_difference": 0.25,
+            "max_palette_role_distance": 0.25,
+            "occupancy_difference": 0.02631578947368421,
+            "outcome": "PASS",
+            "palette_role_distance": 0.0
+          }
+        },
+        "first_failure": null,
+        "first_mismatch": null,
+        "landmark_results": {
+          "buckle": {
+            "actual_position": [
+              12,
+              16
+            ],
+            "actual_role": "amber-emission",
+            "anchor": "belt_core",
+            "expected_position": [
+              12,
+              16
+            ],
+            "expected_role": "amber-emission",
+            "max_distance": 2,
+            "outcome": "PASS"
+          },
+          "eye": {
+            "actual_position": [
+              11,
+              7
+            ],
+            "actual_role": "dark-outline",
+            "anchor": "helmet_face",
+            "expected_position": [
+              11,
+              7
+            ],
+            "expected_role": "dark-outline",
+            "max_distance": 1,
+            "outcome": "PASS"
+          },
+          "lamp": {
+            "actual_position": [
+              13,
+              4
+            ],
+            "actual_role": "amber-emission",
+            "anchor": "helmet_face",
+            "expected_position": [
+              13,
+              4
+            ],
+            "expected_role": "amber-emission",
+            "max_distance": 2,
+            "outcome": "PASS"
+          }
+        },
+        "selected_offsets": {
+          "belt_core": [
+            0,
+            0
+          ],
+          "boots": [
+            0,
+            0
+          ],
+          "helmet_face": [
+            0,
+            0
+          ]
+        }
+      },
+      {
+        "anchor_results": {
+          "belt_core": "PASS",
+          "boots": "PASS",
+          "helmet_face": "PASS"
+        },
+        "check_results": {
+          "belt_core": {
+            "comparison": "registered-structure",
+            "max_occupancy_difference": 0.25,
+            "max_palette_role_distance": 0.3,
+            "occupancy_difference": 0.0,
+            "outcome": "PASS",
+            "palette_role_distance": 0.0
+          },
+          "boots": {
+            "comparison": "exact-occupancy",
+            "occupancy_difference": 0.0,
+            "outcome": "PASS",
+            "palette_role_distance": null
+          },
+          "helmet_face": {
+            "comparison": "registered-structure",
+            "max_occupancy_difference": 0.25,
+            "max_palette_role_distance": 0.25,
+            "occupancy_difference": 0.02631578947368421,
+            "outcome": "PASS",
+            "palette_role_distance": 0.0
+          }
+        },
+        "first_failure": null,
+        "first_mismatch": null,
+        "landmark_results": {
+          "buckle": {
+            "actual_position": [
+              12,
+              16
+            ],
+            "actual_role": "amber-emission",
+            "anchor": "belt_core",
+            "expected_position": [
+              12,
+              16
+            ],
+            "expected_role": "amber-emission",
+            "max_distance": 2,
+            "outcome": "PASS"
+          },
+          "eye": {
+            "actual_position": [
+              11,
+              7
+            ],
+            "actual_role": "dark-outline",
+            "anchor": "helmet_face",
+            "expected_position": [
+              11,
+              7
+            ],
+            "expected_role": "dark-outline",
+            "max_distance": 1,
+            "outcome": "PASS"
+          },
+          "lamp": {
+            "actual_position": [
+              13,
+              4
+            ],
+            "actual_role": "amber-emission",
+            "anchor": "helmet_face",
+            "expected_position": [
+              13,
+              4
+            ],
+            "expected_role": "amber-emission",
+            "max_distance": 2,
+            "outcome": "PASS"
+          }
+        },
+        "selected_offsets": {
+          "belt_core": [
+            0,
+            0
+          ],
+          "boots": [
+            0,
+            0
+          ],
+          "helmet_face": [
+            0,
+            0
+          ]
+        }
+      }
+    ]
+  },
+  "layout": {
+    "frame_count": 4,
+    "frame_h": 24,
+    "frame_order": [
+      0,
+      1,
+      2,
+      3
+    ],
+    "frame_w": 24,
+    "gutter": 2
+  },
+  "manifest_sha256": "53fc4cb71b75c9c48345de01b890548b578eef161fdd903f2635d8327943bf43",
+  "motion_class": "swing",
+  "outcome": "PASS",
+  "polish_profile": {
+    "id": "dwarf-miner",
+    "sha256": "4a3c7f7fd7020c05526011513c0696c99e5b676462380fb0fd00c1749cd5bf42"
+  },
+  "polished_frames": [
+    {
+      "index": 0,
+      "sha256": "11e74c1780c58594782e74d8c2632f6b979559f2e318cb7b77548a5b046d0ae9"
+    },
+    {
+      "index": 1,
+      "sha256": "783f6e3fbd5edb5c37ff971bbf7b80b93b3f5d9aa51c9d1186042b087ff01cb7"
+    },
+    {
+      "index": 2,
+      "sha256": "d9ded5b48ad485626cd9569a5284f2dae01414855a4e34a595eadf756e15e62d"
+    },
+    {
+      "index": 3,
+      "sha256": "a8d23ef0f703d51846c50024190b75b1aa672984501d7fc0594f21a31cc00bae"
+    }
+  ],
+  "provider_acceptance": {
+    "outcome": "PASS"
+  },
+  "provider_post_edit": null,
+  "release_frames": [
+    {
+      "index": 0,
+      "sha256": "11e74c1780c58594782e74d8c2632f6b979559f2e318cb7b77548a5b046d0ae9"
+    },
+    {
+      "index": 1,
+      "sha256": "783f6e3fbd5edb5c37ff971bbf7b80b93b3f5d9aa51c9d1186042b087ff01cb7"
+    },
+    {
+      "index": 2,
+      "sha256": "d9ded5b48ad485626cd9569a5284f2dae01414855a4e34a595eadf756e15e62d"
+    },
+    {
+      "index": 3,
+      "sha256": "a8d23ef0f703d51846c50024190b75b1aa672984501d7fc0594f21a31cc00bae"
+    }
+  ],
+  "schema": "final-polish-report/0",
+  "silhouette_artifacts": {
+    "gif": {
+      "relative_path": "reports/silhouette.gif",
+      "sha256": "686de18d89a2e93e5585297a6d693443bb8323e5c82862d1b9b9f2f45c5a0f56"
+    },
+    "strip": {
+      "relative_path": "reports/silhouette-strip.png",
+      "sha256": "b3222b580d75065758651f4b6e5893bf4e40de417b06f9f24d9bb020319475df"
+    }
+  },
+  "structural": {
+    "outcome": "PASS",
+    "pass": true,
+    "violations": []
+  },
+  "visible_cell_delta": {
+    "edits": [],
+    "per_frame_counts": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "total_edits": 0
+  }
+}

@@ -37,8 +37,8 @@ C1_TABLE = {
         "alpha": (0.1472, 0.1582, 0.1401),
     },
     "swing": {
-        "rgba": (0.3229, 0.2431, 0.2118),
-        "alpha": (0.5422, 0.3777, 0.3114),
+        "rgba": (0.0417, 0.0469, 0.0295),
+        "alpha": (0.0719, 0.0719, 0.0438),
     },
 }
 
@@ -193,10 +193,10 @@ def test_reference_swing_polished_per_pair_table() -> None:
         S.static_silhouette_pair_fraction(frames[i], frames[i + 1])
         for i in range(len(frames) - 1)
     ]
-    assert pairs == pytest.approx((0.4578, 0.6223, 0.6886), abs=TOLERANCE)
-    assert round(max(pairs), 2) == 0.69
+    assert pairs == pytest.approx((0.9281, 0.9281, 0.9562), abs=TOLERANCE)
+    assert round(max(pairs), 2) == 0.96
     policy = GatePolicy(status="UNSEPARATED", budget=0.88, hard_fail=None)
-    assert evaluate_continuous_gate_outcome(policy, max(pairs)) == "PASS"
+    assert evaluate_continuous_gate_outcome(policy, max(pairs)) == "REVIEW"
 
 
 def test_cell_authored_swing_prototype_matches_production_after_identity_lock() -> None:
