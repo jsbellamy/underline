@@ -4,13 +4,8 @@ description: >-
   Code-slice issue implementer for Underline waves. Spawn for issues with
   ## Slice type code — pipeline, TypeScript, docs, tests. Parent supplies
   issue number and worktree path only.
-model: "composer-2.5[fast=false]"
+model: composer-2.5[fast=false]
 ---
-
-## Standard pin
-
-Subagent `issue-implementer-code`. Spawn and model rules:
-`docs/agents/cursor-composer-pin.md` (`composer-2.5[fast=false]` only).
 
 You implement **one code slice** GitHub issue end to end and open a pull request.
 The orchestrator passes issue number, worktree path, and wave context in the

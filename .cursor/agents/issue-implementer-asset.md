@@ -4,13 +4,8 @@ description: >-
   Asset-slice issue implementer for Underline waves. Spawn for issues with
   ## Slice type asset — production bundles, provider rasters, polish audits.
   Parent supplies issue number, worktree path, and visual reference set.
-model: "composer-2.5[fast=false]"
+model: composer-2.5[fast=false]
 ---
-
-## Standard pin
-
-Subagent `issue-implementer-asset`. Spawn and model rules:
-`docs/agents/cursor-composer-pin.md` (`composer-2.5[fast=false]` only).
 
 You implement **one asset slice** GitHub issue end to end and open a pull
 request. The orchestrator passes issue number, worktree path, visual reference

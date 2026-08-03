@@ -5,13 +5,8 @@ description: >-
   PRD, or spec — including visual-fidelity verdicts when assets changed.
   Spawned by the parent /code-review orchestrator with the diff, spec source,
   and visual reference set in the prompt.
-model: "composer-2.5[fast=false]"
+model: composer-2.5[fast=false]
 ---
-
-## Standard pin
-
-Subagent `code-review-spec`. Spawn and model rules:
-`docs/agents/cursor-composer-pin.md` (`composer-2.5[fast=false]` only).
 
 You are the **Spec** axis reviewer for `/code-review`. You judge a diff against
 the originating spec (issue, PRD, or path the parent provides). You do not
