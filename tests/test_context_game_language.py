@@ -5,6 +5,8 @@ from __future__ import annotations
 import re
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parents[1]
 CONTEXT = ROOT / "CONTEXT.md"
 
@@ -29,11 +31,12 @@ def _entry_body(section: str, term: str) -> str:
     return match.group(1)
 
 
-def test_game_language_upgrade_names_two_colony_purchases() -> None:
+def test_game_language_upgrade_names_three_colony_purchases() -> None:
     section = _game_language_section()
     body = _entry_body(section, "Upgrade")
     assert "Dig Rate Upgrade" in body
     assert "Smelter Upgrade" in body
+    assert "Carry Capacity Upgrade" in body
     assert "Singular by design" not in body
     assert "single-type" not in body.lower()
 
@@ -46,13 +49,45 @@ def test_game_language_dig_rate_upgrade_raises_dig_rate() -> None:
     assert "visibly faster Dwarf on the Pane" in body
 
 
-def test_game_language_hardness_derived_from_advance_bands() -> None:
+def test_game_language_hardness_is_face_damage_capacity() -> None:
     section = _game_language_section()
     body = _entry_body(section, "Hardness")
+    assert "damage capacity" in body
+    assert "exponential" in body.lower()
     assert "Advance" in body
-    assert "fixed bands" in body
-    assert "Constant for the slice" not in body
+    assert "fixed bands" not in body
+    assert "number of Swings" not in body
     assert "shaft" not in body.lower()
+    assert "_Avoid_: health, HP, durability, toughness" in body
+
+
+def test_game_language_yield_scales_with_hardness() -> None:
+    section = _game_language_section()
+    body = _entry_body(section, "Yield")
+    assert "Hardness" in body
+    assert "scales" in body.lower()
+    assert "Constant for the slice" not in body
+    assert "_Avoid_: drop, reward, loot, payout" in body
+
+
+@pytest.mark.parametrize(
+    "term,avoid_fragment",
+    [
+        ("Pick Damage", "attack, power, DPS"),
+        ("Load", "stack, unit, batch"),
+        ("Bag", "inventory, pack, backpack"),
+        ("Carry Capacity", "bag size, storage, limit"),
+        ("Haul", "trip, delivery run, fetch"),
+        ("Haul Speed", "walk speed, move speed"),
+        ("Cart", "minecart (the game word is Cart), depot, dropoff"),
+    ],
+)
+def test_game_language_haul_loop_term_defined(term: str, avoid_fragment: str) -> None:
+    section = _game_language_section()
+    body = _entry_body(section, term)
+    assert body.strip()
+    assert "_Avoid_:" in body
+    assert avoid_fragment in body
 
 
 def test_game_language_smelter_throughput_raised_by_upgrade() -> None:

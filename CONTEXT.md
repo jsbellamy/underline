@@ -310,9 +310,14 @@ class is the animation of this act — the two terms describe the same thing fro
 the art side and the simulation side, and are meant to agree.
 _Avoid_: hit, strike, attack (nothing here is combat), tick
 
+**Pick Damage**:
+The damage one Swing deals to the Face.
+_Avoid_: attack, power, DPS
+
 **Hardness**:
-The number of Swings required to break one Mineable Block. Derived from Advance
-via fixed bands; it is the rock's property, never the Dwarf's.
+The Face's total damage capacity — how much Pick Damage the rock absorbs before
+it breaks. Grows exponentially with Advance; it is the rock's property, never
+the Dwarf's.
 _Avoid_: health, HP, durability, toughness
 
 **Dig Rate**:
@@ -336,8 +341,36 @@ why #112 calls the block's art its "ore states".
 _Avoid_: gold, currency, coins, resources, minerals
 
 **Yield**:
-The Ore produced by breaking one Mineable Block. Constant for the slice.
+The total Ore a Face gives before it breaks. Scales with Hardness.
 _Avoid_: drop, reward, loot, payout
+
+**Load**:
+One Ore drop as the Bag counts it — Carry Capacity is denominated in Loads, not
+Ore, so a Load is worth more on a tougher Face.
+_Avoid_: stack, unit, batch
+
+**Bag**:
+What the Dwarf carries Ore in between the Face and the Cart; a full Bag stops
+mining until it is delivered.
+_Avoid_: inventory, pack, backpack
+
+**Carry Capacity**:
+The Bag's size in Loads. Carry Capacity Upgrade raises it.
+_Avoid_: bag size, storage, limit
+
+**Haul**:
+The round trip from the Face to the Cart and back that delivers a full Bag. Only
+delivered Ore reaches the Colony.
+_Avoid_: trip, delivery run, fetch
+
+**Haul Speed**:
+How fast the Dwarf travels a Haul leg; one number shared by the simulation's
+downtime and the Pane's travel animation.
+_Avoid_: walk speed, move speed
+
+**Cart**:
+The fixed delivery point at the Pane's west edge where a Haul ends.
+_Avoid_: minecart (the game word is Cart), depot, dropoff
 
 **Smelter**:
 Converts Ore into Ingots over time at a throughput, so Ore can back up when the
@@ -356,8 +389,10 @@ later without renaming.
 _Avoid_: bar (collides with UI vocabulary), bullion, coin, gold, currency
 
 **Upgrade**:
-A purchased Colony improvement bought with Ingots in the Dock. Two Upgrades
-exist for current play: **Dig Rate Upgrade** (raises Dig Rate) and **Smelter Upgrade** (raises Smelter throughput).
+A purchased Colony improvement bought with Ingots in the Dock. Three Upgrades
+exist for current play: **Dig Rate Upgrade** (raises Dig Rate), **Smelter Upgrade**
+(raises Smelter throughput), and **Carry Capacity Upgrade** (raises Carry
+Capacity).
 _Avoid_: perk, buff, unlock, research, upgrade tree
 
 **Pane**:
