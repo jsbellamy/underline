@@ -1,4 +1,10 @@
+use tauri::{AppHandle, Manager};
 use tauri_plugin_window_state::StateFlags;
+
+#[tauri::command]
+fn quit_app(app: AppHandle) {
+    app.exit(0);
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -12,6 +18,7 @@ pub fn run() {
                 .with_denylist(&["dock"])
                 .build(),
         )
+        .invoke_handler(tauri::generate_handler![quit_app])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
