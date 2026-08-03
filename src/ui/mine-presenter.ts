@@ -5,8 +5,9 @@ import {
   type DwarfAnimController,
   type DwarfAnimId,
   type DwarfFacing,
+  type HaulAnimPhase,
 } from "../core/dwarf-anim-state";
-import { digRateFor } from "../core/mining-engine";
+import { digRateFor, HAUL_ROUND_TRIP_MS } from "../core/mining-engine";
 import type { MiningSession } from "../core/mining-session";
 import type { SaveStore } from "../core/mining-save";
 import { loadSettings } from "../core/settings-save";
@@ -14,6 +15,8 @@ import {
   createMiningAudio,
   type MiningAudio,
 } from "./mining-audio";
+
+export type TunnelHaulPhase = "none" | HaulAnimPhase;
 
 export interface TunnelSnapshot {
   animation: DwarfAnimId;
@@ -25,6 +28,9 @@ export interface TunnelSnapshot {
   /** Fraction of the in-progress Swing (`0…1`) while swinging. */
   swingFraction: number;
   digRate: number;
+  haulPhase: TunnelHaulPhase;
+  /** `0` at Haul start, rising to `1` at round-trip end; `0` when not hauling. */
+  haulProgress: number;
 }
 
 export interface MinePresenter {
@@ -40,6 +46,23 @@ export interface MinePresenterOptions {
   audio?: MiningAudio;
   store?: SaveStore;
   createAudioContext?: () => AudioContext;
+}
+
+function haulAnimPhase(haulRemainingMs: number): HaulAnimPhase | null {
+  if (haulRemainingMs === 0) {
+    return null;
+  }
+  if (haulRemainingMs > HAUL_ROUND_TRIP_MS / 2) {
+    return "out";
+  }
+  return "back";
+}
+
+function haulProgress(haulRemainingMs: number): number {
+  if (haulRemainingMs === 0) {
+    return 0;
+  }
+  return 1 - haulRemainingMs / HAUL_ROUND_TRIP_MS;
 }
 
 export function createMinePresenter(
@@ -68,10 +91,16 @@ export function createMinePresenter(
     return 1000 / anim.digRate;
   }
 
+  function syncHaulAnim(): void {
+    anim.setHauling(haulAnimPhase(session.snapshot.haulRemainingMs));
+  }
+
   function snapshot(): TunnelSnapshot {
     const snap = session.snapshot;
     const whole = Math.floor(snap.faceSwingProgress);
     const frac = snap.faceSwingProgress - whole;
+    const remaining = snap.haulRemainingMs;
+    const phase = haulAnimPhase(remaining);
     return {
       animation: anim.animation,
       facing: anim.facing,
@@ -80,6 +109,8 @@ export function createMinePresenter(
       faceSwingProgress: whole,
       swingFraction: anim.animation === "swing" ? frac : 0,
       digRate: anim.digRate,
+      haulPhase: phase ?? "none",
+      haulProgress: haulProgress(remaining),
     };
   }
 
@@ -97,21 +128,26 @@ export function createMinePresenter(
     },
     advanceMs(dtMs: number) {
       const before = session.snapshot.advance;
+      const haulingBefore = session.snapshot.haulRemainingMs > 0;
       session.advanceLive(dtMs);
       const gained = session.snapshot.advance - before;
       if (audio && gained > 0) {
         audio.faceBroken(gained);
       }
-      for (let i = 0; i < gained; i += 1) {
-        anim.faceBroken();
-      }
 
-      const cycleMs = swingCycleMs();
-      swingCycleRemainderMs += dtMs;
-      const completed = Math.floor(swingCycleRemainderMs / cycleMs);
-      swingCycleRemainderMs -= completed * cycleMs;
-      if (audio && completed > 0) {
-        audio.swing(completed);
+      syncHaulAnim();
+
+      const haulingAfter = session.snapshot.haulRemainingMs > 0;
+      if (!haulingBefore && !haulingAfter) {
+        const cycleMs = swingCycleMs();
+        swingCycleRemainderMs += dtMs;
+        const completed = Math.floor(swingCycleRemainderMs / cycleMs);
+        swingCycleRemainderMs -= completed * cycleMs;
+        if (audio && completed > 0) {
+          audio.swing(completed);
+        }
+      } else if (!haulingAfter) {
+        swingCycleRemainderMs = 0;
       }
 
       anim.advanceMs(dtMs);

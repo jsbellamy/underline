@@ -23,10 +23,14 @@ describe("dwarfAnimationTiming", () => {
     expect(cycleDurationMs(atTwo)).toBe(500);
   });
 
-  it("declares walk as a one-shot clip", () => {
+  it("declares walk as a looping clip independent of Dig Rate", () => {
     const walk = dwarfPlayback("walk", 1);
-    expect(walk.loop).toBe(false);
+    expect(walk.loop).toBe(true);
     expect(walk.durationsMs).toHaveLength(WALK_FRAME_COUNT);
     expect(cycleDurationMs(walk)).toBe(400);
+
+    const atTwo = dwarfPlayback("walk", 2);
+    expect(atTwo.loop).toBe(true);
+    expect(cycleDurationMs(atTwo)).toBe(400);
   });
 });

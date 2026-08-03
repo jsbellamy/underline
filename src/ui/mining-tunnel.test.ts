@@ -14,6 +14,8 @@ const baseSnap = {
   faceSwingProgress: 0,
   swingFraction: 0,
   digRate: 1,
+  haulPhase: "none" as const,
+  haulProgress: 0,
 };
 
 function countDescendants(element: HTMLElement): number {
@@ -132,13 +134,11 @@ describe("mountMiningTunnel", () => {
 
     for (const advance of [0, 24, 25, 100, 5000]) {
       tunnel.render({
+        ...baseSnap,
         animation: "swing",
-        facing: "east",
-        frameIndex: 0,
         advance,
         faceSwingProgress: 2,
         swingFraction: 0.5,
-        digRate: 1,
       });
       expect(host.querySelectorAll(".pane-face-crack").length).toBeLessThanOrEqual(
         1,
@@ -197,13 +197,11 @@ describe("mountMiningTunnel", () => {
     const tunnel = mountMiningTunnel(host);
 
     tunnel.render({
+      ...baseSnap,
       animation: "swing",
       facing: "west",
       frameIndex: 2,
       advance: 3,
-      faceSwingProgress: 0,
-      swingFraction: 0,
-      digRate: 1,
     });
 
     const dwarf = host.querySelector<HTMLImageElement>("[data-dwarf]");
