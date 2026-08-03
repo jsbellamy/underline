@@ -20,7 +20,9 @@ for live play versus relaunch. Issue #320 locked the contract; detail lives in
 - **Seam:** deterministic Snapshot; UI and presentation never mutate economy
   fields; wall clock exists only at persist/boot.
 - **Save:** JSON in `localStorage` (`underline-save-v1`); Pane is the sole
-  writer; Dock is Snapshot/command client only.
+  writer; Dock is Snapshot/command client only. Ship `schemaVersion: 2`; load of
+  v1 maps `upgradeCount` → `digRateUpgradeCount`, sets `smelterUpgradeCount: 0`,
+  rewrites as v2 on next persist (persist key name unchanged).
 
 ## Consequences
 
@@ -34,7 +36,7 @@ for live play versus relaunch. Issue #320 locked the contract; detail lives in
 
 - `localStorage` is single-machine and webview-scoped; a later Tauri filesystem
   save would be a new decision.
-- Schema migration past `v1` is still fog until the first breaking change.
+- Schema migration past `schemaVersion: 2` remains map fog until the next breaking change.
 
 ## Rejected alternatives
 
