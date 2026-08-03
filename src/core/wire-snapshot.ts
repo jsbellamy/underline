@@ -17,8 +17,12 @@ export interface WireSnapshot {
   ingots: number;
   digRateUpgradeCount: number;
   smelterUpgradeCount: number;
+  carryCapacityUpgradeCount: number;
   faceSwingProgress: number;
   smelterProgress: number;
+  bagOre: number;
+  bagLoads: number;
+  haulRemainingMs: number;
   offlineSummary?: OfflineSummary;
 }
 
@@ -33,8 +37,12 @@ export function toWireSnapshot(
     ingots: snapshot.ingots,
     digRateUpgradeCount: snapshot.digRateUpgradeCount,
     smelterUpgradeCount: snapshot.smelterUpgradeCount,
+    carryCapacityUpgradeCount: snapshot.carryCapacityUpgradeCount,
     faceSwingProgress: snapshot.faceSwingProgress,
     smelterProgress: snapshot.smelterProgress,
+    bagOre: snapshot.bagOre,
+    bagLoads: snapshot.bagLoads,
+    haulRemainingMs: snapshot.haulRemainingMs,
   };
   if (offlineSummary) {
     wire.offlineSummary = offlineSummary;

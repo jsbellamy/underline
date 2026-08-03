@@ -4,8 +4,10 @@ import {
   oreForDrop,
   digRateFor,
   hardnessFor,
+  carryCapacityFor,
   nextDigRateUpgradeCost,
   nextSmelterUpgradeCost,
+  nextCarryCapacityUpgradeCost,
   smelterThroughputFor,
   DROPS_PER_FACE,
   type UpgradeId,
@@ -71,6 +73,16 @@ export function mountColonyView(
   const hardnessDd = document.createElement("dd");
   hardnessDd.dataset["hardness"] = "";
 
+  const bagDt = document.createElement("dt");
+  bagDt.textContent = "Bag";
+  const bagDd = document.createElement("dd");
+  bagDd.dataset["bag"] = "";
+
+  const faceDt = document.createElement("dt");
+  faceDt.textContent = "Face";
+  const faceDd = document.createElement("dd");
+  faceDd.dataset["face"] = "";
+
   status.append(
     digRateDt,
     digRateDd,
@@ -82,6 +94,10 @@ export function mountColonyView(
     smelterDd,
     hardnessDt,
     hardnessDd,
+    bagDt,
+    bagDd,
+    faceDt,
+    faceDd,
   );
 
   const upgradeRow = document.createElement("div");
@@ -100,7 +116,14 @@ export function mountColonyView(
   smelterUpgradeBtn.addEventListener("click", () => {
     options.onBuyUpgrade?.("smelter");
   });
-  upgradeRow.append(digRateUpgradeBtn, smelterUpgradeBtn);
+  const carryCapacityUpgradeBtn = document.createElement("button");
+  carryCapacityUpgradeBtn.type = "button";
+  carryCapacityUpgradeBtn.className = "dock-buy-carry-capacity-upgrade";
+  carryCapacityUpgradeBtn.dataset["buyCarryCapacityUpgrade"] = "";
+  carryCapacityUpgradeBtn.addEventListener("click", () => {
+    options.onBuyUpgrade?.("carryCapacity");
+  });
+  upgradeRow.append(digRateUpgradeBtn, smelterUpgradeBtn, carryCapacityUpgradeBtn);
 
   const offline = document.createElement("aside");
   offline.className = "dock-offline-summary";
@@ -129,17 +152,29 @@ export function mountColonyView(
     const digRate = digRateFor(snapshot.digRateUpgradeCount);
     const digCost = nextDigRateUpgradeCost(snapshot.digRateUpgradeCount);
     const smelterCost = nextSmelterUpgradeCost(snapshot.smelterUpgradeCount);
+    const carryCapacityCost = nextCarryCapacityUpgradeCost(
+      snapshot.carryCapacityUpgradeCount,
+    );
     const throughput = smelterThroughputFor(snapshot.smelterUpgradeCount);
+    const capacity = carryCapacityFor(snapshot.carryCapacityUpgradeCount);
+    const facePercent = Math.floor(
+      (snapshot.faceSwingProgress / hardnessFor(snapshot.advance)) * 100,
+    );
     digRateDd.textContent = `${formatRate(digRate)} Swing/sec`;
     oreDd.textContent = formatAmount(snapshot.ore);
     ingotsDd.textContent = formatAmount(snapshot.ingots);
     smelterDd.textContent = `${formatRate(throughput)} Ore/sec`;
     hardnessDd.textContent = String(Math.round(hardnessFor(snapshot.advance)));
+    bagDd.textContent = `${snapshot.bagLoads} / ${capacity} loads`;
+    faceDd.textContent = `${snapshot.advance + 1} — ${facePercent}%`;
     digRateUpgradeBtn.textContent = `Buy Upgrade (+0.25 Dig Rate) — ${digCost} Ingots`;
     digRateUpgradeBtn.disabled = snapshot.ingots < digCost;
     smelterUpgradeBtn.textContent =
       `Buy Smelter Upgrade (+0.02 Ore/sec) — ${smelterCost} Ingots`;
     smelterUpgradeBtn.disabled = snapshot.ingots < smelterCost;
+    carryCapacityUpgradeBtn.textContent =
+      `Buy Carry Capacity Upgrade (+5 loads) — ${carryCapacityCost} Ingots`;
+    carryCapacityUpgradeBtn.disabled = snapshot.ingots < carryCapacityCost;
 
     constants.textContent =
       `Ore per drop ${formatAmount(oreForDrop(snapshot.advance))} — ${DROPS_PER_FACE} drops per Face`;

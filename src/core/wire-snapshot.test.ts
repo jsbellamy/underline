@@ -24,8 +24,12 @@ describe("wire Snapshot", () => {
       ingots: 3,
       digRateUpgradeCount: 1,
       smelterUpgradeCount: 0,
+      carryCapacityUpgradeCount: 0,
       faceSwingProgress: 2,
       smelterProgress: 0.3,
+      bagOre: 0,
+      bagLoads: 0,
+      haulRemainingMs: 0,
     });
   });
 
