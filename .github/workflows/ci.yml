@@ -31,12 +31,12 @@ jobs:
       game: ${{ steps.classify.outputs.game_needed }}
       reason: ${{ steps.classify.outputs.pipeline_reason }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # The merge ref alone cannot be diffed against the base commit.
           fetch-depth: 0
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.10'
 
@@ -66,9 +66,9 @@ jobs:
     if: needs.changes.outputs.game == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: '22'
           cache: 'npm'
@@ -87,7 +87,7 @@ jobs:
     if: needs.changes.outputs.pipeline == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Baseline drift tests read the committed `main` copy of an asset.
           # The default shallow merge-ref checkout has no baseline branch at
@@ -95,7 +95,7 @@ jobs:
           # `tests/support/git_baseline.py` resolves.
           fetch-depth: 0
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.10'
           cache: 'pip'
@@ -121,7 +121,7 @@ jobs:
     if: needs.changes.outputs.pipeline == 'true'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # Baseline drift tests read the committed `main` copy of an asset.
           # The default shallow merge-ref checkout has no baseline branch at
@@ -129,7 +129,7 @@ jobs:
           # `tests/support/git_baseline.py` resolves.
           fetch-depth: 0
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.10'
           cache: 'pip'
@@ -168,9 +168,22 @@ jobs:
             echo "No isolation hint drift: every measured duration was within scripts/run_isolated_tests.py's STALE_HINT_RATIO of its scripts/isolation-durations.json hint."
           fi
 
+      # Same check the `test` job runs. Per-file isolation is where a stray
+      # write is most likely to appear -- each file runs in a fresh process
+      # without the whole suite's fixtures around it -- and least likely to be
+      # noticed, since no later test reads what it left behind.
+      - name: Fail if the isolation sweep dirtied the working tree
+        run: |
+          status="$(git status --porcelain)"
+          if [ -n "$status" ]; then
+            echo "$status"
+            echo "Isolation sweep left the working tree dirty."
+            exit 1
+          fi
+
       - name: Upload isolation report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: isolation-report
           path: ${{ runner.temp }}/isolation-report.json
@@ -189,17 +202,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out the candidate (PR merge ref)
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           path: candidate
 
       - name: Check out the evaluator (main) -- a branch cannot select its own judge
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           ref: main
           path: evaluator
 
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.10'
           cache: 'pip'
@@ -219,7 +232,7 @@ jobs:
 
       - name: Upload external-acceptance report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: external-acceptance-report
           path: ${{ runner.temp }}/external-acceptance-report.json
