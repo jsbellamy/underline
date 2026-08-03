@@ -18,10 +18,10 @@ This is the message contract [Close the loop: spend Ore in the dock and accrue i
 
 ## Versioning
 
-- Every Snapshot and every command carries **`schemaVersion: 1`** (same integer as the save).
+- Every Snapshot and every command carries **`schemaVersion: 2`** (same integer as the save).
 - Dock **ignores** Snapshots with missing or mismatched `schemaVersion`.
 - Pane **ignores** commands with missing/mismatched `schemaVersion` or unknown `name`.
-- Dock tags outbound commands `1`; it may send `requestSnapshot` before the first compatible Snapshot (Pane answers with a v1 Snapshot).
+- Dock tags outbound commands `2`; it may send `requestSnapshot` before the first compatible Snapshot (Pane answers with a v2 Snapshot).
 
 ## Closed `BusMessage` set
 
@@ -44,26 +44,28 @@ Persist-aligned fields only — Dock derives the rest.
 
 | Field | Role |
 | --- | --- |
-| `schemaVersion` | `1` |
+| `schemaVersion` | `2` |
 | `advance` | Mineable Blocks broken |
 | `ore` | Smelter backlog (fractional OK) |
 | `ingots` | Spendable |
-| `upgradeCount` | Buys completed |
+| `digRateUpgradeCount` | Dig Rate Upgrade buys completed |
+| `smelterUpgradeCount` | Smelter Upgrade buys completed |
 | `faceSwingProgress` | Swings spent on current Face (`0…Hardness`) |
 | `smelterProgress` | Fractional Ore toward next Ingot (`0…1`) |
 | `offlineSummary?` | Present after boot catch-up when `offlineMs ≥ MIN_OFFLINE_MS` (60s); Dock shows then clears locally |
 
 `savedAtMs` is save-boundary only — **not** on the wire.
 
-### Dock derives (slice constants + `upgradeCount`)
+### Dock derives (both Upgrade counts + Advance bands)
 
 | Derived | Formula |
 | --- | --- |
-| Dig Rate | `1.0 + 0.25 × upgradeCount` |
-| Next Upgrade cost | `5 × 2^upgradeCount` |
-| Hardness | `4` |
+| Dig Rate | `1.0 + 0.25 × digRateUpgradeCount` |
+| Dig Rate next Upgrade cost | `5 × 2^digRateUpgradeCount` |
+| Smelter throughput | `0.15 + 0.05 × smelterUpgradeCount` Ore/sec |
+| Smelter next Upgrade cost | `5 × 2^smelterUpgradeCount` |
+| Hardness | `hardnessFor(advance)` — Advance bands in [`produce-and-spend-economy.md`](./produce-and-spend-economy.md) |
 | Yield | `1` |
-| Smelter throughput | `0.15` Ore/sec |
 
 ### When the Pane publishes `snapshot`
 
@@ -78,15 +80,15 @@ Persist-aligned fields only — Dock derives the rest.
 
 ```ts
 type DockCommand =
-  | { schemaVersion: 1; name: "buyUpgrade" }
-  | { schemaVersion: 1; name: "requestSnapshot" };
+  | { schemaVersion: 2; name: "buyUpgrade"; upgrade: "digRate" | "smelter" }
+  | { schemaVersion: 2; name: "requestSnapshot" };
 ```
 
 Envelope: `{ type: "command"; command: DockCommand }`.
 
 | Name | Pane behaviour |
 | --- | --- |
-| `buyUpgrade` | Apply if Ingots ≥ next cost; deduct; bump `upgradeCount`; persist; broadcast Snapshot. No-op (still may rebroadcast) if unaffordable. |
+| `buyUpgrade` | Apply if Ingots ≥ next cost for the named Upgrade; deduct; bump the matching count (`digRateUpgradeCount` or `smelterUpgradeCount`); persist; broadcast Snapshot. No-op (still may rebroadcast) if unaffordable. Missing `upgrade` is not a valid command. Unknown `upgrade` values are ignored. |
 | `requestSnapshot` | Broadcast current Snapshot immediately. |
 
 No `dismissOfflineSummary` on the bus — dismiss is Dock-local UI until the offline surface needs otherwise.
@@ -103,11 +105,12 @@ type BusMessage =
   | { type: "dock-closed" };
 
 type WireSnapshot = {
-  schemaVersion: 1;
+  schemaVersion: 2;
   advance: number;
   ore: number;
   ingots: number;
-  upgradeCount: number;
+  digRateUpgradeCount: number;
+  smelterUpgradeCount: number;
   faceSwingProgress: number;
   smelterProgress: number;
   offlineSummary?: {
