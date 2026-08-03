@@ -98,7 +98,7 @@ describe("mining session", () => {
       now: () => 0,
       onPublish,
     });
-    session.advanceLive(4_000);
+    session.advanceLive(1_000_000);
     expect(session.snapshot.advance).toBe(1);
     session.publish();
     expect(onPublish).toHaveBeenCalledOnce();

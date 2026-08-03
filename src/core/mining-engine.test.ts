@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
-  HARDNESS,
+  FACE_BASE_HARDNESS,
+  HARDNESS_GROWTH,
+  PICK_DAMAGE,
   SMELTER_THROUGHPUT,
   YIELD,
   advance,
@@ -19,14 +21,24 @@ function snap(partial: Partial<MiningSnapshot> = {}): MiningSnapshot {
 }
 
 describe("mining engine advance", () => {
-  it("breaks the Face after Hardness Swings at Dig Rate 1.0 and yields Ore", () => {
-    // Opening Dig Rate 1.0 Swing/sec × Hardness 4 → break at 4000ms; Yield 1.
-    // Then Smelter drains 0.15×4s = 0.6 Ore into progress.
-    const after = advance(snap(), 4_000);
+  it("breaks the Face after Hardness damage at Dig Rate 1.0 and yields Ore", () => {
+    // Opening Dig Rate 1.0 Swing/sec × Hardness 1000 → break at 1_000_000ms; Yield 1.
+    // Smelter feeds the single Ore into Ingots over the same window.
+    const after = advance(snap(), 1_000_000);
     expect(after.advance).toBe(1);
-    expect(after.ore).toBeCloseTo(YIELD - SMELTER_THROUGHPUT * 4, 10);
+    expect(after.ore).toBe(0);
     expect(after.faceSwingProgress).toBe(0);
-    expect(after.smelterProgress).toBeCloseTo(SMELTER_THROUGHPUT * 4, 10);
+    expect(after.ingots).toBe(YIELD);
+    expect(after.smelterProgress).toBe(0);
+  });
+
+  it("does not break the Face before Hardness damage is dealt", () => {
+    const almost = advance(snap(), 999_999);
+    expect(almost.advance).toBe(0);
+    expect(almost.faceSwingProgress).toBeCloseTo(999.999, 5);
+
+    const broken = advance(snap(), 1_000_000);
+    expect(broken.advance).toBe(1);
   });
 
   it("is chunk-neutral before the first Face break", () => {
@@ -38,6 +50,19 @@ describe("mining engine advance", () => {
     expect(many).toEqual(once);
     expect(once.faceSwingProgress).toBe(3);
     expect(once.advance).toBe(0);
+  });
+
+  it("is chunk-neutral across a Face break", () => {
+    const once = advance(snap(), 1_200_000);
+    let many = snap();
+    for (let i = 0; i < 1200; i += 1) {
+      many = advance(many, 1_000);
+    }
+    expect(many.advance).toBe(once.advance);
+    expect(many.faceSwingProgress).toBe(once.faceSwingProgress);
+    expect(many.ore).toBe(once.ore);
+    expect(many.ingots).toBe(once.ingots);
+    expect(many.smelterProgress).toBe(once.smelterProgress);
   });
 });
 
@@ -52,13 +77,13 @@ describe("mining engine Smelter", () => {
   });
 
   it("lets Ore back up when Dig Rate outpaces the Smelter", () => {
-    // Dig-all then Smelter-drain (engine contract): 16s → 4 breaks → +4 Ore;
-    // Smelter takes 0.15×16 = 2.4 → 2 Ingots, backlog 1.6, progress 0.4.
-    const after = advance(snap(), 16_000);
-    expect(after.advance).toBe(4);
+    // Dig-all then Smelter-drain (engine contract): 2_150_000ms → 2 breaks → +2 Ore;
+    // Smelter takes 0.15×2150 = 322.5 but only 2 Ore exist → 2 Ingots, backlog 0.
+    const after = advance(snap(), 2_150_000);
+    expect(after.advance).toBe(2);
     expect(after.ingots).toBe(2);
-    expect(after.ore).toBeCloseTo(1.6, 10);
-    expect(after.smelterProgress).toBeCloseTo(0.4, 10);
+    expect(after.ore).toBe(0);
+    expect(after.smelterProgress).toBe(0);
   });
 });
 
@@ -85,31 +110,28 @@ describe("mining engine Upgrade", () => {
 
 describe("mining engine offline catch-up", () => {
   it("applies both loops at half rate for the offline window", () => {
-    // 8s offline at 50% ≡ 4s live: one Face break; Smelter 0.15×4 = 0.6.
-    const after = advance(snap(), 8_000, { rateScale: 0.5 });
+    // 2_000_000ms offline at 50% ≡ 1_000_000ms live: one Face break; Smelter smelts 1 Ore.
+    const after = advance(snap(), 2_000_000, { rateScale: 0.5 });
     expect(after.advance).toBe(1);
-    expect(after.ore).toBeCloseTo(0.4, 10);
-    expect(after.ingots).toBe(0);
-    expect(after.smelterProgress).toBeCloseTo(0.6, 10);
+    expect(after.ore).toBe(0);
+    expect(after.ingots).toBe(YIELD);
+    expect(after.smelterProgress).toBe(0);
   });
 });
 
-describe("mining engine Hardness constant", () => {
-  it("keeps Hardness at 4 Swings per Mineable Block", () => {
-    expect(HARDNESS).toBe(4);
+describe("mining engine Hardness curve", () => {
+  it("exports exponential Face Hardness constants and Pick Damage", () => {
+    expect(FACE_BASE_HARDNESS).toBe(1000);
+    expect(HARDNESS_GROWTH).toBe(1.15);
+    expect(PICK_DAMAGE).toBe(1);
   });
-});
 
-describe("mining engine Hardness bands", () => {
-  it("maps advance to banded Hardness per economy contract", () => {
-    expect(hardnessFor(0)).toBe(4);
-    expect(hardnessFor(24)).toBe(4);
-    expect(hardnessFor(25)).toBe(5);
-    expect(hardnessFor(74)).toBe(5);
-    expect(hardnessFor(75)).toBe(6);
-    expect(hardnessFor(149)).toBe(6);
-    expect(hardnessFor(150)).toBe(7);
-    expect(hardnessFor(999)).toBe(7);
+  it("maps advance to exponential Hardness per economy contract", () => {
+    expect(hardnessFor(0)).toBe(1000);
+    expect(hardnessFor(1)).toBe(1150);
+    expect(hardnessFor(2)).toBeCloseTo(1322.5, 10);
+    expect(hardnessFor(5)).toBeCloseTo(2011.3571875, 10);
+    expect(hardnessFor(10)).toBeCloseTo(4045.55773, 4);
   });
 });
 
@@ -156,33 +178,5 @@ describe("mining engine buyUpgrade default", () => {
     const bought = buyUpgrade(rich);
     expect(bought.digRateUpgradeCount).toBe(1);
     expect(bought.smelterUpgradeCount).toBe(0);
-  });
-});
-
-describe("mining engine multi-break Hardness bands", () => {
-  it("uses rising Hardness as advance crosses band boundaries in one window", () => {
-    // advance 24 → hardness 4; break → 25 → hardness 5 for the next Face.
-    const atBandEdge = snap({ advance: 24, faceSwingProgress: 3 });
-    const afterOneBreak = advance(atBandEdge, 1_000);
-    expect(afterOneBreak.advance).toBe(25);
-    expect(afterOneBreak.faceSwingProgress).toBe(0);
-
-    // One more second at Dig Rate 1.0 needs 5 Swings to break at hardness 5.
-    const afterSecondBreak = advance(afterOneBreak, 5_000);
-    expect(afterSecondBreak.advance).toBe(26);
-    expect(afterSecondBreak.faceSwingProgress).toBe(0);
-  });
-
-  it("is chunk-neutral across a band boundary for dig progress", () => {
-    const atBandEdge = snap({ advance: 24, faceSwingProgress: 3 });
-    const once = advance(atBandEdge, 6_000);
-    let many = atBandEdge;
-    for (let i = 0; i < 12; i += 1) {
-      many = advance(many, 500);
-    }
-    expect(many.advance).toBe(once.advance);
-    expect(many.faceSwingProgress).toBe(once.faceSwingProgress);
-    expect(once.advance).toBe(26);
-    expect(once.faceSwingProgress).toBe(0);
   });
 });

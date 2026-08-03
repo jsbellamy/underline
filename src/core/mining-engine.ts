@@ -6,8 +6,14 @@ Authority: `docs/research/tick-snapshot-save-model.md`,
 
 export const SCHEMA_VERSION = 2 as const;
 
-/** Swings per Mineable Block at opening depth (band 0). */
-export const HARDNESS = 4;
+/** Face damage capacity at Advance 0 on the exponential curve. */
+export const FACE_BASE_HARDNESS = 1000;
+
+/** Per-Advance multiplier on Face Hardness. */
+export const HARDNESS_GROWTH = 1.15;
+
+/** Damage dealt per Swing (Pick). */
+export const PICK_DAMAGE = 1;
 
 /** Ore yielded per Face break. */
 export const YIELD = 1;
@@ -39,7 +45,7 @@ export interface MiningSnapshot {
   ingots: number;
   digRateUpgradeCount: number;
   smelterUpgradeCount: number;
-  /** Swings spent on the current Face (`0…Hardness`). */
+  /** Damage dealt to the current Face (`0…hardnessFor(advance)`); equals Swings spent when Pick Damage is 1. */
   faceSwingProgress: number;
   /** Fractional Ore fed toward the next Ingot (`0…1`). */
   smelterProgress: number;
@@ -51,10 +57,7 @@ export interface AdvanceOptions {
 }
 
 export function hardnessFor(advance: number): number {
-  if (advance < 25) return HARDNESS;
-  if (advance < 75) return 5;
-  if (advance < 150) return 6;
-  return 7;
+  return FACE_BASE_HARDNESS * HARDNESS_GROWTH ** advance;
 }
 
 export function initialSnapshot(): MiningSnapshot {
@@ -115,14 +118,14 @@ export function advance(
   } = snapshot;
 
   const digRate = digRateFor(digRateUpgradeCount);
-  let swings = faceSwingProgress + digRate * dtSec;
-  while (swings >= hardnessFor(advanceCount)) {
+  let damage = faceSwingProgress + digRate * PICK_DAMAGE * dtSec;
+  while (damage >= hardnessFor(advanceCount)) {
     const hardness = hardnessFor(advanceCount);
-    swings -= hardness;
+    damage -= hardness;
     advanceCount += 1;
     ore += YIELD;
   }
-  faceSwingProgress = swings;
+  faceSwingProgress = damage;
 
   const throughput = smelterThroughputFor(smelterUpgradeCount);
   const fed = Math.min(ore, throughput * dtSec);

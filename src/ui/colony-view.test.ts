@@ -2,7 +2,6 @@
 
 import { describe, expect, it, vi } from "vitest";
 import {
-  hardnessFor,
   initialSnapshot,
   nextSmelterUpgradeCost,
 } from "../core/mining-engine";
@@ -16,7 +15,7 @@ describe("Colony Dock surface", () => {
     view.render(
       toWireSnapshot({
         ...initialSnapshot(),
-        advance: 25,
+        advance: 0,
         ore: 2.5,
         ingots: 12,
         digRateUpgradeCount: 1,
@@ -27,9 +26,7 @@ describe("Colony Dock surface", () => {
     expect(host.querySelector("[data-dig-rate]")?.textContent).toContain("1.25");
     expect(host.querySelector("[data-ore]")?.textContent).toBe("2.50");
     expect(host.querySelector("[data-ingots]")?.textContent).toBe("12");
-    expect(host.querySelector("[data-hardness]")?.textContent).toBe(
-      String(hardnessFor(25)),
-    );
+    expect(host.querySelector("[data-hardness]")?.textContent).toBe("1000");
     expect(host.querySelector("[data-smelter]")?.textContent).toContain("0.20");
     expect(host.querySelector("[data-smelter]")?.textContent).toContain("Ore/sec");
     const digBuy = host.querySelector<HTMLButtonElement>("[data-buy-upgrade]");
@@ -44,6 +41,19 @@ describe("Colony Dock surface", () => {
       `${nextSmelterUpgradeCost(1)} Ingots`,
     );
     expect(smelterBuy?.disabled).toBe(false);
+    view.destroy();
+  });
+
+  it("rounds Hardness for the Dock readout at Advance 10", () => {
+    const host = document.createElement("div");
+    const view = mountColonyView(host);
+    view.render(
+      toWireSnapshot({
+        ...initialSnapshot(),
+        advance: 10,
+      }),
+    );
+    expect(host.querySelector("[data-hardness]")?.textContent).toBe("4046");
     view.destroy();
   });
 

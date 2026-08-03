@@ -68,8 +68,8 @@ describe("mine presenter", () => {
     });
     const presenter = createMinePresenter(session);
     presenter.start();
-    // Live pump steps are 250ms; stop on the tick that breaks the Face so walk is visible.
-    for (let i = 0; i < 16; i += 1) {
+    // Live pump steps are 250ms; 4000 ticks = 1_000_000ms breaks the opening Face.
+    for (let i = 0; i < 4000; i += 1) {
       presenter.advanceMs(250);
     }
     expect(presenter.snapshot().advance).toBe(1);
@@ -132,7 +132,7 @@ describe("mine presenter", () => {
     const presenter = createMinePresenter(session, { audio });
     presenter.start();
 
-    presenter.advanceMs(4000);
+    presenter.advanceMs(1_000_000);
     expect(audio.breaks).toEqual([1]);
   });
 

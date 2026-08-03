@@ -3,7 +3,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createMiningSession } from "../core/mining-session";
 import {
-  hardnessFor,
   initialSnapshot,
   nextDigRateUpgradeCost,
   nextSmelterUpgradeCost,
@@ -145,9 +144,7 @@ describe("Pane↔Dock close-the-loop bus", () => {
     });
 
     await flushBus();
-    expect(dockRoot.querySelector("[data-hardness]")?.textContent).toBe(
-      String(hardnessFor(30)),
-    );
+    expect(dockRoot.querySelector("[data-hardness]")?.textContent).toBe("66212");
     expect(dockRoot.querySelector("[data-smelter]")?.textContent).toContain(
       "0.15",
     );

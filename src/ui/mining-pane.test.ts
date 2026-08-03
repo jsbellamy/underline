@@ -266,32 +266,32 @@ describe("mountPaneShell mining Pane", () => {
     shell.destroy();
   });
 
-  it("scales Face crack progress by the Hardness band at Advance 24 vs 25", () => {
+  it("scales Face crack progress by Face Hardness at Advance 0 vs 10", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
     const base = {
       animation: "swing" as const,
       facing: "east" as const,
       frameIndex: 0,
-      faceSwingProgress: 2,
+      faceSwingProgress: 500,
       swingFraction: 0,
       digRate: 1,
     };
 
-    tunnel.render({ ...base, advance: 24 });
-    const crackAt24 = host.querySelector<HTMLElement>(".pane-face-crack");
-    expect(crackAt24).not.toBeNull();
-    const opacityAt24 = Number(crackAt24!.style.opacity);
+    tunnel.render({ ...base, advance: 0 });
+    const crackAt0 = host.querySelector<HTMLElement>(".pane-face-crack");
+    expect(crackAt0).not.toBeNull();
+    const opacityAt0 = Number(crackAt0!.style.opacity);
 
-    tunnel.render({ ...base, advance: 25 });
-    const crackAt25 = host.querySelector<HTMLElement>(".pane-face-crack");
-    expect(crackAt25).not.toBeNull();
-    const opacityAt25 = Number(crackAt25!.style.opacity);
+    tunnel.render({ ...base, advance: 10 });
+    const crackAt10 = host.querySelector<HTMLElement>(".pane-face-crack");
+    expect(crackAt10).not.toBeNull();
+    const opacityAt10 = Number(crackAt10!.style.opacity);
 
-    // Band 0 Hardness 4 vs band 1 Hardness 5 — same Swings, lower crack fill at 25.
-    expect(opacityAt24).toBeCloseTo(0.625, 5);
-    expect(opacityAt25).toBeCloseTo(0.55, 5);
-    expect(opacityAt24).toBeGreaterThan(opacityAt25);
+    // Hardness 1000 vs ≈4045.55773 — same damage, fuller crack on the easier Face.
+    expect(opacityAt0).toBeCloseTo(0.625, 5);
+    expect(opacityAt10).toBeCloseTo(0.34269, 4);
+    expect(opacityAt0).toBeGreaterThan(opacityAt10);
 
     tunnel.destroy();
   });
