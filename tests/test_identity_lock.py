@@ -227,6 +227,7 @@ def test_walk_large_occupancy_change_fails_registered_structure() -> None:
     check = result.per_frame[2].check_results["upper_body"]
     assert check["outcome"] == "FAIL"
     assert check["occupancy_difference"] == 105 / 218
+    assert check["failure_reason_code"] == "occupancy_difference"
     # Re-baselined by #300: canonical role composition shifted when haft became stone
     # and glove leather became skin; occupancy_difference is unchanged, which is the
     # evidence that only composition moved. The blanked x0..7 band is where the haft
@@ -252,11 +253,124 @@ def test_walk_palette_role_drift_fails_registered_structure() -> None:
     check = result.per_frame[3].check_results["upper_body"]
     assert check["outcome"] == "FAIL"
     assert check["occupancy_difference"] == 0.0
+    assert check["failure_reason_code"] == "palette_role_distance"
     # Re-baselined by #179 with the palette-exact canonical raster; see above.
     assert check["palette_role_distance"] == pytest.approx(
         80 / 211,
         abs=METRIC_ABS_TOLERANCE,
     )
+
+
+def _write_canonical_polished_roles(tmp_path: Path) -> Path:
+    identity_roles = json.loads(IDENTITY_ROLES_JSON.read_text(encoding="utf-8"))
+    cells = identity_roles["cells"]
+    doc = {
+        "schema": "polished-roles/0",
+        "frames": [
+            {
+                "index": index,
+                "source": "assets/first-room/dwarf/identity.png",
+                "cells": cells,
+            }
+            for index in range(4)
+        ],
+    }
+    path = tmp_path / "polished-roles.json"
+    path.write_text(json.dumps(doc), encoding="utf-8")
+    return path
+
+
+def _frames_with_occupancy_divergence_matching_histogram(
+    frame_index: int = 0,
+) -> tuple[
+    list[list[list[tuple[int, int, int] | None]]],
+    dict[tuple[int, int], str],
+]:
+    """Move opaque Cells inside upper_body so occupancy diverges but role mix stays."""
+    frames = _canonical_frames()
+    canonical = frames[frame_index]
+    role_assignment = _load_identity_role_assignment()
+    rectangle = {"x0": 0, "x1": 15, "y0": 1, "y1": 18}
+    opaque_coords: list[tuple[int, int]] = []
+    empty_coords: list[tuple[int, int]] = []
+    for y in range(rectangle["y0"], rectangle["y1"] + 1):
+        for x in range(rectangle["x0"], rectangle["x1"] + 1):
+            if canonical[y][x] is not None:
+                opaque_coords.append((x, y))
+            else:
+                empty_coords.append((x, y))
+    swap_count = min(len(opaque_coords) // 2, len(empty_coords))
+    attempt_roles = dict(role_assignment)
+    for index in range(swap_count):
+        source_x, source_y = opaque_coords[index]
+        target_x, target_y = empty_coords[index]
+        cell = canonical[source_y][source_x]
+        assert cell is not None
+        role = role_assignment.get((source_x, source_y))
+        _set_cell(frames, frame_index, source_x, source_y, None)
+        _set_cell(frames, frame_index, target_x, target_y, cell)
+        if role is not None:
+            attempt_roles[(target_x, target_y)] = role
+    return frames, attempt_roles
+
+
+def test_palette_exact_registered_structure_enforces_occupancy_ceiling(
+    tmp_path: Path,
+) -> None:
+    frames, attempt_roles = _frames_with_occupancy_divergence_matching_histogram()
+    polished_roles_path = _write_canonical_polished_roles(tmp_path)
+    doc = json.loads(polished_roles_path.read_text(encoding="utf-8"))
+    cells_doc = doc["frames"][0]["cells"]
+    for coord, role in attempt_roles.items():
+        cells_doc[f"{coord[0]},{coord[1]}"] = role
+    polished_roles_path.write_text(json.dumps(doc), encoding="utf-8")
+    result = evaluate_identity_lock(
+        frames,
+        "walk",
+        palette_exact=True,
+        polished_roles_path=polished_roles_path,
+    )
+    assert result.outcome == "FAIL"
+    check = result.per_frame[0].check_results["upper_body"]
+    assert check["outcome"] == "FAIL"
+    assert check["occupancy_difference"] > check["max_occupancy_difference"]
+    assert check["palette_role_distance"] <= check["max_palette_role_distance"]
+    assert check["failure_reason_code"] == "occupancy_difference"
+
+
+def test_palette_exact_palette_breach_reports_palette_failure_reason_code(
+    tmp_path: Path,
+) -> None:
+    frames = _canonical_frames()
+    changed = 0
+    for y in range(1, 19):
+        for x in range(16):
+            if frames[2][y][x] is not None and changed < 80:
+                _set_cell(frames, 2, x, y, (114, 226, 210))
+                changed += 1
+    polished_roles_path = _write_canonical_polished_roles(tmp_path)
+    doc = json.loads(polished_roles_path.read_text(encoding="utf-8"))
+    cells_doc = doc["frames"][2]["cells"]
+    for y in range(1, 19):
+        for x in range(16):
+            if frames[2][y][x] is not None:
+                cells_doc[f"{x},{y}"] = "skin"
+    polished_roles_path.write_text(json.dumps(doc), encoding="utf-8")
+    result = evaluate_identity_lock(
+        frames,
+        "walk",
+        palette_exact=True,
+        polished_roles_path=polished_roles_path,
+    )
+    assert result.outcome == "FAIL"
+    check = result.per_frame[2].check_results["upper_body"]
+    assert check["outcome"] == "FAIL"
+    assert check["occupancy_difference"] == 0.0
+    assert check["failure_reason_code"] == "palette_role_distance"
+    detail = identity_lock_rejection_detail(result)
+    assert detail is not None
+    assert detail["failure_reason_code"] == "palette_role_distance"
+    assert detail["primary_reason_code"] == "identity_lock_palette"
 
 
 def test_swing_permitted_anchor_motion_passes() -> None:
@@ -716,6 +830,7 @@ def test_identity_lock_rejection_detail_near_miss_check_failure() -> None:
         "max_occupancy_difference": 0.20,
         "palette_role_distance": 0.05,
         "max_palette_role_distance": 0.20,
+        "failure_reason_code": "occupancy_difference",
     }
     result = _synthetic_fail_result(
         frame_index=2,
@@ -745,7 +860,7 @@ def test_identity_lock_rejection_detail_near_miss_check_failure() -> None:
     }
 
 
-def test_identity_lock_rejection_detail_large_occupancy_uses_identity_lock() -> None:
+def test_identity_lock_rejection_detail_large_occupancy_uses_identity_lock_occupancy() -> None:
     first_failure = {
         "kind": "check",
         "id": "upper_body",
@@ -755,6 +870,7 @@ def test_identity_lock_rejection_detail_large_occupancy_uses_identity_lock() -> 
         "max_occupancy_difference": 0.20,
         "palette_role_distance": 0.0,
         "max_palette_role_distance": 0.20,
+        "failure_reason_code": "occupancy_difference",
     }
     result = _synthetic_fail_result(
         frame_index=1,
@@ -763,7 +879,7 @@ def test_identity_lock_rejection_detail_large_occupancy_uses_identity_lock() -> 
     )
     detail = identity_lock_rejection_detail(result)
     assert detail is not None
-    assert detail["primary_reason_code"] == "identity_lock"
+    assert detail["primary_reason_code"] == "identity_lock_occupancy"
     assert detail["occupancy_margin"] == pytest.approx(-0.20)
     assert detail["frame_index"] == 1
 
