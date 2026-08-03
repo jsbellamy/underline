@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { createMiningSession } from "../core/mining-session";
-import { initialSnapshot } from "../core/mining-engine";
+import { HAUL_ROUND_TRIP_MS, initialSnapshot } from "../core/mining-engine";
 import {
   persistSettings,
 } from "../core/settings-save";
@@ -209,5 +209,76 @@ describe("mine presenter", () => {
     presenter.start();
     presenter.advanceMs(250);
     expect(presenter.snapshot().faceSwingProgress).toBeGreaterThanOrEqual(0);
+  });
+
+  it("derives haul phase and progress from haulRemainingMs", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+
+    presenter.advanceMs(100_000);
+    const atHaulStart = presenter.snapshot();
+    expect(atHaulStart.haulPhase).toBe("out");
+    expect(atHaulStart.haulProgress).toBe(0);
+    expect(atHaulStart.animation).toBe("walk");
+    expect(atHaulStart.facing).toBe("west");
+
+    presenter.advanceMs(4_000);
+    const atMidpoint = presenter.snapshot();
+    expect(atMidpoint.haulProgress).toBeCloseTo(0.5, 5);
+
+    presenter.advanceMs(3_000);
+    const onReturnLeg = presenter.snapshot();
+    expect(onReturnLeg.haulPhase).toBe("back");
+    expect(onReturnLeg.haulProgress).toBeCloseTo(0.875, 5);
+    expect(onReturnLeg.facing).toBe("east");
+  });
+
+  it("exposes haulPhase none and zero progress when not hauling", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+    presenter.advanceMs(1000);
+    const snap = presenter.snapshot();
+    expect(snap.haulPhase).toBe("none");
+    expect(snap.haulProgress).toBe(0);
+  });
+
+  it("does not emit swing audio during a Haul", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+    });
+    const audio = spyMiningAudio();
+    const presenter = createMinePresenter(session, { audio });
+    presenter.start();
+
+    presenter.advanceMs(100_000);
+    const swingsBeforeHaul = audio.swings.length;
+
+    presenter.advanceMs(HAUL_ROUND_TRIP_MS);
+    expect(audio.swings.length).toBe(swingsBeforeHaul);
+  });
+
+  it("stays in swing after a Face break without walking", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+      snapshot: {
+        ...initialSnapshot(),
+        advance: 0,
+        faceSwingProgress: 999,
+      },
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+    presenter.advanceMs(10);
+    expect(presenter.snapshot().animation).toBe("swing");
   });
 });

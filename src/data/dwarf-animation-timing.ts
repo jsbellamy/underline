@@ -10,7 +10,7 @@ export type DwarfAnimationId = "idle" | "swing" | "walk";
 export const SWING_FRAME_COUNT = 9;
 export const WALK_FRAME_COUNT = 8;
 
-/** Walk step between Faces — presentation-only; economy does not model walk delay. */
+/** Walk cycle while hauling — loops for the Haul leg; cycle length is independent of Dig Rate. */
 const WALK_CYCLE_MS = 400;
 
 /** Idle hold while static; loop is irrelevant for a single frame but kept consistent. */
@@ -43,7 +43,7 @@ export function dwarfPlayback(
     case "walk":
       return {
         durationsMs: equalSlice(WALK_FRAME_COUNT, WALK_CYCLE_MS),
-        loop: false,
+        loop: true,
       };
   }
 }

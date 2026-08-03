@@ -1,12 +1,11 @@
 /** Dwarf animation state selection — engine-side, no DOM.
 
-Rules (#314 / #321):
-- `idle` when not mining (and not finishing a walk).
-- `swing` while mining at the Face.
-- `walk` when a Mineable Block breaks and the Dwarf steps to the new Face;
-  then resume `swing` (or `idle` if mining was stopped during the walk).
+Rules (#314 / #321 / #364):
+- `idle` when not mining and not hauling.
+- `swing` while mining at the Face (not hauling).
+- `walk` loops for a Haul leg — west on the out leg, east on the back leg.
 */
-import { cycleDurationMs, frameAt } from "./animation-player";
+import { frameAt } from "./animation-player";
 import {
   dwarfPlayback,
   type DwarfAnimationId,
@@ -14,6 +13,7 @@ import {
 
 export type DwarfAnimId = DwarfAnimationId;
 export type DwarfFacing = "east" | "west";
+export type HaulAnimPhase = "out" | "back";
 
 export interface DwarfAnimController {
   readonly animation: DwarfAnimId;
@@ -24,7 +24,7 @@ export interface DwarfAnimController {
   readonly clipElapsedMs: number;
   startMining(): void;
   stopMining(): void;
-  faceBroken(): void;
+  setHauling(phase: HaulAnimPhase | null): void;
   advanceMs(dtMs: number): void;
   setDigRate(digRate: number): void;
 }
@@ -42,7 +42,7 @@ export function createDwarfAnimController(
   let animation: DwarfAnimId = "idle";
   let clipElapsedMs = 0;
   let mining = false;
-  let resumeAfterWalk: "swing" | "idle" = "idle";
+  let haulingPhase: HaulAnimPhase | null = null;
 
   function playback() {
     return dwarfPlayback(animation, digRate);
@@ -54,6 +54,22 @@ export function createDwarfAnimController(
     }
     animation = next;
     clipElapsedMs = 0;
+  }
+
+  function applyHauling(phase: HaulAnimPhase | null): void {
+    haulingPhase = phase;
+    if (phase === "out") {
+      facing = "west";
+      enter("walk");
+      return;
+    }
+    if (phase === "back") {
+      facing = "east";
+      enter("walk");
+      return;
+    }
+    enter(mining ? "swing" : "idle");
+    facing = "east";
   }
 
   const api: DwarfAnimController = {
@@ -74,35 +90,27 @@ export function createDwarfAnimController(
     },
     startMining() {
       mining = true;
-      if (animation !== "walk") {
+      if (haulingPhase === null) {
         enter("swing");
-      } else {
-        resumeAfterWalk = "swing";
       }
     },
     stopMining() {
       mining = false;
-      if (animation === "walk") {
-        resumeAfterWalk = "idle";
+      if (haulingPhase === null) {
+        enter("idle");
+      }
+    },
+    setHauling(phase) {
+      if (phase === haulingPhase) {
         return;
       }
-      enter("idle");
-    },
-    faceBroken() {
-      resumeAfterWalk = mining ? "swing" : "idle";
-      enter("walk");
+      applyHauling(phase);
     },
     advanceMs(dtMs: number) {
       if (!(dtMs >= 0)) {
         throw new Error(`dtMs must be non-negative, got ${dtMs}`);
       }
       clipElapsedMs += dtMs;
-      if (animation === "walk") {
-        const walk = playback();
-        if (clipElapsedMs >= cycleDurationMs(walk)) {
-          enter(resumeAfterWalk);
-        }
-      }
     },
     setDigRate(next: number) {
       if (!(next > 0)) {

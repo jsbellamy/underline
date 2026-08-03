@@ -16,17 +16,60 @@ describe("dwarf anim state", () => {
     const ctrl = createDwarfAnimController();
     ctrl.startMining();
     expect(ctrl.animation).toBe("swing");
+    expect(ctrl.facing).toBe("east");
   });
 
-  it("plays walk once when a Mineable Block breaks, then returns to swing", () => {
+  it("enters walk facing west when hauling out", () => {
     const ctrl = createDwarfAnimController({ digRate: 1 });
     ctrl.startMining();
-    ctrl.faceBroken();
+    ctrl.setHauling("out");
     expect(ctrl.animation).toBe("walk");
+    expect(ctrl.facing).toBe("west");
+  });
 
-    const walk = dwarfPlayback("walk", 1);
-    ctrl.advanceMs(walk.durationsMs.reduce((a, b) => a + b, 0));
+  it("enters walk facing east when hauling back", () => {
+    const ctrl = createDwarfAnimController({ digRate: 1 });
+    ctrl.startMining();
+    ctrl.setHauling("back");
+    expect(ctrl.animation).toBe("walk");
+    expect(ctrl.facing).toBe("east");
+  });
+
+  it("returns to swing when hauling ends while mining", () => {
+    const ctrl = createDwarfAnimController({ digRate: 1 });
+    ctrl.startMining();
+    ctrl.setHauling("out");
+    ctrl.setHauling(null);
     expect(ctrl.animation).toBe("swing");
+    expect(ctrl.facing).toBe("east");
+  });
+
+  it("returns to idle when hauling ends while not mining", () => {
+    const ctrl = createDwarfAnimController({ digRate: 1 });
+    ctrl.setHauling("out");
+    ctrl.setHauling(null);
+    expect(ctrl.animation).toBe("idle");
+    expect(ctrl.facing).toBe("east");
+  });
+
+  it("does not restart the walk clip when setHauling repeats the same phase", () => {
+    const ctrl = createDwarfAnimController({ digRate: 1 });
+    ctrl.startMining();
+    ctrl.setHauling("out");
+    ctrl.advanceMs(200);
+    const elapsed = ctrl.clipElapsedMs;
+    ctrl.setHauling("out");
+    expect(ctrl.clipElapsedMs).toBe(elapsed);
+  });
+
+  it("loops walk for the whole haul leg", () => {
+    const ctrl = createDwarfAnimController({ digRate: 1 });
+    ctrl.startMining();
+    ctrl.setHauling("out");
+    const walk = dwarfPlayback("walk", 1);
+    const cycleMs = walk.durationsMs.reduce((a, b) => a + b, 0);
+    ctrl.advanceMs(cycleMs * 3);
+    expect(ctrl.animation).toBe("walk");
   });
 
   it("does not leave swing for idle while still mining", () => {
@@ -34,17 +77,6 @@ describe("dwarf anim state", () => {
     ctrl.startMining();
     ctrl.advanceMs(10_000);
     expect(ctrl.animation).toBe("swing");
-  });
-
-  it("returns to idle when mining stops after the current walk finishes", () => {
-    const ctrl = createDwarfAnimController({ digRate: 1 });
-    ctrl.startMining();
-    ctrl.faceBroken();
-    ctrl.stopMining();
-    expect(ctrl.animation).toBe("walk");
-    const walk = dwarfPlayback("walk", 1);
-    ctrl.advanceMs(walk.durationsMs.reduce((a, b) => a + b, 0));
-    expect(ctrl.animation).toBe("idle");
   });
 
   it("exposes the current frame index from the animation player", () => {
@@ -62,7 +94,7 @@ describe("dwarf anim state", () => {
     expect(allowed).toContain(ctrl.animation);
     ctrl.startMining();
     expect(allowed).toContain(ctrl.animation);
-    ctrl.faceBroken();
+    ctrl.setHauling("out");
     expect(allowed).toContain(ctrl.animation);
   });
 });
