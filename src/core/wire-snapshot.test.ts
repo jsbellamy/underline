@@ -31,17 +31,17 @@ describe("wire Snapshot", () => {
 
   it("builds an offlineSummary from before/after catch-up", () => {
     const before = initialSnapshot();
-    const after = advance(before, 8_000, { rateScale: OFFLINE_RATE_SCALE });
+    const after = advance(before, 2_000_000, { rateScale: OFFLINE_RATE_SCALE });
     const summary = buildOfflineSummary({
       before,
       after,
-      offlineMs: 8_000,
+      offlineMs: 2_000_000,
     });
     expect(summary).toEqual({
-      offlineMs: 8_000,
+      offlineMs: 2_000_000,
       advanceGained: 1,
       oreProduced: 1,
-      oreSmelted: 0,
+      oreSmelted: 1,
       oreBacklog: after.ore,
     });
   });

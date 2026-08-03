@@ -133,7 +133,7 @@ export function mountColonyView(
     oreDd.textContent = formatAmount(snapshot.ore);
     ingotsDd.textContent = formatAmount(snapshot.ingots);
     smelterDd.textContent = `${formatRate(throughput)} Ore/sec`;
-    hardnessDd.textContent = String(hardnessFor(snapshot.advance));
+    hardnessDd.textContent = String(Math.round(hardnessFor(snapshot.advance)));
     digRateUpgradeBtn.textContent = `Buy Upgrade (+0.25 Dig Rate) — ${digCost} Ingots`;
     digRateUpgradeBtn.disabled = snapshot.ingots < digCost;
     smelterUpgradeBtn.textContent =
