@@ -1,40 +1,62 @@
 // @vitest-environment happy-dom
 
 import { describe, expect, it, vi } from "vitest";
-import { initialSnapshot } from "../core/mining-engine";
+import {
+  hardnessFor,
+  initialSnapshot,
+  nextSmelterUpgradeCost,
+} from "../core/mining-engine";
 import { toWireSnapshot } from "../core/wire-snapshot";
 import { mountColonyView } from "./colony-view";
 
 describe("Colony Dock surface", () => {
-  it("shows Dig Rate, Ore, Ingots, Smelter throughput, and the Upgrade offer", () => {
+  it("shows Dig Rate, Ore, Ingots, Hardness, live Smelter, and both Upgrade offers", () => {
     const host = document.createElement("div");
     const view = mountColonyView(host);
     view.render(
       toWireSnapshot({
         ...initialSnapshot(),
+        advance: 25,
         ore: 2.5,
         ingots: 12,
         digRateUpgradeCount: 1,
+        smelterUpgradeCount: 1,
       }),
     );
 
     expect(host.querySelector("[data-dig-rate]")?.textContent).toContain("1.25");
     expect(host.querySelector("[data-ore]")?.textContent).toBe("2.50");
     expect(host.querySelector("[data-ingots]")?.textContent).toBe("12");
-    expect(host.querySelector("[data-smelter]")?.textContent).toContain("0.15");
+    expect(host.querySelector("[data-hardness]")?.textContent).toBe(
+      String(hardnessFor(25)),
+    );
+    expect(host.querySelector("[data-smelter]")?.textContent).toContain("0.20");
     expect(host.querySelector("[data-smelter]")?.textContent).toContain("Ore/sec");
-    const buy = host.querySelector<HTMLButtonElement>("[data-buy-upgrade]");
-    expect(buy?.textContent).toContain("10 Ingots");
-    expect(buy?.disabled).toBe(false);
+    const digBuy = host.querySelector<HTMLButtonElement>("[data-buy-upgrade]");
+    expect(digBuy?.textContent).toContain("+0.25 Dig Rate");
+    expect(digBuy?.textContent).toContain("10 Ingots");
+    expect(digBuy?.disabled).toBe(false);
+    const smelterBuy = host.querySelector<HTMLButtonElement>(
+      "[data-buy-smelter-upgrade]",
+    );
+    expect(smelterBuy?.textContent).toContain("+0.05 Ore/sec");
+    expect(smelterBuy?.textContent).toContain(
+      `${nextSmelterUpgradeCost(1)} Ingots`,
+    );
+    expect(smelterBuy?.disabled).toBe(false);
     view.destroy();
   });
 
-  it("disables the Upgrade when Ingots cannot cover the cost", () => {
+  it("disables each Upgrade when Ingots cannot cover its cost", () => {
     const host = document.createElement("div");
     const view = mountColonyView(host);
     view.render(toWireSnapshot({ ...initialSnapshot(), ingots: 4 }));
     expect(
       host.querySelector<HTMLButtonElement>("[data-buy-upgrade]")?.disabled,
+    ).toBe(true);
+    expect(
+      host.querySelector<HTMLButtonElement>("[data-buy-smelter-upgrade]")
+        ?.disabled,
     ).toBe(true);
     view.destroy();
   });
@@ -61,13 +83,27 @@ describe("Colony Dock surface", () => {
     view.destroy();
   });
 
-  it("fires onBuyUpgrade when the Upgrade is pressed", () => {
+  it("fires onBuyUpgrade with digRate when the Dig Rate Upgrade is pressed", () => {
     const onBuy = vi.fn();
     const host = document.createElement("div");
     const view = mountColonyView(host, { onBuyUpgrade: onBuy });
     view.render(toWireSnapshot({ ...initialSnapshot(), ingots: 5 }));
     host.querySelector<HTMLButtonElement>("[data-buy-upgrade]")?.click();
     expect(onBuy).toHaveBeenCalledOnce();
+    expect(onBuy).toHaveBeenCalledWith("digRate");
+    view.destroy();
+  });
+
+  it("fires onBuyUpgrade with smelter when the Smelter Upgrade is pressed", () => {
+    const onBuy = vi.fn();
+    const host = document.createElement("div");
+    const view = mountColonyView(host, { onBuyUpgrade: onBuy });
+    view.render(toWireSnapshot({ ...initialSnapshot(), ingots: 5 }));
+    host
+      .querySelector<HTMLButtonElement>("[data-buy-smelter-upgrade]")
+      ?.click();
+    expect(onBuy).toHaveBeenCalledOnce();
+    expect(onBuy).toHaveBeenCalledWith("smelter");
     view.destroy();
   });
 });

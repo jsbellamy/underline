@@ -2,7 +2,12 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { createMiningSession } from "../core/mining-session";
-import { initialSnapshot, nextDigRateUpgradeCost } from "../core/mining-engine";
+import {
+  hardnessFor,
+  initialSnapshot,
+  nextDigRateUpgradeCost,
+  nextSmelterUpgradeCost,
+} from "../core/mining-engine";
 import { createBusEndpoint, type BusMessage } from "./bus";
 import { mountDockShell } from "./dock-root";
 import { mountPaneShell } from "./pane-root";
@@ -88,6 +93,78 @@ describe("Pane↔Dock close-the-loop bus", () => {
     expect(session.snapshot.ingots).toBe(0);
     expect(dockRoot.querySelector("[data-dig-rate]")?.textContent).toContain(
       "1.25",
+    );
+
+    pane.destroy();
+    dock.destroy();
+    commandSpy.close();
+  });
+
+  it("lets the Dock buy a Smelter Upgrade and reflects live throughput and Hardness", async () => {
+    const channel = `underline-smelter-${crypto.randomUUID()}`;
+    const store = memoryStore();
+    const session = createMiningSession({
+      store,
+      now: () => 1_000,
+      snapshot: {
+        ...initialSnapshot(),
+        advance: 30,
+        ingots: nextSmelterUpgradeCost(0),
+      },
+    });
+
+    const paneRoot = document.createElement("main");
+    const dockRoot = document.createElement("main");
+    const commands: BusMessage[] = [];
+    const commandSpy = createBusEndpoint(
+      {
+        command(message) {
+          commands.push(message);
+        },
+      },
+      channel,
+    );
+
+    const pane = mountPaneShell(paneRoot, {
+      session,
+      deferPump: true,
+      dockWindow: {
+        open: vi.fn(async () => {}),
+        close: vi.fn(async () => {}),
+        toggle: vi.fn(async () => true),
+        isOpen: () => false,
+        reposition: vi.fn(async () => {}),
+        syncPositionFromPane: vi.fn(async () => {}),
+        destroy: vi.fn(),
+      },
+      busFactory: (handlers) => createBusEndpoint(handlers, channel),
+    });
+
+    const dock = mountDockShell(dockRoot, {
+      busFactory: (handlers) => createBusEndpoint(handlers, channel),
+    });
+
+    await flushBus();
+    expect(dockRoot.querySelector("[data-hardness]")?.textContent).toBe(
+      String(hardnessFor(30)),
+    );
+    expect(dockRoot.querySelector("[data-smelter]")?.textContent).toContain(
+      "0.15",
+    );
+
+    dockRoot
+      .querySelector<HTMLButtonElement>("[data-buy-smelter-upgrade]")
+      ?.click();
+    await flushBus();
+
+    expect(commands).toContainEqual({
+      type: "command",
+      command: { schemaVersion: 2, name: "buyUpgrade", upgrade: "smelter" },
+    });
+    expect(session.snapshot.smelterUpgradeCount).toBe(1);
+    expect(session.snapshot.ingots).toBe(0);
+    expect(dockRoot.querySelector("[data-smelter]")?.textContent).toContain(
+      "0.20",
     );
 
     pane.destroy();

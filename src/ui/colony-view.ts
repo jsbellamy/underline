@@ -1,11 +1,12 @@
-/** Colony Dock surface: Dig Rate, Ore, Ingots, Smelter throughput, Upgrade. */
+/** Colony Dock surface: Dig Rate, Ore, Ingots, Hardness, Smelter, Upgrades. */
 
 import {
-  HARDNESS,
-  SMELTER_THROUGHPUT,
   YIELD,
   digRateFor,
+  hardnessFor,
   nextDigRateUpgradeCost,
+  nextSmelterUpgradeCost,
+  smelterThroughputFor,
   type UpgradeId,
 } from "../core/mining-engine";
 import type { WireSnapshot } from "../core/wire-snapshot";
@@ -63,7 +64,11 @@ export function mountColonyView(
   smelterDt.textContent = "Smelter";
   const smelterDd = document.createElement("dd");
   smelterDd.dataset["smelter"] = "";
-  smelterDd.textContent = `${formatRate(SMELTER_THROUGHPUT)} Ore/sec`;
+
+  const hardnessDt = document.createElement("dt");
+  hardnessDt.textContent = "Hardness";
+  const hardnessDd = document.createElement("dd");
+  hardnessDd.dataset["hardness"] = "";
 
   status.append(
     digRateDt,
@@ -74,18 +79,27 @@ export function mountColonyView(
     ingotsDd,
     smelterDt,
     smelterDd,
+    hardnessDt,
+    hardnessDd,
   );
 
   const upgradeRow = document.createElement("div");
   upgradeRow.className = "dock-colony-upgrade";
-  const upgradeBtn = document.createElement("button");
-  upgradeBtn.type = "button";
-  upgradeBtn.className = "dock-buy-upgrade";
-  upgradeBtn.dataset["buyUpgrade"] = "";
-  upgradeBtn.addEventListener("click", () => {
+  const digRateUpgradeBtn = document.createElement("button");
+  digRateUpgradeBtn.type = "button";
+  digRateUpgradeBtn.className = "dock-buy-upgrade";
+  digRateUpgradeBtn.dataset["buyUpgrade"] = "";
+  digRateUpgradeBtn.addEventListener("click", () => {
     options.onBuyUpgrade?.("digRate");
   });
-  upgradeRow.append(upgradeBtn);
+  const smelterUpgradeBtn = document.createElement("button");
+  smelterUpgradeBtn.type = "button";
+  smelterUpgradeBtn.className = "dock-buy-smelter-upgrade";
+  smelterUpgradeBtn.dataset["buySmelterUpgrade"] = "";
+  smelterUpgradeBtn.addEventListener("click", () => {
+    options.onBuyUpgrade?.("smelter");
+  });
+  upgradeRow.append(digRateUpgradeBtn, smelterUpgradeBtn);
 
   const offline = document.createElement("aside");
   offline.className = "dock-offline-summary";
@@ -103,22 +117,28 @@ export function mountColonyView(
   });
   offline.append(offlineBody, dismiss);
 
-  // Constants stay visible for the slice so Hardness / Yield are legible.
   const constants = document.createElement("p");
   constants.className = "dock-colony-constants";
-  constants.textContent = `Hardness ${HARDNESS} · Yield ${YIELD}`;
+  constants.textContent = `Yield ${YIELD}`;
 
   root.append(title, status, upgradeRow, offline, constants);
   host.replaceChildren(root);
 
   function render(snapshot: WireSnapshot): void {
     const digRate = digRateFor(snapshot.digRateUpgradeCount);
-    const cost = nextDigRateUpgradeCost(snapshot.digRateUpgradeCount);
+    const digCost = nextDigRateUpgradeCost(snapshot.digRateUpgradeCount);
+    const smelterCost = nextSmelterUpgradeCost(snapshot.smelterUpgradeCount);
+    const throughput = smelterThroughputFor(snapshot.smelterUpgradeCount);
     digRateDd.textContent = `${formatRate(digRate)} Swing/sec`;
     oreDd.textContent = formatAmount(snapshot.ore);
     ingotsDd.textContent = formatAmount(snapshot.ingots);
-    upgradeBtn.textContent = `Buy Upgrade (+0.25 Dig Rate) — ${cost} Ingots`;
-    upgradeBtn.disabled = snapshot.ingots < cost;
+    smelterDd.textContent = `${formatRate(throughput)} Ore/sec`;
+    hardnessDd.textContent = String(hardnessFor(snapshot.advance));
+    digRateUpgradeBtn.textContent = `Buy Upgrade (+0.25 Dig Rate) — ${digCost} Ingots`;
+    digRateUpgradeBtn.disabled = snapshot.ingots < digCost;
+    smelterUpgradeBtn.textContent =
+      `Buy Smelter Upgrade (+0.05 Ore/sec) — ${smelterCost} Ingots`;
+    smelterUpgradeBtn.disabled = snapshot.ingots < smelterCost;
 
     if (snapshot.offlineSummary) {
       const s = snapshot.offlineSummary;
