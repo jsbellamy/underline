@@ -43,8 +43,12 @@ describe("mining engine drop constants", () => {
   });
 
   it("keeps Ore per damage flat at 0.1 across Advance", () => {
+    const flatOrePerDamage = 0.1;
     for (const advance of [0, 1, 5, 10, 40]) {
-      expect(oreForDrop(advance) / dropDamageFor(advance)).toBeCloseTo(0.1, 12);
+      expect(oreForDrop(advance)).toBeCloseTo(
+        flatOrePerDamage * dropDamageFor(advance),
+        12,
+      );
     }
   });
 });

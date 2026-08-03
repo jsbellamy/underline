@@ -101,8 +101,9 @@ export function nextSmelterUpgradeCost(smelterUpgradeCount: number): number {
 }
 
 /**
- * Event-jump mining for `dtMs`, then Smelter-drain for the same window.
- * Segments at the next Ore drop, Face break, or window end (ADR 0012).
+ * Event-jump mining for `dtMs` with per-segment Smelter drain (ADR 0012).
+ * Fractional Ore drops require interleaved Smelter feed so C4 chunk neutrality
+ * holds; Ore is smelted from stock present before each drop credits.
  */
 export function advance(
   snapshot: MiningSnapshot,
@@ -133,6 +134,12 @@ export function advance(
   const throughput = smelterThroughputFor(smelterUpgradeCount);
   let remaining = dtSec;
 
+  const feedSmelter = (segmentSec: number): void => {
+    const fed = Math.min(ore, throughput * segmentSec);
+    ore -= fed;
+    smelterProgress += fed;
+  };
+
   while (remaining > 0 && damagePerSec > 0) {
     const hardness = hardnessFor(advanceCount);
     const dropDamage = dropDamageFor(advanceCount);
@@ -149,17 +156,13 @@ export function advance(
     const timeToEvent = eventDamage / damagePerSec;
 
     if (timeToEvent > remaining) {
-      const fed = Math.min(ore, throughput * remaining);
-      ore -= fed;
-      smelterProgress += fed;
+      feedSmelter(remaining);
       faceSwingProgress += damagePerSec * remaining;
       remaining = 0;
       continue;
     }
 
-    const fed = Math.min(ore, throughput * timeToEvent);
-    ore -= fed;
-    smelterProgress += fed;
+    feedSmelter(timeToEvent);
     remaining -= timeToEvent;
     ore += orePerDrop;
     const landedDrop = dropsSoFar + 1;
@@ -172,9 +175,7 @@ export function advance(
   }
 
   if (remaining > 0) {
-    const fed = Math.min(ore, throughput * remaining);
-    ore -= fed;
-    smelterProgress += fed;
+    feedSmelter(remaining);
   }
 
   const minted = Math.floor(smelterProgress);
