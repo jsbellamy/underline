@@ -38,10 +38,10 @@ export function mountDockShell(
   });
 
   colony = mountColonyView(shell, {
-    onBuyUpgrade() {
+    onBuyUpgrade(upgrade) {
       bus.publish({
         type: "command",
-        command: { schemaVersion: SCHEMA_VERSION, name: "buyUpgrade" },
+        command: { schemaVersion: SCHEMA_VERSION, name: "buyUpgrade", upgrade },
       });
     },
     onDismissOffline() {

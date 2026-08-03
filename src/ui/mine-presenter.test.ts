@@ -28,7 +28,7 @@ describe("mine presenter", () => {
     const presenter = createMinePresenter(session);
     presenter.start();
     expect(presenter.anim.digRate).toBe(1);
-    expect(session.tryBuyUpgrade()).toBe(true);
+    expect(session.tryBuyUpgrade("digRate")).toBe(true);
     presenter.syncDigRate();
     expect(presenter.anim.digRate).toBe(1.25);
     expect(presenter.snapshot().digRate).toBe(1.25);

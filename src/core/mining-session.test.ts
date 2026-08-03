@@ -5,6 +5,8 @@ import {
   digRateFor,
   initialSnapshot,
   nextDigRateUpgradeCost,
+  nextSmelterUpgradeCost,
+  smelterThroughputFor,
 } from "./mining-engine";
 import { createMiningSession } from "./mining-session";
 import { MIN_OFFLINE_MS } from "./offline-clock";
@@ -57,11 +59,25 @@ describe("mining session", () => {
       now: () => 5_000,
       snapshot: { ...initialSnapshot(), ingots: nextDigRateUpgradeCost(0) },
     });
-    expect(session.tryBuyUpgrade()).toBe(true);
+    expect(session.tryBuyUpgrade("digRate")).toBe(true);
     expect(session.snapshot.digRateUpgradeCount).toBe(1);
     expect(session.snapshot.ingots).toBe(0);
     expect(digRateFor(session.snapshot.digRateUpgradeCount)).toBe(1.25);
     expect(store.data["underline-save-v1"]).toContain('"digRateUpgradeCount":1');
+  });
+
+  it("applies a Smelter buyUpgrade and raises smelterUpgradeCount", () => {
+    const store = memoryStore();
+    const session = createMiningSession({
+      store,
+      now: () => 5_000,
+      snapshot: { ...initialSnapshot(), ingots: nextSmelterUpgradeCost(0) },
+    });
+    expect(session.tryBuyUpgrade("smelter")).toBe(true);
+    expect(session.snapshot.smelterUpgradeCount).toBe(1);
+    expect(session.snapshot.ingots).toBe(0);
+    expect(smelterThroughputFor(session.snapshot.smelterUpgradeCount)).toBe(0.2);
+    expect(store.data["underline-save-v1"]).toContain('"smelterUpgradeCount":1');
   });
 
   it("no-ops buyUpgrade when Ingots cannot cover the cost", () => {
@@ -70,7 +86,7 @@ describe("mining session", () => {
       now: () => 0,
       snapshot: { ...initialSnapshot(), ingots: 4 },
     });
-    expect(session.tryBuyUpgrade()).toBe(false);
+    expect(session.tryBuyUpgrade("digRate")).toBe(false);
     expect(session.snapshot.digRateUpgradeCount).toBe(0);
     expect(session.snapshot.ingots).toBe(4);
   });

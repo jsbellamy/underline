@@ -3,7 +3,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { initialSnapshot } from "../core/mining-engine";
 import { toWireSnapshot } from "../core/wire-snapshot";
-import { createBusEndpoint, type BusMessage } from "./bus";
+import { createBusEndpoint, isDockCommand, type BusMessage } from "./bus";
 
 /** Drain BroadcastChannel delivery (command hop + snapshot hop). */
 async function flushBus(): Promise<void> {
@@ -13,6 +13,35 @@ async function flushBus(): Promise<void> {
     });
   }
 }
+
+describe("isDockCommand", () => {
+  it.each([
+    { upgrade: "digRate" as const },
+    { upgrade: "smelter" as const },
+  ])("accepts buyUpgrade with upgrade $upgrade", ({ upgrade }) => {
+    expect(
+      isDockCommand({ schemaVersion: 2, name: "buyUpgrade", upgrade }),
+    ).toBe(true);
+  });
+
+  it("accepts requestSnapshot", () => {
+    expect(isDockCommand({ schemaVersion: 2, name: "requestSnapshot" })).toBe(
+      true,
+    );
+  });
+
+  it.each([
+    { label: "missing upgrade", command: { schemaVersion: 2, name: "buyUpgrade" } },
+    {
+      label: "unknown upgrade",
+      command: { schemaVersion: 2, name: "buyUpgrade", upgrade: "hardness" },
+    },
+    { label: "wrong schemaVersion", command: { schemaVersion: 1, name: "buyUpgrade", upgrade: "digRate" } },
+    { label: "non-object", command: null },
+  ])("rejects $label", ({ command }) => {
+    expect(isDockCommand(command)).toBe(false);
+  });
+});
 
 describe("underline BroadcastChannel bus", () => {
   it("round-trips dock-opened to a peer endpoint", async () => {

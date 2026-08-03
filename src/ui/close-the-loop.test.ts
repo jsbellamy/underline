@@ -3,7 +3,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { createMiningSession } from "../core/mining-session";
 import { initialSnapshot, nextDigRateUpgradeCost } from "../core/mining-engine";
-import { createBusEndpoint } from "./bus";
+import { createBusEndpoint, type BusMessage } from "./bus";
 import { mountDockShell } from "./dock-root";
 import { mountPaneShell } from "./pane-root";
 
@@ -45,6 +45,15 @@ describe("Pane↔Dock close-the-loop bus", () => {
 
     const paneRoot = document.createElement("main");
     const dockRoot = document.createElement("main");
+    const commands: BusMessage[] = [];
+    const commandSpy = createBusEndpoint(
+      {
+        command(message) {
+          commands.push(message);
+        },
+      },
+      channel,
+    );
 
     const pane = mountPaneShell(paneRoot, {
       session,
@@ -71,6 +80,10 @@ describe("Pane↔Dock close-the-loop bus", () => {
     dockRoot.querySelector<HTMLButtonElement>("[data-buy-upgrade]")?.click();
     await flushBus();
 
+    expect(commands).toContainEqual({
+      type: "command",
+      command: { schemaVersion: 2, name: "buyUpgrade", upgrade: "digRate" },
+    });
     expect(session.snapshot.digRateUpgradeCount).toBe(1);
     expect(session.snapshot.ingots).toBe(0);
     expect(dockRoot.querySelector("[data-dig-rate]")?.textContent).toContain(
@@ -79,6 +92,7 @@ describe("Pane↔Dock close-the-loop bus", () => {
 
     pane.destroy();
     dock.destroy();
+    commandSpy.close();
   });
 
   it("ignores mismatched command schemaVersion", async () => {
@@ -107,7 +121,7 @@ describe("Pane↔Dock close-the-loop bus", () => {
     const rogue = createBusEndpoint({}, channel);
     rogue.publish({
       type: "command",
-      command: { schemaVersion: 99, name: "buyUpgrade" } as never,
+      command: { schemaVersion: 99, name: "buyUpgrade", upgrade: "digRate" } as never,
     });
     await flushBus();
     expect(session.snapshot.digRateUpgradeCount).toBe(0);
