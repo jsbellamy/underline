@@ -16,7 +16,7 @@ not delete history.
 |-----|-------|
 | [0001](0001-two-scale-mining-grid.md) | Two-scale mining grid (16×16 Rendering Tile + 32×32 Mineable Block) |
 | [0002](0002-palette-exact-canonical-identity.md) | Palette-exact canonical identity (expand–contract migration, contracted) |
-| [0003](0003-swing-action-canvas.md) | Swing action canvas (24×24, canonical origin at column 4) |
+| [0003](0003-swing-action-canvas.md) | Swing action canvas (24×24, canonical origin at column 1) |
 | [0004](0004-pre-attestation-acquisitions.md) | Pre-attestation acquisitions (retain `/1` and legacy allowlist) |
 | [0005](0005-isolation-sweep-throughput-target.md) | Isolation-sweep throughput target (`wall_s` ≤ 180s on CI, per-file ceiling retired) |
 | [0006](0006-final-polish-lifecycle-boundary.md) | Final-polish lifecycle boundary |

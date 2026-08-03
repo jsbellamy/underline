@@ -551,8 +551,8 @@ evidence model, add Gates, or change Budgets.
    `cell-author-provenance/0` with `generation_mode=cell-author`, and seeds
    Draft and Polished Frames from the authored raster. Dwarf swing uses base
    mapping `[0, 0, 0, 0]` from idle Release Frame 0 — every target Frame
-   derives from canonical idle Release Frame 0 embedded at column 4 in the 24×24
-   action canvas (ADR 0003). The post-ingest identity anchor
+   derives from canonical idle Release Frame 0 embedded at column 1 in the 24×24
+   action canvas (ADR 0003, amended by issue #293). The post-ingest identity anchor
    (`assets/first-room/dwarf/identity.png`) is validation evidence only and is
    never a generation canvas. Downstream Identity Lock, coherence Gates,
    `brief`, `check`, and `finalize` behavior is unchanged from provider `init`.
