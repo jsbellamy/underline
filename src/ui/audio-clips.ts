@@ -7,7 +7,7 @@ import {
   type AudioPack,
 } from "../data/audio-pack";
 
-const clipModules = import.meta.glob("../audio/*.{wav,ogg,mp3}", {
+const clipModules = import.meta.glob("../audio/*.wav", {
   eager: true,
   import: "default",
 }) as Record<string, string>;

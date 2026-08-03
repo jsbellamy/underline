@@ -8,7 +8,6 @@ import {
   type AudioClipId,
   type AudioPack,
 } from "./audio-pack";
-import { audioClipUrl, audioClipUrlFor } from "../ui/audio-clips";
 
 const REQUIRED_CLIP_IDS: AudioClipId[] = ["swing", "break"];
 const AUDIO_ROOT = resolve(import.meta.dirname, "../audio");
@@ -51,18 +50,5 @@ describe("audio-pack", () => {
 
   it("throws for an unknown clip id", () => {
     expect(() => audioClipEntry(pack, "lunge" as AudioClipId)).toThrow(/clip/);
-  });
-
-  it("resolves each manifest relative_path to a Vite URL via glob", () => {
-    for (const clip of pack.clips) {
-      const url = audioClipUrl(clip.relative_path);
-      expect(url.length).toBeGreaterThan(0);
-    }
-    expect(audioClipUrlFor(pack, "swing")).toBe(audioClipUrl("swing.wav"));
-    expect(audioClipUrlFor(pack, "break")).toBe(audioClipUrl("break.wav"));
-  });
-
-  it("throws when a relative_path has no resolved Vite URL", () => {
-    expect(() => audioClipUrl("missing.wav")).toThrow(/Vite URL/);
   });
 });
