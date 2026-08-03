@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prototype:mining-scene": "node -e \"console.log('Open http://localhost:1420/?prototype=mining-scene&variant=A&moment=first-open');\" && vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
