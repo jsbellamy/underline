@@ -5,6 +5,7 @@ import {
   advance,
   buyUpgrade,
   type MiningSnapshot,
+  type UpgradeId,
 } from "./mining-engine";
 import {
   browserSaveStore,
@@ -26,7 +27,7 @@ export interface MiningSession {
   readonly snapshot: MiningSnapshot;
   wireSnapshot(): WireSnapshot;
   advanceLive(dtMs: number): MiningSnapshot;
-  tryBuyUpgrade(): boolean;
+  tryBuyUpgrade(upgrade: UpgradeId): boolean;
   publish(): void;
   persist(): void;
   clearOfflineSummary(): void;
@@ -92,9 +93,9 @@ export function createMiningSession(
       snapshot = advance(snapshot, dtMs);
       return snapshot;
     },
-    tryBuyUpgrade() {
+    tryBuyUpgrade(upgrade: UpgradeId) {
       try {
-        snapshot = buyUpgrade(snapshot);
+        snapshot = buyUpgrade(snapshot, upgrade);
         persist();
         publish();
         return true;

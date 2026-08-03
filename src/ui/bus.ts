@@ -9,12 +9,12 @@ BroadcastChannel endpoint for Pane↔Dock. Channel `underline`; payloads follow
 */
 
 import type { WireSnapshot } from "../core/wire-snapshot";
-import { SCHEMA_VERSION } from "../core/mining-engine";
+import { SCHEMA_VERSION, type UpgradeId } from "../core/mining-engine";
 
 export const UNDERLINE_BUS_CHANNEL = "underline";
 
 export type DockCommand =
-  | { schemaVersion: typeof SCHEMA_VERSION; name: "buyUpgrade" }
+  | { schemaVersion: typeof SCHEMA_VERSION; name: "buyUpgrade"; upgrade: UpgradeId }
   | { schemaVersion: typeof SCHEMA_VERSION; name: "requestSnapshot" };
 
 export type BusMessage =
@@ -36,16 +36,26 @@ function isSchemaVersion(value: unknown): value is typeof SCHEMA_VERSION {
   return value === SCHEMA_VERSION;
 }
 
+function isUpgradeId(value: unknown): value is UpgradeId {
+  return value === "digRate" || value === "smelter";
+}
+
 /** True when a Dock command carries schemaVersion 2. */
 export function isDockCommand(value: unknown): value is DockCommand {
   if (!value || typeof value !== "object") {
     return false;
   }
-  const command = value as { schemaVersion?: unknown; name?: unknown };
+  const command = value as { schemaVersion?: unknown; name?: unknown; upgrade?: unknown };
   if (!isSchemaVersion(command.schemaVersion)) {
     return false;
   }
-  return command.name === "buyUpgrade" || command.name === "requestSnapshot";
+  if (command.name === "requestSnapshot") {
+    return true;
+  }
+  if (command.name === "buyUpgrade") {
+    return isUpgradeId(command.upgrade);
+  }
+  return false;
 }
 
 /** True when a wire Snapshot carries schemaVersion 2. */

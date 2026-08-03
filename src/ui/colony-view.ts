@@ -6,6 +6,7 @@ import {
   YIELD,
   digRateFor,
   nextDigRateUpgradeCost,
+  type UpgradeId,
 } from "../core/mining-engine";
 import type { WireSnapshot } from "../core/wire-snapshot";
 
@@ -16,7 +17,7 @@ export interface ColonyView {
 }
 
 export interface ColonyViewOptions {
-  onBuyUpgrade?: () => void;
+  onBuyUpgrade?: (upgrade: UpgradeId) => void;
   onDismissOffline?: () => void;
 }
 
@@ -82,7 +83,7 @@ export function mountColonyView(
   upgradeBtn.className = "dock-buy-upgrade";
   upgradeBtn.dataset["buyUpgrade"] = "";
   upgradeBtn.addEventListener("click", () => {
-    options.onBuyUpgrade?.();
+    options.onBuyUpgrade?.("digRate");
   });
   upgradeRow.append(upgradeBtn);
 

@@ -99,6 +99,7 @@ export function mountPaneShell(
   let lastPublishedOre = session.snapshot.ore;
   let lastPublishedIngots = session.snapshot.ingots;
   let lastPublishedUpgrades = session.snapshot.digRateUpgradeCount;
+  let lastPublishedSmelterUpgrades = session.snapshot.smelterUpgradeCount;
 
   const pane = document.createElement("div");
   pane.className = "pane";
@@ -127,6 +128,7 @@ export function mountPaneShell(
     lastPublishedOre = session.snapshot.ore;
     lastPublishedIngots = session.snapshot.ingots;
     lastPublishedUpgrades = session.snapshot.digRateUpgradeCount;
+    lastPublishedSmelterUpgrades = session.snapshot.smelterUpgradeCount;
   }
 
   function handleCommand(
@@ -136,11 +138,14 @@ export function mountPaneShell(
       return;
     }
     if (message.command.name === "buyUpgrade") {
-      const beforeCount = session.snapshot.digRateUpgradeCount;
-      if (session.tryBuyUpgrade()) {
+      const beforeDigRate = session.snapshot.digRateUpgradeCount;
+      if (session.tryBuyUpgrade(message.command.upgrade)) {
         // tryBuyUpgrade already publish()es via session onPublish when set;
         // always mirror on the bus for injected sessions without onPublish.
-        if (session.snapshot.digRateUpgradeCount !== beforeCount) {
+        if (
+          message.command.upgrade === "digRate" &&
+          session.snapshot.digRateUpgradeCount !== beforeDigRate
+        ) {
           presenter.syncDigRate();
         }
         publishSnapshot();
@@ -191,7 +196,8 @@ export function mountPaneShell(
       snap.advance !== lastPublishedAdvance ||
       snap.ore !== lastPublishedOre ||
       snap.ingots !== lastPublishedIngots ||
-      snap.digRateUpgradeCount !== lastPublishedUpgrades
+      snap.digRateUpgradeCount !== lastPublishedUpgrades ||
+      snap.smelterUpgradeCount !== lastPublishedSmelterUpgrades
     ) {
       publishSnapshot();
     }
