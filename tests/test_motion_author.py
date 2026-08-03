@@ -12,9 +12,10 @@ from pathlib import Path
 import pytest
 
 from pipeline.canonical import packet_bytes
-from pipeline.cell_delta import SCHEMA as LEDGER_SCHEMA
+from pipeline.cell_delta import SCHEMA as LEDGER_SCHEMA, assert_cell_delta_replay
 from pipeline.cell_raster import read_cells, write_cells
 from pipeline.final_polish import _load_base_release_frames
+from pipeline.identity_lock import evaluate_identity_lock
 from pipeline.motion_author import (
     MOTION_POSE_PLAN_SCHEMA,
     MOTION_POSE_PLAN_SCHEMA_V1,
@@ -32,6 +33,8 @@ IDENTITY_LOCKS_PATH = ROOT / "assets" / "first-room" / "dwarf" / "identity-locks
 PARTS_JSON = ROOT / "assets" / "first-room" / "dwarf" / "parts.json"
 IDLE_RELEASE_FRAME = ROOT / "assets" / "first-room" / "dwarf" / "idle" / "release" / "frame-0.png"
 REAL_DWARF_IDLE_BUNDLE = ROOT / "assets" / "first-room" / "dwarf" / "idle"
+# Rebased from 23688960… when swing pose-plan paints moved to (22, 22) after
+# embedding the idle base at canonical_origin [1, 0] (issue #293 alignment).
 CHECKED_IN_SWING_POSE_PLAN_V0_LEDGER_DIGEST = (
     "3991e0cdac5c9fd9f1815715b5fa693a27ae98dd2e22ff560b1a23573a0571b3"
 )
@@ -331,6 +334,8 @@ def test_direct_locked_write_rejects_with_identity_lock_write() -> None:
         author_motion([base], pose_plan, _load_identity_lock_spec(), palette)
     assert exc.value.reason_code == "identity_lock_write"
     assert "helmet_face" in str(exc.value)
+    assert exc.value.failed_lock_id == "helmet_face"
+    assert exc.value.identity_lock_checks is not None
 
 
 def test_tolerance_aware_authoring_reports_lock_checks_on_pass() -> None:
@@ -347,6 +352,10 @@ def test_tolerance_aware_authoring_reports_lock_checks_on_pass() -> None:
     checks = result.report["frames"][0]["identity_lock_checks"]
     assert set(checks) == {"helmet_face", "belt_core", "boots"}
     assert all(check["outcome"] == "PASS" for check in checks.values())
+    helmet = checks["helmet_face"]
+    assert helmet["comparison"] == "registered-structure"
+    assert helmet["occupancy_difference"] <= helmet["max_occupancy_difference"]
+    assert helmet["palette_role_distance"] <= helmet["max_palette_role_distance"]
 
 
 def test_boots_occupancy_change_rejects_after_frame_evaluation() -> None:
@@ -364,6 +373,27 @@ def test_boots_occupancy_change_rejects_after_frame_evaluation() -> None:
         )
     assert exc.value.reason_code == "identity_lock_write"
     assert "boots" in str(exc.value)
+    assert "occupancy_difference" in str(exc.value)
+    assert "exceeds 0.0" in str(exc.value)
+    assert exc.value.failed_lock_id == "boots"
+    assert exc.value.identity_lock_checks is not None
+    assert exc.value.identity_lock_checks["boots"]["outcome"] == "FAIL"
+
+
+def test_boots_unchanged_occupancy_passes_after_frame_evaluation() -> None:
+    base_frames = _load_base_release_frames(REAL_DWARF_IDLE_BUNDLE, "swing")
+    pose_plan = _swing_pose_plan(frame_ops=[[]])
+    palette = load_master_palette(PALETTE_PATH)
+    result = author_motion(
+        base_frames,
+        pose_plan,
+        _load_identity_lock_spec(),
+        palette,
+    )
+    boots = result.report["frames"][0]["identity_lock_checks"]["boots"]
+    assert boots["outcome"] == "PASS"
+    assert boots["comparison"] == "exact-occupancy"
+    assert boots["occupancy_difference"] == 0.0
 
 
 def test_locked_paint_inside_helmet_face_authors_within_tolerance() -> None:
@@ -390,6 +420,8 @@ def test_locked_paint_inside_helmet_face_authors_within_tolerance() -> None:
     )
     helmet = result.report["frames"][0]["identity_lock_checks"]["helmet_face"]
     assert helmet["outcome"] == "PASS"
+    assert result.frames[0][5][10] == (17, 16, 24)
+    assert helmet["occupancy_difference"] <= helmet["max_occupancy_difference"]
 
 
 def test_helmet_face_beyond_tolerance_rejects_after_frame_evaluation() -> None:
@@ -415,6 +447,33 @@ def test_helmet_face_beyond_tolerance_rejects_after_frame_evaluation() -> None:
     assert exc.value.reason_code == "identity_lock_write"
     assert "helmet_face" in str(exc.value)
     assert "exceeds" in str(exc.value)
+    assert exc.value.failed_lock_id == "helmet_face"
+    assert exc.value.identity_lock_checks is not None
+    assert exc.value.identity_lock_checks["helmet_face"]["outcome"] == "FAIL"
+
+
+def test_swing_tool_crossing_helmet_face_authors_replays_and_passes_identity_lock() -> None:
+    """C6: lock-crossing swing motion authors, replays byte-exact, and passes evaluate_identity_lock."""
+    base_frames = _load_base_release_frames(REAL_DWARF_IDLE_BUNDLE, "swing")
+    part_map = _embedded_swing_part_map()
+    pose_plan = _swing_v1_pose_plan(
+        frame_ops=[[{"op": "translate_part", "part_id": "tool_head", "dx": -1, "dy": 0}]],
+        part_map_digest=part_map.base_raster_sha256,
+    )
+    palette = load_master_palette(PALETTE_PATH)
+    result = author_motion(
+        base_frames,
+        pose_plan,
+        _load_identity_lock_spec(),
+        palette,
+        part_map=part_map,
+    )
+    helmet = result.report["frames"][0]["identity_lock_checks"]["helmet_face"]
+    assert helmet["outcome"] == "PASS"
+    assert_cell_delta_replay(base_frames, result.frames, result.ledger)
+    lock_result = evaluate_identity_lock(result.frames, "swing")
+    assert lock_result.outcome == "PASS"
+    assert lock_result.per_frame[0].check_results["helmet_face"]["outcome"] == "PASS"
 
 
 def test_permitted_lock_relocation_preserves_exact_cells() -> None:
@@ -645,8 +704,8 @@ def test_emitted_part_maps_cover_every_opaque_cell() -> None:
 
 def test_part_translate_respects_identity_lock() -> None:
     base_frames = _load_base_release_frames(REAL_DWARF_IDLE_BUNDLE, "swing")
-    pose_plan = _swing_pose_plan(
-        frame_ops=[[{"op": "clear", "x": 7, "y": 21}]],
+    pose_plan = _swing_v1_pose_plan(
+        frame_ops=[[{"op": "translate_part", "part_id": "boots", "dx": 1, "dy": 0}]],
     )
     palette = load_master_palette(PALETTE_PATH)
     with pytest.raises(MotionAuthorError) as exc:
@@ -655,8 +714,11 @@ def test_part_translate_respects_identity_lock() -> None:
             pose_plan,
             _load_identity_lock_spec(),
             palette,
+            part_map=_embedded_swing_part_map(),
         )
     assert exc.value.reason_code == "identity_lock_write"
+    assert exc.value.failed_lock_id == "boots"
+    assert "occupancy_difference" in str(exc.value)
 
 
 def _chebyshev(a: tuple[int, int], b: tuple[int, int]) -> int:

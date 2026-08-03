@@ -33,9 +33,18 @@ _PART_OPS = frozenset({"translate_part", "orient_part"})
 
 
 class MotionAuthorError(ValueError):
-    def __init__(self, message: str, *, reason_code: str) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        reason_code: str,
+        identity_lock_checks: Mapping[str, Mapping[str, Any]] | None = None,
+        failed_lock_id: str | None = None,
+    ) -> None:
         super().__init__(message)
         self.reason_code = reason_code
+        self.identity_lock_checks = identity_lock_checks
+        self.failed_lock_id = failed_lock_id
 
 
 @dataclass(frozen=True)
@@ -279,23 +288,6 @@ def _lock_rectangle_at_offset(
         rectangle["y0"] + dy,
         rectangle["y1"] + dy,
     )
-
-
-def _cell_in_rectangle(x: int, y: int, x0: int, x1: int, y0: int, y1: int) -> bool:
-    return x0 <= x <= x1 and y0 <= y <= y1
-
-
-def _locked_cells(
-    locks: Mapping[str, dict[str, Any]],
-    offsets: Mapping[str, tuple[int, int]],
-) -> set[tuple[int, int]]:
-    occupied: set[tuple[int, int]] = set()
-    for lock_id, lock in locks.items():
-        x0, x1, y0, y1 = _lock_rectangle_at_offset(lock["rectangle"], offsets[lock_id])
-        for y in range(y0, y1 + 1):
-            for x in range(x0, x1 + 1):
-                occupied.add((x, y))
-    return occupied
 
 
 def _assert_in_bounds(x: int, y: int, *, frame_w: int, frame_h: int) -> None:
@@ -595,7 +587,6 @@ def _translate_part_cells(
     dy: int,
     frame_w: int,
     frame_h: int,
-    locked: set[tuple[int, int]],
 ) -> None:
     moving_cells: set[tuple[int, int]] = set()
     for part_id in part_ids:
@@ -632,7 +623,6 @@ def _orient_part_cells(
     orientation_id: str,
     frame_w: int,
     frame_h: int,
-    locked: set[tuple[int, int]],
 ) -> None:
     if not part.rigid:
         raise MotionAuthorError(
@@ -689,7 +679,6 @@ def _apply_operation(
     frame_h: int,
     locks: Mapping[str, dict[str, Any]],
     lock_offsets: dict[str, tuple[int, int]],
-    locked: set[tuple[int, int]],
     palette: MasterPalette,
     parts: dict[str, _MutablePart] | None,
     explicit_parts: set[str],
@@ -715,7 +704,6 @@ def _apply_operation(
             dy=dy,
             frame_w=frame_w,
             frame_h=frame_h,
-            locked=locked,
         )
         return
 
@@ -734,7 +722,6 @@ def _apply_operation(
             orientation_id=orientation_id,
             frame_w=frame_w,
             frame_h=frame_h,
-            locked=locked,
         )
         return
 
@@ -933,7 +920,6 @@ def author_motion(
                 frame_h=frame_h,
                 locks=locks,
                 lock_offsets=frame_lock_offsets,
-                locked=_locked_cells(locks, frame_lock_offsets),
                 palette=master_palette,
                 parts=mutable_parts,
                 explicit_parts=explicit_parts,
@@ -959,6 +945,8 @@ def author_motion(
             raise MotionAuthorError(
                 format_authored_frame_lock_failure(lock_id, check),
                 reason_code="identity_lock_write",
+                identity_lock_checks=identity_lock_checks,
+                failed_lock_id=lock_id,
             )
         authored_frames.append(frame)
         applied_lock_offsets.append(
