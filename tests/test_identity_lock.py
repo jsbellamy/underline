@@ -396,6 +396,23 @@ def test_swing_registered_anchor_allows_non_identical_rgb() -> None:
     assert result.per_frame[0].check_results["helmet_face"]["palette_role_distance"] == 0.0
 
 
+def test_swing_exact_occupancy_overpaint_different_role_fails() -> None:
+    frames = _swing_frames()
+    # Stone axe head over opaque boot: occupancy unchanged, role differs (#292).
+    _set_cell(frames, 0, 8, 23, (74, 59, 72))
+    result = evaluate_identity_lock(frames, "swing")
+    assert result.outcome == "FAIL"
+    boots = result.per_frame[0].check_results["boots"]
+    assert boots["outcome"] == "FAIL"
+    assert boots["comparison"] == "exact-occupancy"
+    assert boots["occupancy_difference"] == 0.0
+    assert boots["failure_reason_code"] == "palette_role_mismatch"
+    detail = identity_lock_rejection_detail(result)
+    assert detail is not None
+    assert detail["failure_reason_code"] == "palette_role_mismatch"
+    assert detail["primary_reason_code"] == "identity_lock_palette"
+
+
 def test_swing_boot_rgb_change_passes_exact_occupancy() -> None:
     frames = _swing_frames()
     original = frames[0][23][8]

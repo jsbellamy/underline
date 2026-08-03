@@ -594,6 +594,61 @@ def _first_occupancy_mismatch(
     return None
 
 
+def _first_palette_role_mismatch(
+    canonical: list[list[Cell]],
+    attempt: list[list[Cell]],
+    rectangle: Mapping[str, int],
+    dx: int,
+    dy: int,
+    palette_entries: Sequence[tuple[str, tuple[int, int, int]]],
+    *,
+    anchor_id: str,
+    canonical_role_map: Mapping[tuple[int, int], str] | None = None,
+    attempt_role_map: Mapping[tuple[int, int], str] | None = None,
+    origin_dx: int = 0,
+    origin_dy: int = 0,
+) -> IdentityLockMismatch | None:
+    for x, y, canonical_cell, attempt_cell in _registered_cells(
+        canonical,
+        attempt,
+        rectangle,
+        dx,
+        dy,
+        origin_dx=origin_dx,
+        origin_dy=origin_dy,
+    ):
+        if canonical_cell is None or attempt_cell is None:
+            continue
+        anchor_x = x - origin_dx
+        anchor_y = y - origin_dy
+        canonical_role = _role_at(
+            (anchor_x, anchor_y),
+            canonical_cell,
+            canonical_role_map,
+            palette_entries,
+        )
+        attempt_role = _role_at(
+            _anchor_role_coord(
+                x + dx,
+                y + dy,
+                origin_dx=origin_dx,
+                origin_dy=origin_dy,
+            ),
+            attempt_cell,
+            attempt_role_map,
+            palette_entries,
+        )
+        if attempt_role != canonical_role:
+            return IdentityLockMismatch(
+                anchor=anchor_id,
+                x=x,
+                y=y,
+                expected_rgba=_cell_to_rgba(canonical_cell),
+                actual_rgba=_cell_to_rgba(attempt_cell),
+            )
+    return None
+
+
 def _role_at(
     coord: tuple[int, int],
     cell: Cell,
@@ -627,7 +682,6 @@ def _compare_structural_lock(
     *,
     canonical_role_map: Mapping[tuple[int, int], str] | None = None,
     attempt_role_map: Mapping[tuple[int, int], str] | None = None,
-    palette_exact_roles: bool = False,
     origin_dx: int = 0,
     origin_dy: int = 0,
 ) -> tuple[dict[str, Any], IdentityLockMismatch | None]:
@@ -708,45 +762,42 @@ def _compare_structural_lock(
         )
         passed = occupancy_ok and palette_ok
     else:
-        if palette_exact_roles:
-            passed = True
-            for x, y, canonical_cell, attempt_cell in _registered_cells(
-                canonical,
-                attempt,
-                rectangle,
-                dx,
-                dy,
-                origin_dx=origin_dx,
-                origin_dy=origin_dy,
-            ):
-                if attempt_cell is None:
-                    continue
-                attempt_role = _role_at(
-                    _anchor_role_coord(
-                        x + dx,
-                        y + dy,
-                        origin_dx=origin_dx,
-                        origin_dy=origin_dy,
-                    ),
-                    attempt_cell,
-                    attempt_role_map,
-                    palette_entries,
-                )
-                if canonical_cell is None:
-                    continue
-                anchor_x = x - origin_dx
-                anchor_y = y - origin_dy
-                canonical_role = _role_at(
-                    (anchor_x, anchor_y),
-                    canonical_cell,
-                    canonical_role_map,
-                    palette_entries,
-                )
-                if attempt_role != canonical_role:
-                    passed = False
-                    break
-        else:
-            passed = occupancy_difference == 0.0
+        occupancy_ok = occupancy_difference == 0.0
+        role_ok = True
+        for x, y, canonical_cell, attempt_cell in _registered_cells(
+            canonical,
+            attempt,
+            rectangle,
+            dx,
+            dy,
+            origin_dx=origin_dx,
+            origin_dy=origin_dy,
+        ):
+            if canonical_cell is None or attempt_cell is None:
+                continue
+            anchor_x = x - origin_dx
+            anchor_y = y - origin_dy
+            canonical_role = _role_at(
+                (anchor_x, anchor_y),
+                canonical_cell,
+                canonical_role_map,
+                palette_entries,
+            )
+            attempt_role = _role_at(
+                _anchor_role_coord(
+                    x + dx,
+                    y + dy,
+                    origin_dx=origin_dx,
+                    origin_dy=origin_dy,
+                ),
+                attempt_cell,
+                attempt_role_map,
+                palette_entries,
+            )
+            if attempt_role != canonical_role:
+                role_ok = False
+                break
+        passed = occupancy_ok and role_ok
 
     result: dict[str, Any] = {
         "outcome": "PASS" if passed else "FAIL",
@@ -768,18 +819,38 @@ def _compare_structural_lock(
                 result["failure_reason_code"] = "occupancy_difference"
             elif not palette_ok:
                 result["failure_reason_code"] = "palette_role_distance"
+    elif not passed:
+        if not occupancy_ok:
+            result["failure_reason_code"] = "occupancy_difference"
+        elif not role_ok:
+            result["failure_reason_code"] = "palette_role_mismatch"
     mismatch = None
     if not passed:
-        mismatch = _first_occupancy_mismatch(
-            canonical,
-            attempt,
-            rectangle,
-            dx,
-            dy,
-            anchor_id=str(lock["id"]),
-            origin_dx=origin_dx,
-            origin_dy=origin_dy,
-        )
+        if comparison == "exact-occupancy" and occupancy_ok and not role_ok:
+            mismatch = _first_palette_role_mismatch(
+                canonical,
+                attempt,
+                rectangle,
+                dx,
+                dy,
+                palette_entries,
+                anchor_id=str(lock["id"]),
+                canonical_role_map=canonical_role_map,
+                attempt_role_map=attempt_role_map,
+                origin_dx=origin_dx,
+                origin_dy=origin_dy,
+            )
+        else:
+            mismatch = _first_occupancy_mismatch(
+                canonical,
+                attempt,
+                rectangle,
+                dx,
+                dy,
+                anchor_id=str(lock["id"]),
+                origin_dx=origin_dx,
+                origin_dy=origin_dy,
+            )
     return result, mismatch
 
 
@@ -935,7 +1006,6 @@ def _find_frame_offsets(
     *,
     canonical_role_map: Mapping[tuple[int, int], str] | None = None,
     attempt_role_map: Mapping[tuple[int, int], str] | None = None,
-    palette_exact_roles: bool = False,
     origin_dx: int = 0,
     origin_dy: int = 0,
 ) -> tuple[
@@ -986,7 +1056,6 @@ def _find_frame_offsets(
                 palette_roles,
                 canonical_role_map=canonical_role_map,
                 attempt_role_map=attempt_role_map,
-                palette_exact_roles=palette_exact_roles,
                 origin_dx=origin_dx,
                 origin_dy=origin_dy,
             )
@@ -1264,7 +1333,6 @@ def evaluate_identity_lock(
                 if per_frame_role_maps is None
                 else per_frame_role_maps[frame_index]
             ),
-            palette_exact_roles=palette_exact,
             origin_dx=origin_dx,
             origin_dy=origin_dy,
         )
@@ -1368,6 +1436,8 @@ def identity_lock_rejection_detail(result: IdentityLockResult) -> dict[str, Any]
                 else:
                     detail["primary_reason_code"] = "identity_lock_occupancy"
             elif failure_reason_code == "palette_role_distance":
+                detail["primary_reason_code"] = "identity_lock_palette"
+            elif failure_reason_code == "palette_role_mismatch":
                 detail["primary_reason_code"] = "identity_lock_palette"
 
         palette_role_distance = first_failure.get("palette_role_distance")
