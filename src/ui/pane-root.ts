@@ -23,6 +23,11 @@ import {
   createProductionDockWindowPort,
   type DockWindowPort,
 } from "./dock-window";
+import {
+  createFrameMetrics,
+  type FrameMetrics,
+  type FrameMetricsReport,
+} from "./frame-metrics";
 import { bindPressable } from "./keyboard";
 import { createMinePresenter, type MinePresenter } from "./mine-presenter";
 import { mountMiningTunnel, type MiningTunnelView } from "./mining-tunnel";
@@ -32,6 +37,7 @@ export interface PaneShell {
   startPump(): void;
   stop(): void;
   destroy(): void;
+  frameMetrics(): FrameMetricsReport | null;
 }
 
 export interface PaneShellOptions {
@@ -41,6 +47,7 @@ export interface PaneShellOptions {
   now?: () => number;
   session?: MiningSession;
   presenter?: MinePresenter;
+  frameMetrics?: FrameMetrics;
   pumpSchedule?: Partial<
     Pick<
       PumpDeps,
@@ -79,6 +86,10 @@ export function mountPaneShell(
   const dockWindow = options.dockWindow ?? createProductionDockWindowPort();
   const busFactory = options.busFactory ?? createBusEndpoint;
   const clockNow = options.now ?? Date.now;
+  const schedule = options.pumpSchedule;
+  const frameMetrics =
+    options.frameMetrics ??
+    createFrameMetrics({ now: schedule?.now ?? clockNow });
 
   let bus: BusEndpoint | null = null;
 
@@ -207,7 +218,6 @@ export function mountPaneShell(
     if (pump) {
       return;
     }
-    const schedule = options.pumpSchedule;
     const pumpOptions: PumpDeps = {
       advanceBy: (ms) => {
         presenter.advanceMs(ms);
@@ -218,6 +228,7 @@ export function mountPaneShell(
       render: () => {
         tunnel?.render(presenter.snapshot());
       },
+      frameMetrics,
       now: schedule?.now ?? clockNow,
     };
     if (schedule?.setInterval) {
@@ -253,6 +264,9 @@ export function mountPaneShell(
     stop() {
       pump?.stop();
       pump = null;
+    },
+    frameMetrics() {
+      return pump?.frameMetrics() ?? null;
     },
     destroy() {
       pump?.stop();
