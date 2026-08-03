@@ -51,30 +51,23 @@ export interface AdvanceOptions {
 }
 
 export function hardnessFor(advance: number): number {
-  if (advance < 25) return 4;
+  if (advance < 25) return HARDNESS;
   if (advance < 75) return 5;
   if (advance < 150) return 6;
   return 7;
 }
 
 export function initialSnapshot(): MiningSnapshot {
-  const snapshot: MiningSnapshot = {
+  return {
     schemaVersion: SCHEMA_VERSION,
     advance: 0,
     ore: 0,
     ingots: 0,
     upgradeCount: 0,
+    smelterUpgradeCount: 0,
     faceSwingProgress: 0,
     smelterProgress: 0,
   };
-  // Non-enumerable so object spread omits it until save persists the field (#331).
-  Object.defineProperty(snapshot, "smelterUpgradeCount", {
-    value: 0,
-    enumerable: false,
-    writable: true,
-    configurable: true,
-  });
-  return snapshot;
 }
 
 export function digRateFor(upgradeCount: number): number {

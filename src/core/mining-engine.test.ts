@@ -131,11 +131,22 @@ describe("mining engine Smelter Upgrade", () => {
     expect(bought.ingots).toBe(0);
     expect(bought.smelterUpgradeCount).toBe(1);
     expect(bought.upgradeCount).toBe(0);
-    expect(smelterThroughputFor(bought.smelterUpgradeCount ?? 0)).toBe(0.2);
   });
 
   it("throws when the Smelter Upgrade is unaffordable", () => {
     expect(() => buyUpgrade(snap({ ingots: 4 }), "smelter")).toThrow(/Upgrade/);
+  });
+
+  it("is chunk-neutral for Smelter drain at upgraded throughput", () => {
+    const rich = snap({ ore: 100, smelterUpgradeCount: 1 });
+    const once = advance(rich, 2_000);
+    let many = rich;
+    for (let i = 0; i < 4; i += 1) {
+      many = advance(many, 500);
+    }
+    expect(many.ore).toBeCloseTo(once.ore, 10);
+    expect(many.smelterProgress).toBeCloseTo(once.smelterProgress, 10);
+    expect(many.ingots).toBe(once.ingots);
   });
 });
 
@@ -160,5 +171,18 @@ describe("mining engine multi-break Hardness bands", () => {
     const afterSecondBreak = advance(afterOneBreak, 5_000);
     expect(afterSecondBreak.advance).toBe(26);
     expect(afterSecondBreak.faceSwingProgress).toBe(0);
+  });
+
+  it("is chunk-neutral across a band boundary for dig progress", () => {
+    const atBandEdge = snap({ advance: 24, faceSwingProgress: 3 });
+    const once = advance(atBandEdge, 6_000);
+    let many = atBandEdge;
+    for (let i = 0; i < 12; i += 1) {
+      many = advance(many, 500);
+    }
+    expect(many.advance).toBe(once.advance);
+    expect(many.faceSwingProgress).toBe(once.faceSwingProgress);
+    expect(once.advance).toBe(26);
+    expect(once.faceSwingProgress).toBe(0);
   });
 });

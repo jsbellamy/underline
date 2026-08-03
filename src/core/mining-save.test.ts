@@ -1,5 +1,5 @@
 import { describe, expect, it, beforeEach } from "vitest";
-import { initialSnapshot } from "./mining-engine";
+import { initialSnapshot, SCHEMA_VERSION, type MiningSnapshot } from "./mining-engine";
 import {
   SAVE_KEY,
   clearSave,
@@ -34,8 +34,9 @@ describe("mining save seam", () => {
   });
 
   it("round-trips authoritative fields through underline-save-v1", () => {
-    const snap = {
-      ...initialSnapshot(),
+    // Save omits interim optional smelterUpgradeCount until schema v2 (#331).
+    const snap: MiningSnapshot = {
+      schemaVersion: SCHEMA_VERSION,
       advance: 3,
       ore: 1.5,
       ingots: 7,
