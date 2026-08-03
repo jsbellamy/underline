@@ -20,6 +20,10 @@ import {
   type BusMessage,
 } from "./bus";
 import {
+  createProductionAppExitPort,
+  type AppExitPort,
+} from "./app-exit";
+import {
   createProductionDockWindowPort,
   type DockWindowPort,
 } from "./dock-window";
@@ -28,9 +32,9 @@ import {
   type FrameMetrics,
   type FrameMetricsReport,
 } from "./frame-metrics";
-import { bindPressable } from "./keyboard";
 import { createMinePresenter, type MinePresenter } from "./mine-presenter";
 import { mountMiningTunnel, type MiningTunnelView } from "./mining-tunnel";
+import { mountPaneControls, type PaneControlsView } from "./pane-controls";
 import { startPump, type PumpController, type PumpDeps } from "./pump";
 
 export interface PaneShell {
@@ -41,6 +45,7 @@ export interface PaneShell {
 }
 
 export interface PaneShellOptions {
+  appExit?: AppExitPort;
   dockWindow?: DockWindowPort;
   busFactory?: typeof createBusEndpoint;
   deferPump?: boolean;
@@ -102,9 +107,12 @@ export function mountPaneShell(
       },
     });
 
+  const appExit = resolveAppExit(options, session);
+
   const presenter = options.presenter ?? createMinePresenter(session);
 
   let tunnel: MiningTunnelView | null = null;
+  let controls: PaneControlsView | null = null;
   let autosaveTimer: ReturnType<typeof setInterval> | null = null;
   let lastPublishedAdvance = session.snapshot.advance;
   let lastPublishedOre = session.snapshot.ore;
@@ -118,15 +126,24 @@ export function mountPaneShell(
   const tunnelHost = document.createElement("div");
   tunnelHost.className = "pane-tunnel-host";
 
-  const openDockButton = document.createElement("button");
-  openDockButton.type = "button";
-  openDockButton.className = "pane-colony-chip";
-  openDockButton.dataset["openDock"] = "";
-  openDockButton.textContent = "Colony";
-  openDockButton.setAttribute("aria-label", "Open Colony Dock");
-
-  pane.append(tunnelHost, openDockButton);
+  pane.append(tunnelHost);
   root.replaceChildren(pane);
+
+  controls = mountPaneControls(pane, {
+    onOpenDock: () => {
+      void dockWindow.toggle().then((opened) => {
+        if (opened) {
+          bus?.publish({ type: "dock-opened" });
+          publishSnapshot();
+        } else {
+          bus?.publish({ type: "dock-closed" });
+        }
+      });
+    },
+    onQuit: () => {
+      void appExit.exit();
+    },
+  });
 
   tunnel = mountMiningTunnel(tunnelHost);
   presenter.start();
@@ -182,17 +199,6 @@ export function mountPaneShell(
   });
 
   publishSnapshot();
-
-  bindPressable(openDockButton, () => {
-    void dockWindow.toggle().then((opened) => {
-      if (opened) {
-        bus?.publish({ type: "dock-opened" });
-        publishSnapshot();
-      } else {
-        bus?.publish({ type: "dock-closed" });
-      }
-    });
-  });
 
   const onPageHide = (): void => {
     session.persist();
@@ -276,6 +282,8 @@ export function mountPaneShell(
         autosaveTimer = null;
       }
       window.removeEventListener("pagehide", onPageHide);
+      controls?.destroy();
+      controls = null;
       session.persist();
       bus?.close();
       dockWindow.destroy();
@@ -285,4 +293,22 @@ export function mountPaneShell(
       root.replaceChildren();
     },
   };
+}
+
+function resolveAppExit(
+  options: PaneShellOptions,
+  session: MiningSession,
+): AppExitPort {
+  if (options.appExit) {
+    const injected = options.appExit;
+    return {
+      async exit() {
+        session.persist();
+        await injected.exit();
+      },
+    };
+  }
+  return createProductionAppExitPort({
+    beforeExit: () => session.persist(),
+  });
 }

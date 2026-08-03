@@ -2,6 +2,8 @@
 
 import { describe, expect, it, vi } from "vitest";
 import dwarfManifest from "../../assets/characters/dwarf/manifest.json";
+import { createMiningSession } from "../core/mining-session";
+import { initialSnapshot } from "../core/mining-engine";
 import { dwarfFramePaths, type ExternalSpritePack } from "../data/external-sprite-pack";
 import { dwarfFrameUrl, dwarfFrameUrlsFor } from "./dwarf-frames";
 import { mountPaneShell } from "./pane-root";
@@ -89,6 +91,59 @@ describe("mountPaneShell mining Pane", () => {
     const dwarf = root.querySelector<HTMLImageElement>("[data-dwarf]");
     expect(dwarf?.getAttribute("data-anim")).toBe("swing");
     expect(dwarf?.src).toMatch(/swing\/east\/frame_/);
+
+    shell.destroy();
+  });
+
+  it("persists then exits immediately when Quit is activated once", async () => {
+    const root = document.createElement("main");
+    const order: string[] = [];
+    const store = {
+      getItem: () => null,
+      setItem: () => {},
+      removeItem: () => {},
+    };
+    const session = createMiningSession({
+      store,
+      now: () => 1_000,
+      snapshot: initialSnapshot(),
+    });
+    const persist = vi.spyOn(session, "persist").mockImplementation(() => {
+      order.push("persist");
+    });
+    const exit = vi.fn(async () => {
+      order.push("exit");
+    });
+
+    const shell = mountPaneShell(root, {
+      dockWindow: {
+        open: vi.fn(async () => {}),
+        close: vi.fn(async () => {}),
+        toggle: vi.fn(async () => true),
+        isOpen: () => false,
+        reposition: vi.fn(async () => {}),
+        syncPositionFromPane: vi.fn(async () => {}),
+        destroy: vi.fn(),
+      },
+      busFactory: () => ({
+        publish: vi.fn(),
+        close: vi.fn(),
+      }),
+      deferPump: true,
+      session,
+      appExit: { exit },
+    });
+
+    const quit = root.querySelector<HTMLButtonElement>("[data-quit]");
+    expect(quit).not.toBeNull();
+
+    quit!.click();
+    await Promise.resolve();
+
+    expect(persist).toHaveBeenCalledOnce();
+    expect(exit).toHaveBeenCalledOnce();
+    expect(order).toEqual(["persist", "exit"]);
+    expect(root.querySelector("[role=dialog]")).toBeNull();
 
     shell.destroy();
   });
