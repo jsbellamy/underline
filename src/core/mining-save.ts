@@ -19,8 +19,20 @@ export interface LoadedSave {
   savedAtMs: number | undefined;
 }
 
-interface PersistedSave {
-  schemaVersion: number;
+interface PersistedSaveV2 {
+  schemaVersion: 2;
+  savedAtMs: number;
+  advance: number;
+  ore: number;
+  ingots: number;
+  digRateUpgradeCount: number;
+  smelterUpgradeCount: number;
+  faceSwingProgress: number;
+  smelterProgress: number;
+}
+
+interface PersistedSaveV1 {
+  schemaVersion: 1;
   savedAtMs: number;
   advance: number;
   ore: number;
@@ -30,19 +42,27 @@ interface PersistedSave {
   smelterProgress: number;
 }
 
+type PersistedSave = PersistedSaveV2 | PersistedSaveV1;
+
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
 }
 
-function parseSnapshot(raw: PersistedSave): MiningSnapshot | null {
-  if (raw.schemaVersion !== SCHEMA_VERSION) {
-    return null;
-  }
+function parseV2Fields(raw: {
+  advance: unknown;
+  ore: unknown;
+  ingots: unknown;
+  digRateUpgradeCount: unknown;
+  smelterUpgradeCount: unknown;
+  faceSwingProgress: unknown;
+  smelterProgress: unknown;
+}): MiningSnapshot | null {
   if (
     !isFiniteNumber(raw.advance) ||
     !isFiniteNumber(raw.ore) ||
     !isFiniteNumber(raw.ingots) ||
-    !isFiniteNumber(raw.upgradeCount) ||
+    !isFiniteNumber(raw.digRateUpgradeCount) ||
+    !isFiniteNumber(raw.smelterUpgradeCount) ||
     !isFiniteNumber(raw.faceSwingProgress) ||
     !isFiniteNumber(raw.smelterProgress)
   ) {
@@ -53,10 +73,40 @@ function parseSnapshot(raw: PersistedSave): MiningSnapshot | null {
     advance: raw.advance,
     ore: raw.ore,
     ingots: raw.ingots,
-    upgradeCount: raw.upgradeCount,
+    digRateUpgradeCount: raw.digRateUpgradeCount,
+    smelterUpgradeCount: raw.smelterUpgradeCount,
     faceSwingProgress: raw.faceSwingProgress,
     smelterProgress: raw.smelterProgress,
   };
+}
+
+function parseSnapshot(raw: PersistedSave): MiningSnapshot | null {
+  if (raw.schemaVersion === 1) {
+    if (
+      !isFiniteNumber(raw.advance) ||
+      !isFiniteNumber(raw.ore) ||
+      !isFiniteNumber(raw.ingots) ||
+      !isFiniteNumber(raw.upgradeCount) ||
+      !isFiniteNumber(raw.faceSwingProgress) ||
+      !isFiniteNumber(raw.smelterProgress)
+    ) {
+      return null;
+    }
+    return {
+      schemaVersion: SCHEMA_VERSION,
+      advance: raw.advance,
+      ore: raw.ore,
+      ingots: raw.ingots,
+      digRateUpgradeCount: raw.upgradeCount,
+      smelterUpgradeCount: 0,
+      faceSwingProgress: raw.faceSwingProgress,
+      smelterProgress: raw.smelterProgress,
+    };
+  }
+  if (raw.schemaVersion !== SCHEMA_VERSION) {
+    return null;
+  }
+  return parseV2Fields(raw);
 }
 
 export function loadSave(store: SaveStore): LoadedSave {
@@ -81,13 +131,14 @@ export function persistSave(
   savedAtMs: number,
   store: SaveStore,
 ): void {
-  const payload: PersistedSave = {
+  const payload: PersistedSaveV2 = {
     schemaVersion: SCHEMA_VERSION,
     savedAtMs,
     advance: snapshot.advance,
     ore: snapshot.ore,
     ingots: snapshot.ingots,
-    upgradeCount: snapshot.upgradeCount,
+    digRateUpgradeCount: snapshot.digRateUpgradeCount,
+    smelterUpgradeCount: snapshot.smelterUpgradeCount,
     faceSwingProgress: snapshot.faceSwingProgress,
     smelterProgress: snapshot.smelterProgress,
   };

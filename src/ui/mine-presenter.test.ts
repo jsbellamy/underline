@@ -19,7 +19,7 @@ function memoryStore() {
 }
 
 describe("mine presenter", () => {
-  it("syncDigRate mirrors upgradeCount into the anim Dig Rate", () => {
+  it("syncDigRate mirrors digRateUpgradeCount into the anim Dig Rate", () => {
     const session = createMiningSession({
       store: memoryStore(),
       now: () => 0,

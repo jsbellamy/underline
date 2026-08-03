@@ -18,7 +18,7 @@ export interface MinePresenter {
 
 export function createMinePresenter(session: MiningSession): MinePresenter {
   const anim = createDwarfAnimController({
-    digRate: digRateFor(session.snapshot.upgradeCount),
+    digRate: digRateFor(session.snapshot.digRateUpgradeCount),
   });
 
   function snapshot(): DemoMineSnapshot {
@@ -43,7 +43,7 @@ export function createMinePresenter(session: MiningSession): MinePresenter {
       anim.startMining();
     },
     syncDigRate() {
-      anim.setDigRate(digRateFor(session.snapshot.upgradeCount));
+      anim.setDigRate(digRateFor(session.snapshot.digRateUpgradeCount));
     },
     advanceMs(dtMs: number) {
       const before = session.snapshot.advance;

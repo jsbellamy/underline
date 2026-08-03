@@ -15,7 +15,8 @@ export interface WireSnapshot {
   advance: number;
   ore: number;
   ingots: number;
-  upgradeCount: number;
+  digRateUpgradeCount: number;
+  smelterUpgradeCount: number;
   faceSwingProgress: number;
   smelterProgress: number;
   offlineSummary?: OfflineSummary;
@@ -30,7 +31,8 @@ export function toWireSnapshot(
     advance: snapshot.advance,
     ore: snapshot.ore,
     ingots: snapshot.ingots,
-    upgradeCount: snapshot.upgradeCount,
+    digRateUpgradeCount: snapshot.digRateUpgradeCount,
+    smelterUpgradeCount: snapshot.smelterUpgradeCount,
     faceSwingProgress: snapshot.faceSwingProgress,
     smelterProgress: snapshot.smelterProgress,
   };

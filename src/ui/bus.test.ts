@@ -39,7 +39,7 @@ describe("underline BroadcastChannel bus", () => {
     dockBus.close();
   });
 
-  it("round-trips a schemaVersion 1 Snapshot to dock listeners", async () => {
+  it("round-trips a schemaVersion 2 Snapshot to dock listeners", async () => {
     const busChannel = `underline-test-${crypto.randomUUID()}`;
     const received: BusMessage[] = [];
     const dockBus = createBusEndpoint(

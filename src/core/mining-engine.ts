@@ -4,7 +4,7 @@ Authority: `docs/research/tick-snapshot-save-model.md`,
 `docs/research/produce-and-spend-economy.md`.
 */
 
-export const SCHEMA_VERSION = 1 as const;
+export const SCHEMA_VERSION = 2 as const;
 
 /** Swings per Mineable Block at opening depth (band 0). */
 export const HARDNESS = 4;
@@ -37,8 +37,8 @@ export interface MiningSnapshot {
   advance: number;
   ore: number;
   ingots: number;
-  upgradeCount: number;
-  smelterUpgradeCount?: number;
+  digRateUpgradeCount: number;
+  smelterUpgradeCount: number;
   /** Swings spent on the current Face (`0…Hardness`). */
   faceSwingProgress: number;
   /** Fractional Ore fed toward the next Ingot (`0…1`). */
@@ -63,23 +63,23 @@ export function initialSnapshot(): MiningSnapshot {
     advance: 0,
     ore: 0,
     ingots: 0,
-    upgradeCount: 0,
+    digRateUpgradeCount: 0,
     smelterUpgradeCount: 0,
     faceSwingProgress: 0,
     smelterProgress: 0,
   };
 }
 
-export function digRateFor(upgradeCount: number): number {
-  return OPENING_DIG_RATE + UPGRADE_DIG_RATE * upgradeCount;
+export function digRateFor(digRateUpgradeCount: number): number {
+  return OPENING_DIG_RATE + UPGRADE_DIG_RATE * digRateUpgradeCount;
 }
 
 export function smelterThroughputFor(smelterUpgradeCount: number): number {
   return SMELTER_THROUGHPUT + UPGRADE_SMELTER_THROUGHPUT * smelterUpgradeCount;
 }
 
-export function nextUpgradeCost(upgradeCount: number): number {
-  return FIRST_UPGRADE_COST * 2 ** upgradeCount;
+export function nextDigRateUpgradeCost(digRateUpgradeCount: number): number {
+  return FIRST_UPGRADE_COST * 2 ** digRateUpgradeCount;
 }
 
 export function nextSmelterUpgradeCost(smelterUpgradeCount: number): number {
@@ -108,13 +108,13 @@ export function advance(
     advance: advanceCount,
     ore,
     ingots,
-    upgradeCount,
+    digRateUpgradeCount,
     smelterUpgradeCount,
     faceSwingProgress,
     smelterProgress,
   } = snapshot;
 
-  const digRate = digRateFor(upgradeCount);
+  const digRate = digRateFor(digRateUpgradeCount);
   let swings = faceSwingProgress + digRate * dtSec;
   while (swings >= hardnessFor(advanceCount)) {
     const hardness = hardnessFor(advanceCount);
@@ -124,7 +124,7 @@ export function advance(
   }
   faceSwingProgress = swings;
 
-  const throughput = smelterThroughputFor(smelterUpgradeCount ?? 0);
+  const throughput = smelterThroughputFor(smelterUpgradeCount);
   const fed = Math.min(ore, throughput * dtSec);
   ore -= fed;
   smelterProgress += fed;
@@ -132,29 +132,24 @@ export function advance(
   ingots += minted;
   smelterProgress -= minted;
 
-  const result: MiningSnapshot = {
+  return {
     schemaVersion: SCHEMA_VERSION,
     advance: advanceCount,
     ore,
     ingots,
-    upgradeCount,
+    digRateUpgradeCount,
+    smelterUpgradeCount,
     faceSwingProgress,
     smelterProgress,
   };
-  if (smelterUpgradeCount !== undefined) {
-    result.smelterUpgradeCount = smelterUpgradeCount;
-  }
-  return result;
 }
 
 export function buyUpgrade(
   snapshot: MiningSnapshot,
   upgrade: UpgradeId = "digRate",
 ): MiningSnapshot {
-  const smelterCount = snapshot.smelterUpgradeCount ?? 0;
-
   if (upgrade === "smelter") {
-    const cost = nextSmelterUpgradeCost(smelterCount);
+    const cost = nextSmelterUpgradeCost(snapshot.smelterUpgradeCount);
     if (snapshot.ingots < cost) {
       throw new Error(`Upgrade costs ${cost} Ingots; have ${snapshot.ingots}`);
     }
@@ -162,11 +157,11 @@ export function buyUpgrade(
       ...snapshot,
       schemaVersion: SCHEMA_VERSION,
       ingots: snapshot.ingots - cost,
-      smelterUpgradeCount: smelterCount + 1,
+      smelterUpgradeCount: snapshot.smelterUpgradeCount + 1,
     };
   }
 
-  const cost = nextUpgradeCost(snapshot.upgradeCount);
+  const cost = nextDigRateUpgradeCost(snapshot.digRateUpgradeCount);
   if (snapshot.ingots < cost) {
     throw new Error(`Upgrade costs ${cost} Ingots; have ${snapshot.ingots}`);
   }
@@ -174,7 +169,6 @@ export function buyUpgrade(
     ...snapshot,
     schemaVersion: SCHEMA_VERSION,
     ingots: snapshot.ingots - cost,
-    upgradeCount: snapshot.upgradeCount + 1,
-    smelterUpgradeCount: smelterCount,
+    digRateUpgradeCount: snapshot.digRateUpgradeCount + 1,
   };
 }
