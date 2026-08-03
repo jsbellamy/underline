@@ -9,6 +9,7 @@ import {
   smelterThroughputFor,
 } from "./mining-engine";
 import { createMiningSession } from "./mining-session";
+import { buildOfflineSummary } from "./wire-snapshot";
 import { MIN_OFFLINE_MS } from "./offline-clock";
 
 function memoryStore(initial: Record<string, string> = {}) {
@@ -50,6 +51,33 @@ describe("mining session", () => {
     const wire = session.wireSnapshot();
     expect(wire.offlineSummary?.offlineMs).toBe(MIN_OFFLINE_MS);
     expect(wire.offlineSummary?.advanceGained).toBe(wire.advance);
+  });
+
+  it("counts Bag Ore in offline oreProduced across a Haul", () => {
+    const before = advance(initialSnapshot(), 50_000);
+    const after = advance(before, MIN_OFFLINE_MS, {
+      rateScale: OFFLINE_RATE_SCALE,
+    });
+    const summary = buildOfflineSummary({
+      before,
+      after,
+      offlineMs: MIN_OFFLINE_MS,
+    });
+    expect(summary.oreProduced).toBeCloseTo(
+      after.ore -
+        before.ore +
+        (after.bagOre - before.bagOre) +
+        (after.ingots - before.ingots),
+      10,
+    );
+    expect(after.bagOre + after.ore).toBeGreaterThan(before.bagOre + before.ore);
+  });
+
+  it("offline catch-up over a Haul matches live advance at half rate", () => {
+    const before = advance(initialSnapshot(), 95_000);
+    const offline = advance(before, 28_800_000, { rateScale: 0.5 });
+    const live = advance(before, 14_400_000);
+    expect(offline).toEqual(live);
   });
 
   it("applies buyUpgrade, persists, and raises Dig Rate", () => {
@@ -98,7 +126,7 @@ describe("mining session", () => {
       now: () => 0,
       onPublish,
     });
-    session.advanceLive(1_000_000);
+    session.advanceLive(1_080_000);
     expect(session.snapshot.advance).toBe(1);
     session.publish();
     expect(onPublish).toHaveBeenCalledOnce();

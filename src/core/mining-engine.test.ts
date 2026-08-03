@@ -3,15 +3,20 @@ import {
   BASE_ORE_PER_DROP,
   DROPS_PER_FACE,
   FACE_BASE_HARDNESS,
+  HAUL_ROUND_TRIP_MS,
   HARDNESS_GROWTH,
+  OPENING_CARRY_CAPACITY,
   PICK_DAMAGE,
   SMELTER_THROUGHPUT,
+  UPGRADE_CARRY_CAPACITY,
   advance,
   buyUpgrade,
+  carryCapacityFor,
   digRateFor,
   dropDamageFor,
   hardnessFor,
   initialSnapshot,
+  nextCarryCapacityUpgradeCost,
   nextDigRateUpgradeCost,
   nextSmelterUpgradeCost,
   oreForDrop,
@@ -27,6 +32,7 @@ function oreCredited(before: MiningSnapshot, after: MiningSnapshot): number {
   return (
     after.ore -
     before.ore +
+    (after.bagOre - before.bagOre) +
     (after.ingots - before.ingots) +
     (after.smelterProgress - before.smelterProgress)
   );
@@ -63,29 +69,29 @@ describe("mining engine advance", () => {
 
   it("credits 100 Ore drops across a full Face break", () => {
     const before = snap();
-    const after = advance(before, 1_000_000);
+    const after = advance(before, 1_080_000);
     expect(after.advance).toBe(1);
     expect(oreCredited(before, after)).toBeCloseTo(100, 10);
   });
 
   it("breaks the Face after Hardness damage at Dig Rate 1.0 and yields Ore", () => {
-    // Opening Dig Rate 1.0 Swing/sec × Hardness 1000 → break at 1_000_000ms; 100 drops.
+    // 100 drops with Bag / Haul overhead: 10 × (100s mining + 8s haul) = 1_080_000ms.
     const before = snap();
-    const after = advance(before, 1_000_000);
+    const after = advance(before, 1_080_000);
     expect(after.advance).toBe(1);
     expect(after.faceSwingProgress).toBe(0);
     expect(oreCredited(before, after)).toBeCloseTo(100, 10);
-    expect(after.ingots).toBe(59);
-    expect(after.ore).toBeCloseTo(40.6, 10);
-    expect(after.smelterProgress).toBeCloseTo(0.4, 10);
+    expect(after.ingots).toBe(58);
+    expect(after.ore).toBeCloseTo(41.44, 2);
+    expect(after.smelterProgress).toBeCloseTo(0.56, 2);
   });
 
   it("does not break the Face before Hardness damage is dealt", () => {
-    const almost = advance(snap(), 999_999);
+    const almost = advance(snap(), 1_071_999);
     expect(almost.advance).toBe(0);
     expect(almost.faceSwingProgress).toBeCloseTo(999.999, 5);
 
-    const broken = advance(snap(), 1_000_000);
+    const broken = advance(snap(), 1_080_000);
     expect(broken.advance).toBe(1);
   });
 
@@ -126,7 +132,7 @@ describe("mining engine Smelter", () => {
 
   it("lets Ore back up when Dig Rate outpaces the Smelter", () => {
     const before = snap();
-    const after = advance(before, 100_000);
+    const after = advance(before, 216_000);
     expect(after.advance).toBe(0);
     expect(oreCredited(before, after)).toBeGreaterThan(after.ingots - before.ingots);
     expect(after.ore).toBeGreaterThan(0);
@@ -157,7 +163,7 @@ describe("mining engine Upgrade", () => {
 describe("mining engine offline catch-up", () => {
   it("applies both loops at half rate for the offline window", () => {
     const before = snap();
-    const after = advance(before, 2_000_000, { rateScale: 0.5 });
+    const after = advance(before, 2_160_000, { rateScale: 0.5 });
     expect(after.advance).toBe(1);
     expect(oreCredited(before, after)).toBeCloseTo(100, 10);
   });
@@ -222,5 +228,104 @@ describe("mining engine buyUpgrade default", () => {
     const bought = buyUpgrade(rich);
     expect(bought.digRateUpgradeCount).toBe(1);
     expect(bought.smelterUpgradeCount).toBe(0);
+  });
+});
+
+describe("mining engine Bag and Haul", () => {
+  it("initializes Bag fields and SCHEMA_VERSION 3 to zero", () => {
+    const s = initialSnapshot();
+    expect(s.schemaVersion).toBe(3);
+    expect(s.bagOre).toBe(0);
+    expect(s.bagLoads).toBe(0);
+    expect(s.haulRemainingMs).toBe(0);
+    expect(s.carryCapacityUpgradeCount).toBe(0);
+  });
+
+  it("exports Carry Capacity ladder constants and helpers", () => {
+    expect(OPENING_CARRY_CAPACITY).toBe(10);
+    expect(UPGRADE_CARRY_CAPACITY).toBe(5);
+    expect(HAUL_ROUND_TRIP_MS).toBe(8000);
+    expect(carryCapacityFor(0)).toBe(10);
+    expect(carryCapacityFor(1)).toBe(15);
+    expect(nextCarryCapacityUpgradeCost(0)).toBe(5);
+    expect(nextCarryCapacityUpgradeCost(1)).toBe(10);
+  });
+
+  it("buys a Carry Capacity Upgrade when Ingots cover the cost", () => {
+    const rich = snap({ ingots: 5 });
+    const bought = buyUpgrade(rich, "carryCapacity");
+    expect(bought.ingots).toBe(0);
+    expect(bought.carryCapacityUpgradeCount).toBe(1);
+    expect(carryCapacityFor(bought.carryCapacityUpgradeCount)).toBe(15);
+  });
+
+  it("throws when the Carry Capacity Upgrade is unaffordable", () => {
+    expect(() => buyUpgrade(snap({ ingots: 4 }), "carryCapacity")).toThrow(
+      /Upgrade/,
+    );
+  });
+
+  it("credits drops to the Bag, not Colony ore", () => {
+    const before = snap();
+    const after = advance(before, 10_000);
+    expect(after.ore).toBe(0);
+    expect(after.bagOre).toBe(1);
+    expect(after.bagLoads).toBe(1);
+  });
+
+  it("suspends mining when the Bag is full and delivers at the Haul midpoint", () => {
+    const atTenthDrop = advance(snap(), 100_000);
+    expect(atTenthDrop.bagLoads).toBe(10);
+    expect(atTenthDrop.ore).toBe(0);
+    expect(atTenthDrop.haulRemainingMs).toBeGreaterThan(0);
+
+    const atDelivery = advance(snap(), 104_000);
+    expect(atDelivery.ore).toBe(10);
+    expect(atDelivery.bagLoads).toBe(0);
+    expect(atDelivery.bagOre).toBe(0);
+    expect(atDelivery.haulRemainingMs).toBeGreaterThan(0);
+
+    const haulComplete = advance(snap(), 108_000);
+    expect(haulComplete.haulRemainingMs).toBe(0);
+    expect(haulComplete.faceSwingProgress).toBeGreaterThan(0);
+  });
+
+  it("spends 1_000_000 ms mining and 80_000 ms hauling over 1_080_000 ms", () => {
+    const end = advance(snap(), 1_080_000);
+    expect(end.advance).toBe(1);
+    expect(end.faceSwingProgress).toBe(0);
+    expect(oreCredited(snap(), end)).toBeCloseTo(100, 10);
+    let haulingMs = 0;
+    let snapshot = snap();
+    for (let t = 0; t < 1_080_000; t += 1_000) {
+      if (snapshot.haulRemainingMs > 0) {
+        haulingMs += 1_000;
+      }
+      snapshot = advance(snapshot, 1_000);
+    }
+    expect(haulingMs).toBe(80_000);
+    expect(1_080_000 - haulingMs).toBe(1_000_000);
+  });
+
+  it("scales the Haul countdown with rateScale like Dig Rate", () => {
+    const half = advance(snap(), 28_800_000, { rateScale: 0.5 });
+    const full = advance(snap(), 14_400_000);
+    expect(half).toEqual(full);
+  });
+
+  it("is chunk-neutral across a Haul", () => {
+    const once = advance(snap(), 1_080_000);
+    let many = snap();
+    for (let i = 0; i < 1080; i += 1) {
+      many = advance(many, 1_000);
+    }
+    expect(many.advance).toBe(once.advance);
+    expect(many.faceSwingProgress).toBeCloseTo(once.faceSwingProgress, 10);
+    expect(many.bagOre).toBeCloseTo(once.bagOre, 10);
+    expect(many.bagLoads).toBe(once.bagLoads);
+    expect(many.haulRemainingMs).toBe(once.haulRemainingMs);
+    expect(many.ore).toBeCloseTo(once.ore, 10);
+    expect(many.ingots).toBe(once.ingots);
+    expect(many.smelterProgress).toBeCloseTo(once.smelterProgress, 10);
   });
 });

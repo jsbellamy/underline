@@ -19,6 +19,22 @@ export interface LoadedSave {
   savedAtMs: number | undefined;
 }
 
+interface PersistedSaveV3 {
+  schemaVersion: 3;
+  savedAtMs: number;
+  advance: number;
+  ore: number;
+  ingots: number;
+  digRateUpgradeCount: number;
+  smelterUpgradeCount: number;
+  carryCapacityUpgradeCount: number;
+  faceSwingProgress: number;
+  smelterProgress: number;
+  bagOre: number;
+  bagLoads: number;
+  haulRemainingMs: number;
+}
+
 interface PersistedSaveV2 {
   schemaVersion: 2;
   savedAtMs: number;
@@ -42,10 +58,54 @@ interface PersistedSaveV1 {
   smelterProgress: number;
 }
 
-type PersistedSave = PersistedSaveV2 | PersistedSaveV1;
+type PersistedSave = PersistedSaveV3 | PersistedSaveV2 | PersistedSaveV1;
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function parseV3Fields(raw: {
+  advance: unknown;
+  ore: unknown;
+  ingots: unknown;
+  digRateUpgradeCount: unknown;
+  smelterUpgradeCount: unknown;
+  carryCapacityUpgradeCount: unknown;
+  faceSwingProgress: unknown;
+  smelterProgress: unknown;
+  bagOre: unknown;
+  bagLoads: unknown;
+  haulRemainingMs: unknown;
+}): MiningSnapshot | null {
+  if (
+    !isFiniteNumber(raw.advance) ||
+    !isFiniteNumber(raw.ore) ||
+    !isFiniteNumber(raw.ingots) ||
+    !isFiniteNumber(raw.digRateUpgradeCount) ||
+    !isFiniteNumber(raw.smelterUpgradeCount) ||
+    !isFiniteNumber(raw.carryCapacityUpgradeCount) ||
+    !isFiniteNumber(raw.faceSwingProgress) ||
+    !isFiniteNumber(raw.smelterProgress) ||
+    !isFiniteNumber(raw.bagOre) ||
+    !isFiniteNumber(raw.bagLoads) ||
+    !isFiniteNumber(raw.haulRemainingMs)
+  ) {
+    return null;
+  }
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    advance: raw.advance,
+    ore: raw.ore,
+    ingots: raw.ingots,
+    digRateUpgradeCount: raw.digRateUpgradeCount,
+    smelterUpgradeCount: raw.smelterUpgradeCount,
+    carryCapacityUpgradeCount: raw.carryCapacityUpgradeCount,
+    faceSwingProgress: raw.faceSwingProgress,
+    smelterProgress: raw.smelterProgress,
+    bagOre: raw.bagOre,
+    bagLoads: raw.bagLoads,
+    haulRemainingMs: raw.haulRemainingMs,
+  };
 }
 
 function parseV2Fields(raw: {
@@ -75,8 +135,12 @@ function parseV2Fields(raw: {
     ingots: raw.ingots,
     digRateUpgradeCount: raw.digRateUpgradeCount,
     smelterUpgradeCount: raw.smelterUpgradeCount,
+    carryCapacityUpgradeCount: 0,
     faceSwingProgress: raw.faceSwingProgress,
     smelterProgress: raw.smelterProgress,
+    bagOre: 0,
+    bagLoads: 0,
+    haulRemainingMs: 0,
   };
 }
 
@@ -99,14 +163,21 @@ function parseSnapshot(raw: PersistedSave): MiningSnapshot | null {
       ingots: raw.ingots,
       digRateUpgradeCount: raw.upgradeCount,
       smelterUpgradeCount: 0,
+      carryCapacityUpgradeCount: 0,
       faceSwingProgress: raw.faceSwingProgress,
       smelterProgress: raw.smelterProgress,
+      bagOre: 0,
+      bagLoads: 0,
+      haulRemainingMs: 0,
     };
+  }
+  if (raw.schemaVersion === 2) {
+    return parseV2Fields(raw);
   }
   if (raw.schemaVersion !== SCHEMA_VERSION) {
     return null;
   }
-  return parseV2Fields(raw);
+  return parseV3Fields(raw);
 }
 
 export function loadSave(store: SaveStore): LoadedSave {
@@ -131,7 +202,7 @@ export function persistSave(
   savedAtMs: number,
   store: SaveStore,
 ): void {
-  const payload: PersistedSaveV2 = {
+  const payload: PersistedSaveV3 = {
     schemaVersion: SCHEMA_VERSION,
     savedAtMs,
     advance: snapshot.advance,
@@ -139,8 +210,12 @@ export function persistSave(
     ingots: snapshot.ingots,
     digRateUpgradeCount: snapshot.digRateUpgradeCount,
     smelterUpgradeCount: snapshot.smelterUpgradeCount,
+    carryCapacityUpgradeCount: snapshot.carryCapacityUpgradeCount,
     faceSwingProgress: snapshot.faceSwingProgress,
     smelterProgress: snapshot.smelterProgress,
+    bagOre: snapshot.bagOre,
+    bagLoads: snapshot.bagLoads,
+    haulRemainingMs: snapshot.haulRemainingMs,
   };
   store.setItem(SAVE_KEY, JSON.stringify(payload));
 }

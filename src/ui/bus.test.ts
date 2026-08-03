@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { describe, expect, it, vi } from "vitest";
-import { initialSnapshot } from "../core/mining-engine";
+import { initialSnapshot, SCHEMA_VERSION } from "../core/mining-engine";
 import { toWireSnapshot } from "../core/wire-snapshot";
 import { createBusEndpoint, isDockCommand, type BusMessage } from "./bus";
 
@@ -20,23 +20,23 @@ describe("isDockCommand", () => {
     { upgrade: "smelter" as const },
   ])("accepts buyUpgrade with upgrade $upgrade", ({ upgrade }) => {
     expect(
-      isDockCommand({ schemaVersion: 2, name: "buyUpgrade", upgrade }),
+      isDockCommand({ schemaVersion: SCHEMA_VERSION, name: "buyUpgrade", upgrade }),
     ).toBe(true);
   });
 
   it("accepts requestSnapshot", () => {
-    expect(isDockCommand({ schemaVersion: 2, name: "requestSnapshot" })).toBe(
+    expect(isDockCommand({ schemaVersion: SCHEMA_VERSION, name: "requestSnapshot" })).toBe(
       true,
     );
   });
 
   it.each([
-    { label: "missing upgrade", command: { schemaVersion: 2, name: "buyUpgrade" } },
+    { label: "missing upgrade", command: { schemaVersion: SCHEMA_VERSION, name: "buyUpgrade" } },
     {
       label: "unknown upgrade",
-      command: { schemaVersion: 2, name: "buyUpgrade", upgrade: "hardness" },
+      command: { schemaVersion: SCHEMA_VERSION, name: "buyUpgrade", upgrade: "hardness" },
     },
-    { label: "wrong schemaVersion", command: { schemaVersion: 1, name: "buyUpgrade", upgrade: "digRate" } },
+    { label: "wrong schemaVersion", command: { schemaVersion: 2, name: "buyUpgrade", upgrade: "digRate" } },
     { label: "non-object", command: null },
   ])("rejects $label", ({ command }) => {
     expect(isDockCommand(command)).toBe(false);
@@ -68,7 +68,7 @@ describe("underline BroadcastChannel bus", () => {
     dockBus.close();
   });
 
-  it("round-trips a schemaVersion 2 Snapshot to dock listeners", async () => {
+  it("round-trips a schemaVersion 3 Snapshot to dock listeners", async () => {
     const busChannel = `underline-test-${crypto.randomUUID()}`;
     const received: BusMessage[] = [];
     const dockBus = createBusEndpoint(

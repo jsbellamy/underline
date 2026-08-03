@@ -49,7 +49,11 @@ export function buildOfflineSummary(args: {
 }): OfflineSummary {
   const advanceGained = args.after.advance - args.before.advance;
   const oreSmelted = args.after.ingots - args.before.ingots;
-  const oreProduced = args.after.ore - args.before.ore + oreSmelted;
+  const oreProduced =
+    args.after.ore -
+    args.before.ore +
+    (args.after.bagOre - args.before.bagOre) +
+    oreSmelted;
   return {
     offlineMs: args.offlineMs,
     advanceGained,
