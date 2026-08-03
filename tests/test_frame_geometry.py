@@ -13,7 +13,7 @@ from pipeline.strip import (
 
 
 _EXPECTED_GEOMETRY: dict[str, tuple[int, int, tuple[int, int]]] = {
-    "swing": (24, 24, (4, 0)),
+    "swing": (24, 24, (1, 0)),
 }
 _DEFAULT_GEOMETRY = (16, 24, (0, 0))
 

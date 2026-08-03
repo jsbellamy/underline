@@ -68,10 +68,10 @@ def _init_passing_bundle(tmp_path: Path) -> Path:
 
 
 SWING_24X24_ALPHA_BBOX = (
-    (5, 18, 1, 23),
-    (4, 19, 8, 23),
-    (4, 19, 9, 23),
-    (4, 18, 10, 23),
+    (2, 15, 1, 23),
+    (1, 16, 8, 23),
+    (1, 16, 9, 23),
+    (1, 15, 10, 23),
 )
 SWING_OPAQUE_COUNTS = (177, 151, 154, 128)
 SWING_PRE_SLICE_RGB_MULTISSETS = (

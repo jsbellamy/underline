@@ -3,22 +3,22 @@
     {
       "index": 0,
       "relative_path": "draft/frame-0.png",
-      "sha256": "45752ffdd3ac5aec72284011d146fba51ef993ff7441009846d15fc8df8a6253"
+      "sha256": "cbb138dfa6d33e8838c5f133680431311fe330d34683576485813a7654371208"
     },
     {
       "index": 1,
       "relative_path": "draft/frame-1.png",
-      "sha256": "1bf5cbf1a6bb8d014f5cc2d734878d6fa13c1633c6aaa21b97ff4a5e9e0b1e35"
+      "sha256": "611b7760ce0f190bb138c4ba3040a083527d24a6cd454c100c595f18dbcfa492"
     },
     {
       "index": 2,
       "relative_path": "draft/frame-2.png",
-      "sha256": "8ffca2ca07744ebc223691667fd9c592ed63a6c9347f9e75e53eea1b829c867e"
+      "sha256": "3eb4e61953217536b7a7a3f8316d77faf0905b10dbe8d3bec1441c6c035c1c6a"
     },
     {
       "index": 3,
       "relative_path": "draft/frame-3.png",
-      "sha256": "915e152cf62d0e4e9eae0d78bf95fdceaf0da43ef980289ec12673f867ff189f"
+      "sha256": "7d69efd43c4e686b5105ad1705adc5a8f3f805a5c84cdba29426ccc76cd1ead1"
     }
   ],
   "layout": {

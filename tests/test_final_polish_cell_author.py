@@ -369,7 +369,7 @@ def _prepare_swing_from_real_idle_bundle(tmp_path: Path) -> pb.PreparedCellAutho
     """C4: cell-author a swing Bundle from the real checked-in dwarf idle Bundle.
 
     The idle Bundle's release Frames are 16x24; swing's canvas is 24x24 at
-    canonical_origin (4, 0) — this only succeeds because `initialize_cell_authored_bundle`
+    canonical_origin (1, 0) — this only succeeds because `initialize_cell_authored_bundle`
     embeds the base onto the target class canvas before validating the ledger (issue #290).
     """
     return pb.prepare_cell_author(

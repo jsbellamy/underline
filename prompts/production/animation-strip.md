@@ -194,8 +194,8 @@ reference. See [ADR 0007](../../docs/adr/0007-swing-cell-author-acquisition.md).
 
 All four target Frames start from canonical idle **Release Frame 0** — the
 palette-exact post-ingest identity anchor at `assets/first-room/dwarf/identity.png`
-(16×24). Swing embeds this anchor at column 4 in the 24×24 action canvas (ADR
-0003). The canonical identity is validation evidence and is **never** an upscaled
+(16×24). Swing embeds this anchor at column 1 in the 24×24 action canvas (ADR
+0003, amended by issue #293). The canonical identity is validation evidence and is **never** an upscaled
 generation canvas.
 
 The checked-in pose plan (`motion-pose-plan/0`) declares intended Frame

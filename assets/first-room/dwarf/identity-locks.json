@@ -87,8 +87,8 @@
         {
           "id": "helmet_face",
           "rectangle": {
-            "x0": 9,
-            "x1": 16,
+            "x0": 6,
+            "x1": 13,
             "y0": 1,
             "y1": 10
           },
@@ -111,8 +111,8 @@
         {
           "id": "belt_core",
           "rectangle": {
-            "x0": 8,
-            "x1": 16,
+            "x0": 5,
+            "x1": 13,
             "y0": 15,
             "y1": 18
           },
@@ -134,8 +134,8 @@
         {
           "id": "boots",
           "rectangle": {
-            "x0": 7,
-            "x1": 18,
+            "x0": 4,
+            "x1": 15,
             "y0": 21,
             "y1": 23
           },
@@ -152,7 +152,7 @@
         {
           "id": "lamp",
           "canonical": [
-            16,
+            13,
             4
           ],
           "palette_role": "amber-emission",
@@ -161,7 +161,7 @@
         {
           "id": "eye",
           "canonical": [
-            14,
+            11,
             7
           ],
           "palette_role": "dark-outline",
@@ -170,7 +170,7 @@
         {
           "id": "buckle",
           "canonical": [
-            15,
+            12,
             16
           ],
           "palette_role": "amber-emission",
