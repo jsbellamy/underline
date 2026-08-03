@@ -1,0 +1,60 @@
+{
+  "base_frame_mapping": [
+    0,
+    0,
+    0,
+    0
+  ],
+  "base_specification_id": "first-room/dwarf/idle",
+  "canonical_origin": [
+    1,
+    0
+  ],
+  "frame_count": 4,
+  "frame_size": [
+    24,
+    24
+  ],
+  "frames": [
+    [
+      {
+        "dx": -1,
+        "dy": -1,
+        "op": "translate_part",
+        "part_id": "tool_head"
+      },
+      {
+        "op": "orient_part",
+        "orientation": "rot180",
+        "part_id": "tool_head"
+      }
+    ],
+    [
+      {
+        "dx": 0,
+        "dy": -3,
+        "op": "translate_part",
+        "part_id": "tool_head"
+      }
+    ],
+    [
+      {
+        "dx": 0,
+        "dy": -1,
+        "op": "translate_part",
+        "part_id": "tool_head"
+      }
+    ],
+    [
+      {
+        "dx": 1,
+        "dy": -3,
+        "op": "translate_part",
+        "part_id": "tool_head"
+      }
+    ]
+  ],
+  "motion_class": "swing",
+  "part_map_digest": "707442d156b96b862f801a5e81febdbb5ca47c82e0d3587dffc255c7e02b4357",
+  "schema": "motion-pose-plan/1"
+}

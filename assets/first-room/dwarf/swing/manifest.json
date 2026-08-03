@@ -1,26 +1,80 @@
 {
+  "cell_authoring": {
+    "base_frame_mapping": [
+      0,
+      0,
+      0,
+      0
+    ],
+    "base_frames_sha256": [
+      "a635775c23727981c89cd7b7314841576998e3bf6fa3ab114f61edd2f2954b08",
+      "ea567bccddfb0194d5a6be4b5adb340740c32c34b0158f071880cb5e64cc2324",
+      "f6d9d105e9d437ec4ebfbb2a884d8ac1a7a0648931d74c0b081b8ce6638b4619",
+      "4292668fd1b6cf7389811b54913a733f7768042165228f504395e5af04d9ce42"
+    ],
+    "base_release_frames": [
+      {
+        "index": 0,
+        "relative_path": "authoring/base/frame-0.png",
+        "sha256": "a635775c23727981c89cd7b7314841576998e3bf6fa3ab114f61edd2f2954b08"
+      },
+      {
+        "index": 1,
+        "relative_path": "authoring/base/frame-1.png",
+        "sha256": "ea567bccddfb0194d5a6be4b5adb340740c32c34b0158f071880cb5e64cc2324"
+      },
+      {
+        "index": 2,
+        "relative_path": "authoring/base/frame-2.png",
+        "sha256": "f6d9d105e9d437ec4ebfbb2a884d8ac1a7a0648931d74c0b081b8ce6638b4619"
+      },
+      {
+        "index": 3,
+        "relative_path": "authoring/base/frame-3.png",
+        "sha256": "4292668fd1b6cf7389811b54913a733f7768042165228f504395e5af04d9ce42"
+      }
+    ],
+    "base_specification_id": "first-room/dwarf/idle",
+    "cell_delta_ledger": {
+      "relative_path": "authoring/cell-delta-ledger.json",
+      "sha256": "37076945c9a917f7e89e9e14c3cff705a8bb7b28faad36cba2e6b41497fb116f"
+    },
+    "pose_plan": {
+      "relative_path": "authoring/pose-plan.json",
+      "sha256": "9e5c46720308c7b817c20b6a54103947d66251b532fe116799538c339f2aa2d5"
+    },
+    "provenance": {
+      "relative_path": "authoring/provenance.json",
+      "sha256": "07871728f7819c9a2dc0ee3cc5630e11afbd184fcab8aeb093fc3d75786ea9f9"
+    }
+  },
   "draft_frames": [
     {
       "index": 0,
       "relative_path": "draft/frame-0.png",
-      "sha256": "cbb138dfa6d33e8838c5f133680431311fe330d34683576485813a7654371208"
+      "sha256": "11e74c1780c58594782e74d8c2632f6b979559f2e318cb7b77548a5b046d0ae9"
     },
     {
       "index": 1,
       "relative_path": "draft/frame-1.png",
-      "sha256": "611b7760ce0f190bb138c4ba3040a083527d24a6cd454c100c595f18dbcfa492"
+      "sha256": "783f6e3fbd5edb5c37ff971bbf7b80b93b3f5d9aa51c9d1186042b087ff01cb7"
     },
     {
       "index": 2,
       "relative_path": "draft/frame-2.png",
-      "sha256": "3eb4e61953217536b7a7a3f8316d77faf0905b10dbe8d3bec1441c6c035c1c6a"
+      "sha256": "d9ded5b48ad485626cd9569a5284f2dae01414855a4e34a595eadf756e15e62d"
     },
     {
       "index": 3,
       "relative_path": "draft/frame-3.png",
-      "sha256": "7d69efd43c4e686b5105ad1705adc5a8f3f805a5c84cdba29426ccc76cd1ead1"
+      "sha256": "a8d23ef0f703d51846c50024190b75b1aa672984501d7fc0594f21a31cc00bae"
     }
   ],
+  "generation_mode": "cell-author",
+  "identity_reference": {
+    "relative_path": "reference/identity.png",
+    "sha256": "707442d156b96b862f801a5e81febdbb5ca47c82e0d3587dffc255c7e02b4357"
+  },
   "layout": {
     "frame_count": 4,
     "frame_h": 24,
@@ -38,12 +92,7 @@
     "id": "dwarf-miner",
     "relative_path": "profile.json",
     "schema": "polish-profile/0",
-    "sha256": "0e60aee8d4a630bad6fdabc8d2525c8ae9e2cda8ceab92e37a1dd972a4fcedcf"
+    "sha256": "4a3c7f7fd7020c05526011513c0696c99e5b676462380fb0fd00c1749cd5bf42"
   },
-  "provider": {
-    "original_filename": "dwarf-swing-attempt1.png",
-    "relative_path": "provider/source.png",
-    "sha256": "73c8ddbc1e80c3dfe0803f9aa34c190bdd15011a77dd23b44121a7142fdcf1b1"
-  },
-  "schema": "final-polish-bundle/1"
+  "schema": "final-polish-bundle/2"
 }

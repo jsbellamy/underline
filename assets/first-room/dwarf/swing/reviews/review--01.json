@@ -1,0 +1,72 @@
+{
+  "answers": [
+    {
+      "question_id": "identity_anchors",
+      "rationale": "fixture pass",
+      "verdict": "PASS"
+    },
+    {
+      "question_id": "identity_lock_pass",
+      "rationale": "fixture pass",
+      "verdict": "PASS"
+    },
+    {
+      "question_id": "black_eye_no_sclera",
+      "rationale": "fixture pass",
+      "verdict": "PASS"
+    },
+    {
+      "question_id": "native_scale_separation",
+      "rationale": "fixture pass",
+      "verdict": "PASS"
+    },
+    {
+      "question_id": "palette_lighting_outline",
+      "rationale": "fixture pass",
+      "verdict": "PASS"
+    },
+    {
+      "question_id": "temporal_consistency",
+      "rationale": "fixture pass",
+      "verdict": "PASS"
+    },
+    {
+      "question_id": "readable_anticipation",
+      "rationale": "fixture pass",
+      "verdict": "PASS"
+    },
+    {
+      "question_id": "continuous_pickaxe_arc",
+      "rationale": "fixture pass",
+      "verdict": "PASS"
+    },
+    {
+      "question_id": "hand_handle_separation",
+      "rationale": "fixture pass",
+      "verdict": "PASS"
+    },
+    {
+      "question_id": "planted_boots",
+      "rationale": "fixture pass",
+      "verdict": "PASS"
+    },
+    {
+      "question_id": "contact_readability_frame3",
+      "rationale": "fixture pass",
+      "verdict": "PASS"
+    }
+  ],
+  "candidate_frame_digests": [
+    "11e74c1780c58594782e74d8c2632f6b979559f2e318cb7b77548a5b046d0ae9",
+    "783f6e3fbd5edb5c37ff971bbf7b80b93b3f5d9aa51c9d1186042b087ff01cb7",
+    "d9ded5b48ad485626cd9569a5284f2dae01414855a4e34a595eadf756e15e62d",
+    "a8d23ef0f703d51846c50024190b75b1aa672984501d7fc0594f21a31cc00bae"
+  ],
+  "packet_sha256": "74cf0e15fc69f44918dd50f6c8db0b2b4a48dfe22a3c3436b9932e5f91872e01",
+  "profile_sha256": "4a3c7f7fd7020c05526011513c0696c99e5b676462380fb0fd00c1749cd5bf42",
+  "record_sha256": "7392121c632de9a7c5294219e6055c71d7c4b3ca0ce166cf13293eeb8c0abbf7",
+  "review_ordinal": 1,
+  "reviewer_id": "reviewer-a",
+  "reviewer_session_id": "review-session-a",
+  "schema": "polish-review-audit/0"
+}

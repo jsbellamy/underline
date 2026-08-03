@@ -387,6 +387,19 @@ def _init_cell_from_real_idle_to_swing(tmp_path: Path) -> tuple[pb.PreparedCellA
     return prepared, bundle
 
 
+def test_init_cell_accepts_motion_pose_plan_v1(tmp_path: Path) -> None:
+    from pipeline.motion_author import MOTION_POSE_PLAN_SCHEMA_V1
+
+    prepared = _prepare_swing_from_real_idle_bundle(tmp_path)
+    pose_plan = json.loads(prepared.pose_plan.read_text(encoding="utf-8"))
+    pose_plan["schema"] = MOTION_POSE_PLAN_SCHEMA_V1
+    prepared.pose_plan.write_text(json.dumps(pose_plan, indent=2, sort_keys=True) + "\n")
+    bundle = tmp_path / "swing-v1-plan"
+    pb.init_cell_bundle(prepared, bundle)
+    manifest = json.loads((bundle / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["generation_mode"] == "cell-author"
+
+
 def test_cell_author_swing_from_real_idle_bundle_reaches_providerless_bundle(
     tmp_path: Path,
 ) -> None:

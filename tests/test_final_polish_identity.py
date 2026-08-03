@@ -68,98 +68,38 @@ def _init_passing_bundle(tmp_path: Path) -> Path:
 
 
 SWING_24X24_ALPHA_BBOX = (
-    (2, 15, 1, 23),
-    (1, 16, 8, 23),
-    (1, 16, 9, 23),
-    (1, 15, 10, 23),
+    (1, 16, 0, 23),
+    (1, 16, 0, 23),
+    (1, 16, 1, 23),
+    (2, 16, 0, 23),
 )
-SWING_OPAQUE_COUNTS = (177, 151, 154, 128)
-SWING_PRE_SLICE_RGB_MULTISSETS = (
-    {
-        (17, 16, 24): 18,
-        (25, 58, 50): 16,
-        (29, 23, 32): 21,
-        (29, 59, 80): 7,
-        (40, 91, 67): 5,
-        (43, 34, 48): 8,
-        (59, 34, 27): 25,
-        (59, 47, 58): 27,
-        (66, 128, 90): 2,
-        (74, 59, 72): 5,
-        (78, 141, 160): 1,
-        (98, 55, 34): 14,
-        (108, 61, 49): 3,
-        (120, 58, 24): 10,
-        (120, 166, 99): 1,
-        (128, 106, 115): 1,
-        (147, 86, 49): 7,
-        (165, 140, 145): 1,
-        (200, 123, 67): 5,
-    },
-    {
-        (17, 16, 24): 20,
-        (25, 58, 50): 20,
-        (29, 23, 32): 11,
-        (29, 59, 80): 3,
-        (40, 91, 67): 6,
-        (43, 34, 48): 7,
-        (47, 96, 117): 2,
-        (59, 34, 27): 18,
-        (59, 47, 58): 20,
-        (66, 128, 90): 2,
-        (74, 59, 72): 2,
-        (78, 141, 160): 3,
-        (98, 55, 34): 17,
-        (108, 61, 49): 2,
-        (120, 58, 24): 5,
-        (120, 166, 99): 1,
-        (128, 106, 115): 2,
-        (147, 86, 49): 6,
-        (164, 95, 70): 1,
-        (190, 98, 34): 1,
-        (200, 123, 67): 2,
-    },
-    {
-        (17, 16, 24): 25,
-        (25, 58, 50): 20,
-        (29, 23, 32): 3,
-        (29, 59, 80): 1,
-        (40, 91, 67): 4,
-        (43, 34, 48): 5,
-        (47, 96, 117): 1,
-        (59, 34, 27): 28,
-        (59, 47, 58): 23,
-        (66, 128, 90): 3,
-        (74, 59, 72): 1,
-        (78, 141, 160): 3,
-        (98, 55, 34): 12,
-        (108, 61, 49): 2,
-        (120, 58, 24): 7,
-        (120, 166, 99): 4,
-        (147, 86, 49): 8,
-        (164, 95, 70): 1,
-        (165, 140, 145): 2,
-        (200, 123, 67): 1,
-    },
-    {
-        (17, 16, 24): 16,
-        (25, 58, 50): 14,
-        (29, 23, 32): 9,
-        (29, 59, 80): 2,
-        (40, 91, 67): 7,
-        (43, 34, 48): 1,
-        (59, 34, 27): 25,
-        (59, 47, 58): 22,
-        (66, 128, 90): 1,
-        (98, 55, 34): 13,
-        (108, 61, 49): 2,
-        (120, 58, 24): 5,
-        (120, 166, 99): 2,
-        (147, 86, 49): 5,
-        (164, 95, 70): 1,
-        (200, 123, 67): 3,
-    },
-)
+SWING_OPAQUE_COUNT = 268
+SWING_CELL_AUTHORED_RGB_MULTISSET = {
+    (74, 59, 72): 22,
+    (43, 34, 48): 2,
+    (47, 96, 117): 9,
+    (143, 196, 197): 1,
+    (17, 16, 24): 53,
+    (98, 81, 93): 2,
+    (29, 59, 80): 8,
+    (78, 141, 160): 7,
+    (190, 98, 34): 2,
+    (128, 106, 115): 2,
+    (40, 91, 67): 12,
+    (255, 214, 107): 1,
+    (25, 58, 50): 19,
+    (240, 163, 58): 4,
+    (165, 140, 145): 2,
+    (29, 23, 32): 18,
+    (120, 58, 24): 4,
+    (147, 86, 49): 15,
+    (200, 123, 67): 4,
+    (59, 34, 27): 37,
+    (243, 188, 130): 1,
+    (98, 55, 34): 18,
+    (66, 128, 90): 13,
+    (108, 61, 49): 12,
+}
 
 
 def _check_bundle_slicing_from(
@@ -269,19 +209,20 @@ def test_production_swing_polished_frames_are_24x24_with_zero_boundary_load() ->
         assert _swing_boundary_column_load(cells) == (0, 0)
 
 
-def test_production_swing_polished_frames_preserve_pre_slice_subject_pixels() -> None:
+def test_production_swing_polished_frames_preserve_cell_authored_subject_pixels() -> None:
     for index in range(FRAME_COUNT):
         cells = read_cells(SWING_POLISHED / f"frame-{index}.png", size=(24, 24))
-        assert sum(1 for row in cells for cell in row if cell is not None) == SWING_OPAQUE_COUNTS[index]
-        assert dict(_swing_opaque_rgb_multiset(cells)) == SWING_PRE_SLICE_RGB_MULTISSETS[index]
+        assert sum(1 for row in cells for cell in row if cell is not None) == SWING_OPAQUE_COUNT
+        assert dict(_swing_opaque_rgb_multiset(cells)) == SWING_CELL_AUTHORED_RGB_MULTISSET
 
 
-def test_production_swing_audit_records_interim_re_canvas_status() -> None:
+def test_production_swing_audit_records_cell_author_pose_plan_status() -> None:
     audit = json.loads((SWING_BUNDLE / "reports" / "audit.json").read_text(encoding="utf-8"))
     summary = audit["machine_check"]["edit_summary"]
-    assert "interim" in summary.lower()
-    assert "re-canvas" in summary.lower()
-    assert "re-author" in summary.lower()
+    assert "motion-pose-plan/1" in summary
+    assert audit["superseded_evidence"]["provider_swing_acquisition"]["immutable_report"].startswith(
+        "reports/"
+    )
     assert audit["uncertain_count"] == 0
     assert audit["overall"] == "PASS"
     assert all(answer["verdict"] != "UNCERTAIN" for answer in audit["answers"])

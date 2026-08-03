@@ -2,7 +2,7 @@
   "schema": "polish-visual-audit/0",
   "bundle": "assets/first-room/dwarf/swing",
   "profile_id": "dwarf-miner",
-  "profile_sha256": "0e60aee8d4a630bad6fdabc8d2525c8ae9e2cda8ceab92e37a1dd972a4fcedcf",
+  "profile_sha256": "4a3c7f7fd7020c05526011513c0696c99e5b676462380fb0fd00c1749cd5bf42",
   "motion_class": "swing",
   "inspection": {
     "native_scale": true,
@@ -10,76 +10,89 @@
     "composites": [
       "inspected release Frames at 24×24 native",
       "inspected 8× nearest-neighbor composite of polished Frames",
-      "cross-checked beside assets/first-room/dwarf/identity.png and idle release Frames"
+      "cross-checked beside assets/first-room/dwarf/identity.png and idle release frame-0"
     ]
   },
   "machine_check": {
-    "command": "npm run strip:polish -- check assets/first-room/dwarf/swing --json",
-    "outcome": "FAIL",
-    "fingerprint": "53fbd8fa5b0ea8e5d8c61272d1572882d156067ded9e05dca1a4993fe8cf384f",
-    "visible_cell_edits": 610,
-    "edit_summary": "Interim mechanical re-canvas of the palette-exact 16×24 swing pose onto 24×24 at column 1 (issue #293); subject Cells translated −3 columns with no pixel edits. Lock rectangles and landmarks shifted −3 in x to frame the same subject. Approved 24×24 swing art is deferred to the re-authoring wave — this bundle is padding only, not final art direction."
+    "command": "npm run strip:polish -- check assets/first-room/dwarf/swing --summary-json",
+    "outcome": "PASS",
+    "fingerprint": "c6c1fe5a98e04c86244ef3b04c33b39463fa01acca8a3fa2c2b5ccbcc23d29c8",
+    "visible_cell_edits": 106,
+    "edit_summary": "Cell-authored swing from canonical idle release frame-0 via motion-pose-plan/1 (issue #305). Pickaxe arc uses translate_part on tool_head plus rot180 wind-up; body stays on the column-1 origin anchor so helmet_face measures the helmet, not the tool."
+  },
+  "superseded_evidence": {
+    "provider_swing_acquisition": {
+      "reason": "Provider text-to-image swing (#127) placed the dwarf off the canonical anchor; helmet_face measured the pickaxe. Superseded by pose-plan cell authoring in #305.",
+      "immutable_report": "reports/3bcc86581abdabf943d89b9b5c36eddf5ffae25c873f76ccaf34d3584661499e.json",
+      "provider_path": "provider/source.png"
+    }
   },
   "answers": [
     {
       "id": "identity_anchors",
       "question": "Are short/broad proportions, beard mass, the oversized blue lamp helmet, green clothing, belt and buckle, gloves, boots, and pickaxe legible and temporally consistent whenever the pose exposes them?",
       "verdict": "PASS",
-      "rationale": "The padded 24×24 Frames preserve the same dwarf identity masses and pickaxe legibility as the pre-re-canvas pose; nothing was redrawn or reframed."
+      "rationale": "Canonical idle anchor preserved; helmet, lamp, belt and boots stay legible across all four Frames."
+    },
+    {
+      "id": "identity_lock_pass",
+      "question": "Does the machine-readable check report show automatic Identity Lock PASS for every Frame before you judge exposed identity outside the locked regions?",
+      "verdict": "PASS",
+      "rationale": "check summary-json reports identity_lock PASS on fingerprint c6c1fe5a… before finalize."
     },
     {
       "id": "black_eye_no_sclera",
       "question": "When the eye is exposed, is it a single black Cell with no white sclera?",
       "verdict": "PASS",
-      "rationale": "Frames 0–2 still expose a single near-black eye Cell with no white sclera; Frame 3 still occludes the eye during the forward contact lean."
+      "rationale": "Frames 0–2 expose a single near-black eye Cell; Frame 3 occludes during the forward lean."
     },
     {
       "id": "native_scale_separation",
       "question": "At native scale, are face/beard, beard/torso, hands/handle, legs/torso, and boots/ground separated rather than accidentally melding at same-value contacts?",
       "verdict": "PASS",
-      "rationale": "Transparent padding did not merge any contacts; native 24×24 separation matches the embedded 16×24 pose."
+      "rationale": "Part-addressed motion preserves palette-role separation at contacts."
     },
     {
       "id": "palette_lighting_outline",
       "question": "Do Master Palette roles, upper-left local light, and selective warm-dark outline remain stable across Frames?",
       "verdict": "PASS",
-      "rationale": "Palette-exact polished Cells are unchanged by the re-canvas; only transparent margin was added."
+      "rationale": "Frames derive from palette-exact idle base with role-preserving part motion only."
     },
     {
       "id": "temporal_consistency",
       "question": "Do identity accents and intentional outlines remain stable across Frames without one-Frame decorative flicker?",
       "verdict": "PASS",
-      "rationale": "No Cells were edited; the one-shot arc is identical to the pre-re-canvas sequence."
+      "rationale": "Only tool_head translation/orientation changes between Frames; identity masses are stable."
     },
     {
       "id": "readable_anticipation",
       "question": "Does the swing sequence show readable anticipation before the strike?",
       "verdict": "PASS",
-      "rationale": "Frame 0 still shows the same raised pickaxe anticipation before the downswing."
+      "rationale": "Frames 0–1 raise and cock the pickaxe head behind the helmet before the downswing."
     },
     {
       "id": "continuous_pickaxe_arc",
       "question": "Does the pickaxe preserve a clear, continuous action arc across the one-shot sequence?",
       "verdict": "PASS",
-      "rationale": "The embedded arc is unchanged; wider canvas adds margin only."
+      "rationale": "tool_head follows wind-up (rot180), peak raise, forward carry, and low strike positions."
     },
     {
       "id": "hand_handle_separation",
       "question": "Is the gripping hand distinguishable from the pickaxe handle at native scale?",
       "verdict": "PASS",
-      "rationale": "Grip separation is unchanged at native 24×24."
+      "rationale": "hand_far carries tool_handle; skin/stone roles remain separated at the grip."
     },
     {
       "id": "planted_boots",
       "question": "Do the boots read as planted and stable through the swing?",
       "verdict": "PASS",
-      "rationale": "Both boots remain on baseline row 23 in all Frames; machine check reports baseline_row_stable=true."
+      "rationale": "boots lock is exact-occupancy stable; baseline row 23 unchanged in all Frames."
     },
     {
       "id": "contact_readability_frame3",
       "question": "At Frame 3, is mining contact readable without losing hand, tool, or boot separation?",
       "verdict": "PASS",
-      "rationale": "Frame 3 contact readability is unchanged from the embedded pose; known swing readability limits are out of scope for this interim re-canvas."
+      "rationale": "Frame 3 places tool_head low and forward while boots and grip separation hold."
     }
   ],
   "explicit_confirmations": {
@@ -88,7 +101,7 @@
     "boots_planted_all_frames": "PASS",
     "frame3_only_contact": "PASS",
     "no_scenery_or_effect_cells": "PASS",
-    "interim_re_canvas_not_final_art": "PASS — mechanical padding of the 16×24 pose; re-authoring wave owns approved 24×24 swing art",
+    "cell_author_pose_plan_not_provider": "PASS",
     "cross_animation_cohort_idle": "PASS"
   },
   "uncertain_count": 0,

@@ -1399,6 +1399,153 @@ def test_swing_action_canvas_adr_records_spike_verdict() -> None:
     assert "by construction" in text.lower()
 
 
+SWING_BUNDLE = ROOT / "assets" / "first-room" / "dwarf" / "swing"
+SWING_STRICT_CELL_CONTAINMENT = {
+    "helmet_face": "helmet",
+    "boots": "boots",
+}
+SWING_PIVOT_CONTAINMENT = {
+    "belt_core": "belt",
+}
+WALK_STRICT_CELL_CONTAINMENT = {
+    "upper_body": "head_face",
+}
+
+
+def _load_frame_part_map(bundle: Path, frame_index: int) -> dict[str, object]:
+    path = bundle / "part-maps" / f"frame-{frame_index}.json"
+    doc = json.loads(path.read_text(encoding="utf-8"))
+    assert isinstance(doc, dict)
+    return doc
+
+
+def _part_cells(part_map_doc: dict[str, object], part_id: str) -> set[tuple[int, int]]:
+    parts = part_map_doc.get("parts")
+    assert isinstance(parts, dict)
+    part = parts.get(part_id)
+    assert isinstance(part, dict)
+    cells = part.get("cells")
+    assert isinstance(cells, list)
+    return {
+        (int(x_text), int(y_text))
+        for key in cells
+        for x_text, y_text in [str(key).split(",", maxsplit=1)]
+    }
+
+
+def _lock_rectangle_at_offset(
+    lock: dict[str, object],
+    offset: tuple[int, int],
+) -> tuple[int, int, int, int]:
+    rectangle = lock["rectangle"]
+    assert isinstance(rectangle, dict)
+    dx, dy = offset
+    return (
+        int(rectangle["x0"]) + dx,
+        int(rectangle["x1"]) + dx,
+        int(rectangle["y0"]) + dy,
+        int(rectangle["y1"]) + dy,
+    )
+
+
+def _cells_inside_rectangle(
+    cells: set[tuple[int, int]],
+    rectangle: tuple[int, int, int, int],
+) -> bool:
+    x0, x1, y0, y1 = rectangle
+    return all(x0 <= x <= x1 and y0 <= y <= y1 for x, y in cells)
+
+
+def _part_pivot(part_map_doc: dict[str, object], part_id: str) -> tuple[int, int]:
+    parts = part_map_doc.get("parts")
+    assert isinstance(parts, dict)
+    part = parts.get(part_id)
+    assert isinstance(part, dict)
+    pivot = part.get("pivot")
+    assert isinstance(pivot, list) and len(pivot) == 2
+    return int(pivot[0]), int(pivot[1])
+
+
+def test_swing_lock_anchors_contain_bound_parts_per_frame() -> None:
+    """C5: swing lock rectangles track helmet and boots Cells; belt pivot stays anchored."""
+    spec = load_identity_lock_spec(DEFAULT_IDENTITY_LOCKS_PATH)
+    swing = spec["motion_classes"]["swing"]
+    locks_by_id = {lock["id"]: lock for lock in swing["locks"]}
+    for frame_index in range(4):
+        part_map_doc = _load_frame_part_map(SWING_BUNDLE, frame_index)
+        lock_result = evaluate_identity_lock(
+            [
+                read_cells(SWING_BUNDLE / "polished" / f"frame-{frame_index}.png", size=(24, 24))
+            ],
+            "swing",
+            spec_path=DEFAULT_IDENTITY_LOCKS_PATH,
+        )
+        frame_result = lock_result.per_frame[0]
+        for lock_id, part_id in SWING_STRICT_CELL_CONTAINMENT.items():
+            offset = frame_result.selected_offsets[lock_id]
+            rectangle = _lock_rectangle_at_offset(locks_by_id[lock_id], offset)
+            part_cells = _part_cells(part_map_doc, part_id)
+            assert part_cells, f"missing cells for {part_id} in frame {frame_index}"
+            assert _cells_inside_rectangle(part_cells, rectangle), (
+                f"{lock_id} at offset {offset} does not contain {part_id} "
+                f"in frame {frame_index}"
+            )
+        for lock_id, part_id in SWING_PIVOT_CONTAINMENT.items():
+            offset = frame_result.selected_offsets[lock_id]
+            rectangle = _lock_rectangle_at_offset(locks_by_id[lock_id], offset)
+            pivot = _part_pivot(part_map_doc, part_id)
+            assert _cells_inside_rectangle({pivot}, rectangle), (
+                f"{lock_id} at offset {offset} does not contain {part_id} pivot "
+                f"in frame {frame_index}"
+            )
+
+
+def test_walk_upper_body_lock_anchor_contains_head_face_when_authored() -> None:
+    """C5 seam for #304: upper_body must contain head_face on the walk canvas."""
+    from pipeline.final_polish import _load_base_release_frames
+    from pipeline.motion_author import author_motion, MOTION_POSE_PLAN_SCHEMA
+    from pipeline.palette_quantize import load_master_palette
+    from pipeline.parts import load_part_map
+
+    idle_bundle = ROOT / "assets" / "first-room" / "dwarf" / "idle"
+    part_map = load_part_map(ROOT / "assets" / "first-room" / "dwarf" / "parts.json")
+    base_frames = _load_base_release_frames(idle_bundle, "walk")
+    pose_plan = {
+        "schema": MOTION_POSE_PLAN_SCHEMA,
+        "motion_class": "walk",
+        "frame_size": [16, 24],
+        "frame_count": 4,
+        "canonical_origin": [0, 0],
+        "base_specification_id": "first-room/dwarf/idle",
+        "base_frame_mapping": [0, 0, 0, 0],
+        "frames": [[] for _ in range(4)],
+    }
+    palette = load_master_palette(ROOT / "assets" / "palettes" / "first-room.json")
+    spec = load_identity_lock_spec(DEFAULT_IDENTITY_LOCKS_PATH)
+    result = author_motion(
+        base_frames,
+        pose_plan,
+        spec,
+        palette,
+        part_map=part_map,
+    )
+    assert result.part_maps is not None
+    walk = spec["motion_classes"]["walk"]
+    upper_body = walk["locks"][0]
+    for frame_index, part_map_doc in enumerate(result.part_maps):
+        lock_result = evaluate_identity_lock(
+            [result.frames[frame_index]],
+            "walk",
+            spec_path=DEFAULT_IDENTITY_LOCKS_PATH,
+        )
+        frame_result = lock_result.per_frame[0]
+        for lock_id, part_id in WALK_STRICT_CELL_CONTAINMENT.items():
+            offset = frame_result.selected_offsets[lock_id]
+            rectangle = _lock_rectangle_at_offset(upper_body, offset)
+            part_cells = _part_cells(part_map_doc, part_id)
+            assert _cells_inside_rectangle(part_cells, rectangle)
+
+
 def test_adr_0002_indexed_with_required_sections() -> None:
     adr_path = ROOT / "docs" / "adr" / "0002-palette-exact-canonical-identity.md"
     readme = (ROOT / "docs" / "adr" / "README.md").read_text(encoding="utf-8")

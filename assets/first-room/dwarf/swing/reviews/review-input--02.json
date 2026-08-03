@@ -1,0 +1,54 @@
+{
+  "blinded": true,
+  "packet_sha256": "74cf0e15fc69f44918dd50f6c8db0b2b4a48dfe22a3c3436b9932e5f91872e01",
+  "prior_review_visible": false,
+  "questions": [
+    {
+      "id": "identity_anchors",
+      "question": "Are short/broad proportions, beard mass, the oversized blue lamp helmet, green clothing, belt and buckle, gloves, boots, and pickaxe legible and temporally consistent whenever the pose exposes them?"
+    },
+    {
+      "id": "identity_lock_pass",
+      "question": "Does the machine-readable check report show automatic Identity Lock PASS for every Frame before you judge exposed identity outside the locked regions?"
+    },
+    {
+      "id": "black_eye_no_sclera",
+      "question": "When the eye is exposed, is it a single black Cell with no white sclera?"
+    },
+    {
+      "id": "native_scale_separation",
+      "question": "At native scale, are face/beard, beard/torso, hands/handle, legs/torso, and boots/ground separated rather than accidentally melding at same-value contacts?"
+    },
+    {
+      "id": "palette_lighting_outline",
+      "question": "Do Master Palette roles, upper-left local light, and selective warm-dark outline remain stable across Frames?"
+    },
+    {
+      "id": "temporal_consistency",
+      "question": "Do identity accents and intentional outlines remain stable across Frames without one-Frame decorative flicker?"
+    },
+    {
+      "id": "readable_anticipation",
+      "question": "Does the swing sequence show readable anticipation before the strike?"
+    },
+    {
+      "id": "continuous_pickaxe_arc",
+      "question": "Does the pickaxe preserve a clear, continuous action arc across the one-shot sequence?"
+    },
+    {
+      "id": "hand_handle_separation",
+      "question": "Is the gripping hand distinguishable from the pickaxe handle at native scale?"
+    },
+    {
+      "id": "planted_boots",
+      "question": "Do the boots read as planted and stable through the swing?"
+    },
+    {
+      "id": "contact_readability_frame3",
+      "question": "At Frame 3, is mining contact readable without losing hand, tool, or boot separation?"
+    }
+  ],
+  "review_id": "review-02",
+  "reviewer_id": "reviewer-a-2",
+  "schema": "polish-review-packet/0"
+}
