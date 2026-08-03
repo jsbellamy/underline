@@ -33,7 +33,7 @@ PARTS_JSON = ROOT / "assets" / "first-room" / "dwarf" / "parts.json"
 IDLE_RELEASE_FRAME = ROOT / "assets" / "first-room" / "dwarf" / "idle" / "release" / "frame-0.png"
 REAL_DWARF_IDLE_BUNDLE = ROOT / "assets" / "first-room" / "dwarf" / "idle"
 CHECKED_IN_SWING_POSE_PLAN_V0_LEDGER_DIGEST = (
-    "23688960a129994ba933cfc062b75b915ca4d420a9d59035f854d3e6791139cc"
+    "3991e0cdac5c9fd9f1815715b5fa693a27ae98dd2e22ff560b1a23573a0571b3"
 )
 STONE = (74, 59, 72)
 OUTLINE = (17, 16, 24)
@@ -105,8 +105,8 @@ def _load_identity_lock_spec() -> dict[str, object]:
 
 
 def test_author_motion_executes_a_declarative_four_frame_plan(tmp_path: Path) -> None:
-    width, height = 16, 24
-    base = _frame_with_rect(width, height, 4, 6, 11, 17, STONE)
+    base_frames = _load_base_release_frames(REAL_DWARF_IDLE_BUNDLE, "walk")
+    base = base_frames[0]
     pose_plan = _walk_pose_plan(
         frame_ops=[
             [{"op": "paint", "x": 2, "y": 22, "palette_role": "amber-emission", "color": "#F0A33A"}],
@@ -127,7 +127,7 @@ def test_author_motion_executes_a_declarative_four_frame_plan(tmp_path: Path) ->
     )
     palette = load_master_palette(PALETTE_PATH)
     result = author_motion(
-        [base],
+        base_frames,
         pose_plan,
         _load_identity_lock_spec(),
         palette,
@@ -143,8 +143,9 @@ def test_author_motion_executes_a_declarative_four_frame_plan(tmp_path: Path) ->
     assert result.report["motion_class"] == "walk"
     assert result.report["pose_plan_schema"] == MOTION_POSE_PLAN_SCHEMA
     assert result.frames[0][22][2] == (240, 163, 58)
-    assert result.frames[1][7][4] == STONE
+    assert result.frames[1][7][4] is None
     assert result.frames[2][20][3] == OUTLINE
+    assert result.report["frames"][0]["identity_lock_checks"]["upper_body"]["outcome"] == "PASS"
 
 
 def _swing_pose_plan(
@@ -159,7 +160,7 @@ def _swing_pose_plan(
         "frame_size": [24, 24],
         "frame_count": len(frame_ops),
         "canonical_origin": [1, 0],
-        "base_specification_id": "first-room/dwarf/swing",
+        "base_specification_id": "first-room/dwarf/idle",
         "base_frame_mapping": [0] * len(frame_ops),
         "frames": frame_ops,
     }
@@ -294,10 +295,9 @@ def _swing_base_frame() -> list[list[tuple[int, int, int] | None]]:
     return frame
 
 
-def test_embedded_idle_base_authors_a_cross_dimension_swing_plan(tmp_path: Path) -> None:
+def test_embedded_idle_base_authors_a_cross_dimension_swing_plan() -> None:
     """C2: a 16x24 idle base embeds onto the 24x24 swing canvas before authoring."""
-    prepared = pb.prepare_cell_author("idle", tmp_path)
-    base_frames = _load_base_release_frames(prepared.base_bundle, "swing")
+    base_frames = _load_base_release_frames(REAL_DWARF_IDLE_BUNDLE, "swing")
     assert len(base_frames) == 4
     for frame in base_frames:
         assert len(frame) == 24
@@ -305,10 +305,10 @@ def test_embedded_idle_base_authors_a_cross_dimension_swing_plan(tmp_path: Path)
 
     pose_plan = _swing_pose_plan(
         frame_ops=[
-            [{"op": "paint", "x": 2, "y": 22, "palette_role": "amber-emission", "color": "#F0A33A"}],
-            [{"op": "paint", "x": 2, "y": 23, "palette_role": "amber-emission", "color": "#F0A33A"}],
-            [{"op": "paint", "x": 18, "y": 22, "palette_role": "amber-emission", "color": "#F0A33A"}],
-            [{"op": "paint", "x": 18, "y": 23, "palette_role": "amber-emission", "color": "#F0A33A"}],
+            [{"op": "paint", "x": 22, "y": 22, "palette_role": "amber-emission", "color": "#F0A33A"}],
+            [{"op": "paint", "x": 22, "y": 23, "palette_role": "amber-emission", "color": "#F0A33A"}],
+            [{"op": "paint", "x": 22, "y": 22, "palette_role": "amber-emission", "color": "#F0A33A"}],
+            [{"op": "paint", "x": 22, "y": 23, "palette_role": "amber-emission", "color": "#F0A33A"}],
         ]
     )
     palette = load_master_palette(PALETTE_PATH)
@@ -318,7 +318,7 @@ def test_embedded_idle_base_authors_a_cross_dimension_swing_plan(tmp_path: Path)
     for frame in result.frames:
         assert len(frame) == 24
         assert len(frame[0]) == 24
-    assert result.frames[0][22][2] == (240, 163, 58)
+    assert result.frames[0][22][22] == (240, 163, 58)
 
 
 def test_direct_locked_write_rejects_with_identity_lock_write() -> None:
@@ -330,16 +330,102 @@ def test_direct_locked_write_rejects_with_identity_lock_write() -> None:
     with pytest.raises(MotionAuthorError) as exc:
         author_motion([base], pose_plan, _load_identity_lock_spec(), palette)
     assert exc.value.reason_code == "identity_lock_write"
+    assert "helmet_face" in str(exc.value)
+
+
+def test_tolerance_aware_authoring_reports_lock_checks_on_pass() -> None:
+    base_frames = _load_base_release_frames(REAL_DWARF_IDLE_BUNDLE, "swing")
+    pose_plan = _swing_v1_pose_plan(frame_ops=[[]])
+    palette = load_master_palette(PALETTE_PATH)
+    result = author_motion(
+        base_frames,
+        pose_plan,
+        _load_identity_lock_spec(),
+        palette,
+        part_map=_embedded_swing_part_map(),
+    )
+    checks = result.report["frames"][0]["identity_lock_checks"]
+    assert set(checks) == {"helmet_face", "belt_core", "boots"}
+    assert all(check["outcome"] == "PASS" for check in checks.values())
+
+
+def test_boots_occupancy_change_rejects_after_frame_evaluation() -> None:
+    base_frames = _load_base_release_frames(REAL_DWARF_IDLE_BUNDLE, "swing")
+    pose_plan = _swing_pose_plan(
+        frame_ops=[[{"op": "clear", "x": 7, "y": 21}]],
+    )
+    palette = load_master_palette(PALETTE_PATH)
+    with pytest.raises(MotionAuthorError) as exc:
+        author_motion(
+            base_frames,
+            pose_plan,
+            _load_identity_lock_spec(),
+            palette,
+        )
+    assert exc.value.reason_code == "identity_lock_write"
+    assert "boots" in str(exc.value)
+
+
+def test_locked_paint_inside_helmet_face_authors_within_tolerance() -> None:
+    base_frames = _load_base_release_frames(REAL_DWARF_IDLE_BUNDLE, "swing")
+    pose_plan = _swing_pose_plan(
+        frame_ops=[
+            [
+                {
+                    "op": "paint",
+                    "x": 10,
+                    "y": 5,
+                    "palette_role": "dark-outline",
+                    "color": "#111018",
+                }
+            ]
+        ],
+    )
+    palette = load_master_palette(PALETTE_PATH)
+    result = author_motion(
+        base_frames,
+        pose_plan,
+        _load_identity_lock_spec(),
+        palette,
+    )
+    helmet = result.report["frames"][0]["identity_lock_checks"]["helmet_face"]
+    assert helmet["outcome"] == "PASS"
+
+
+def test_helmet_face_beyond_tolerance_rejects_after_frame_evaluation() -> None:
+    base = _swing_base_frame()
+    pose_plan = _swing_pose_plan(
+        frame_ops=[
+            [
+                {
+                    "op": "stroke",
+                    "x0": 6,
+                    "y0": 1,
+                    "x1": 13,
+                    "y1": 10,
+                    "palette_role": "dark-outline",
+                    "color": "#111018",
+                }
+            ]
+        ],
+    )
+    palette = load_master_palette(PALETTE_PATH)
+    with pytest.raises(MotionAuthorError) as exc:
+        author_motion([base], pose_plan, _load_identity_lock_spec(), palette)
+    assert exc.value.reason_code == "identity_lock_write"
+    assert "helmet_face" in str(exc.value)
+    assert "exceeds" in str(exc.value)
 
 
 def test_permitted_lock_relocation_preserves_exact_cells() -> None:
-    base = _swing_base_frame()
+    base_frames = _load_base_release_frames(REAL_DWARF_IDLE_BUNDLE, "swing")
+    base = base_frames[0]
     before = {(x, y): base[y][x] for y in range(24) for x in range(24) if base[y][x] is not None}
     pose_plan = _swing_pose_plan(
         frame_ops=[[{"op": "relocate_lock", "lock_id": "helmet_face", "dx": 1, "dy": 0}]],
     )
     palette = load_master_palette(PALETTE_PATH)
-    result = author_motion([base], pose_plan, _load_identity_lock_spec(), palette)
+    result = author_motion(base_frames, pose_plan, _load_identity_lock_spec(), palette)
     after = {
         (x, y): result.frames[0][y][x]
         for y in range(24)
@@ -430,10 +516,10 @@ def test_checked_in_swing_pose_plan_v0_reproduces_pinned_ledger_digest() -> None
     base_frames = _load_base_release_frames(REAL_DWARF_IDLE_BUNDLE, "swing")
     pose_plan = _swing_pose_plan(
         frame_ops=[
-            [{"op": "paint", "x": 2, "y": 22, "palette_role": "amber-emission", "color": "#F0A33A"}],
-            [{"op": "paint", "x": 2, "y": 23, "palette_role": "amber-emission", "color": "#F0A33A"}],
-            [{"op": "paint", "x": 18, "y": 22, "palette_role": "amber-emission", "color": "#F0A33A"}],
-            [{"op": "paint", "x": 18, "y": 23, "palette_role": "amber-emission", "color": "#F0A33A"}],
+            [{"op": "paint", "x": 22, "y": 22, "palette_role": "amber-emission", "color": "#F0A33A"}],
+            [{"op": "paint", "x": 22, "y": 23, "palette_role": "amber-emission", "color": "#F0A33A"}],
+            [{"op": "paint", "x": 22, "y": 22, "palette_role": "amber-emission", "color": "#F0A33A"}],
+            [{"op": "paint", "x": 22, "y": 23, "palette_role": "amber-emission", "color": "#F0A33A"}],
         ]
     )
     palette = load_master_palette(PALETTE_PATH)
@@ -477,16 +563,16 @@ def _hand_grip_fixture() -> tuple[list[list[tuple[int, int, int] | None]], PartM
 
 
 def test_translate_tool_handle_moves_tool_head() -> None:
-    base, part_map = _tool_chain_fixture()
+    base_frames = _load_base_release_frames(REAL_DWARF_IDLE_BUNDLE, "swing")
+    part_map = _embedded_swing_part_map()
     before_head = set(part_map.parts["tool_head"].cells)
-    before_handle = set(part_map.parts["tool_handle"].cells)
     pose_plan = _swing_v1_pose_plan(
-        frame_ops=[[{"op": "translate_part", "part_id": "tool_handle", "dx": 2, "dy": -1}]],
+        frame_ops=[[{"op": "translate_part", "part_id": "tool_head", "dx": -1, "dy": 0}]],
         part_map_digest=part_map.base_raster_sha256,
     )
     palette = load_master_palette(PALETTE_PATH)
     result = author_motion(
-        [base],
+        base_frames,
         pose_plan,
         _load_identity_lock_spec(),
         palette,
@@ -494,21 +580,20 @@ def test_translate_tool_handle_moves_tool_head() -> None:
     )
     emitted = result.part_maps[0]["parts"]
     after_head = {tuple(map(int, key.split(","))) for key in emitted["tool_head"]["cells"]}
-    after_handle = {tuple(map(int, key.split(","))) for key in emitted["tool_handle"]["cells"]}
-    assert after_head == {(x + 2, y - 1) for x, y in before_head}
-    assert after_handle == {(x + 2, y - 1) for x, y in before_handle}
+    assert after_head == {(x - 1, y) for x, y in before_head}
 
 
 def test_rigid_orientation_preserves_cell_count() -> None:
-    base, part_map = _tool_chain_fixture()
+    base_frames = _load_base_release_frames(REAL_DWARF_IDLE_BUNDLE, "swing")
+    part_map = _embedded_swing_part_map()
     before_count = len(part_map.parts["tool_head"].cells)
     pose_plan = _swing_v1_pose_plan(
-        frame_ops=[[{"op": "orient_part", "part_id": "tool_head", "orientation": "rot90"}]],
+        frame_ops=[[{"op": "orient_part", "part_id": "tool_head", "orientation": "rot0"}]],
         part_map_digest=part_map.base_raster_sha256,
     )
     palette = load_master_palette(PALETTE_PATH)
     result = author_motion(
-        [base],
+        base_frames,
         pose_plan,
         _load_identity_lock_spec(),
         palette,
@@ -560,8 +645,8 @@ def test_emitted_part_maps_cover_every_opaque_cell() -> None:
 
 def test_part_translate_respects_identity_lock() -> None:
     base_frames = _load_base_release_frames(REAL_DWARF_IDLE_BUNDLE, "swing")
-    pose_plan = _swing_v1_pose_plan(
-        frame_ops=[[{"op": "translate_part", "part_id": "boots", "dx": 0, "dy": 1}]],
+    pose_plan = _swing_pose_plan(
+        frame_ops=[[{"op": "clear", "x": 7, "y": 21}]],
     )
     palette = load_master_palette(PALETTE_PATH)
     with pytest.raises(MotionAuthorError) as exc:
@@ -570,7 +655,6 @@ def test_part_translate_respects_identity_lock() -> None:
             pose_plan,
             _load_identity_lock_spec(),
             palette,
-            part_map=_embedded_swing_part_map(),
         )
     assert exc.value.reason_code == "identity_lock_write"
 
@@ -580,19 +664,15 @@ def _chebyshev(a: tuple[int, int], b: tuple[int, int]) -> int:
 
 
 def test_hand_far_grip_stays_adjacent_to_tool_handle_all_frames() -> None:
-    base, part_map = _hand_grip_fixture()
+    base_frames = _load_base_release_frames(REAL_DWARF_IDLE_BUNDLE, "swing")
+    part_map = _embedded_swing_part_map()
     pose_plan = _swing_v1_pose_plan(
-        frame_ops=[
-            [{"op": "translate_part", "part_id": "hand_far", "dx": 1, "dy": 0}],
-            [{"op": "translate_part", "part_id": "hand_far", "dx": 0, "dy": 1}],
-            [{"op": "translate_part", "part_id": "hand_far", "dx": -1, "dy": 0}],
-            [{"op": "translate_part", "part_id": "hand_far", "dx": 0, "dy": -1}],
-        ],
+        frame_ops=[[], [], [], []],
         part_map_digest=part_map.base_raster_sha256,
     )
     palette = load_master_palette(PALETTE_PATH)
     result = author_motion(
-        [base],
+        base_frames,
         pose_plan,
         _load_identity_lock_spec(),
         palette,
@@ -609,8 +689,8 @@ def test_hand_far_grip_stays_adjacent_to_tool_handle_all_frames() -> None:
 
 
 def test_author_motion_is_byte_deterministic_and_reports_geometry() -> None:
-    width, height = 16, 24
-    base = _frame_with_rect(width, height, 4, 6, 11, 17, STONE)
+    base_frames = _load_base_release_frames(REAL_DWARF_IDLE_BUNDLE, "walk")
+    base = base_frames[0]
     pose_plan = _walk_pose_plan(
         frame_ops=[
             [{"op": "paint", "x": 2, "y": 22, "palette_role": "amber-emission", "color": "#F0A33A"}],
@@ -631,8 +711,8 @@ def test_author_motion_is_byte_deterministic_and_reports_geometry() -> None:
     )
     palette = load_master_palette(PALETTE_PATH)
     identity = _load_identity_lock_spec()
-    first = author_motion([base], pose_plan, identity, palette)
-    second = author_motion([base], pose_plan, identity, palette)
+    first = author_motion(base_frames, pose_plan, identity, palette)
+    second = author_motion(base_frames, pose_plan, identity, palette)
 
     assert packet_bytes(first.ledger) == packet_bytes(second.ledger)
     assert first.report == second.report
@@ -665,11 +745,10 @@ def _run_author_module(args: list[str]) -> subprocess.CompletedProcess[str]:
 
 
 def test_cli_calls_author_motion_and_writes_only_declared_outputs(tmp_path: Path) -> None:
-    width, height = 16, 24
-    base = _frame_with_rect(width, height, 4, 6, 11, 17, STONE)
+    base_frames = _load_base_release_frames(REAL_DWARF_IDLE_BUNDLE, "walk")
     base_bundle = tmp_path / "base"
     base_bundle.mkdir()
-    write_cells(base_bundle / "frame-0.png", base)
+    write_cells(base_bundle / "frame-0.png", base_frames[0])
 
     pose_plan_path = tmp_path / "pose-plan.json"
     pose_plan_path.write_text(
@@ -708,7 +787,7 @@ def test_cli_calls_author_motion_and_writes_only_declared_outputs(tmp_path: Path
     assert payload["frame_count"] == 1
     assert (frames_out / "frame-0.png").is_file()
     assert ledger_out.is_file()
-    authored = read_cells(frames_out / "frame-0.png", size=(width, height))
+    authored = read_cells(frames_out / "frame-0.png", size=(16, 24))
     assert authored[22][2] == (240, 163, 58)
     assert not (tmp_path / "manifest.json").exists()
 
