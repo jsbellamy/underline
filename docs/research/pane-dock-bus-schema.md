@@ -50,6 +50,7 @@ Persist-aligned fields only — Dock derives the rest.
 | `ingots` | Spendable |
 | `digRateUpgradeCount` | Dig Rate Upgrade buys completed |
 | `smelterUpgradeCount` | Smelter Upgrade buys completed |
+| `carryCapacityUpgradeCount` | Carry Capacity Upgrade buys completed |
 | `faceSwingProgress` | Swings spent on current Face (`0…Hardness`) |
 | `smelterProgress` | Fractional Ore toward next Ingot (`0…1`) |
 | `offlineSummary?` | Present after boot catch-up when `offlineMs ≥ MIN_OFFLINE_MS` (60s); Dock shows then clears locally |
@@ -64,6 +65,8 @@ Persist-aligned fields only — Dock derives the rest.
 | Dig Rate next Upgrade cost | `5 × 2^digRateUpgradeCount` |
 | Smelter throughput | `0.06 + 0.02 × smelterUpgradeCount` Ore/sec |
 | Smelter next Upgrade cost | `5 × 2^smelterUpgradeCount` |
+| Carry Capacity | `10 + 5 × carryCapacityUpgradeCount` Loads |
+| Carry Capacity next Upgrade cost | `5 × 2^carryCapacityUpgradeCount` |
 | Hardness | `hardnessFor(advance)` — exponential curve in [`produce-and-spend-economy.md`](./produce-and-spend-economy.md) |
 | Yield | `100 × 1.15^advance` Ore per Face (scales with Hardness) |
 
@@ -80,7 +83,7 @@ Persist-aligned fields only — Dock derives the rest.
 
 ```ts
 type DockCommand =
-  | { schemaVersion: 2; name: "buyUpgrade"; upgrade: "digRate" | "smelter" }
+  | { schemaVersion: 2; name: "buyUpgrade"; upgrade: "digRate" | "smelter" | "carryCapacity" }
   | { schemaVersion: 2; name: "requestSnapshot" };
 ```
 
@@ -88,7 +91,7 @@ Envelope: `{ type: "command"; command: DockCommand }`.
 
 | Name | Pane behaviour |
 | --- | --- |
-| `buyUpgrade` | Apply if Ingots ≥ next cost for the named Upgrade; deduct; bump the matching count (`digRateUpgradeCount` or `smelterUpgradeCount`); persist; broadcast Snapshot. No-op (still may rebroadcast) if unaffordable. Missing `upgrade` is not a valid command. Unknown `upgrade` values are ignored. |
+| `buyUpgrade` | Apply if Ingots ≥ next cost for the named Upgrade; deduct; bump the matching count (`digRateUpgradeCount`, `smelterUpgradeCount`, or `carryCapacityUpgradeCount`); persist; broadcast Snapshot. No-op (still may rebroadcast) if unaffordable. Missing `upgrade` is not a valid command. Unknown `upgrade` values are ignored. |
 | `requestSnapshot` | Broadcast current Snapshot immediately. |
 
 No `dismissOfflineSummary` on the bus — dismiss is Dock-local UI until the offline surface needs otherwise.
@@ -111,6 +114,7 @@ type WireSnapshot = {
   ingots: number;
   digRateUpgradeCount: number;
   smelterUpgradeCount: number;
+  carryCapacityUpgradeCount: number;
   faceSwingProgress: number;
   smelterProgress: number;
   offlineSummary?: {

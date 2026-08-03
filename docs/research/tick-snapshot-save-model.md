@@ -41,10 +41,11 @@ Persist only what cannot be derived. Key: `underline-save-v1` in **`localStorage
 | `ingots` | Spendable |
 | `digRateUpgradeCount` | Derives Dig Rate (`1.0 + 0.25×n`) and Dig Rate next cost (`5 × 2^n`) |
 | `smelterUpgradeCount` | Derives Smelter throughput (`0.06 + 0.02×n` Ore/sec) and Smelter next cost (`5 × 2^n`) |
+| `carryCapacityUpgradeCount` | Derives Carry Capacity (`10 + 5×n` Loads) and Carry Capacity next cost (`5 × 2^n`) |
 | `faceSwingProgress` | Swings already spent on the current Face (`0…Hardness`; same as damage dealt while Pick Damage is 1) |
 | `smelterProgress` | Fractional Ore fed toward the next Ingot (`0…1`) |
 
-**Derived at load / in Snapshot views:** Dig Rate, both next Upgrade costs, Hardness from exponential `hardnessFor(advance)`, Yield scaling with Hardness, Smelter throughput from `smelterUpgradeCount`.
+**Derived at load / in Snapshot views:** Dig Rate, all three next Upgrade costs, Hardness from exponential `hardnessFor(advance)`, Yield scaling with Hardness, Smelter throughput from `smelterUpgradeCount`, Carry Capacity from `carryCapacityUpgradeCount`.
 
 **Migration:** Load of `schemaVersion: 1` maps `upgradeCount` → `digRateUpgradeCount`, sets `smelterUpgradeCount: 0`, rewrites as v2 on next persist. Persist key remains `underline-save-v1`.
 
@@ -52,7 +53,7 @@ Persist only what cannot be derived. Key: `underline-save-v1` in **`localStorage
 
 ### Write cadence
 
-- Every successful Upgrade purchase (Dig Rate or Smelter)
+- Every successful Upgrade purchase (Dig Rate, Smelter, or Carry Capacity)
 - `pagehide` / before-unload
 - Autosave every **10s** (`AUTOSAVE_MS`)
 
@@ -76,4 +77,4 @@ Wall clock is stamped only at the persistence boundary (`savedAtMs = Date.now()`
 - Save-schema migration past `schemaVersion: 2` (map fog).
 - Presentation clock between 250ms ticks for Swing / walk smoothness (map fog).
 - Exact bus message shapes — locked in [`pane-dock-bus-schema.md`](./pane-dock-bus-schema.md) ([Define the Pane↔Dock bus message schema](https://github.com/jsbellamy/underline/issues/323)).
-- Walk duration as a real Ore/sec delay (presentation / #321); economy `advance` does not model walk time for the slice.
+- Walk duration as a separate presentation-only delay beyond the Haul round trip modeled in `advance` (see ADR 0012).

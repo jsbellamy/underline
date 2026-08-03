@@ -31,11 +31,12 @@ def _entry_body(section: str, term: str) -> str:
     return match.group(1)
 
 
-def test_game_language_upgrade_names_two_colony_purchases() -> None:
+def test_game_language_upgrade_names_three_colony_purchases() -> None:
     section = _game_language_section()
     body = _entry_body(section, "Upgrade")
     assert "Dig Rate Upgrade" in body
     assert "Smelter Upgrade" in body
+    assert "Carry Capacity Upgrade" in body
     assert "Singular by design" not in body
     assert "single-type" not in body.lower()
 
