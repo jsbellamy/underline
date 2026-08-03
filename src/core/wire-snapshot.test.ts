@@ -13,16 +13,17 @@ describe("wire Snapshot", () => {
       advance: 2,
       ore: 1.25,
       ingots: 3,
-      upgradeCount: 1,
+      digRateUpgradeCount: 1,
       faceSwingProgress: 2,
       smelterProgress: 0.3,
     };
     expect(toWireSnapshot(snap)).toEqual({
-      schemaVersion: 1,
+      schemaVersion: 2,
       advance: 2,
       ore: 1.25,
       ingots: 3,
-      upgradeCount: 1,
+      digRateUpgradeCount: 1,
+      smelterUpgradeCount: 0,
       faceSwingProgress: 2,
       smelterProgress: 0.3,
     });

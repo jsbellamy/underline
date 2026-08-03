@@ -8,7 +8,7 @@ import {
   digRateFor,
   hardnessFor,
   initialSnapshot,
-  nextUpgradeCost,
+  nextDigRateUpgradeCost,
   nextSmelterUpgradeCost,
   smelterThroughputFor,
   type MiningSnapshot,
@@ -63,19 +63,19 @@ describe("mining engine Smelter", () => {
 });
 
 describe("mining engine Upgrade", () => {
-  it("derives Dig Rate and next cost from upgradeCount", () => {
+  it("derives Dig Rate and next cost from digRateUpgradeCount", () => {
     expect(digRateFor(0)).toBe(1);
     expect(digRateFor(1)).toBe(1.25);
-    expect(nextUpgradeCost(0)).toBe(5);
-    expect(nextUpgradeCost(1)).toBe(10);
+    expect(nextDigRateUpgradeCost(0)).toBe(5);
+    expect(nextDigRateUpgradeCost(1)).toBe(10);
   });
 
   it("buys an Upgrade when Ingots cover the cost and raises Dig Rate", () => {
     const rich = snap({ ingots: 5 });
     const bought = buyUpgrade(rich);
     expect(bought.ingots).toBe(0);
-    expect(bought.upgradeCount).toBe(1);
-    expect(digRateFor(bought.upgradeCount)).toBe(1.25);
+    expect(bought.digRateUpgradeCount).toBe(1);
+    expect(digRateFor(bought.digRateUpgradeCount)).toBe(1.25);
   });
 
   it("throws when the Upgrade is unaffordable", () => {
@@ -130,7 +130,7 @@ describe("mining engine Smelter Upgrade", () => {
     const bought = buyUpgrade(rich, "smelter");
     expect(bought.ingots).toBe(0);
     expect(bought.smelterUpgradeCount).toBe(1);
-    expect(bought.upgradeCount).toBe(0);
+    expect(bought.digRateUpgradeCount).toBe(0);
   });
 
   it("throws when the Smelter Upgrade is unaffordable", () => {
@@ -154,7 +154,7 @@ describe("mining engine buyUpgrade default", () => {
   it("defaults to Dig Rate when upgrade id is omitted", () => {
     const rich = snap({ ingots: 5 });
     const bought = buyUpgrade(rich);
-    expect(bought.upgradeCount).toBe(1);
+    expect(bought.digRateUpgradeCount).toBe(1);
     expect(bought.smelterUpgradeCount).toBe(0);
   });
 });

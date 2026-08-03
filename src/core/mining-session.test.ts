@@ -4,7 +4,7 @@ import {
   advance,
   digRateFor,
   initialSnapshot,
-  nextUpgradeCost,
+  nextDigRateUpgradeCost,
 } from "./mining-engine";
 import { createMiningSession } from "./mining-session";
 import { MIN_OFFLINE_MS } from "./offline-clock";
@@ -55,13 +55,13 @@ describe("mining session", () => {
     const session = createMiningSession({
       store,
       now: () => 5_000,
-      snapshot: { ...initialSnapshot(), ingots: nextUpgradeCost(0) },
+      snapshot: { ...initialSnapshot(), ingots: nextDigRateUpgradeCost(0) },
     });
     expect(session.tryBuyUpgrade()).toBe(true);
-    expect(session.snapshot.upgradeCount).toBe(1);
+    expect(session.snapshot.digRateUpgradeCount).toBe(1);
     expect(session.snapshot.ingots).toBe(0);
-    expect(digRateFor(session.snapshot.upgradeCount)).toBe(1.25);
-    expect(store.data["underline-save-v1"]).toContain('"upgradeCount":1');
+    expect(digRateFor(session.snapshot.digRateUpgradeCount)).toBe(1.25);
+    expect(store.data["underline-save-v1"]).toContain('"digRateUpgradeCount":1');
   });
 
   it("no-ops buyUpgrade when Ingots cannot cover the cost", () => {
@@ -71,7 +71,7 @@ describe("mining session", () => {
       snapshot: { ...initialSnapshot(), ingots: 4 },
     });
     expect(session.tryBuyUpgrade()).toBe(false);
-    expect(session.snapshot.upgradeCount).toBe(0);
+    expect(session.snapshot.digRateUpgradeCount).toBe(0);
     expect(session.snapshot.ingots).toBe(4);
   });
 

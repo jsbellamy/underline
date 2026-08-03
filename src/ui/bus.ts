@@ -36,7 +36,7 @@ function isSchemaVersion(value: unknown): value is typeof SCHEMA_VERSION {
   return value === SCHEMA_VERSION;
 }
 
-/** True when a Dock command carries schemaVersion 1. */
+/** True when a Dock command carries schemaVersion 2. */
 export function isDockCommand(value: unknown): value is DockCommand {
   if (!value || typeof value !== "object") {
     return false;
@@ -48,7 +48,7 @@ export function isDockCommand(value: unknown): value is DockCommand {
   return command.name === "buyUpgrade" || command.name === "requestSnapshot";
 }
 
-/** True when a wire Snapshot carries schemaVersion 1. */
+/** True when a wire Snapshot carries schemaVersion 2. */
 export function isWireSnapshot(value: unknown): value is WireSnapshot {
   if (!value || typeof value !== "object") {
     return false;

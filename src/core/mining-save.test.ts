@@ -33,14 +33,14 @@ describe("mining save seam", () => {
     store = memoryStore();
   });
 
-  it("round-trips authoritative fields through underline-save-v1", () => {
-    // Save omits interim optional smelterUpgradeCount until schema v2 (#331).
+  it("round-trips authoritative v2 fields through underline-save-v1", () => {
     const snap: MiningSnapshot = {
       schemaVersion: SCHEMA_VERSION,
       advance: 3,
       ore: 1.5,
       ingots: 7,
-      upgradeCount: 2,
+      digRateUpgradeCount: 2,
+      smelterUpgradeCount: 1,
       faceSwingProgress: 1.25,
       smelterProgress: 0.4,
     };
@@ -51,6 +51,57 @@ describe("mining save seam", () => {
       snapshot: snap,
       savedAtMs: 1_700_000_000_000,
     });
+  });
+
+  it("migrates schemaVersion 1 upgradeCount to v2 upgrade counts in memory", () => {
+    store.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        schemaVersion: 1,
+        savedAtMs: 1_700_000_000_000,
+        advance: 3,
+        ore: 1.5,
+        ingots: 7,
+        upgradeCount: 2,
+        faceSwingProgress: 1.25,
+        smelterProgress: 0.4,
+      }),
+    );
+    const loaded = loadSave(store);
+    expect(loaded.snapshot).toEqual({
+      schemaVersion: 2,
+      advance: 3,
+      ore: 1.5,
+      ingots: 7,
+      digRateUpgradeCount: 2,
+      smelterUpgradeCount: 0,
+      faceSwingProgress: 1.25,
+      smelterProgress: 0.4,
+    });
+    expect(loaded.savedAtMs).toBe(1_700_000_000_000);
+  });
+
+  it("rewrites v2 on persist after loading a v1 save", () => {
+    store.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        schemaVersion: 1,
+        savedAtMs: 100,
+        advance: 0,
+        ore: 0,
+        ingots: 0,
+        upgradeCount: 1,
+        faceSwingProgress: 0,
+        smelterProgress: 0,
+      }),
+    );
+    const { snapshot } = loadSave(store);
+    persistSave(snapshot, 200, store);
+    const raw = JSON.parse(store.data[SAVE_KEY]!);
+    expect(raw.schemaVersion).toBe(2);
+    expect(raw.digRateUpgradeCount).toBe(1);
+    expect(raw.smelterUpgradeCount).toBe(0);
+    expect(raw.upgradeCount).toBeUndefined();
   });
 
   it("resets to a fresh Snapshot when the save is missing or unreadable", () => {
@@ -72,7 +123,8 @@ describe("mining save seam", () => {
         advance: 9,
         ore: 9,
         ingots: 9,
-        upgradeCount: 9,
+        digRateUpgradeCount: 9,
+        smelterUpgradeCount: 0,
         faceSwingProgress: 1,
         smelterProgress: 0.5,
       }),

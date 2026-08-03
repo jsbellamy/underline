@@ -5,7 +5,7 @@ import {
   SMELTER_THROUGHPUT,
   YIELD,
   digRateFor,
-  nextUpgradeCost,
+  nextDigRateUpgradeCost,
 } from "../core/mining-engine";
 import type { WireSnapshot } from "../core/wire-snapshot";
 
@@ -111,8 +111,8 @@ export function mountColonyView(
   host.replaceChildren(root);
 
   function render(snapshot: WireSnapshot): void {
-    const digRate = digRateFor(snapshot.upgradeCount);
-    const cost = nextUpgradeCost(snapshot.upgradeCount);
+    const digRate = digRateFor(snapshot.digRateUpgradeCount);
+    const cost = nextDigRateUpgradeCost(snapshot.digRateUpgradeCount);
     digRateDd.textContent = `${formatRate(digRate)} Swing/sec`;
     oreDd.textContent = formatAmount(snapshot.ore);
     ingotsDd.textContent = formatAmount(snapshot.ingots);

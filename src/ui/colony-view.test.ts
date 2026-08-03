@@ -14,7 +14,7 @@ describe("Colony Dock surface", () => {
         ...initialSnapshot(),
         ore: 2.5,
         ingots: 12,
-        upgradeCount: 1,
+        digRateUpgradeCount: 1,
       }),
     );
 

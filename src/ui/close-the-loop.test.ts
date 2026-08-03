@@ -2,7 +2,7 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { createMiningSession } from "../core/mining-session";
-import { initialSnapshot, nextUpgradeCost } from "../core/mining-engine";
+import { initialSnapshot, nextDigRateUpgradeCost } from "../core/mining-engine";
 import { createBusEndpoint } from "./bus";
 import { mountDockShell } from "./dock-root";
 import { mountPaneShell } from "./pane-root";
@@ -39,7 +39,7 @@ describe("Pane↔Dock close-the-loop bus", () => {
       now: () => 1_000,
       snapshot: {
         ...initialSnapshot(),
-        ingots: nextUpgradeCost(0),
+        ingots: nextDigRateUpgradeCost(0),
       },
     });
 
@@ -71,7 +71,7 @@ describe("Pane↔Dock close-the-loop bus", () => {
     dockRoot.querySelector<HTMLButtonElement>("[data-buy-upgrade]")?.click();
     await flushBus();
 
-    expect(session.snapshot.upgradeCount).toBe(1);
+    expect(session.snapshot.digRateUpgradeCount).toBe(1);
     expect(session.snapshot.ingots).toBe(0);
     expect(dockRoot.querySelector("[data-dig-rate]")?.textContent).toContain(
       "1.25",
@@ -110,7 +110,7 @@ describe("Pane↔Dock close-the-loop bus", () => {
       command: { schemaVersion: 99, name: "buyUpgrade" } as never,
     });
     await flushBus();
-    expect(session.snapshot.upgradeCount).toBe(0);
+    expect(session.snapshot.digRateUpgradeCount).toBe(0);
 
     rogue.close();
     pane.destroy();
