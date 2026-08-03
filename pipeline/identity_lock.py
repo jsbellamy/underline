@@ -1240,6 +1240,120 @@ def _resolve_palette_exact_identity(
     return identity_path, str(validated["identity_sha256"]), _load_cells_role_map(cells)
 
 
+def evaluate_authored_frame_locks(
+    frame: list[list[Cell]],
+    motion_class: str,
+    identity_lock_spec: Mapping[str, Any],
+    lock_offsets: Mapping[str, tuple[int, int]],
+) -> dict[str, dict[str, Any]]:
+    """Evaluate a single authored Frame at fixed lock offsets (Motion Author C2)."""
+    motion_classes = identity_lock_spec.get("motion_classes")
+    if not isinstance(motion_classes, dict):
+        raise IdentityLockError("identity lock spec missing motion_classes")
+    motion_doc = motion_classes.get(motion_class)
+    if not isinstance(motion_doc, dict):
+        raise IdentityLockError(
+            f"motion class {motion_class!r} has no Identity Lock rules"
+        )
+
+    doc_frame_w = int(identity_lock_spec["frame_size"][0])
+    doc_frame_h = int(identity_lock_spec["frame_size"][1])
+    class_frame_w, class_frame_h, origin_dx, origin_dy = _resolve_lock_frame_geometry(
+        motion_class,
+        motion_doc,
+        default_frame_w=doc_frame_w,
+        default_frame_h=doc_frame_h,
+    )
+    anchor_frame_size = _anchor_frame_size(identity_lock_spec)
+    identity_binding = identity_lock_spec.get("palette_exact_identity")
+    if isinstance(identity_binding, dict):
+        relative_path = identity_binding.get("relative_path")
+        if isinstance(relative_path, str):
+            identity_path = _REPO_ROOT / relative_path
+        else:
+            identity_path = DEFAULT_IDENTITY_PATH
+    else:
+        identity_path = DEFAULT_IDENTITY_PATH
+    canonical = load_canonical_cells(identity_path, anchor_frame_size)
+    if len(frame) != class_frame_h or (frame and len(frame[0]) != class_frame_w):
+        attempt = _embed_on_class_canvas(
+            list(frame),
+            class_frame_w=class_frame_w,
+            class_frame_h=class_frame_h,
+            anchor_frame_w=anchor_frame_size[0],
+            anchor_frame_h=anchor_frame_size[1],
+            origin_dx=origin_dx,
+            origin_dy=origin_dy,
+        )
+    else:
+        attempt = list(frame)
+    palette_path = _resolve_bound_repo_file(
+        identity_lock_spec["master_palette"],
+        label="master_palette",
+    )
+    palette_roles, palette_entries = _load_palette_roles(palette_path)
+    locks = [
+        _validate_lock_row(lock, where=f"motion_classes.{motion_class}")
+        for lock in motion_doc["locks"]
+    ]
+    offsets = {lock["id"]: lock_offsets[lock["id"]] for lock in locks}
+    canonical_offsets = {lock["id"]: (0, 0) for lock in locks}
+    constraints = motion_doc.get("relational_constraints", []) or []
+    if constraints and not _relational_constraints_hold(
+        locks,
+        offsets,
+        constraints,
+        canonical_offsets,
+    ):
+        raise IdentityLockError(
+            f"motion class {motion_class!r} lock offsets violate relational constraints"
+        )
+
+    check_results: dict[str, dict[str, Any]] = {}
+    for lock in locks:
+        check, _mismatch = _compare_structural_lock(
+            canonical,
+            attempt,
+            lock,
+            offsets[lock["id"]],
+            palette_entries,
+            palette_roles,
+            origin_dx=origin_dx,
+            origin_dy=origin_dy,
+        )
+        check_results[lock["id"]] = check
+    return check_results
+
+
+def format_authored_frame_lock_failure(
+    lock_id: str,
+    check: Mapping[str, Any],
+) -> str:
+    comparison = str(check["comparison"])
+    occupancy = float(check["occupancy_difference"])
+    if comparison == "registered-structure":
+        max_occupancy = float(check["max_occupancy_difference"])
+        max_palette = float(check["max_palette_role_distance"])
+        palette_distance = float(check.get("palette_role_distance") or 0.0)
+        reason = check.get("failure_reason_code")
+        if reason == "occupancy_difference":
+            return (
+                f"lock {lock_id} occupancy_difference {occupancy:.4f} "
+                f"exceeds {max_occupancy}"
+            )
+        if reason == "palette_role_distance":
+            return (
+                f"lock {lock_id} palette_role_distance {palette_distance:.4f} "
+                f"exceeds {max_palette}"
+            )
+        return (
+            f"lock {lock_id} failed registered-structure check "
+            f"(occupancy_difference={occupancy:.4f}, "
+            f"palette_role_distance={palette_distance:.4f})"
+        )
+    return f"lock {lock_id} occupancy_difference {occupancy:.4f} exceeds 0.0"
+
+
 def evaluate_identity_lock(
     frames: Sequence[Sequence[Sequence[Cell]]],
     motion_class: str,

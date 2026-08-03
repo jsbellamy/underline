@@ -26,7 +26,7 @@ def _swing_pose_plan(*, frame_ops: list[list[dict[str, object]]]) -> dict[str, o
         "frame_size": [24, 24],
         "frame_count": len(frame_ops),
         "canonical_origin": [1, 0],
-        "base_specification_id": "first-room/dwarf/swing",
+        "base_specification_id": "first-room/dwarf/idle",
         "base_frame_mapping": [0] * len(frame_ops),
         "frames": frame_ops,
     }
@@ -45,8 +45,6 @@ def _run_author_module(args: list[str]) -> subprocess.CompletedProcess[str]:
 
 
 def test_cli_embeds_a_bundle_root_base_onto_the_target_class_canvas(tmp_path: Path) -> None:
-    prepared = pb.prepare_cell_author("idle", tmp_path)
-
     pose_plan_path = tmp_path / "pose-plan.json"
     pose_plan_path.write_text(
         json.dumps(
@@ -55,7 +53,7 @@ def test_cli_embeds_a_bundle_root_base_onto_the_target_class_canvas(tmp_path: Pa
                     [
                         {
                             "op": "paint",
-                            "x": 2,
+                            "x": 22,
                             "y": 22,
                             "palette_role": "amber-emission",
                             "color": "#F0A33A",
@@ -64,7 +62,7 @@ def test_cli_embeds_a_bundle_root_base_onto_the_target_class_canvas(tmp_path: Pa
                     [
                         {
                             "op": "paint",
-                            "x": 2,
+                            "x": 22,
                             "y": 23,
                             "palette_role": "amber-emission",
                             "color": "#F0A33A",
@@ -73,7 +71,7 @@ def test_cli_embeds_a_bundle_root_base_onto_the_target_class_canvas(tmp_path: Pa
                     [
                         {
                             "op": "paint",
-                            "x": 21,
+                            "x": 22,
                             "y": 22,
                             "palette_role": "amber-emission",
                             "color": "#F0A33A",
@@ -82,7 +80,7 @@ def test_cli_embeds_a_bundle_root_base_onto_the_target_class_canvas(tmp_path: Pa
                     [
                         {
                             "op": "paint",
-                            "x": 21,
+                            "x": 22,
                             "y": 23,
                             "palette_role": "amber-emission",
                             "color": "#F0A33A",
@@ -100,7 +98,7 @@ def test_cli_embeds_a_bundle_root_base_onto_the_target_class_canvas(tmp_path: Pa
     result = _run_author_module(
         [
             "--base-bundle",
-            str(prepared.base_bundle),
+            str(REAL_DWARF_IDLE_BUNDLE),
             "--pose-plan",
             str(pose_plan_path),
             "--identity-locks",
@@ -122,7 +120,7 @@ def test_cli_embeds_a_bundle_root_base_onto_the_target_class_canvas(tmp_path: Pa
         assert len(authored) == 24
         assert len(authored[0]) == 24
     first_frame = read_cells(frames_out / "frame-0.png", size=(24, 24))
-    assert first_frame[22][2] == (240, 163, 58)
+    assert first_frame[22][22] == (240, 163, 58)
 
 
 REAL_DWARF_IDLE_BUNDLE = ROOT / "assets" / "first-room" / "dwarf" / "idle"
@@ -139,7 +137,7 @@ def test_cli_passes_part_map_for_v1_pose_plan(tmp_path: Path) -> None:
                 "frame_size": [24, 24],
                 "frame_count": 1,
                 "canonical_origin": [1, 0],
-                "base_specification_id": "first-room/dwarf/swing",
+                "base_specification_id": "first-room/dwarf/idle",
                 "base_frame_mapping": [0],
                 "part_map_digest": part_map_digest,
                 "frames": [[]],

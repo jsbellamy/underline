@@ -9,7 +9,11 @@ from typing import Any, Mapping, Sequence
 
 from pipeline.canonical import packet_bytes
 from pipeline.cell_delta import build_cell_delta_ledger
-from pipeline.identity_lock import validate_identity_lock_spec
+from pipeline.identity_lock import (
+    evaluate_authored_frame_locks,
+    format_authored_frame_lock_failure,
+    validate_identity_lock_spec,
+)
 from pipeline.palette_quantize import MasterPalette
 from pipeline.parts import Footprint, ORIENTATION_IDS, Part, PartMap
 from pipeline.strip import Cell, resolve_class_frame_geometry
@@ -29,9 +33,18 @@ _PART_OPS = frozenset({"translate_part", "orient_part"})
 
 
 class MotionAuthorError(ValueError):
-    def __init__(self, message: str, *, reason_code: str) -> None:
+    def __init__(
+        self,
+        message: str,
+        *,
+        reason_code: str,
+        identity_lock_checks: Mapping[str, Mapping[str, Any]] | None = None,
+        failed_lock_id: str | None = None,
+    ) -> None:
         super().__init__(message)
         self.reason_code = reason_code
+        self.identity_lock_checks = identity_lock_checks
+        self.failed_lock_id = failed_lock_id
 
 
 @dataclass(frozen=True)
@@ -275,23 +288,6 @@ def _lock_rectangle_at_offset(
         rectangle["y0"] + dy,
         rectangle["y1"] + dy,
     )
-
-
-def _cell_in_rectangle(x: int, y: int, x0: int, x1: int, y0: int, y1: int) -> bool:
-    return x0 <= x <= x1 and y0 <= y <= y1
-
-
-def _locked_cells(
-    locks: Mapping[str, dict[str, Any]],
-    offsets: Mapping[str, tuple[int, int]],
-) -> set[tuple[int, int]]:
-    occupied: set[tuple[int, int]] = set()
-    for lock_id, lock in locks.items():
-        x0, x1, y0, y1 = _lock_rectangle_at_offset(lock["rectangle"], offsets[lock_id])
-        for y in range(y0, y1 + 1):
-            for x in range(x0, x1 + 1):
-                occupied.add((x, y))
-    return occupied
 
 
 def _assert_in_bounds(x: int, y: int, *, frame_w: int, frame_h: int) -> None:
@@ -591,7 +587,6 @@ def _translate_part_cells(
     dy: int,
     frame_w: int,
     frame_h: int,
-    locked: set[tuple[int, int]],
 ) -> None:
     moving_cells: set[tuple[int, int]] = set()
     for part_id in part_ids:
@@ -599,22 +594,12 @@ def _translate_part_cells(
 
     extracted: dict[tuple[int, int], Cell] = {}
     for x, y in sorted(moving_cells):
-        if (x, y) in locked:
-            raise MotionAuthorError(
-                f"cannot move locked cell at ({x}, {y})",
-                reason_code="identity_lock_write",
-            )
         extracted[(x, y)] = frame[y][x]
         frame[y][x] = None
 
     for (x, y), cell in extracted.items():
         nx, ny = x + dx, y + dy
         _assert_in_bounds(nx, ny, frame_w=frame_w, frame_h=frame_h)
-        if (nx, ny) in locked:
-            raise MotionAuthorError(
-                f"cannot move into locked cell at ({nx}, {ny})",
-                reason_code="identity_lock_write",
-            )
         if frame[ny][nx] is not None and (nx, ny) not in moving_cells:
             raise MotionAuthorError(
                 f"part translation collides at ({nx}, {ny})",
@@ -638,7 +623,6 @@ def _orient_part_cells(
     orientation_id: str,
     frame_w: int,
     frame_h: int,
-    locked: set[tuple[int, int]],
 ) -> None:
     if not part.rigid:
         raise MotionAuthorError(
@@ -673,20 +657,10 @@ def _orient_part_cells(
     target_world = _world_cells_for_footprint(target, origin_target)
 
     for x, y in sorted(part.cells):
-        if (x, y) in locked:
-            raise MotionAuthorError(
-                f"cannot reorient locked cell at ({x}, {y})",
-                reason_code="identity_lock_write",
-            )
         frame[y][x] = None
 
     for (x, y), rgba in target_world.items():
         _assert_in_bounds(x, y, frame_w=frame_w, frame_h=frame_h)
-        if (x, y) in locked:
-            raise MotionAuthorError(
-                f"cannot reorient into locked cell at ({x}, {y})",
-                reason_code="identity_lock_write",
-            )
         if frame[y][x] is not None and (x, y) not in part.cells:
             raise MotionAuthorError(
                 f"part reorientation collides at ({x}, {y})",
@@ -705,7 +679,6 @@ def _apply_operation(
     frame_h: int,
     locks: Mapping[str, dict[str, Any]],
     lock_offsets: dict[str, tuple[int, int]],
-    locked: set[tuple[int, int]],
     palette: MasterPalette,
     parts: dict[str, _MutablePart] | None,
     explicit_parts: set[str],
@@ -731,7 +704,6 @@ def _apply_operation(
             dy=dy,
             frame_w=frame_w,
             frame_h=frame_h,
-            locked=locked,
         )
         return
 
@@ -750,7 +722,6 @@ def _apply_operation(
             orientation_id=orientation_id,
             frame_w=frame_w,
             frame_h=frame_h,
-            locked=locked,
         )
         return
 
@@ -760,11 +731,6 @@ def _apply_operation(
         if not isinstance(x, int) or not isinstance(y, int):
             raise MotionAuthorError("clear requires integer x and y", reason_code="authoring_boundary_violation")
         _assert_in_bounds(x, y, frame_w=frame_w, frame_h=frame_h)
-        if (x, y) in locked:
-            raise MotionAuthorError(
-                f"cannot clear locked cell at ({x}, {y})",
-                reason_code="identity_lock_write",
-            )
         frame[y][x] = None
         return
 
@@ -774,11 +740,6 @@ def _apply_operation(
         if not isinstance(x, int) or not isinstance(y, int):
             raise MotionAuthorError("paint requires integer x and y", reason_code="authoring_boundary_violation")
         _assert_in_bounds(x, y, frame_w=frame_w, frame_h=frame_h)
-        if (x, y) in locked:
-            raise MotionAuthorError(
-                f"cannot paint locked cell at ({x}, {y})",
-                reason_code="identity_lock_write",
-            )
         rgb = _resolve_paint_color(
             palette,
             palette_role=operation.get("palette_role"),
@@ -807,11 +768,6 @@ def _apply_operation(
         )
         for x, y in _stroke_cells(x0, y0, x1, y1):
             _assert_in_bounds(x, y, frame_w=frame_w, frame_h=frame_h)
-            if (x, y) in locked:
-                raise MotionAuthorError(
-                    f"cannot stroke locked cell at ({x}, {y})",
-                    reason_code="identity_lock_write",
-                )
             frame[y][x] = rgb
         return
 
@@ -957,7 +913,6 @@ def author_motion(
         )
         explicit_parts = _explicit_part_ids(operations)
         for operation in operations:
-            locked = _locked_cells(locks, frame_lock_offsets)
             _apply_operation(
                 frame,
                 operation,
@@ -965,13 +920,34 @@ def author_motion(
                 frame_h=frame_h,
                 locks=locks,
                 lock_offsets=frame_lock_offsets,
-                locked=locked,
                 palette=master_palette,
                 parts=mutable_parts,
                 explicit_parts=explicit_parts,
                 part_map_bound=part_map_bound,
             )
         lock_offsets.update(frame_lock_offsets)
+        identity_lock_checks = evaluate_authored_frame_locks(
+            frame,
+            motion_class,
+            identity_lock_spec,
+            frame_lock_offsets,
+        )
+        failing_lock = next(
+            (
+                (lock_id, check)
+                for lock_id, check in identity_lock_checks.items()
+                if check["outcome"] == "FAIL"
+            ),
+            None,
+        )
+        if failing_lock is not None:
+            lock_id, check = failing_lock
+            raise MotionAuthorError(
+                format_authored_frame_lock_failure(lock_id, check),
+                reason_code="identity_lock_write",
+                identity_lock_checks=identity_lock_checks,
+                failed_lock_id=lock_id,
+            )
         authored_frames.append(frame)
         applied_lock_offsets.append(
             {lock_id: [offset[0], offset[1]] for lock_id, offset in frame_lock_offsets.items()}
@@ -990,6 +966,7 @@ def author_motion(
                 "opaque_column_loads": column_loads,
                 "changed_cell_count": _changed_cell_count(base_frame, frame),
                 "lock_offsets": applied_lock_offsets[-1],
+                "identity_lock_checks": identity_lock_checks,
             }
         )
         if mutable_parts is not None and embedded_part_map is not None:
