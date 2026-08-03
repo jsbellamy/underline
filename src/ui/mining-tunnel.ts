@@ -29,6 +29,8 @@ const FLOOR = "#3B2F3A";
 
 const VISIBLE_COLUMNS = Math.ceil(PANE_WIDTH / BLOCK_SIZE) + 2;
 
+export const MINING_TUNNEL_VISIBLE_COLUMNS = VISIBLE_COLUMNS;
+
 function snapEquals(a: DemoMineSnapshot, b: DemoMineSnapshot): boolean {
   return (
     a.animation === b.animation &&

@@ -1,10 +1,11 @@
 // @vitest-environment happy-dom
 
 import { describe, expect, it } from "vitest";
-import { mountMiningTunnel } from "./mining-tunnel";
-import { BLOCK_SIZE, PANE_WIDTH } from "./pane-layout";
-
-const VISIBLE_COLUMNS = Math.ceil(PANE_WIDTH / BLOCK_SIZE) + 2;
+import {
+  MINING_TUNNEL_VISIBLE_COLUMNS,
+  mountMiningTunnel,
+} from "./mining-tunnel";
+import { BLOCK_SIZE } from "./pane-layout";
 
 const baseSnap = {
   animation: "idle" as const,
@@ -17,6 +18,20 @@ const baseSnap = {
 
 function countDescendants(element: HTMLElement): number {
   return element.querySelectorAll("*").length;
+}
+
+function blockAtWorldIndex(
+  host: HTMLElement,
+  worldIndex: number,
+): HTMLElement {
+  const blocks = host.querySelectorAll<HTMLElement>(".pane-block");
+  for (const block of blocks) {
+    const left = Number(block.style.left.replace("px", ""));
+    if (left / BLOCK_SIZE === worldIndex) {
+      return block;
+    }
+  }
+  throw new Error(`No column at world index ${worldIndex}`);
 }
 
 function faceScreenLeft(host: HTMLElement, advance: number): number {
@@ -37,8 +52,8 @@ function faceScreenLeft(host: HTMLElement, advance: number): number {
   throw new Error(`Face column not found at advance ${advance}`);
 }
 
-describe("mountMiningTunnel column pool", () => {
-  it("keeps DOM node count constant as Advance grows", () => {
+describe("mountMiningTunnel", () => {
+  it("keeps Tunnel DOM size constant as Advance grows", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
 
@@ -52,26 +67,18 @@ describe("mountMiningTunnel column pool", () => {
     tunnel.destroy();
   });
 
-  it("allocates a fixed column pool at mount before any render", () => {
+  it("creates a fixed set of Mineable Block columns at mount", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
 
     const world = host.querySelector(".pane-tunnel-world");
     expect(world).not.toBeNull();
     const columnsBeforeRender = world!.querySelectorAll(".pane-block");
-    expect(columnsBeforeRender.length).toBe(VISIBLE_COLUMNS);
+    expect(columnsBeforeRender.length).toBe(MINING_TUNNEL_VISIBLE_COLUMNS);
 
-    tunnel.render({
-      animation: "idle",
-      facing: "east",
-      frameIndex: 0,
-      advance: 5000,
-      faceSwingProgress: 0,
-      swingFraction: 0,
-      digRate: 1,
-    });
+    tunnel.render({ ...baseSnap, advance: 5000 });
     const columnsAfterRender = world!.querySelectorAll(".pane-block");
-    expect(columnsAfterRender.length).toBe(VISIBLE_COLUMNS);
+    expect(columnsAfterRender.length).toBe(MINING_TUNNEL_VISIBLE_COLUMNS);
 
     tunnel.destroy();
   });
@@ -99,25 +106,27 @@ describe("mountMiningTunnel column pool", () => {
     tunnel.destroy();
   });
 
-  it("places the Face at the same on-screen x as the scroll formula", () => {
+  it("keeps the Face at pinned screen x as Advance grows", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
 
-    for (const advance of [0, 13, 100, 5000, 10000]) {
+    const pinnedScreenX: Array<{ advance: number; screenX: number }> = [
+      { advance: 0, screenX: 0 },
+      { advance: 13, screenX: 400 },
+      { advance: 100, screenX: 400 },
+      { advance: 5000, screenX: 400 },
+      { advance: 10000, screenX: 400 },
+    ];
+
+    for (const { advance, screenX } of pinnedScreenX) {
       tunnel.render({ ...baseSnap, advance });
-      const expected =
-        advance * BLOCK_SIZE -
-        Math.max(
-          0,
-          advance * BLOCK_SIZE - (PANE_WIDTH - BLOCK_SIZE - 16 - BLOCK_SIZE),
-        );
-      expect(faceScreenLeft(host, advance)).toBeCloseTo(expected, 5);
+      expect(faceScreenLeft(host, advance)).toBe(screenX);
     }
 
     tunnel.destroy();
   });
 
-  it("carries at most one Face crack element after any render", () => {
+  it("carries at most one Face crack after any render", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
 
@@ -135,6 +144,73 @@ describe("mountMiningTunnel column pool", () => {
         1,
       );
     }
+
+    tunnel.destroy();
+  });
+
+  it("paints hollow, solid, and Face Mineable Blocks with the Tunnel palette", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    tunnel.render({ ...baseSnap, advance: 10 });
+
+    expect(blockAtWorldIndex(host, 5).style.background).toBe("#1D1720");
+    expect(blockAtWorldIndex(host, 10).style.background).toBe("#27A6A3");
+    expect(blockAtWorldIndex(host, 11).style.background).toBe("#4A3B48");
+
+    tunnel.destroy();
+  });
+
+  it("deepens the Face and draws a crack when Swing progress is positive", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    tunnel.render({
+      ...baseSnap,
+      animation: "swing",
+      advance: 10,
+      faceSwingProgress: 2,
+    });
+
+    const face = blockAtWorldIndex(host, 10);
+    expect(face.style.background).toBe("#176873");
+    expect(face.querySelector(".pane-face-crack")).not.toBeNull();
+
+    tunnel.destroy();
+  });
+
+  it("positions the floor band across the visible Tunnel width", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    tunnel.render({ ...baseSnap, advance: 10 });
+
+    const floor = host.querySelector<HTMLElement>(".pane-tunnel-floor");
+    expect(floor).not.toBeNull();
+    expect(floor!.style.left).toBe(`${-BLOCK_SIZE}px`);
+    expect(floor!.style.width).toBe(
+      `${MINING_TUNNEL_VISIBLE_COLUMNS * BLOCK_SIZE}px`,
+    );
+
+    tunnel.destroy();
+  });
+
+  it("sets Dwarf sprite src and frame attributes from the snapshot", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+
+    tunnel.render({
+      animation: "swing",
+      facing: "west",
+      frameIndex: 2,
+      advance: 3,
+      faceSwingProgress: 0,
+      swingFraction: 0,
+      digRate: 1,
+    });
+
+    const dwarf = host.querySelector<HTMLImageElement>("[data-dwarf]");
+    expect(dwarf).not.toBeNull();
+    expect(dwarf!.src).toMatch(/swing\/west\/frame_002\.png$/);
+    expect(dwarf!.dataset["anim"]).toBe("swing");
+    expect(dwarf!.dataset["frame"]).toBe("2");
 
     tunnel.destroy();
   });
