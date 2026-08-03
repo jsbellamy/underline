@@ -29,6 +29,7 @@ jobs:
     outputs:
       pipeline: ${{ steps.classify.outputs.pipeline_needed }}
       game: ${{ steps.classify.outputs.game_needed }}
+      evaluator: ${{ steps.classify.outputs.evaluator_needed }}
       reason: ${{ steps.classify.outputs.pipeline_reason }}
     steps:
       - uses: actions/checkout@v7
@@ -197,8 +198,15 @@ jobs:
     # the candidate branch's own verdict, unless the PR carries the
     # evaluator-change label. It needs PR context (merge ref, labels), so it
     # only runs for pull_request events.
+    #
+    # Its gate is `evaluator`, not `pipeline`: this is the only job that runs
+    # the whole suite a third time (~170s), and it reads a difference between
+    # two trees. A pull request that moves neither the judging code nor the
+    # assets and gate-controls it copies leaves two identical judges reading
+    # identical inputs, so every verdict agrees by construction. See
+    # `external_acceptance_needed` in scripts/ci_surfaces.py.
     needs: changes
-    if: github.event_name == 'pull_request' && needs.changes.outputs.pipeline == 'true'
+    if: github.event_name == 'pull_request' && needs.changes.outputs.evaluator == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: Check out the candidate (PR merge ref)

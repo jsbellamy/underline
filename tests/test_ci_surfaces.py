@@ -10,7 +10,11 @@ import pathlib
 import subprocess
 import sys
 
-from scripts.ci_surfaces import game_tests_needed, pipeline_tests_needed
+from scripts.ci_surfaces import (
+    external_acceptance_needed,
+    game_tests_needed,
+    pipeline_tests_needed,
+)
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -189,3 +193,90 @@ def test_cli_falls_back_to_needing_the_suite_when_the_diff_is_unreadable(
 
     assert outputs["pipeline_needed"] == "true"
     assert outputs["game_needed"] == "true"
+
+
+# --- external-acceptance surface ----------------------------------------------
+#
+# The job recomputes each bundle's verdict with main's pipeline and compares it
+# against the candidate's own. Both sides read the *candidate's* assets, so the
+# comparison can only diverge when the judging code differs, and the C5 step can
+# only catch a self-accommodating test edit when the assets or gate-controls it
+# copies differ. A change that moves neither leaves two identical trees judging
+# identical inputs, which is a tautology worth ~170s of runner time.
+
+
+def test_a_pipeline_change_needs_external_acceptance() -> None:
+    decision = external_acceptance_needed(["pipeline/final_polish.py"])
+
+    assert decision.needed is True
+    assert "pipeline/final_polish.py" in decision.reason
+
+
+def test_evaluator_input_surfaces_each_need_external_acceptance() -> None:
+    for path in (
+        "pipeline/strip.py",
+        "assets/miner/idle/manifest.json",
+        "gate-controls/idle/report.json",
+        "scripts/external_acceptance.py",
+        "requirements.txt",
+    ):
+        decision = external_acceptance_needed([path])
+
+        assert decision.needed is True, path
+        assert path in decision.reason
+
+
+def test_a_documentation_only_change_does_not_need_external_acceptance() -> None:
+    # PR #336: four docs, byte-identical trees on both sides of the comparison.
+    decision = external_acceptance_needed(
+        [
+            "docs/adr/0010-mining-engine-tick-and-save.md",
+            "docs/research/produce-and-spend-economy.md",
+        ]
+    )
+
+    assert decision.needed is False
+
+
+def test_a_test_only_change_does_not_need_external_acceptance() -> None:
+    # C5 runs *main's* tests on purpose, so an edited test on the candidate is
+    # never the thing this job reads; the candidate's own `test` job runs it.
+    decision = external_acceptance_needed(["tests/test_parts.py"])
+
+    assert decision.needed is False
+
+
+def test_a_game_only_change_does_not_need_external_acceptance() -> None:
+    assert external_acceptance_needed(["src/core/simulation.ts"]).needed is False
+
+
+def test_a_workflow_change_does_not_need_external_acceptance() -> None:
+    assert external_acceptance_needed([".github/workflows/ci.yml"]).needed is False
+
+
+def test_an_empty_changed_set_still_needs_external_acceptance() -> None:
+    decision = external_acceptance_needed([])
+
+    assert decision.needed is True
+
+
+def test_the_cli_publishes_the_external_acceptance_verdict(tmp_path) -> None:
+    outputs = _run_cli(tmp_path, "docs/adr/0010-mining-engine-tick-and-save.md\n")
+
+    assert outputs["pipeline_needed"] == "true"
+    assert outputs["evaluator_needed"] == "false"
+    assert outputs["evaluator_reason"]
+
+
+def test_an_unrecognised_surface_still_needs_external_acceptance() -> None:
+    # The gate names what cannot move the comparison, not what can, so a
+    # directory this script has never heard of costs a redundant run rather
+    # than a silently skipped one -- same posture as the other two decisions.
+    decision = external_acceptance_needed(["content/colony/tiers.json"])
+
+    assert decision.needed is True
+    assert "content/colony/tiers.json" in decision.reason
+
+
+def test_a_root_level_document_does_not_need_external_acceptance() -> None:
+    assert external_acceptance_needed(["CONTEXT.md"]).needed is False
