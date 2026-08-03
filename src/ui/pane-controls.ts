@@ -40,7 +40,7 @@ export function mountPaneControls(
   return {
     root: cluster,
     destroy() {
-      host.replaceChildren();
+      cluster.remove();
     },
   };
 }

@@ -8,7 +8,7 @@ function press(element: HTMLElement, key: "Enter" | " "): void {
 }
 
 describe("mountPaneControls", () => {
-  it("returns a root element and destroy that clears the host", () => {
+  it("mounting Pane controls leaves the host empty after destroy", () => {
     const host = document.createElement("div");
     const view = mountPaneControls(host, {
       onOpenDock: vi.fn(),
@@ -20,7 +20,6 @@ describe("mountPaneControls", () => {
     expect(host.contains(view.root)).toBe(true);
 
     view.destroy();
-    expect(host.replaceChildren).toBeDefined();
     expect(host.childElementCount).toBe(0);
   });
 
