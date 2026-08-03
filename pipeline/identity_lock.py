@@ -700,13 +700,13 @@ def _compare_structural_lock(
             )
             for role in palette_roles
         )
-        if palette_exact_roles:
-            passed = palette_role_distance <= float(lock["max_palette_role_distance"])
-        else:
-            passed = (
-                occupancy_difference <= float(lock["max_occupancy_difference"])
-                and palette_role_distance <= float(lock["max_palette_role_distance"])
-            )
+        occupancy_ok = (
+            occupancy_difference <= float(lock["max_occupancy_difference"])
+        )
+        palette_ok = (
+            palette_role_distance <= float(lock["max_palette_role_distance"])
+        )
+        passed = occupancy_ok and palette_ok
     else:
         if palette_exact_roles:
             passed = True
@@ -763,6 +763,11 @@ def _compare_structural_lock(
                 "max_palette_role_distance": lock["max_palette_role_distance"],
             }
         )
+        if not passed:
+            if not occupancy_ok:
+                result["failure_reason_code"] = "occupancy_difference"
+            elif not palette_ok:
+                result["failure_reason_code"] = "palette_role_distance"
     mismatch = None
     if not passed:
         mismatch = _first_occupancy_mismatch(
@@ -1348,12 +1353,22 @@ def identity_lock_rejection_detail(result: IdentityLockResult) -> dict[str, Any]
                 detail["occupancy_margin"] = (
                     float(max_occupancy_difference) - float(occupancy_difference)
                 )
-            if (
-                occupancy_difference is not None
-                and float(occupancy_difference)
-                <= float(max_occupancy_difference) + 0.05
-            ):
-                detail["primary_reason_code"] = "identity_lock_near_miss"
+
+        failure_reason_code = first_failure.get("failure_reason_code")
+        if failure_reason_code is not None:
+            detail["failure_reason_code"] = failure_reason_code
+            if failure_reason_code == "occupancy_difference":
+                if (
+                    occupancy_difference is not None
+                    and max_occupancy_difference is not None
+                    and float(occupancy_difference)
+                    <= float(max_occupancy_difference) + 0.05
+                ):
+                    detail["primary_reason_code"] = "identity_lock_near_miss"
+                else:
+                    detail["primary_reason_code"] = "identity_lock_occupancy"
+            elif failure_reason_code == "palette_role_distance":
+                detail["primary_reason_code"] = "identity_lock_palette"
 
         palette_role_distance = first_failure.get("palette_role_distance")
         max_palette_role_distance = first_failure.get("max_palette_role_distance")
@@ -1361,6 +1376,13 @@ def identity_lock_rejection_detail(result: IdentityLockResult) -> dict[str, Any]
             detail["palette_role_distance"] = palette_role_distance
         if max_palette_role_distance is not None:
             detail["max_palette_role_distance"] = max_palette_role_distance
+            if (
+                failure_reason_code == "palette_role_distance"
+                and palette_role_distance is not None
+            ):
+                detail["palette_role_margin"] = (
+                    float(max_palette_role_distance) - float(palette_role_distance)
+                )
 
     mismatch_payload = _mismatch_payload(result.first_mismatch)
     if mismatch_payload is not None:

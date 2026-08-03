@@ -6,6 +6,7 @@ import json
 import shutil
 from pathlib import Path
 
+import pytest
 from pipeline.cell_raster import read_cells
 from pipeline.final_polish import check_bundle, finalize_bundle
 from pipeline.gate_evidence import sha256_file
@@ -30,6 +31,21 @@ PRE_CLEANUP_CELL_SHA256 = {
     2: "4110a7d28318475777382c8075f24e0e883434d704100dbfb10b860599593c5b",
     3: "13df7373b0dcfbe92191a8cb50cfc6ab0009958236c81b5f03d8740ca595788e",
 }
+
+
+SWING_STALE_IDENTITY_BINDING = pytest.mark.xfail(
+    strict=True,
+    reason=(
+        "#302 carved swing out. The helmet_face lock rectangle is x9..16 with permitted "
+        "offsets dx in {-1, 0, 1}, but the actual blue-metal helmet sits at x5..7 in "
+        "Frame 0 and x4..8 in Frame 1 - disjoint from the rectangle by a gap offsets "
+        "cannot bridge. The lock measured the raised pickaxe and reported it as the helmet "
+        "anchor; it passed only because palette-exact mode ignored occupancy_difference. "
+        "Measured helmet_face occupancy_difference per Frame: 0.6579/0.6400/0.7600/0.8933 "
+        "against a declared 0.25 ceiling. Swing must be re-derived from the part map "
+        "instead (#305); strict=True so this fails loudly once it is."
+    ),
+)
 
 
 def _palette_color_set() -> set[tuple[int, int, int]]:
@@ -95,6 +111,7 @@ def test_swing_polished_roles_reproduce_pre_cleanup_rasters() -> None:
         assert _cell_content_sha256(precleanup) == PRE_CLEANUP_CELL_SHA256[index]
 
 
+@SWING_STALE_IDENTITY_BINDING
 def test_swing_bundle_check_passes_with_palette_exact_identity_lock(tmp_path: Path) -> None:
     bundle = tmp_path / "dwarf-swing"
     shutil.copytree(SWING_BUNDLE, bundle)
@@ -133,6 +150,7 @@ def _strip_finalize_outputs(bundle: Path) -> None:
             path.unlink()
 
 
+@SWING_STALE_IDENTITY_BINDING
 def test_swing_finalize_rebinds_release_and_report(tmp_path: Path) -> None:
     bundle = tmp_path / "swing"
     shutil.copytree(SWING_BUNDLE, bundle)
