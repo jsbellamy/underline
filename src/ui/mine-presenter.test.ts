@@ -4,7 +4,7 @@ import { initialSnapshot } from "../core/mining-engine";
 import {
   persistSettings,
 } from "../core/settings-save";
-import { createMinePresenter } from "./mine-presenter";
+import { createMinePresenter, type TunnelSnapshot } from "./mine-presenter";
 import type { MiningAudio } from "./mining-audio";
 
 function memoryStore() {
@@ -46,6 +46,19 @@ function spyMiningAudio(): MiningAudio & {
 }
 
 describe("mine presenter", () => {
+  it("exports TunnelSnapshot with presentation fields for the renderer", () => {
+    const snap: TunnelSnapshot = {
+      animation: "idle",
+      facing: "east",
+      frameIndex: 0,
+      advance: 0,
+      faceSwingProgress: 0,
+      swingFraction: 0,
+      digRate: 1,
+    };
+    expect(snap.animation).toBe("idle");
+  });
+
   it("syncDigRate mirrors digRateUpgradeCount into the anim Dig Rate", () => {
     const session = createMiningSession({
       store: memoryStore(),

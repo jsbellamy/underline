@@ -3,7 +3,7 @@
 Composition from [Prototype the mining scene at 480x112](#318): full-band Tunnel,
 Colony corner chip, cyan Face, no Dig Rate / Ore / Ingots on the Pane.
 */
-import type { DemoMineSnapshot } from "../core/demo-mine-loop";
+import type { TunnelSnapshot } from "./mine-presenter";
 import { hardnessFor } from "../core/mining-engine";
 import { dwarfLayout } from "../data/external-sprite-pack";
 import { DWARF_PACK, dwarfFrameUrlsFor } from "./dwarf-frames";
@@ -16,7 +16,7 @@ import {
 
 export interface MiningTunnelView {
   root: HTMLElement;
-  render(snap: DemoMineSnapshot): void;
+  render(snap: TunnelSnapshot): void;
   destroy(): void;
 }
 
@@ -31,7 +31,7 @@ const VISIBLE_COLUMNS = Math.ceil(PANE_WIDTH / BLOCK_SIZE) + 2;
 
 export const MINING_TUNNEL_VISIBLE_COLUMNS = VISIBLE_COLUMNS;
 
-function snapEquals(a: DemoMineSnapshot, b: DemoMineSnapshot): boolean {
+function snapEquals(a: TunnelSnapshot, b: TunnelSnapshot): boolean {
   return (
     a.animation === b.animation &&
     a.facing === b.facing &&
@@ -100,9 +100,9 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
   tunnel.append(world, dwarf);
   host.replaceChildren(tunnel);
 
-  let lastSnap: DemoMineSnapshot | null = null;
+  let lastSnap: TunnelSnapshot | null = null;
 
-  function render(snap: DemoMineSnapshot): void {
+  function render(snap: TunnelSnapshot): void {
     if (lastSnap !== null && snapEquals(lastSnap, snap)) {
       return;
     }

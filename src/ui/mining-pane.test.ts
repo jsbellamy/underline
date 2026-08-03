@@ -14,14 +14,13 @@ import { dwarfFramePaths, type ExternalSpritePack } from "../data/external-sprit
 import { dwarfFrameUrl, dwarfFrameUrlsFor } from "./dwarf-frames";
 import { mountPaneShell } from "./pane-root";
 import { mountMiningTunnel } from "./mining-tunnel";
+import type { TunnelSnapshot } from "./mine-presenter";
 import { PUMP_INTERVAL_MS } from "./pump";
 import { DWARF_SCALE, PANE_HEIGHT, PANE_WIDTH, TUNNEL_HEIGHT } from "./pane-layout";
 
 function stubPresenter(setSoundEnabled = vi.fn()) {
   const anim = createDwarfAnimController({ digRate: 1 });
-  return {
-    anim,
-    snapshot: () => ({
+  const snapshot = (): TunnelSnapshot => ({
       animation: "swing" as const,
       facing: "east" as const,
       frameIndex: 0,
@@ -29,7 +28,10 @@ function stubPresenter(setSoundEnabled = vi.fn()) {
       faceSwingProgress: 0,
       swingFraction: 0,
       digRate: 1,
-    }),
+  });
+  return {
+    anim,
+    snapshot,
     start: vi.fn(),
     advanceMs: vi.fn(),
     syncDigRate: vi.fn(),
