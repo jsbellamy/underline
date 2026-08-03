@@ -74,11 +74,17 @@ describe("mountPaneShell", () => {
 });
 
 describe("mountDockShell", () => {
-  it("mounts an empty Colony placeholder", () => {
+  it("mounts the Colony surface with Dig Rate and Upgrade controls", () => {
     const root = document.createElement("main");
-    const shell = mountDockShell(root);
-    expect(root.textContent).toContain("Colony");
-    expect(root.querySelector(".dock-empty")).not.toBeNull();
+    const shell = mountDockShell(root, {
+      busFactory: () => ({
+        publish: vi.fn(),
+        close: vi.fn(),
+      }),
+    });
+    expect(root.querySelector("[data-colony]")).not.toBeNull();
+    expect(root.querySelector("[data-buy-upgrade]")).not.toBeNull();
+    expect(root.querySelector("[data-smelter]")).not.toBeNull();
     shell.destroy();
   });
 });

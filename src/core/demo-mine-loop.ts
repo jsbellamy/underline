@@ -1,7 +1,6 @@
-/** Presentation dig driver until the mining Engine lands (#322).
+/** Presentation dig driver retained for anim-coupling unit coverage.
 
-Accumulates Swings at Dig Rate against Hardness; on break, plays walk and
-increments Advance. Animation selection stays on the anim controller.
+Prefer `createMinePresenter` + `createMiningSession` for the live Pane.
 */
 import { cycleDurationMs } from "./animation-player";
 import {
@@ -10,10 +9,10 @@ import {
   type DwarfAnimId,
   type DwarfFacing,
 } from "./dwarf-anim-state";
+import { HARDNESS } from "./mining-engine";
 import { dwarfPlayback } from "../data/dwarf-animation-timing";
 
-/** Swings per Mineable Block — `docs/research/produce-and-spend-economy.md`. */
-export const HARDNESS = 4;
+export { HARDNESS };
 
 export interface DemoMineSnapshot {
   animation: DwarfAnimId;
