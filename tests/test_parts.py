@@ -5,7 +5,6 @@ from __future__ import annotations
 import copy
 import io
 import json
-import subprocess
 from pathlib import Path
 
 import pytest
@@ -24,6 +23,7 @@ from pipeline.parts import (
     render_part_map,
     review_tile_label,
 )
+from tests.support.git_baseline import read_baseline_bytes
 
 ROOT = Path(__file__).resolve().parents[1]
 PARTS_JSON = ROOT / "assets" / "first-room" / "dwarf" / "parts.json"
@@ -619,10 +619,7 @@ def test_c300_c2_skin_roles_cover_gloves_only(part_map) -> None:
 
 
 def test_c300_c3_master_palette_is_unchanged() -> None:
-    baseline = subprocess.check_output(
-        ["git", "show", "main:assets/palettes/first-room.json"],
-        cwd=ROOT,
-    )
+    baseline = read_baseline_bytes(ROOT, "assets/palettes/first-room.json")
     assert MASTER_PALETTE_JSON.read_bytes() == baseline
 
 

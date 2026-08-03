@@ -89,6 +89,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # Baseline drift tests read the committed `main` copy of an asset.
+          # The default shallow merge-ref checkout has no baseline branch at
+          # all; at depth 0 the action writes `origin/main`, which
+          # `tests/support/git_baseline.py` resolves.
           fetch-depth: 0
 
       - uses: actions/setup-python@v5
@@ -119,6 +123,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          # Baseline drift tests read the committed `main` copy of an asset.
+          # The default shallow merge-ref checkout has no baseline branch at
+          # all; at depth 0 the action writes `origin/main`, which
+          # `tests/support/git_baseline.py` resolves.
           fetch-depth: 0
 
       - uses: actions/setup-python@v5
