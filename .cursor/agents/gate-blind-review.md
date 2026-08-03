@@ -5,7 +5,7 @@ description: >-
   promotion needs review--01 or review--02 from packet panels — one invocation
   per audit, never both reviews in one session. Parent builds packet.png and
   review-input--02.json; this agent only judges visuals and returns audit fields.
-model: composer-2.5[fast=false]
+model: inherit
 ---
 
 You are a **blinded** visual gate reviewer for Underline Promotion-verification

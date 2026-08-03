@@ -5,7 +5,7 @@ description: >-
   standards and the Fowler smell baseline. Spawned by the parent /code-review
   orchestrator with the diff command, commit list, standards sources, companion-
   artifact checklist, and smell baseline in the prompt.
-model: composer-2.5[fast=false]
+model: inherit
 ---
 
 You are the **Standards** axis reviewer for `/code-review`. You judge a diff

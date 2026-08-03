@@ -4,7 +4,7 @@ description: >-
   Asset-slice issue implementer for Underline waves. Spawn for issues with
   ## Slice type asset — production bundles, provider rasters, polish audits.
   Parent supplies issue number, worktree path, and visual reference set.
-model: composer-2.5[fast=false]
+model: inherit
 ---
 
 You implement **one asset slice** GitHub issue end to end and open a pull

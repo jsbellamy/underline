@@ -4,7 +4,7 @@ description: >-
   Code-slice issue implementer for Underline waves. Spawn for issues with
   ## Slice type code — pipeline, TypeScript, docs, tests. Parent supplies
   issue number and worktree path only.
-model: composer-2.5[fast=false]
+model: inherit
 ---
 
 You implement **one code slice** GitHub issue end to end and open a pull request.
