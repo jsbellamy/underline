@@ -1,0 +1,278 @@
+{
+  "animations": {
+    "idle": {
+      "facings": {
+        "east": [
+          {
+            "relative_path": "idle/east/frame_000.png",
+            "sha256": "fe77c81e202f3493e48acb4e4cbcd436b9ac729942e420ab986189258420ef43",
+            "source_relative_path": "rotations/east.png",
+            "source_sha256": "34003a498157094bbfd057cb1930ecfe10861b60f2ef1eb62746525c3521c967"
+          }
+        ],
+        "west": [
+          {
+            "relative_path": "idle/west/frame_000.png",
+            "sha256": "d6c515bfb793ab5acb638c4bee69376910d2030687de2ace504051bc9994b521",
+            "source_relative_path": "rotations/west.png",
+            "source_sha256": "73495b1d45570951f3f4c4f63f10c6af21a15763eb34bd15a2bd355d61f7e588"
+          }
+        ]
+      },
+      "frame_count": 1,
+      "note": "Single-frame static pose, imported from the pack's east/west rotations."
+    },
+    "swing": {
+      "facings": {
+        "east": [
+          {
+            "relative_path": "swing/east/frame_000.png",
+            "sha256": "74cb4d5eb5cb546423d03f12d25878ba07bfba7dc1556b54b23dff37cc51db02",
+            "source_relative_path": "animations/The_character_raises_the_pickaxe_high_above_its_he/east/frame_000.png",
+            "source_sha256": "318b6a31b9ea24de823a88a7d6d2babf110ebf768fdd30324ecbc4cefd84670e"
+          },
+          {
+            "relative_path": "swing/east/frame_001.png",
+            "sha256": "e9df07f7fd996d3a5e5db874d7d6bc5225af49bb0d7196fc0f9e23c818ef77fc",
+            "source_relative_path": "animations/The_character_raises_the_pickaxe_high_above_its_he/east/frame_001.png",
+            "source_sha256": "b7dab088a713e6ddc36c2e602253a62349926da272fb8348da8a0b1fa6f64e6f"
+          },
+          {
+            "relative_path": "swing/east/frame_002.png",
+            "sha256": "015256231b65009d2a2c1e39431d751604a00a598939817847786d917286d994",
+            "source_relative_path": "animations/The_character_raises_the_pickaxe_high_above_its_he/east/frame_002.png",
+            "source_sha256": "594c7692898b419d006717ec3b567e49e94135048f7cd216e650450bed46b512"
+          },
+          {
+            "relative_path": "swing/east/frame_003.png",
+            "sha256": "6697f1649e64d22b7c9127f991b2a44e7783072ceb66c9b21b2bd099bef25e22",
+            "source_relative_path": "animations/The_character_raises_the_pickaxe_high_above_its_he/east/frame_003.png",
+            "source_sha256": "f3cbf0fb1583b3a6f9a2ba985de56934d8e9d10b14a570e83672600d7cb1f417"
+          },
+          {
+            "relative_path": "swing/east/frame_004.png",
+            "sha256": "505fb2bd37ccf28b8388a70efcc3ada3dff8916a439c948c27b1a5cc840cfed3",
+            "source_relative_path": "animations/The_character_raises_the_pickaxe_high_above_its_he/east/frame_004.png",
+            "source_sha256": "9a624f66b9722b85a4a2f7ac2357c0c39dc6d3e1bdb7784f86a650f254ca6d05"
+          },
+          {
+            "relative_path": "swing/east/frame_005.png",
+            "sha256": "b3852c198e09970edb4f3f76aaa29b1da5fec79bde4709b96f9ef6c3e095af41",
+            "source_relative_path": "animations/The_character_raises_the_pickaxe_high_above_its_he/east/frame_005.png",
+            "source_sha256": "377048e0f49778b42b75f5287a7c483b353bd96989cd1659d040c1d069172dbd"
+          },
+          {
+            "relative_path": "swing/east/frame_006.png",
+            "sha256": "2447de064ca8a9220238764a75d182c860247593a3082ecac68d6f83d4bb51f8",
+            "source_relative_path": "animations/The_character_raises_the_pickaxe_high_above_its_he/east/frame_006.png",
+            "source_sha256": "cbc45f9e8609d8d1810b62c0d46ac062d32babb26effc8f2fd5ec3443dd19f48"
+          },
+          {
+            "relative_path": "swing/east/frame_007.png",
+            "sha256": "1f80155c76c64f76248e5d8285050c78025a8ce8efc3aed48a9d800caeb512ac",
+            "source_relative_path": "animations/The_character_raises_the_pickaxe_high_above_its_he/east/frame_007.png",
+            "source_sha256": "54442f1c5d0ba9f0c74f82eb4039e8caf80b13a72ddca5058dea6ec4f93e73ea"
+          },
+          {
+            "relative_path": "swing/east/frame_008.png",
+            "sha256": "cb6bfb00a5862551ab3807c26d239f8698e263ae36b74bcbcf74e674dcf74b5a",
+            "source_relative_path": "animations/The_character_raises_the_pickaxe_high_above_its_he/east/frame_008.png",
+            "source_sha256": "e2a49bbfd22a901364167a1c9e8bc5af31d37e26a41766c765941a85afbf42f6"
+          }
+        ],
+        "west": [
+          {
+            "relative_path": "swing/west/frame_000.png",
+            "sha256": "d6c515bfb793ab5acb638c4bee69376910d2030687de2ace504051bc9994b521",
+            "source_relative_path": "animations/The_character_raises_the_pickaxe_high_above_its_he/west/frame_000.png",
+            "source_sha256": "73495b1d45570951f3f4c4f63f10c6af21a15763eb34bd15a2bd355d61f7e588"
+          },
+          {
+            "relative_path": "swing/west/frame_001.png",
+            "sha256": "71793f6299b1bc43ff38a4113c185563e495a4455463ab56b7170bc17daaf570",
+            "source_relative_path": "animations/The_character_raises_the_pickaxe_high_above_its_he/west/frame_001.png",
+            "source_sha256": "84fc8f61cb4445ade26fd80b928da523f8d94612efdbc0a423e7e6ad2fd7603b"
+          },
+          {
+            "relative_path": "swing/west/frame_002.png",
+            "sha256": "b1c7f41edf644aeed84d089db585cdff0e014105dacf7bbbb614fc84e0f3b356",
+            "source_relative_path": "animations/The_character_raises_the_pickaxe_high_above_its_he/west/frame_002.png",
+            "source_sha256": "6b0e9f2e06f45f0532d91fb57a9c96b466592852885d53cb52784997d5b23df6"
+          },
+          {
+            "relative_path": "swing/west/frame_003.png",
+            "sha256": "d52966e8ff0b6ebd4815e6c2c9dd7218d2436aa66d2a150aa3baa377da57725a",
+            "source_relative_path": "animations/The_character_raises_the_pickaxe_high_above_its_he/west/frame_003.png",
+            "source_sha256": "75cce0cca973bdc8e4144aa6d5131965c3f382647c27cfda1460638a0e16b824"
+          },
+          {
+            "relative_path": "swing/west/frame_004.png",
+            "sha256": "2f189389b714101683f147de857a993483815cb2470b5aa67cf6659a5c212fbb",
+            "source_relative_path": "animations/The_character_raises_the_pickaxe_high_above_its_he/west/frame_004.png",
+            "source_sha256": "709f81bdd5401880ff4f713e42a4f309e7e0b4fb765ed04488e69289c37f8c7a"
+          },
+          {
+            "relative_path": "swing/west/frame_005.png",
+            "sha256": "a6eeb9123ef900300ff97e72de2b803186a4a360f640a4429e1995ead6ace91a",
+            "source_relative_path": "animations/The_character_raises_the_pickaxe_high_above_its_he/west/frame_005.png",
+            "source_sha256": "2665f72024bfd4d7f71ffff33067b6a8c2af3991c98991f1acd447cc93d04522"
+          },
+          {
+            "relative_path": "swing/west/frame_006.png",
+            "sha256": "2b29a570a75aaa6cb0c719f5e9002185d44a33d288e2c99800c0f6f7936b9710",
+            "source_relative_path": "animations/The_character_raises_the_pickaxe_high_above_its_he/west/frame_006.png",
+            "source_sha256": "82e9ed7595b2683bb718a0786291461ee9ccf0a1660fb7e118ce35eb70fa2da6"
+          },
+          {
+            "relative_path": "swing/west/frame_007.png",
+            "sha256": "aa61faa47c1f37bd5a2298a35d31f2c6cc9b7168a7e40545318094cfd083caa3",
+            "source_relative_path": "animations/The_character_raises_the_pickaxe_high_above_its_he/west/frame_007.png",
+            "source_sha256": "e0180a4c312ab08468ffc92a5501a56369b1fdf5f38e175edf7a0b6f8b8e4b05"
+          },
+          {
+            "relative_path": "swing/west/frame_008.png",
+            "sha256": "6894116df2d717d1c9a47a02949d0ab0735f70b1a41f4229ab04f1fd37a20450",
+            "source_relative_path": "animations/The_character_raises_the_pickaxe_high_above_its_he/west/frame_008.png",
+            "source_sha256": "fa1f8e44971355fadcca4ed533cd6c85d4df4d13a787058f27cd50ea13c59f5a"
+          }
+        ]
+      },
+      "frame_count": 9,
+      "note": "Pack animation 'The_character_raises_the_pickaxe_high_above_its_he'."
+    },
+    "walk": {
+      "facings": {
+        "east": [
+          {
+            "relative_path": "walk/east/frame_000.png",
+            "sha256": "c55cce5ca0be5711340f0bcfdd0b289bb6b0d1ee92f2c33aba9032a365e6bc58",
+            "source_relative_path": "animations/Walking/east/frame_000.png",
+            "source_sha256": "2f5b511b72fa914e4fc1aa3770a5fa85a4428dc4e1fa4ee1541677b8c5d6cbee"
+          },
+          {
+            "relative_path": "walk/east/frame_001.png",
+            "sha256": "838f34df22500da96a669820136021c8438b78f8899ecc0c359b3fbd65212cb8",
+            "source_relative_path": "animations/Walking/east/frame_001.png",
+            "source_sha256": "7d5bb33891e25f26894a4fb3faed17bf694fbd167d97dc9e776edc9a1dd5e6f1"
+          },
+          {
+            "relative_path": "walk/east/frame_002.png",
+            "sha256": "c5b440962a4509b5689a58f06e3bc59c46ee1ce4234f41ef24990efc5ae2c55a",
+            "source_relative_path": "animations/Walking/east/frame_002.png",
+            "source_sha256": "9516e756c8f5cfab84f5debf0a036ae609366e25de2e63fafdd6918e72784601"
+          },
+          {
+            "relative_path": "walk/east/frame_003.png",
+            "sha256": "7df11a33c242994c2994e374427abd429803acd14d55e1129094a0dec87da3c1",
+            "source_relative_path": "animations/Walking/east/frame_003.png",
+            "source_sha256": "31ac46e1eaab3fd12d1f119f916cd3968aa58b0a519b6d9527ff51f7c9c2e5ce"
+          },
+          {
+            "relative_path": "walk/east/frame_004.png",
+            "sha256": "127424c6afc12586def68c959e12debc740f08e2783b1a16451614f4585be18b",
+            "source_relative_path": "animations/Walking/east/frame_004.png",
+            "source_sha256": "0b4fff4c3f8e84b56a0d3da871ee59c7f12d7b018a16c31d9ae7cb2c217cf0e7"
+          },
+          {
+            "relative_path": "walk/east/frame_005.png",
+            "sha256": "abbca76af80ac1fbbf2d83d42dd402fc0aa70bfb707a571149ce2592ded8d64e",
+            "source_relative_path": "animations/Walking/east/frame_005.png",
+            "source_sha256": "a8889806393096047090596e87f6670f23a1b28c3a3f24eb86f5bd018d117124"
+          },
+          {
+            "relative_path": "walk/east/frame_006.png",
+            "sha256": "ae78c82db538da94c0dc3eb81520045cba870341db6f38a79963ed3d48607247",
+            "source_relative_path": "animations/Walking/east/frame_006.png",
+            "source_sha256": "a3b030d0e815437754b4447378e157af4bff97d8f2ff05184336291054244905"
+          },
+          {
+            "relative_path": "walk/east/frame_007.png",
+            "sha256": "afbd33fdff698242358a4e9e8538d3fce903faf926d712ca92a41110dd349669",
+            "source_relative_path": "animations/Walking/east/frame_007.png",
+            "source_sha256": "cdae95294fa0da7fae9fcde28080b311de1928e7827b30ad73a367285d296f07"
+          }
+        ],
+        "west": [
+          {
+            "relative_path": "walk/west/frame_000.png",
+            "sha256": "f2af1f8c9b9be2f02d471eacfba368af3f0417f1ef401829fdfdeea4f0f2a488",
+            "source_relative_path": "animations/Walking/west/frame_000.png",
+            "source_sha256": "e4a639d46aeaa836482ad9014d3a8e8a409652ebd252fd5eda71b1926e7e626f"
+          },
+          {
+            "relative_path": "walk/west/frame_001.png",
+            "sha256": "76cb27b8fe03c5cc04875e603483add30feab7372731873e610ffa23cea239cc",
+            "source_relative_path": "animations/Walking/west/frame_001.png",
+            "source_sha256": "39e49418a646361ce1d7d13c7a526800de496976527df07c000d211e9895caad"
+          },
+          {
+            "relative_path": "walk/west/frame_002.png",
+            "sha256": "f48533a0feed072bd86eefaf7fbeca33a01bad24f8fdda98f27c29ecfe945f02",
+            "source_relative_path": "animations/Walking/west/frame_002.png",
+            "source_sha256": "8b2bd03798f07825fc8a1ea544e78b29e3fa90dac268eff2859ebe290c3fc42b"
+          },
+          {
+            "relative_path": "walk/west/frame_003.png",
+            "sha256": "6aaf371d98090aea06c0cf6f6fcb0dd143fd9ef83f8509c47e46cfb32687128b",
+            "source_relative_path": "animations/Walking/west/frame_003.png",
+            "source_sha256": "9a6291bdddd69d2dd65f9c3e90253042460c57048b40efda129c694eb7982adb"
+          },
+          {
+            "relative_path": "walk/west/frame_004.png",
+            "sha256": "02f7a9de7b5a56d2a8508acbaab6607091694ba08a5c728236508bebc43c159e",
+            "source_relative_path": "animations/Walking/west/frame_004.png",
+            "source_sha256": "da4fe5f8cf4d42b975736e47548b9236b2824902fa59cbbcbf406f0d4e057185"
+          },
+          {
+            "relative_path": "walk/west/frame_005.png",
+            "sha256": "ac944133fdb9bfeb7652e83ec1c4281136d119b104311e1480b6e40a0af78e62",
+            "source_relative_path": "animations/Walking/west/frame_005.png",
+            "source_sha256": "6e5537ce98bbaed6e3592c658ac1fe97ab0df8b096df3f9455901ab59b831442"
+          },
+          {
+            "relative_path": "walk/west/frame_006.png",
+            "sha256": "132cd4c96123de76acc048bad634832865e5e65dc68a5e226ccceca3f0e376e2",
+            "source_relative_path": "animations/Walking/west/frame_006.png",
+            "source_sha256": "9765626e00c36c0ad944699894cfb6491f23e26ca935b4379c638d18a745ffbc"
+          },
+          {
+            "relative_path": "walk/west/frame_007.png",
+            "sha256": "0463791237ab8b1a93b4efc0f7436e9e053cb4c53f432e35de01e1cc19c33ce3",
+            "source_relative_path": "animations/Walking/west/frame_007.png",
+            "source_sha256": "6971a1338ed463ec192cfd0ccf287a2d4932c950ad53e5777f69ddc75fa55e7e"
+          }
+        ]
+      },
+      "frame_count": 8
+    }
+  },
+  "id": "dwarf",
+  "layout": {
+    "crop_note": "Uniform union-bbox crop across every imported frame: alignment and east/west mirror symmetry are preserved. Feet rest on the bottom row.",
+    "facings": [
+      "east",
+      "west"
+    ],
+    "frame_h": 18,
+    "frame_w": 26,
+    "source_canvas": [
+      36,
+      36
+    ],
+    "source_crop": [
+      5,
+      9,
+      31,
+      27
+    ]
+  },
+  "provenance": {
+    "export_date": "2026-08-03T05:21:18.251457",
+    "export_version": "3.1",
+    "kind": "external",
+    "note": "Generated outside this repo's strip-acquisition pipeline. No Gate score, no Identity Lock, no palette conformance to assets/palettes/first-room.json, no part map. Do not treat as a Release asset or feed to pipeline verification.",
+    "original_pack": "Stocky_dwarf_miner_wide-Idle(1)",
+    "prompt": "Stocky dwarf miner, wide stance, thick rust-colored beard, blue helmet with glowing amber lamp, green tunic, leather belt with pouches, sturdy brown boots, pickaxe strapped to back, side profile view."
+  },
+  "schema": "external-sprite-pack/0"
+}
