@@ -164,14 +164,16 @@ runtime supports worktrees.
    here rather than proceeding with the rest of this step. Otherwise, push with
    `git push -u origin <branch>`, then create a pull request whose body
    includes a summary, verification details, the reviewed completion matrix file,
-   and `Closes #<N>`. Assemble the body as a file and pass it with
+   and `Closes #<N>`. Assemble the body in the worktree at
+   `tmp/pr-<N>.md` (untracked; never `/tmp/`) and pass it with
    `gh pr create --body-file`, concatenating the matrix file rather than
    retyping its rows.
 10. Post the review to the PR with `gh pr comment <N> --body-file <path>`: the
    **verbatim** Standards and Spec sub-agent output under separate headings, plus
-   the reworked findings and the commits that resolved them. Build that file by
-   concatenating the report files the reviewers wrote in step 8, followed by the
-   canonical completion-matrix file — never by retyping them. Post what the
+   the reworked findings and the commits that resolved them. Build that file at
+   `tmp/pr-comment-<N>.md` in the worktree (never `/tmp/`) by concatenating the
+   report files the reviewers wrote in step 8, followed by the canonical
+   completion-matrix file — never by retyping them. Post what the
    reviewers wrote: never a summary of your own review, and never a report
    rewritten to read better than the one you received.
 11. Report the PR URL, what was built, test results, and the exact contents of
