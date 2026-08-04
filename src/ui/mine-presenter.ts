@@ -48,6 +48,8 @@ export interface TunnelSnapshot {
   faceSwingProgress: number;
   /** Fraction of the in-progress Swing (`0…1`) while swinging. */
   swingFraction: number;
+  /** Pick Damage per Swing for the current Crew. */
+  pickDamage: number;
   digRate: number;
   haulPhase: TunnelHaulPhase;
   /** `0` at Haul start, rising to `1` at round-trip end; `0` when not hauling. */
@@ -344,6 +346,7 @@ export function createMinePresenter(
       advance: snap.advance,
       faceSwingProgress: whole,
       swingFraction,
+      pickDamage,
       digRate: miner.digRate,
       haulPhase: phase ?? "none",
       haulProgress: twoDwarf ? 0 : haulProgress(remaining),

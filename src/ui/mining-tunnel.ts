@@ -121,6 +121,7 @@ function snapEquals(a: TunnelSnapshot, b: TunnelSnapshot): boolean {
     a.advance === b.advance &&
     a.faceSwingProgress === b.faceSwingProgress &&
     a.swingFraction === b.swingFraction &&
+    a.pickDamage === b.pickDamage &&
     a.digRate === b.digRate &&
     a.haulPhase === b.haulPhase &&
     a.haulProgress === b.haulProgress &&
@@ -441,7 +442,7 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
 
     const hardness = hardnessFor(snap.advance);
     const faceProgress =
-      (snap.faceSwingProgress + snap.swingFraction) / hardness;
+      (snap.faceSwingProgress + snap.swingFraction) * snap.pickDamage / hardness;
     const damageState = faceDamageState(faceProgress);
     const faceTilePath = tunnelArtPath(
       TUNNEL_ART_PACK,

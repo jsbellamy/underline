@@ -493,6 +493,21 @@ describe("mining engine advanceWithEvents", () => {
     expect(manyEvents).toEqual(once.events);
   });
 
+  it("is chunk-neutral for swing events over 2500 ms when Pick Damage exceeds 1", () => {
+    const upgraded = snap({ pickDamageUpgradeCount: 1 });
+    const once = advanceWithEvents(upgraded, 2_500);
+    let manyEvents: MiningEvent[] = [];
+    let cursor = upgraded;
+    for (let i = 0; i < 10; i += 1) {
+      const step = advanceWithEvents(cursor, 250);
+      manyEvents = manyEvents.concat(
+        step.events.map((e) => ({ ...e, atMs: e.atMs + i * 250 })),
+      );
+      cursor = step.snapshot;
+    }
+    expect(manyEvents).toEqual(once.events);
+  });
+
   const ONE_DWARF_200S_SNAPSHOT = {
     schemaVersion: 5 as const,
     advance: 0,
