@@ -4,12 +4,15 @@ import { describe, expect, it, vi } from "vitest";
 import { createMiningSession } from "../core/mining-session";
 import {
   initialSnapshot,
+  HIRE_HAULER_COST,
   nextCarryCapacityUpgradeCost,
   nextDigRateUpgradeCost,
+  nextHaulSpeedUpgradeCost,
   nextSmelterUpgradeCost,
 } from "../core/mining-engine";
 import { createBusEndpoint, type BusMessage } from "./bus";
 import { mountDockShell } from "./dock-root";
+import { createMinePresenter } from "./mine-presenter";
 import { mountPaneShell } from "./pane-root";
 import { PUMP_INTERVAL_MS } from "./pump";
 
@@ -313,6 +316,326 @@ describe("Pane↔Dock close-the-loop bus", () => {
     expect(session.snapshot.bagLoads).toBeGreaterThan(0);
     expect(session.snapshot.ore).toBe(0);
     expect(dockRoot.querySelector("[data-bag]")?.textContent).toBe("1 / 10 loads");
+
+    pane.destroy();
+    dock.destroy();
+  });
+
+  it("republishes when Heap loads change so the Dock tracks live haul play", async () => {
+    const channel = `underline-heap-${crypto.randomUUID()}`;
+    const store = memoryStore();
+    const session = createMiningSession({
+      store,
+      now: () => 0,
+      snapshot: {
+        ...initialSnapshot(),
+        crewSize: 2,
+      },
+    });
+
+    let clock = 0;
+    const rafCallbacks: FrameRequestCallback[] = [];
+    const intervalCallbacks: Array<() => void> = [];
+    let intervalId = 0;
+    const doc = {
+      hidden: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as Document;
+
+    const paneRoot = document.createElement("main");
+    const dockRoot = document.createElement("main");
+
+    const pane = mountPaneShell(paneRoot, {
+      session,
+      deferPump: true,
+      dockWindow: {
+        open: vi.fn(async () => {}),
+        close: vi.fn(async () => {}),
+        toggle: vi.fn(async () => true),
+        isOpen: () => false,
+        reposition: vi.fn(async () => {}),
+        syncPositionFromPane: vi.fn(async () => {}),
+        destroy: vi.fn(),
+      },
+      busFactory: (handlers) => createBusEndpoint(handlers, channel),
+      pumpSchedule: {
+        now: () => clock,
+        requestAnimationFrame: (callback: FrameRequestCallback) => {
+          rafCallbacks.push(callback);
+          return rafCallbacks.length;
+        },
+        cancelAnimationFrame: vi.fn(),
+        setInterval: ((callback: TimerHandler) => {
+          const fn = typeof callback === "function" ? callback : () => {};
+          intervalCallbacks.push(fn as () => void);
+          intervalId += 1;
+          return intervalId;
+        }) as typeof setInterval,
+        clearInterval: vi.fn(),
+        document: doc,
+      },
+    });
+
+    const dock = mountDockShell(dockRoot, {
+      busFactory: (handlers) => createBusEndpoint(handlers, channel),
+    });
+
+    await flushBus();
+    expect(dockRoot.querySelector("[data-heap]")?.textContent).toBe("0 / 10 loads");
+
+    pane.startPump();
+    for (let tick = 1; tick <= 40; tick += 1) {
+      clock = tick * PUMP_INTERVAL_MS;
+      for (const callback of [...intervalCallbacks]) {
+        callback();
+      }
+      const callbacks = rafCallbacks.splice(0);
+      for (const callback of callbacks) {
+        callback(clock);
+      }
+    }
+    await flushBus();
+
+    expect(session.snapshot.heapLoads).toBeGreaterThan(0);
+    expect(dockRoot.querySelector("[data-heap]")?.textContent).toBe("1 / 10 loads");
+
+    pane.destroy();
+    dock.destroy();
+  });
+
+  it("lets the Dock buy a Haul Speed Upgrade without resyncing Dig Rate", async () => {
+    const channel = `underline-haul-speed-${crypto.randomUUID()}`;
+    const store = memoryStore();
+    const session = createMiningSession({
+      store,
+      now: () => 1_000,
+      snapshot: {
+        ...initialSnapshot(),
+        ingots: nextHaulSpeedUpgradeCost(0),
+      },
+    });
+    const syncDigRate = vi.fn();
+    const paneRoot = document.createElement("main");
+    const dockRoot = document.createElement("main");
+    const commands: BusMessage[] = [];
+
+    const pane = mountPaneShell(paneRoot, {
+      session,
+      deferPump: true,
+      presenter: {
+        ...createMinePresenter(session),
+        syncDigRate,
+      },
+      dockWindow: {
+        open: vi.fn(async () => {}),
+        close: vi.fn(async () => {}),
+        toggle: vi.fn(async () => true),
+        isOpen: () => false,
+        reposition: vi.fn(async () => {}),
+        syncPositionFromPane: vi.fn(async () => {}),
+        destroy: vi.fn(),
+      },
+      busFactory: (handlers) => {
+        const endpoint = createBusEndpoint(
+          {
+            ...handlers,
+            command(message) {
+              commands.push(message);
+              handlers.command?.(message);
+            },
+          },
+          channel,
+        );
+        return endpoint;
+      },
+    });
+
+    const dock = mountDockShell(dockRoot, {
+      busFactory: (handlers) => createBusEndpoint(handlers, channel),
+    });
+
+    await flushBus();
+    dockRoot
+      .querySelector<HTMLButtonElement>("[data-buy-haul-speed-upgrade]")
+      ?.click();
+    await flushBus();
+
+    expect(commands).toContainEqual({
+      type: "command",
+      command: { schemaVersion: 4, name: "buyUpgrade", upgrade: "haulSpeed" },
+    });
+    expect(session.snapshot.haulSpeedUpgradeCount).toBe(1);
+    expect(session.snapshot.ingots).toBe(0);
+    expect(syncDigRate).not.toHaveBeenCalled();
+
+    pane.destroy();
+    dock.destroy();
+  });
+
+  it("republishes after a failed Haul Speed Upgrade so disabled state stays in sync", async () => {
+    const channel = `underline-haul-speed-fail-${crypto.randomUUID()}`;
+    const store = memoryStore();
+    const session = createMiningSession({
+      store,
+      now: () => 1_000,
+      snapshot: {
+        ...initialSnapshot(),
+        ingots: nextHaulSpeedUpgradeCost(0) - 1,
+      },
+    });
+
+    const paneRoot = document.createElement("main");
+    const dockRoot = document.createElement("main");
+
+    const pane = mountPaneShell(paneRoot, {
+      session,
+      deferPump: true,
+      dockWindow: {
+        open: vi.fn(async () => {}),
+        close: vi.fn(async () => {}),
+        toggle: vi.fn(async () => true),
+        isOpen: () => false,
+        reposition: vi.fn(async () => {}),
+        syncPositionFromPane: vi.fn(async () => {}),
+        destroy: vi.fn(),
+      },
+      busFactory: (handlers) => createBusEndpoint(handlers, channel),
+    });
+
+    const dock = mountDockShell(dockRoot, {
+      busFactory: (handlers) => createBusEndpoint(handlers, channel),
+    });
+
+    await flushBus();
+    const btn = dockRoot.querySelector<HTMLButtonElement>(
+      "[data-buy-haul-speed-upgrade]",
+    );
+    expect(btn?.disabled).toBe(true);
+    btn?.click();
+    await flushBus();
+
+    expect(session.snapshot.haulSpeedUpgradeCount).toBe(0);
+    expect(session.snapshot.ingots).toBe(nextHaulSpeedUpgradeCost(0) - 1);
+    expect(btn?.disabled).toBe(true);
+
+    pane.destroy();
+    dock.destroy();
+  });
+
+  it("lets the Dock hire a Hauler without resyncing Dig Rate", async () => {
+    const channel = `underline-hire-hauler-${crypto.randomUUID()}`;
+    const store = memoryStore();
+    const session = createMiningSession({
+      store,
+      now: () => 1_000,
+      snapshot: {
+        ...initialSnapshot(),
+        ingots: HIRE_HAULER_COST,
+      },
+    });
+    const syncDigRate = vi.fn();
+    const paneRoot = document.createElement("main");
+    const dockRoot = document.createElement("main");
+    const commands: BusMessage[] = [];
+
+    const pane = mountPaneShell(paneRoot, {
+      session,
+      deferPump: true,
+      presenter: {
+        ...createMinePresenter(session),
+        syncDigRate,
+      },
+      dockWindow: {
+        open: vi.fn(async () => {}),
+        close: vi.fn(async () => {}),
+        toggle: vi.fn(async () => true),
+        isOpen: () => false,
+        reposition: vi.fn(async () => {}),
+        syncPositionFromPane: vi.fn(async () => {}),
+        destroy: vi.fn(),
+      },
+      busFactory: (handlers) => {
+        const endpoint = createBusEndpoint(
+          {
+            ...handlers,
+            command(message) {
+              commands.push(message);
+              handlers.command?.(message);
+            },
+          },
+          channel,
+        );
+        return endpoint;
+      },
+    });
+
+    const dock = mountDockShell(dockRoot, {
+      busFactory: (handlers) => createBusEndpoint(handlers, channel),
+    });
+
+    await flushBus();
+    dockRoot.querySelector<HTMLButtonElement>("[data-hire-hauler]")?.click();
+    await flushBus();
+
+    expect(commands).toContainEqual({
+      type: "command",
+      command: { schemaVersion: 4, name: "buyUpgrade", upgrade: "hireHauler" },
+    });
+    expect(session.snapshot.crewSize).toBe(2);
+    expect(session.snapshot.ingots).toBe(0);
+    expect(dockRoot.querySelector("[data-crew]")?.textContent).toBe(
+      "2 Dwarves — Miner, Hauler",
+    );
+    expect(syncDigRate).not.toHaveBeenCalled();
+
+    pane.destroy();
+    dock.destroy();
+  });
+
+  it("republishes after a failed Hire Hauler so disabled state stays in sync", async () => {
+    const channel = `underline-hire-hauler-fail-${crypto.randomUUID()}`;
+    const store = memoryStore();
+    const session = createMiningSession({
+      store,
+      now: () => 1_000,
+      snapshot: {
+        ...initialSnapshot(),
+        ingots: HIRE_HAULER_COST - 1,
+      },
+    });
+
+    const paneRoot = document.createElement("main");
+    const dockRoot = document.createElement("main");
+
+    const pane = mountPaneShell(paneRoot, {
+      session,
+      deferPump: true,
+      dockWindow: {
+        open: vi.fn(async () => {}),
+        close: vi.fn(async () => {}),
+        toggle: vi.fn(async () => true),
+        isOpen: () => false,
+        reposition: vi.fn(async () => {}),
+        syncPositionFromPane: vi.fn(async () => {}),
+        destroy: vi.fn(),
+      },
+      busFactory: (handlers) => createBusEndpoint(handlers, channel),
+    });
+
+    const dock = mountDockShell(dockRoot, {
+      busFactory: (handlers) => createBusEndpoint(handlers, channel),
+    });
+
+    await flushBus();
+    const btn = dockRoot.querySelector<HTMLButtonElement>("[data-hire-hauler]");
+    expect(btn?.disabled).toBe(true);
+    btn?.click();
+    await flushBus();
+
+    expect(session.snapshot.crewSize).toBe(1);
+    expect(session.snapshot.ingots).toBe(HIRE_HAULER_COST - 1);
+    expect(btn?.disabled).toBe(true);
 
     pane.destroy();
     dock.destroy();

@@ -5,10 +5,13 @@ import {
   digRateFor,
   hardnessFor,
   carryCapacityFor,
+  heapCapacityFor,
   nextDigRateUpgradeCost,
   nextSmelterUpgradeCost,
   nextCarryCapacityUpgradeCost,
+  nextHaulSpeedUpgradeCost,
   smelterThroughputFor,
+  HIRE_HAULER_COST,
   DROPS_PER_FACE,
   type UpgradeId,
 } from "../core/mining-engine";
@@ -78,6 +81,16 @@ export function mountColonyView(
   const bagDd = document.createElement("dd");
   bagDd.dataset["bag"] = "";
 
+  const crewDt = document.createElement("dt");
+  crewDt.textContent = "Crew";
+  const crewDd = document.createElement("dd");
+  crewDd.dataset["crew"] = "";
+
+  const heapDt = document.createElement("dt");
+  heapDt.textContent = "Heap";
+  const heapDd = document.createElement("dd");
+  heapDd.dataset["heap"] = "";
+
   const faceDt = document.createElement("dt");
   faceDt.textContent = "Face";
   const faceDd = document.createElement("dd");
@@ -96,6 +109,10 @@ export function mountColonyView(
     hardnessDd,
     bagDt,
     bagDd,
+    crewDt,
+    crewDd,
+    heapDt,
+    heapDd,
     faceDt,
     faceDd,
   );
@@ -123,7 +140,27 @@ export function mountColonyView(
   carryCapacityUpgradeBtn.addEventListener("click", () => {
     options.onBuyUpgrade?.("carryCapacity");
   });
-  upgradeRow.append(digRateUpgradeBtn, smelterUpgradeBtn, carryCapacityUpgradeBtn);
+  const haulSpeedUpgradeBtn = document.createElement("button");
+  haulSpeedUpgradeBtn.type = "button";
+  haulSpeedUpgradeBtn.className = "dock-buy-haul-speed-upgrade";
+  haulSpeedUpgradeBtn.dataset["buyHaulSpeedUpgrade"] = "";
+  haulSpeedUpgradeBtn.addEventListener("click", () => {
+    options.onBuyUpgrade?.("haulSpeed");
+  });
+  const hireHaulerBtn = document.createElement("button");
+  hireHaulerBtn.type = "button";
+  hireHaulerBtn.className = "dock-hire-hauler";
+  hireHaulerBtn.dataset["hireHauler"] = "";
+  hireHaulerBtn.addEventListener("click", () => {
+    options.onBuyUpgrade?.("hireHauler");
+  });
+  upgradeRow.append(
+    digRateUpgradeBtn,
+    smelterUpgradeBtn,
+    carryCapacityUpgradeBtn,
+    haulSpeedUpgradeBtn,
+    hireHaulerBtn,
+  );
 
   const offline = document.createElement("aside");
   offline.className = "dock-offline-summary";
@@ -155,8 +192,10 @@ export function mountColonyView(
     const carryCapacityCost = nextCarryCapacityUpgradeCost(
       snapshot.carryCapacityUpgradeCount,
     );
+    const haulSpeedCost = nextHaulSpeedUpgradeCost(snapshot.haulSpeedUpgradeCount);
     const throughput = smelterThroughputFor(snapshot.smelterUpgradeCount);
     const capacity = carryCapacityFor(snapshot.carryCapacityUpgradeCount);
+    const heapCapacity = heapCapacityFor(snapshot.carryCapacityUpgradeCount);
     const facePercent = Math.floor(
       (snapshot.faceSwingProgress / hardnessFor(snapshot.advance)) * 100,
     );
@@ -166,6 +205,19 @@ export function mountColonyView(
     smelterDd.textContent = `${formatRate(throughput)} Ore/sec`;
     hardnessDd.textContent = String(Math.round(hardnessFor(snapshot.advance)));
     bagDd.textContent = `${snapshot.bagLoads} / ${capacity} loads`;
+    if (snapshot.crewSize === 1) {
+      crewDd.textContent = "1 Dwarf";
+      heapDd.textContent = "—";
+      delete heapDd.dataset["heapFull"];
+    } else {
+      crewDd.textContent = "2 Dwarves — Miner, Hauler";
+      heapDd.textContent = `${snapshot.heapLoads} / ${heapCapacity} loads`;
+      if (snapshot.heapLoads >= heapCapacity) {
+        heapDd.dataset["heapFull"] = "";
+      } else {
+        delete heapDd.dataset["heapFull"];
+      }
+    }
     faceDd.textContent = `${snapshot.advance + 1} — ${facePercent}%`;
     digRateUpgradeBtn.textContent = `Buy Upgrade (+0.25 Dig Rate) — ${digCost} Ingots`;
     digRateUpgradeBtn.disabled = snapshot.ingots < digCost;
@@ -175,6 +227,16 @@ export function mountColonyView(
     carryCapacityUpgradeBtn.textContent =
       `Buy Carry Capacity Upgrade (+5 loads) — ${carryCapacityCost} Ingots`;
     carryCapacityUpgradeBtn.disabled = snapshot.ingots < carryCapacityCost;
+    haulSpeedUpgradeBtn.textContent =
+      `Buy Haul Speed Upgrade (+0.25 Haul Speed) — ${haulSpeedCost} Ingots`;
+    haulSpeedUpgradeBtn.disabled = snapshot.ingots < haulSpeedCost;
+    if (snapshot.crewSize === 1) {
+      hireHaulerBtn.textContent = `Hire a Hauler — ${HIRE_HAULER_COST} Ingots`;
+      hireHaulerBtn.disabled = snapshot.ingots < HIRE_HAULER_COST;
+    } else {
+      hireHaulerBtn.textContent = "Hauler hired";
+      hireHaulerBtn.disabled = true;
+    }
 
     constants.textContent =
       `Ore per drop ${formatAmount(oreForDrop(snapshot.advance))} — ${DROPS_PER_FACE} drops per Face`;
