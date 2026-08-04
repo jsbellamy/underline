@@ -8,6 +8,8 @@ import type { AnimationPlayback } from "../core/animation-player";
 export type DwarfAnimationId = "idle" | "swing" | "walk";
 
 export const SWING_FRAME_COUNT = 9;
+/** Frame where the pick is at its lowest — displayed at the Swing boundary (fraction 0). */
+export const SWING_IMPACT_FRAME = 5;
 export const WALK_FRAME_COUNT = 8;
 
 /** Walk cycle while hauling — loops for the Haul leg; cycle length is independent of Dig Rate. */

@@ -8,6 +8,8 @@ Rules (#314 / #321 / #364):
 import { cycleDurationMs, frameAt } from "./animation-player";
 import {
   dwarfPlayback,
+  SWING_FRAME_COUNT,
+  SWING_IMPACT_FRAME,
   type DwarfAnimationId,
 } from "../data/dwarf-animation-timing";
 
@@ -110,7 +112,10 @@ export function createDwarfAnimController(
     },
     frameIndexForSwingFraction(fraction: number) {
       const swingPlayback = dwarfPlayback("swing", digRate);
-      const elapsedMs = fraction * cycleDurationMs(swingPlayback);
+      const cycleMs = cycleDurationMs(swingPlayback);
+      const phase =
+        ((((fraction + SWING_IMPACT_FRAME / SWING_FRAME_COUNT) % 1) + 1) % 1);
+      const elapsedMs = phase * cycleMs;
       return frameAt(swingPlayback, elapsedMs);
     },
   };

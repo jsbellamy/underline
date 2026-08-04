@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   dwarfPlayback,
   SWING_FRAME_COUNT,
+  SWING_IMPACT_FRAME,
   WALK_FRAME_COUNT,
 } from "./dwarf-animation-timing";
 import { cycleDurationMs } from "../core/animation-player";
@@ -11,6 +12,12 @@ describe("dwarfAnimationTiming", () => {
     const idle = dwarfPlayback("idle", 1);
     expect(idle.loop).toBe(true);
     expect(idle.durationsMs).toHaveLength(1);
+  });
+
+  it("pins SWING_IMPACT_FRAME as the pick-contact frame index", () => {
+    expect(SWING_IMPACT_FRAME).toBe(5);
+    expect(SWING_IMPACT_FRAME).toBeGreaterThanOrEqual(0);
+    expect(SWING_IMPACT_FRAME).toBeLessThan(SWING_FRAME_COUNT);
   });
 
   it("declares swing as a looping clip whose cycle is 1/Dig Rate seconds", () => {

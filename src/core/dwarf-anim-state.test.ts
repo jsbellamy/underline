@@ -3,7 +3,7 @@ import {
   createDwarfAnimController,
   type DwarfAnimId,
 } from "./dwarf-anim-state";
-import { dwarfPlayback } from "../data/dwarf-animation-timing";
+import { dwarfPlayback, SWING_FRAME_COUNT } from "../data/dwarf-animation-timing";
 
 describe("dwarf anim state", () => {
   it("starts idle facing east", () => {
@@ -95,10 +95,17 @@ describe("dwarf anim state", () => {
     expect(ctrl.frameIndexAt(1112)).toBe(1);
   });
 
-  it("maps swing fraction to frame index", () => {
+  it("maps swing fraction to frame index with impact at fraction 0", () => {
     const ctrl = createDwarfAnimController({ digRate: 1 });
-    expect(ctrl.frameIndexForSwingFraction(0)).toBe(0);
-    expect(ctrl.frameIndexForSwingFraction(0.5)).toBe(4);
+    expect(ctrl.frameIndexForSwingFraction(0)).toBe(5);
+    expect(ctrl.frameIndexForSwingFraction(4 / SWING_FRAME_COUNT)).toBe(0);
+
+    const expectedOrder = [5, 6, 7, 8, 0, 1, 2, 3, 4];
+    for (let i = 0; i < SWING_FRAME_COUNT; i += 1) {
+      const fraction = (i + 0.5) / SWING_FRAME_COUNT;
+      expect(ctrl.frameIndexForSwingFraction(fraction)).toBe(expectedOrder[i]);
+    }
+    expect(ctrl.frameIndexForSwingFraction(1)).toBe(5);
   });
 
   it("only selects among idle, swing, and walk", () => {
