@@ -136,9 +136,13 @@ export function mountPaneShell(
   let lastTickAtMs = now();
 
   function presentationNowMs(): number {
-    const elapsed = Math.max(0, now() - lastTickAtMs);
-    return Math.floor(
-      lastSimNowMs + Math.min(elapsed, PUMP_INTERVAL_MS),
+    const elapsed = Math.min(
+      Math.max(0, now() - lastTickAtMs),
+      PUMP_INTERVAL_MS,
+    );
+    return Math.max(
+      0,
+      Math.floor(lastSimNowMs - PUMP_INTERVAL_MS + elapsed),
     );
   }
 

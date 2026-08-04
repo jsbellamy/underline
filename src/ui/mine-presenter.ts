@@ -107,7 +107,8 @@ export function createMinePresenter(
     }
     const progress =
       faceSwingProgressAtTick + anim.digRate * (nowMs - simNowMs) / 1000;
-    return progress - Math.floor(progress);
+    const clamped = Math.max(0, progress);
+    return clamped - Math.floor(clamped);
   }
 
   function snapshot(nowMs: number = simNowMs): TunnelSnapshot {

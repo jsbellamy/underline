@@ -12,6 +12,7 @@ import {
 import type { MiningEvent } from "../core/mining-events";
 import { createMinePresenter, FACE_SLIDE_MS } from "./mine-presenter";
 import type { MiningAudio } from "./mining-audio";
+import { PUMP_INTERVAL_MS } from "./pump";
 
 function memoryStore() {
   const data: Record<string, string> = {};
@@ -105,6 +106,20 @@ describe("mine presenter", () => {
     presenter.start();
     presenter.advanceMs(250);
     expect(presenter.snapshot()).toEqual(presenter.snapshot(presenter.simNowMs));
+  });
+
+  it("backward-interpolated snapshot before the first swing completes stays near fraction 0, not near 1", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+    presenter.advanceMs(100);
+    const snap = presenter.snapshot(presenter.simNowMs - PUMP_INTERVAL_MS);
+    expect(snap.swingFraction).toBeGreaterThanOrEqual(0);
+    expect(snap.swingFraction).toBeLessThan(1);
+    expect(snap.swingFraction).toBeLessThan(0.5);
   });
 
   it("does not change frameIndex on tick when presentation clock is held", () => {

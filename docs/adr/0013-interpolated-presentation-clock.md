@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-08-03)
+Accepted (2026-08-03; amended 2026-08-03)
 
 ## Context
 
@@ -29,17 +29,27 @@ Run **two clocks**:
    `lastTickAtMs` on each tick and, on every render frame, samples:
 
    ```ts
-   const elapsed = Math.max(0, clockNow() - lastTickAtMs);
-   const presentationNowMs = Math.floor(
-     lastSimNowMs + Math.min(elapsed, PUMP_INTERVAL_MS),
+   const elapsed = Math.min(
+     Math.max(0, clockNow() - lastTickAtMs),
+     PUMP_INTERVAL_MS,
+   );
+   const presentationNowMs = Math.max(
+     0,
+     Math.floor(lastSimNowMs - PUMP_INTERVAL_MS + elapsed),
    );
    ```
 
-   **One-tick clamp:** never extrapolate more than `PUMP_INTERVAL_MS` past the
-   cached sim time. If a tick is late (GC, throttling), unclamped interpolation
-   would run ahead of the sim and **rewind** when the tick lands; holding until
-   the sim catches up is preferred to visible backward motion. The result is
-   floored to integer milliseconds.
+   The presentation clock **lags** the sim by one pump interval: rendering
+   interpolates across the window that has already been simulated instead of
+   extrapolating past it. The result never exceeds `lastSimNowMs` and never
+   decreases while `lastSimNowMs` is non-decreasing.
+
+   **Interpolation bound:** `Math.min(elapsed, PUMP_INTERVAL_MS)` caps how far
+   presentation can advance within a tick window. A late tick (GC, throttling)
+   cannot push presentation past simulated data; the bound is an interpolation
+   limit, not a rewind guard — backward rewind is structurally impossible with
+   the lagged formula. The result is floored to integer milliseconds and clamped
+   at 0 so the pre-tick mount render never passes a negative time.
 
 `MinePresenter.snapshot(nowMs?)` defaults `nowMs` to `simNowMs` when omitted;
 `render` passes the interpolated presentation value.
@@ -50,8 +60,12 @@ while `animation === "swing"`, clip phase is the fractional part of
 
 ```
 progress = faceSwingProgressAtLastTick + digRate * (nowMs - lastSimNowMs) / 1000
-swingFraction = progress - floor(progress)
+swingFraction = clamp(progress, 0) - floor(clamp(progress, 0))
 ```
+
+With the lagged clock, `nowMs` can be less than `lastSimNowMs`; clamp
+`progress` at 0 before the fractional part so a negative value does not wrap
+to a late frame.
 
 Interpolation is suppressed while `haulRemainingMs > 0`. Walk and idle clips use
 clock-absolute `frameIndexAt(nowMs)` on `DwarfAnimController`; the tick path no
@@ -68,7 +82,10 @@ windowStartSimMs, dtMs)` using the sim time *before* `dtMs` is applied, so each
 cue's absolute time is `windowStart + event.atMs`. Nothing plays on the tick
 path. `mountPaneShell`'s `render` calls `releaseAudioDueTo(presentationNowMs())`
 before `snapshot`; `releaseDueTo` schedules due cues on the `AudioContext`
-timeline at `currentTime` plus offset rather than firing immediately.
+timeline at `currentTime` plus offset rather than firing immediately. With the
+lagged presentation clock, every cue queued on a tick is known up to
+`PUMP_INTERVAL_MS` before its presentation time, which is the scheduling horizon
+`releaseDueTo` needs so `MiningEvent.atMs` controls onset.
 
 ## Consequences
 
@@ -78,11 +95,15 @@ timeline at `currentTime` plus offset rather than firing immediately.
 - Swing animation re-anchors to simulation every tick and cannot accumulate
   phase error.
 - ADR 0010's 250 ms sim tick and Snapshot ownership are unchanged.
+- Mining audio cues can be scheduled ahead of their presentation onset because
+  the presentation clock trails the sim by one tick.
 
 ### Negative
 
 - Presentation state (`simNowMs`, cached tick anchors) is transient and
   meaningless across sessions — not persisted in `MiningSnapshot`.
+- Picture and sound trail simulation by a uniform `PUMP_INTERVAL_MS`; the lag
+  is fixed, not adaptive.
 
 ## Source
 
