@@ -1,16 +1,14 @@
 // @vitest-environment happy-dom
 
 import { describe, expect, it } from "vitest";
-import {
-  MINING_TUNNEL_VISIBLE_COLUMNS,
-  mountMiningTunnel,
-} from "./mining-tunnel";
+import { mountMiningTunnel } from "./mining-tunnel";
+import { tunnelArtPath } from "../data/tunnel-art-pack";
+import { TUNNEL_ART_PACK, tunnelArtUrl } from "./tunnel-art";
 import type { TunnelSnapshot } from "./mine-presenter";
 import { dwarfLayout } from "../data/external-sprite-pack";
 import { DWARF_PACK } from "./dwarf-frames";
 import { HAULER_PACK } from "./hauler-frames";
 import {
-  BLOCK_SIZE,
   CART_HEIGHT,
   CART_MARK_X,
   CART_WIDTH,
@@ -19,6 +17,7 @@ import {
   HAULER_MARK_X,
   MINING_MARK_X,
   ORE_SIZE,
+  PANE_HEIGHT,
   PANE_WIDTH,
 } from "./pane-layout";
 import { fallingOrePosition, heapSlot } from "./heap-pile";
@@ -65,20 +64,6 @@ function twoDwarfSnap(
 
 function countDescendants(element: HTMLElement): number {
   return element.querySelectorAll("*").length;
-}
-
-function blockAtColumnIndex(
-  host: HTMLElement,
-  columnIndex: number,
-): HTMLElement {
-  const blocks = host.querySelectorAll<HTMLElement>(".pane-block");
-  for (const block of blocks) {
-    const left = Number(block.style.left.replace("px", ""));
-    if (left / BLOCK_SIZE === columnIndex) {
-      return block;
-    }
-  }
-  throw new Error(`No column at index ${columnIndex}`);
 }
 
 function faceColumn(host: HTMLElement): HTMLElement {
@@ -152,30 +137,28 @@ describe("mountMiningTunnel", () => {
     tunnel.destroy();
   });
 
-  it("creates ten Mineable Block columns pinned on the block grid", () => {
+  it("draws the tunnel interior background and a single Face column", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
 
-    const world = host.querySelector(".pane-tunnel-world");
+    const world = host.querySelector<HTMLElement>(".pane-tunnel-world");
     expect(world).not.toBeNull();
+    const backgroundPath = tunnelArtPath(
+      TUNNEL_ART_PACK,
+      "background/tunnel-interior",
+    );
+    const backgroundUrl = tunnelArtUrl(backgroundPath);
+    expect(world!.style.backgroundImage).toBe(`url("${backgroundUrl}")`);
+    expect(world!.style.backgroundSize).toBe(`${PANE_WIDTH}px ${PANE_HEIGHT}px`);
+    expect(world!.style.imageRendering).toBe("pixelated");
+
     const columnsBeforeRender = world!.querySelectorAll(".pane-block");
-    expect(columnsBeforeRender.length).toBe(MINING_TUNNEL_VISIBLE_COLUMNS);
-    expect(MINING_TUNNEL_VISIBLE_COLUMNS).toBe(Math.ceil(PANE_WIDTH / BLOCK_SIZE));
+    expect(columnsBeforeRender.length).toBe(1);
 
     tunnel.render({ ...baseSnap, advance: 5000 });
     const columnsAfterRender = world!.querySelectorAll(".pane-block");
-    expect(columnsAfterRender.length).toBe(MINING_TUNNEL_VISIBLE_COLUMNS);
-
-    for (let i = 0; i < MINING_TUNNEL_VISIBLE_COLUMNS; i += 1) {
-      if (i === 9) {
-        expect(Number(faceColumn(host).style.left.replace("px", ""))).toBe(
-          FACE_X,
-        );
-      } else {
-        const col = blockAtColumnIndex(host, i);
-        expect(col.style.left).toBe(`${i * BLOCK_SIZE}px`);
-      }
-    }
+    expect(columnsAfterRender.length).toBe(1);
+    expect(Number(faceColumn(host).style.left.replace("px", ""))).toBe(FACE_X);
 
     tunnel.destroy();
   });
@@ -264,14 +247,17 @@ describe("mountMiningTunnel", () => {
     tunnel.destroy();
   });
 
-  it("paints hollow west of FACE_X and Face at FACE_X with no solid east", () => {
+  it("does not paint retired hollow or floor colors on any element", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
     tunnel.render({ ...baseSnap, advance: 10, faceSlide: 1 });
 
-    expect(blockAtColumnIndex(host, 5).style.background).toBe("#1D1720");
+    for (const element of host.querySelectorAll<HTMLElement>("*")) {
+      expect(element.style.background).not.toBe("#1D1720");
+      expect(element.style.background).not.toBe("#3B2F3A");
+    }
     expect(faceColumn(host).style.background).toBe("#27A6A3");
-    expect(blockAtColumnIndex(host, 8).style.background).toBe("#1D1720");
+    expect(host.querySelector(".pane-tunnel-floor")).toBeNull();
 
     tunnel.destroy();
   });
@@ -290,19 +276,6 @@ describe("mountMiningTunnel", () => {
     const face = faceColumn(host);
     expect(face.style.background).toBe("#176873");
     expect(face.querySelector(".pane-face-crack")).not.toBeNull();
-
-    tunnel.destroy();
-  });
-
-  it("positions the floor band across the full Pane width", () => {
-    const host = document.createElement("div");
-    const tunnel = mountMiningTunnel(host);
-    tunnel.render({ ...baseSnap, advance: 10 });
-
-    const floor = host.querySelector<HTMLElement>(".pane-tunnel-floor");
-    expect(floor).not.toBeNull();
-    expect(floor!.style.left).toBe("0px");
-    expect(floor!.style.width).toBe(`${PANE_WIDTH}px`);
 
     tunnel.destroy();
   });
