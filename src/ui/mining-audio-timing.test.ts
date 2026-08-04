@@ -140,6 +140,7 @@ function createTimingHarness(options?: { soundEnabled?: boolean }) {
   const audio = createMiningAudio({ createAudioContext });
   audio.setEnabled(options?.soundEnabled ?? true);
   const releaseDueToOriginal = audio.releaseDueTo.bind(audio);
+  // Observation-only: anchor AudioContext.currentTime to presentation ms for C4.
   vi.spyOn(audio, "releaseDueTo").mockImplementation((nowMs) => {
     presentationAnchorMs = nowMs;
     return releaseDueToOriginal(nowMs);
@@ -148,6 +149,7 @@ function createTimingHarness(options?: { soundEnabled?: boolean }) {
 
   const swingEvents: Array<{ cueAbsoluteMs: number }> = [];
   let simTrackMs = 0;
+  // Observation-only: record swing events with absolute cue ms for C3/C4.
   const advanceLive = session.advanceLive.bind(session);
   vi.spyOn(session, "advanceLive").mockImplementation((dtMs) => {
     const baseMs = simTrackMs;
@@ -334,7 +336,16 @@ function assertSwingCorrespondence(result: TimingRunResult): void {
   const { swingEvents, swingStarts } = result;
   expect(swingStarts).toHaveLength(swingEvents.length);
   for (let i = 0; i < swingEvents.length; i += 1) {
-    expect(swingStarts[i]).toBeDefined();
+    const event = swingEvents[i]!;
+    const start = swingStarts[i]!;
+    expect(start).toBeDefined();
+    expect(start.clip).toBe("swing");
+    if (i > 0) {
+      expect(event.cueAbsoluteMs).toBeGreaterThan(
+        swingEvents[i - 1]!.cueAbsoluteMs,
+      );
+      expect(start.whenSec).toBeGreaterThan(swingStarts[i - 1]!.whenSec);
+    }
   }
 }
 
