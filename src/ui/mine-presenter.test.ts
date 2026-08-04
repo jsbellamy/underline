@@ -41,6 +41,8 @@ function spyMiningAudio(): MiningAudio & {
     faceBroken(count: number) {
       breaks.push(count);
     },
+    handleEvents() {},
+    releaseDueTo() {},
     setEnabled() {},
     isEnabled() {
       return true;

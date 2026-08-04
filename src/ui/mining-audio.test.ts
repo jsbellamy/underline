@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { AudioClipId } from "../data/audio-pack";
+import type { MiningEvent } from "../core/mining-events";
+import { PUMP_INTERVAL_MS } from "./pump";
 import { createMiningAudio } from "./mining-audio";
 
 function stubAudioContext(): {
@@ -139,5 +141,135 @@ describe("mining audio", () => {
     await vi.waitFor(() =>
       expect(clipUrlFor).toHaveBeenCalledWith(testPack, "break"),
     );
+  });
+});
+
+describe("mining audio cue queue", () => {
+  async function enabledAudio() {
+    const { context: ctx, createBufferSource } = stubAudioContext();
+    const createAudioContext = vi.fn(() => ctx);
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      arrayBuffer: async () => new ArrayBuffer(8),
+    }));
+    const audio = createMiningAudio({
+      createAudioContext,
+      fetch: fetchMock as unknown as typeof fetch,
+      pack: testPack,
+      clipUrlFor: (_pack, id) => `${id}.wav`,
+    });
+    audio.setEnabled(true);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+    return { audio, createBufferSource };
+  }
+
+  it("plays a queued swing cue when release time is due", async () => {
+    const { audio, createBufferSource } = await enabledAudio();
+
+    audio.handleEvents([{ type: "swing", atMs: 100 }], 1000);
+    audio.releaseDueTo(1099);
+    expect(createBufferSource).not.toHaveBeenCalled();
+
+    audio.releaseDueTo(1100);
+    await vi.waitFor(() => expect(createBufferSource).toHaveBeenCalledTimes(1));
+  });
+
+  it("releases due cues in ascending atMs order and never replays them", async () => {
+    const swingBuffer = { clip: "swing" } as unknown as AudioBuffer;
+    const breakBuffer = { clip: "break" } as unknown as AudioBuffer;
+    let decodeIndex = 0;
+    const { context: ctx, createBufferSource } = stubAudioContext();
+    ctx.decodeAudioData = vi.fn(async () =>
+      decodeIndex++ === 0 ? swingBuffer : breakBuffer,
+    );
+    const createAudioContext = vi.fn(() => ctx);
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      arrayBuffer: async () => new ArrayBuffer(8),
+    }));
+    const audio = createMiningAudio({
+      createAudioContext,
+      fetch: fetchMock as unknown as typeof fetch,
+      pack: testPack,
+      clipUrlFor: (_pack, id) => `${id}.wav`,
+    });
+    audio.setEnabled(true);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+
+    const playOrder: AudioBuffer[] = [];
+    createBufferSource.mockImplementation(() => {
+      const source = {
+        buffer: null as AudioBuffer | null,
+        connect: vi.fn(),
+        start: vi.fn(() => {
+          if (source.buffer) {
+            playOrder.push(source.buffer);
+          }
+        }),
+      };
+      return source;
+    });
+
+    const events: MiningEvent[] = [
+      { type: "faceBroken", atMs: 300 },
+      { type: "swing", atMs: 100 },
+      { type: "swing", atMs: 200 },
+    ];
+
+    audio.handleEvents(events, 1000);
+    audio.releaseDueTo(1300);
+    await vi.waitFor(() => expect(playOrder).toHaveLength(3));
+    expect(playOrder).toEqual([swingBuffer, swingBuffer, breakBuffer]);
+
+    createBufferSource.mockClear();
+    audio.releaseDueTo(1300);
+    expect(createBufferSource).not.toHaveBeenCalled();
+  });
+
+  it("drops cues more than one pump tick overdue without playing them", async () => {
+    const { audio, createBufferSource } = await enabledAudio();
+
+    audio.handleEvents([{ type: "swing", atMs: 1000 }], 0);
+    audio.releaseDueTo(1000 + PUMP_INTERVAL_MS + 50);
+    expect(createBufferSource).not.toHaveBeenCalled();
+  });
+
+  it("plays at most four due cues per release and empties the queue", async () => {
+    const { audio, createBufferSource } = await enabledAudio();
+    const events: MiningEvent[] = Array.from({ length: 6 }, (_, i) => ({
+      type: "swing" as const,
+      atMs: i * 10,
+    }));
+
+    audio.handleEvents(events, 1000);
+    audio.releaseDueTo(1100);
+    await vi.waitFor(() => expect(createBufferSource).toHaveBeenCalledTimes(4));
+
+    createBufferSource.mockClear();
+    audio.releaseDueTo(1200);
+    expect(createBufferSource).not.toHaveBeenCalled();
+  });
+
+  it("does not queue while muted and does not replay after re-enabling", async () => {
+    const { audio, createBufferSource } = await enabledAudio();
+
+    audio.setEnabled(false);
+    audio.handleEvents([{ type: "swing", atMs: 0 }], 1000);
+    audio.setEnabled(true);
+    audio.releaseDueTo(2000);
+    expect(createBufferSource).not.toHaveBeenCalled();
+  });
+
+  it("drops due queued cues without playing when muted on release", async () => {
+    const { audio, createBufferSource } = await enabledAudio();
+
+    audio.handleEvents([{ type: "swing", atMs: 0 }], 1000);
+    audio.setEnabled(false);
+    audio.releaseDueTo(1100);
+    expect(createBufferSource).not.toHaveBeenCalled();
+
+    audio.setEnabled(true);
+    audio.releaseDueTo(2000);
+    expect(createBufferSource).not.toHaveBeenCalled();
   });
 });
