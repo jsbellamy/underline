@@ -3,8 +3,10 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   carryCapacityFor,
+  HIRE_HAULER_COST,
   initialSnapshot,
   nextCarryCapacityUpgradeCost,
+  nextHaulSpeedUpgradeCost,
   nextSmelterUpgradeCost,
 } from "../core/mining-engine";
 import { toWireSnapshot } from "../core/wire-snapshot";
@@ -194,6 +196,148 @@ describe("Colony Dock surface", () => {
       ?.click();
     expect(onBuy).toHaveBeenCalledOnce();
     expect(onBuy).toHaveBeenCalledWith("carryCapacity");
+    view.destroy();
+  });
+});
+
+describe("mountColonyView", () => {
+  it("shows Crew as 1 Dwarf or 2 Dwarves with roles", () => {
+    const host = document.createElement("div");
+    const view = mountColonyView(host);
+    view.render(toWireSnapshot({ ...initialSnapshot(), crewSize: 1 }));
+    expect(host.querySelector("[data-crew]")?.textContent).toBe("1 Dwarf");
+    view.render(toWireSnapshot({ ...initialSnapshot(), crewSize: 2 }));
+    expect(host.querySelector("[data-crew]")?.textContent).toBe(
+      "2 Dwarves — Miner, Hauler",
+    );
+    view.destroy();
+  });
+
+  it("shows Heap loads against capacity or em dash for a solo Dwarf", () => {
+    const host = document.createElement("div");
+    const view = mountColonyView(host);
+    view.render(
+      toWireSnapshot({
+        ...initialSnapshot(),
+        crewSize: 2,
+        heapLoads: 3,
+        carryCapacityUpgradeCount: 0,
+      }),
+    );
+    expect(host.querySelector("[data-heap]")?.textContent).toBe("3 / 10 loads");
+    view.render(toWireSnapshot({ ...initialSnapshot(), crewSize: 1 }));
+    expect(host.querySelector("[data-heap]")?.textContent).toBe("—");
+    view.destroy();
+  });
+
+  it("marks the Heap row when capacity is full", () => {
+    const host = document.createElement("div");
+    const view = mountColonyView(host);
+    view.render(
+      toWireSnapshot({
+        ...initialSnapshot(),
+        crewSize: 2,
+        heapLoads: 10,
+        carryCapacityUpgradeCount: 0,
+      }),
+    );
+    expect(host.querySelector("[data-heap-full]")).not.toBeNull();
+    view.render(
+      toWireSnapshot({
+        ...initialSnapshot(),
+        crewSize: 2,
+        heapLoads: 9,
+        carryCapacityUpgradeCount: 0,
+      }),
+    );
+    expect(host.querySelector("[data-heap-full]")).toBeNull();
+    view.destroy();
+  });
+
+  it("shows the Haul Speed Upgrade offer and disables it when Ingots are short", () => {
+    const host = document.createElement("div");
+    const view = mountColonyView(host);
+    view.render(
+      toWireSnapshot({ ...initialSnapshot(), haulSpeedUpgradeCount: 0, ingots: 4 }),
+    );
+    const btn = host.querySelector<HTMLButtonElement>("[data-buy-haul-speed-upgrade]");
+    expect(btn?.textContent).toBe(
+      `Buy Haul Speed Upgrade (+0.25 Haul Speed) — ${nextHaulSpeedUpgradeCost(0)} Ingots`,
+    );
+    expect(btn?.disabled).toBe(true);
+    view.render(
+      toWireSnapshot({ ...initialSnapshot(), haulSpeedUpgradeCount: 0, ingots: 5 }),
+    );
+    expect(btn?.disabled).toBe(false);
+    view.destroy();
+  });
+
+  it("shows Hire a Hauler and disables it once hired", () => {
+    const host = document.createElement("div");
+    const view = mountColonyView(host);
+    view.render(
+      toWireSnapshot({ ...initialSnapshot(), crewSize: 1, ingots: HIRE_HAULER_COST - 1 }),
+    );
+    const btn = host.querySelector<HTMLButtonElement>("[data-hire-hauler]");
+    expect(btn?.textContent).toBe(`Hire a Hauler — ${HIRE_HAULER_COST} Ingots`);
+    expect(btn?.disabled).toBe(true);
+    view.render(
+      toWireSnapshot({ ...initialSnapshot(), crewSize: 1, ingots: HIRE_HAULER_COST }),
+    );
+    expect(btn?.disabled).toBe(false);
+    view.render(toWireSnapshot({ ...initialSnapshot(), crewSize: 2 }));
+    expect(btn?.textContent).toBe("Hauler hired");
+    expect(btn?.disabled).toBe(true);
+    view.destroy();
+  });
+
+  it("orders upgrade buttons Dig Rate, Smelter, Carry Capacity, Haul Speed, Hire Hauler", () => {
+    const host = document.createElement("div");
+    const view = mountColonyView(host);
+    view.render(toWireSnapshot(initialSnapshot()));
+    const row = host.querySelector(".dock-colony-upgrade");
+    const selectors = [
+      "[data-buy-upgrade]",
+      "[data-buy-smelter-upgrade]",
+      "[data-buy-carry-capacity-upgrade]",
+      "[data-buy-haul-speed-upgrade]",
+      "[data-hire-hauler]",
+    ];
+    const children = Array.from(row?.children ?? []);
+    expect(children.map((el) => el.matches(selectors.join(", ")))).toEqual([
+      true,
+      true,
+      true,
+      true,
+      true,
+    ]);
+    for (let i = 0; i < selectors.length; i += 1) {
+      expect(children[i]?.matches(selectors[i]!)).toBe(true);
+    }
+    view.destroy();
+  });
+
+  it("fires onBuyUpgrade with haulSpeed when the Haul Speed Upgrade is pressed", () => {
+    const onBuy = vi.fn();
+    const host = document.createElement("div");
+    const view = mountColonyView(host, { onBuyUpgrade: onBuy });
+    view.render(toWireSnapshot({ ...initialSnapshot(), ingots: 5 }));
+    host.querySelector<HTMLButtonElement>("[data-buy-haul-speed-upgrade]")?.click();
+    expect(onBuy).toHaveBeenCalledOnce();
+    expect(onBuy).toHaveBeenCalledWith("haulSpeed");
+    view.destroy();
+  });
+
+  it("fires onBuyUpgrade with hireHauler when Hire a Hauler is pressed", () => {
+    const onBuy = vi.fn();
+    const host = document.createElement("div");
+    const view = mountColonyView(host, { onBuyUpgrade: onBuy });
+    view.render(
+      toWireSnapshot({ ...initialSnapshot(), ingots: HIRE_HAULER_COST }),
+    );
+    host.querySelector<HTMLButtonElement>("[data-hire-hauler]")?.click();
+    expect(onBuy).toHaveBeenCalledOnce();
+    expect(onBuy).toHaveBeenCalledWith("hireHauler");
     view.destroy();
   });
 });
