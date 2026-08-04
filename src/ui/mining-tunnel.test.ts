@@ -581,6 +581,7 @@ describe("mountMiningTunnel", () => {
     const tunnel = mountMiningTunnel(host);
     tunnel.render({ ...baseSnap, advance: 3, crewSize: 1, heapLoads: 5 });
 
+    expect(host.querySelector(".pane-heap")).toBeNull();
     expect(oreElements(host).length).toBe(0);
     tunnel.destroy();
   });

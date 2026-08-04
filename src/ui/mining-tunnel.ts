@@ -206,11 +206,36 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
     return urls;
   }
 
-  tunnel.append(world, heap, cart, dwarf);
+  tunnel.append(world, cart, dwarf);
   host.replaceChildren(tunnel);
 
+  let heapMounted = false;
+
+  function mountHeap(): void {
+    if (!heapMounted) {
+      tunnel.insertBefore(heap, cart);
+      heapMounted = true;
+    }
+  }
+
+  function unmountHeap(): void {
+    if (heapMounted) {
+      while (oreElements.length > 0) {
+        const ore = oreElements.pop()!;
+        ore.remove();
+      }
+      heap.remove();
+      heapMounted = false;
+    }
+  }
+
   function reconcileHeap(loads: number, crewSize: number): void {
-    const targetCount = crewSize === 2 ? loads : 0;
+    if (crewSize !== 2) {
+      unmountHeap();
+      return;
+    }
+    mountHeap();
+    const targetCount = loads;
     while (oreElements.length > targetCount) {
       const ore = oreElements.pop()!;
       ore.remove();
