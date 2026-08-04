@@ -171,7 +171,7 @@ def _fixture_roots(tmp_path: Path) -> tuple[Path, Path]:
     return raw_root, runtime_root
 
 
-def test_parse_tile_reduction_accepts_8x8_and_rejects_invalid_cell_dims(tmp_path: Path) -> None:
+def test_parse_tile_source_accepts_8x8_and_rejects_invalid_cell_dims(tmp_path: Path) -> None:
     raw_path = tmp_path / "ore.png"
     _write_png(raw_path, Image.new("RGBA", (100, 100), (*MAGENTA, 255)))
     raw_sha = sha256_file(raw_path)

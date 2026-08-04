@@ -315,9 +315,9 @@ def recover_tile_sheet_cells(raw_path: Path, reduction: TileSheetReduction) -> l
     src, fg, bbox = key(raw_path)
     x0, y0, x1, y1 = 0, 0, src.width - 1, src.height - 1
     bbox = (x0, y0, x1, y1)
-    grid_w, grid_h = _expected_tile_grid_size(reduction)
-    pitch_x_val = src.width / grid_w
-    pitch_y_val = src.height / grid_h
+    logical_w, logical_h = _expected_tile_grid_size(reduction)
+    pitch_x_val = src.width / logical_w
+    pitch_y_val = src.height / logical_h
     max_pitch = max(pitch_x_val, pitch_y_val)
     if max_pitch > 0 and abs(pitch_x_val - pitch_y_val) / max_pitch > 0.02:
         raise TunnelArtError(

@@ -123,12 +123,12 @@ with nearest-neighbor.
 ### Tile sheet
 
 ```text
-TRUE chunky pixel art tile sheet ONLY. <N> tunnel tiles on a uniform 16×16 logical
+TRUE chunky pixel art tile sheet ONLY. <N> tunnel tiles on a uniform <CELL_W>×<CELL_H> logical
 grid.
 
 Canvas: wide sheet — magenta #FF00FF background and gutters.
 Cells: crisp flat colors, one color per logical pixel, no anti-aliasing.
 Grid: uniform <COLUMNS>-column layout, <GUTTER>-pixel magenta gutters.
 Items (row-major): <ITEM_ID_LIST>.
-Each item is exactly 16×16 logical pixels. No outer labels or metadata.
+Each item is exactly <CELL_W>×<CELL_H> logical pixels. No outer labels or metadata.
 ```
