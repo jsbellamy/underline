@@ -4,14 +4,13 @@ from __future__ import annotations
 
 import hashlib
 import json
-import shutil
 from io import BytesIO
 from pathlib import Path
 
 import pytest
 from PIL import Image
 
-from pipeline.cell_raster import cells_from_rgba, read_cells
+from pipeline.cell_raster import read_cells
 from pipeline.gate_evidence import sha256_bytes, sha256_file
 from pipeline.recovery import MAGENTA
 from pipeline.tunnel_art import (

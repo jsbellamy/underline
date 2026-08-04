@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
 import sys
 from dataclasses import dataclass
@@ -292,7 +293,7 @@ def build_background_png(raw_path: Path, source: TunnelSource) -> bytes:
             reason_code="crop_mismatch",
         )
     runtime = cropped.resize(BACKGROUND_RUNTIME_SIZE, Image.NEAREST)
-    buf = __import__("io").BytesIO()
+    buf = io.BytesIO()
     runtime.save(buf, format="PNG")
     return buf.getvalue()
 
@@ -357,8 +358,6 @@ def slice_tile_item(
 
 
 def _cells_to_png_bytes(cells: list[list[Cell]]) -> bytes:
-    import io
-
     tmp = io.BytesIO()
     frame_h = len(cells)
     frame_w = len(cells[0]) if cells else 0
@@ -407,16 +406,12 @@ def discover_tunnel_bundles(
     if not raw_root.is_dir():
         return tuple(), tuple()
 
-    sidecar_keys: set[tuple[str, str]] = set()
-    png_keys: set[tuple[str, str]] = set()
-
     for asset_class in ASSET_CLASSES:
         class_dir = raw_root / asset_class
         if not class_dir.is_dir():
             continue
         for sidecar_path in sorted(class_dir.glob("*.source.json")):
             key = sidecar_path.name[: -len(".source.json")]
-            sidecar_keys.add((asset_class, key))
             raw_path = class_dir / f"{key}.png"
             if not raw_path.is_file():
                 failures.append(
@@ -440,7 +435,6 @@ def discover_tunnel_bundles(
             )
         for raw_path in sorted(class_dir.glob("*.png")):
             key = raw_path.stem
-            png_keys.add((asset_class, key))
             sidecar_path = raw_path.with_suffix(".source.json")
             if not sidecar_path.is_file():
                 failures.append(
@@ -461,15 +455,6 @@ def discover_tunnel_bundles(
 
 def _bundle_key(ref: TunnelBundleRef) -> str:
     return f"{ref.asset_class}/{ref.key}"
-
-
-def _runtime_paths(source: TunnelSource, key: str) -> list[Path]:
-    if source.asset_class == "background":
-        return [Path(source.runtime_destination)]
-    if not isinstance(source.reduction, TileSheetReduction):
-        raise TunnelArtError("tile-sheet requires tile-sheet reduction", reason_code="invalid_sidecar")
-    base = Path(source.runtime_destination)
-    return [base / f"{item_id}.png" for item_id in source.reduction.items]
 
 
 def _build_bundle_outputs(source: TunnelSource, key: str) -> dict[Path, bytes]:
@@ -522,28 +507,30 @@ def build_tunnel_assets(repo_root: Path | None = None) -> TunnelArtReport:
             continue
 
         source_rel = ref.raw_path.relative_to(root).as_posix()
+        runtime_sha: str | None = None
         for rel_path, png_bytes in sorted(outputs.items(), key=lambda item: item[0].as_posix()):
             dest = root / rel_path
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(png_bytes)
+            runtime_sha = sha256_bytes(png_bytes)
             manifest_entries.append(
                 {
                     "relative_path": rel_path.as_posix(),
-                    "sha256": sha256_bytes(png_bytes),
+                    "sha256": runtime_sha,
                     "source_relative_path": source_rel,
                     "source_sha256": source.raw_sha256,
                 }
             )
-            rows.append(
-                BundleReportRow(
-                    key=bundle_key,
-                    asset_class=ref.asset_class,
-                    outcome="PASS",
-                    raw_sha256=source.raw_sha256,
-                    runtime_sha256=sha256_bytes(png_bytes),
-                    reason=None,
-                )
+        rows.append(
+            BundleReportRow(
+                key=bundle_key,
+                asset_class=ref.asset_class,
+                outcome="PASS",
+                raw_sha256=source.raw_sha256,
+                runtime_sha256=runtime_sha,
+                reason=None,
             )
+        )
 
     manifest_entries.sort(key=lambda entry: entry["relative_path"])
     manifest_doc = {
@@ -607,7 +594,7 @@ def verify_tunnel_assets(repo_root: Path | None = None) -> TunnelArtReport:
             actual_bytes = runtime_path.read_bytes()
             runtime_sha = sha256_bytes(actual_bytes)
             if source.asset_class == "background":
-                with Image.open(__import__("io").BytesIO(actual_bytes)) as image:
+                with Image.open(io.BytesIO(actual_bytes)) as image:
                     if image.size != BACKGROUND_RUNTIME_SIZE:
                         bundle_failed = True
                         fail_reason = (
@@ -648,13 +635,23 @@ def _exit_code(outcome: str) -> int:
     return 0 if outcome == "PASS" else 1
 
 
+def _format_report(report: TunnelArtReport) -> str:
+    lines = [f"outcome: {report.outcome}"]
+    for row in report.bundles:
+        detail = f"  {row.key} [{row.asset_class}] {row.outcome}"
+        if row.reason:
+            detail += f" — {row.reason}"
+        lines.append(detail)
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Tunnel art build and verify")
     subparsers = parser.add_subparsers(dest="command", required=True)
     build_parser = subparsers.add_parser("build", help="Build runtime tunnel art from archived raws")
-    build_parser.add_argument("--json", action="store_true", help="Emit machine-readable report")
+    build_parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON only")
     verify_parser = subparsers.add_parser("verify", help="Verify committed runtime tunnel art")
-    verify_parser.add_argument("--json", action="store_true", help="Emit machine-readable report")
+    verify_parser.add_argument("--json", action="store_true", help="Emit machine-readable JSON only")
     args = parser.parse_args(argv)
 
     if args.command == "build":
@@ -662,9 +659,10 @@ def main(argv: list[str] | None = None) -> int:
     else:
         report = verify_tunnel_assets()
 
-    if args.json:
-        json.dump(report.to_dict(), sys.stdout, indent=2)
-        sys.stdout.write("\n")
+    json.dump(report.to_dict(), sys.stdout, indent=2)
+    sys.stdout.write("\n")
+    if not args.json:
+        print(_format_report(report), file=sys.stderr)
     return _exit_code(report.outcome)
 
 
