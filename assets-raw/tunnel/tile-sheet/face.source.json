@@ -1,0 +1,26 @@
+{
+  "schema": "tunnel-art-source/0",
+  "provider": "cursor-agent",
+  "acquisition_tool": "cursor-agent/issue-420",
+  "prompt": "TRUE chunky pixel art static asset sheet only. Four 16x16 logical items in an exact 4-column by 1-row grid, rendered large as crisp square Cells, separated by two full magenta #FF00FF logical gutter Cells. Flat magenta #FF00FF keyed background outside the items. No labels, numbers, margins, anti-aliasing, blur, gradients, or dithering.\n\nSubject: a vertical seam of cyan crystal ore embedded in warm dark plum-brown mine rock, lit by neutral upper-left local light with warm shadow. Each tile must tile seamlessly with itself top to bottom - the rock and seam must continue across the top and bottom edges without a visible join.\n\nItem 1 \"intact\": an unbroken angular cyan crystal seam running vertically through the rock, bold shard geometry, no damage.\nItem 2 \"chipped\": the same seam and rock footprint with a few small displaced chips knocked off the crystal and two small pale scars in the rock. Clearly damaged but whole.\nItem 3 \"cracked\": a dark fracture line runs through the main crystal, splitting it, with displaced fragments and a small dark void. Not merely recolored.\nItem 4 \"crumbling\": the seam is failing - large dark voids, loose separated fragments, only remnants of the original shard geometry holding together.\n\nThe four states must be distinguishable by geometry and value pattern alone, even with hue removed. Cyan is confined to crystal Cells - do not paint a broad glow or recolor the surrounding rock.\n\nNo characters, no tools, no pickaxe, no text, no UI, no borders, no vignette.",
+  "raw_sha256": "af20ddb017ad60ec81c0f0aa983745ffd0f2e732176b73496517f6f39e6ae974",
+  "asset_class": "tile-sheet",
+  "runtime_destination": "src/assets/tunnel/tiles/face",
+  "source_resolution": [
+    1124,
+    260
+  ],
+  "reduction": {
+    "cell_w": 16,
+    "cell_h": 16,
+    "columns": 4,
+    "gutter": 2,
+    "items": [
+      "intact",
+      "chipped",
+      "cracked",
+      "crumbling"
+    ],
+    "resample": null
+  }
+}
