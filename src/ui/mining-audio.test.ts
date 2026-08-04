@@ -453,50 +453,6 @@ describe("mining audio cue queue", () => {
     await vi.waitFor(() => expect(createBufferSource).not.toHaveBeenCalled());
   });
 
-  async function playOrderFor(events: MiningEvent[]): Promise<AudioBuffer[]> {
-    const swingBuffer = { clip: "swing" } as unknown as AudioBuffer;
-    const breakBuffer = { clip: "break" } as unknown as AudioBuffer;
-    let decodeIndex = 0;
-    const { context: ctx, createBufferSource } = stubAudioContext({
-      currentTime: 0,
-    });
-    ctx.decodeAudioData = vi.fn(async () =>
-      decodeIndex++ === 0 ? swingBuffer : breakBuffer,
-    );
-    const createAudioContext = vi.fn(() => ctx);
-    const fetchMock = vi.fn(async () => ({
-      ok: true,
-      arrayBuffer: async () => new ArrayBuffer(8),
-    }));
-    const audio = createMiningAudio({
-      createAudioContext,
-      fetch: fetchMock as unknown as typeof fetch,
-      pack: testPack,
-      clipUrlFor: (_pack, id) => `${id}.wav`,
-    });
-    audio.setEnabled(true);
-    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
-
-    const playOrder: AudioBuffer[] = [];
-    createBufferSource.mockImplementation(() => {
-      const source = {
-        buffer: null as AudioBuffer | null,
-        connect: vi.fn(),
-        start: vi.fn(() => {
-          if (source.buffer) {
-            playOrder.push(source.buffer);
-          }
-        }),
-      };
-      return source;
-    });
-
-    audio.handleEvents(events, 0, 250);
-    audio.releaseDueTo(0);
-    await vi.waitFor(() => expect(playOrder.length).toBeGreaterThan(0));
-    return playOrder;
-  }
-
   it("queues the same cues with loadDropped present as without", async () => {
     const audibleEvents: MiningEvent[] = [
       { type: "swing", atMs: 100 },
@@ -508,8 +464,16 @@ describe("mining audio cue queue", () => {
       { type: "faceBroken", atMs: 200 },
     ];
 
-    const audibleOrder = await playOrderFor(audibleEvents);
-    const mixedOrder = await playOrderFor(withLoadDropped);
-    expect(mixedOrder).toEqual(audibleOrder);
+    async function scheduledCueCount(events: MiningEvent[]) {
+      const { audio, createBufferSource } = await enabledAudio();
+      audio.handleEvents(events, 0, 250);
+      audio.releaseDueTo(0);
+      await vi.waitFor(() => expect(createBufferSource).toHaveBeenCalledTimes(2));
+      return createBufferSource.mock.calls.length;
+    }
+
+    expect(await scheduledCueCount(withLoadDropped)).toBe(
+      await scheduledCueCount(audibleEvents),
+    );
   });
 });

@@ -303,7 +303,7 @@ describe("mining engine advanceWithEvents", () => {
     ]);
   });
 
-  it("emits one loadDropped per Ore drop for a two-Dwarf Crew", () => {
+  it("emits loadDropped at the first Ore drop with a two-Dwarf Crew", () => {
     const dropDamage = dropDamageFor(0);
     const digRate = digRateFor(0);
     const firstDropAtMs = (dropDamage / digRate) * 1000;
