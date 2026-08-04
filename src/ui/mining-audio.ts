@@ -1,10 +1,28 @@
 /** Domain-event → clip playback for mining Swing and Face break. */
 
+import type { MiningEvent } from "../core/mining-events";
 import {
   type AudioClipId,
   type AudioPack,
 } from "../data/audio-pack";
 import { AUDIO_PACK, audioClipUrlFor } from "./audio-clips";
+import { PUMP_INTERVAL_MS } from "./pump";
+
+const MAX_CUES_PER_RELEASE = 4;
+
+interface QueuedCue {
+  atMs: number;
+  clip: AudioClipId;
+}
+
+function clipForEvent(type: MiningEvent["type"]): AudioClipId {
+  switch (type) {
+    case "swing":
+      return "swing";
+    case "faceBroken":
+      return "break";
+  }
+}
 
 export interface MiningAudioDeps {
   createAudioContext: () => AudioContext;
@@ -16,6 +34,10 @@ export interface MiningAudioDeps {
 export interface MiningAudio {
   swing(count: number): void;
   faceBroken(count: number): void;
+  /** Queues cues from a tick batch, keyed by each event's atMs. Does not play them. */
+  handleEvents(events: readonly MiningEvent[], baseMs: number): void;
+  /** Plays every queued cue with atMs <= nowMs, in atMs order, then drops them. */
+  releaseDueTo(nowMs: number): void;
   setEnabled(enabled: boolean): void;
   isEnabled(): boolean;
   destroy(): void;
@@ -30,6 +52,7 @@ export function createMiningAudio(deps: MiningAudioDeps): MiningAudio {
   let context: AudioContext | null = null;
   const buffers = new Map<AudioClipId, AudioBuffer>();
   let loadPromise: Promise<void> | null = null;
+  const cueQueue: QueuedCue[] = [];
 
   async function ensureLoaded(): Promise<void> {
     if (loadPromise) {
@@ -72,6 +95,45 @@ export function createMiningAudio(deps: MiningAudioDeps): MiningAudio {
       .catch(() => {});
   }
 
+  function handleEvents(events: readonly MiningEvent[], baseMs: number): void {
+    if (!enabled) {
+      return;
+    }
+    for (const event of events) {
+      cueQueue.push({
+        atMs: baseMs + event.atMs,
+        clip: clipForEvent(event.type),
+      });
+    }
+  }
+
+  function releaseDueTo(nowMs: number): void {
+    const staleBefore = nowMs - PUMP_INTERVAL_MS;
+    for (let i = cueQueue.length - 1; i >= 0; i--) {
+      if (cueQueue[i]!.atMs < staleBefore) {
+        cueQueue.splice(i, 1);
+      }
+    }
+
+    const due: QueuedCue[] = [];
+    for (let i = cueQueue.length - 1; i >= 0; i--) {
+      const cue = cueQueue[i]!;
+      if (cue.atMs <= nowMs) {
+        due.push(cue);
+        cueQueue.splice(i, 1);
+      }
+    }
+
+    due.sort((a, b) => a.atMs - b.atMs);
+    const toPlay = due.slice(0, MAX_CUES_PER_RELEASE);
+
+    for (const cue of toPlay) {
+      if (enabled) {
+        playClip(cue.clip);
+      }
+    }
+  }
+
   return {
     isEnabled() {
       return enabled;
@@ -94,8 +156,11 @@ export function createMiningAudio(deps: MiningAudioDeps): MiningAudio {
       }
       playClip("break");
     },
+    handleEvents,
+    releaseDueTo,
     destroy() {
       enabled = false;
+      cueQueue.length = 0;
       void context?.close();
       context = null;
       buffers.clear();
