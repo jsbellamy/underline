@@ -55,16 +55,18 @@ Run **two clocks**:
 `render` passes the interpolated presentation value.
 
 **Swing phase from the engine (Underline divergence from Nightglass ADR-0003):**
-while `animation === "swing"`, clip phase is the fractional part of
-`faceSwingProgress`, interpolated across the tick:
+while `animation === "swing"`, clip phase is the fractional part of completed
+Swing count, interpolated across the tick. The engine stores Face damage in
+`faceSwingProgress`; the presenter converts to swings via `pickDamage`:
 
 ```
-progress = faceSwingProgressAtLastTick + digRate * (nowMs - lastSimNowMs) / 1000
-swingFraction = clamp(progress, 0) - floor(clamp(progress, 0))
+swingsAtTick = faceSwingProgressAtLastTick / pickDamage
+swings = swingsAtTick + digRate * (nowMs - lastSimNowMs) / 1000
+swingFraction = clamp(swings, 0) - floor(clamp(swings, 0))
 ```
 
 With the lagged clock, `nowMs` can be less than `lastSimNowMs`; clamp
-`progress` at 0 before the fractional part so a negative value does not wrap
+`swings` at 0 before the fractional part so a negative value does not wrap
 to a late frame.
 
 Interpolation is suppressed while `haulRemainingMs > 0`. Walk and idle clips use
@@ -73,7 +75,7 @@ longer calls `anim.advanceMs`.
 
 **Swing impact alignment (#377):** `frameIndexForSwingFraction` phase-shifts the
 clip so `SWING_IMPACT_FRAME` (pick contact) is displayed when `swingFraction`
-is 0 — i.e. when `faceSwingProgress` crosses an integer. Walk and idle are
+is 0 — i.e. at each Dig-Rate Swing boundary. Walk and idle are
 unchanged.
 
 **Audio release (#378, Nightglass ADR-0003 departure):** `advanceMs` passes
@@ -108,4 +110,5 @@ lagged presentation clock, every cue queued on a tick is known up to
 ## Source
 
 Ported from Nightglass ADR-0003 (interpolated presentation clock). Underline
-derives swing phase from `faceSwingProgress` rather than clip elapsed time.
+derives swing phase from Swing count (`faceSwingProgress / pickDamage`) rather
+than clip elapsed time.

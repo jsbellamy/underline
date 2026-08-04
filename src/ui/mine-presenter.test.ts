@@ -13,6 +13,7 @@ import {
   persistSettings,
 } from "../core/settings-save";
 import type { MiningEvent } from "../core/mining-events";
+import { SWING_IMPACT_FRAME } from "../data/dwarf-animation-timing";
 import { createMinePresenter, FACE_SLIDE_MS } from "./mine-presenter";
 import type { MiningAudio } from "./mining-audio";
 import { ORE_FALL_MS } from "./pane-layout";
@@ -169,6 +170,109 @@ describe("mine presenter", () => {
     }
     expect(seen.size).toBe(9);
     expect([...seen].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+  });
+
+  it("keeps impact frame cadence when Pick Damage exceeds 1", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+      snapshot: { ...initialSnapshot(), pickDamageUpgradeCount: 1 },
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+    presenter.advanceMs(1000);
+
+    const sessionBase = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+    });
+    const presenterBase = createMinePresenter(sessionBase);
+    presenterBase.start();
+    presenterBase.advanceMs(1000);
+
+    const upgradedAtBoundary = presenter.snapshot(presenter.simNowMs);
+    const baseAtBoundary = presenterBase.snapshot(presenterBase.simNowMs);
+
+    expect(upgradedAtBoundary.swingFraction).toBeCloseTo(0, 5);
+    expect(upgradedAtBoundary.frameIndex).toBe(baseAtBoundary.frameIndex);
+    expect(upgradedAtBoundary.swingFraction).toBeCloseTo(
+      baseAtBoundary.swingFraction,
+      5,
+    );
+  });
+
+  function advanceToSwingBoundaries(
+    presenter: ReturnType<typeof createMinePresenter>,
+    tickDeltas: number[],
+    boundariesMs: number[],
+  ): void {
+    let tick = 0;
+    for (const boundaryMs of boundariesMs) {
+      while (presenter.simNowMs < boundaryMs) {
+        const remaining = boundaryMs - presenter.simNowMs;
+        const delta = tickDeltas[tick % tickDeltas.length]!;
+        presenter.advanceMs(Math.min(delta, remaining));
+        tick += 1;
+      }
+      const snap = presenter.snapshot(presenter.simNowMs);
+      expect(snap.swingFraction).toBeCloseTo(0, 5);
+      expect(snap.frameIndex).toBe(SWING_IMPACT_FRAME);
+    }
+  }
+
+  it("samples SWING_IMPACT_FRAME at Swing boundaries under drift with Pick Damage > 1", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+      snapshot: { ...initialSnapshot(), pickDamageUpgradeCount: 1 },
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+    const drifts = [2, 3, 4, 5, 6, 7, 8];
+    const tickDeltas = Array.from({ length: 40 }, (_, i) => 250 + drifts[i % drifts.length]!);
+    advanceToSwingBoundaries(presenter, tickDeltas, [1000, 2000, 3000, 4000, 5000]);
+  });
+
+  it("samples SWING_IMPACT_FRAME at Swing boundaries under jank with Pick Damage > 1", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+      snapshot: { ...initialSnapshot(), pickDamageUpgradeCount: 1 },
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+    const tickDeltas = Array.from({ length: 40 }, (_, i) =>
+      (i + 1) % 17 === 0 ? 400 : 250,
+    );
+    advanceToSwingBoundaries(presenter, tickDeltas, [1000, 2000, 3000, 4000, 5000]);
+  });
+
+  it("is chunk-neutral for queued swing cue times when Pick Damage exceeds 1", () => {
+    const upgraded = { ...initialSnapshot(), pickDamageUpgradeCount: 1 };
+    const sessionA = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+      snapshot: upgraded,
+    });
+    const audioA = spyMiningAudio();
+    const presenterA = createMinePresenter(sessionA, { audio: audioA });
+    presenterA.start();
+    for (let i = 0; i < 100; i += 1) {
+      presenterA.advanceMs(10);
+    }
+
+    const sessionB = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+      snapshot: upgraded,
+    });
+    const audioB = spyMiningAudio();
+    const presenterB = createMinePresenter(sessionB, { audio: audioB });
+    presenterB.start();
+    presenterB.advanceMs(1000);
+
+    expect(swingCueTimes(audioA)[0]).toBeCloseTo(1000, 5);
+    expect(swingCueTimes(audioB)[0]).toBeCloseTo(1000, 5);
   });
 
   it("freezes swing fraction during a Haul", () => {

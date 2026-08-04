@@ -32,6 +32,7 @@ const baseSnap: TunnelSnapshot = {
   advance: 0,
   faceSwingProgress: 0,
   swingFraction: 0,
+  pickDamage: 1,
   digRate: 1,
   haulPhase: "none",
   haulProgress: 0,

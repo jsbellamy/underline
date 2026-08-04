@@ -196,16 +196,18 @@ function collectMiningEvents(
   hardness: number,
   segmentStartAtMs: number,
   damagePerSec: number,
+  pickDamage: number,
   rateScale: number,
 ): void {
   const endProgress = Math.min(progress0 + damageDelta, hardness);
   const breaking = endProgress >= hardness - 1e-9;
   const maxSwing = breaking
-    ? hardness - 1
-    : Math.floor(endProgress + 1e-9);
-  const minSwing = Math.floor(progress0 + 1e-9) + 1;
+    ? Math.floor((hardness - 1e-9) / pickDamage)
+    : Math.floor(endProgress / pickDamage + 1e-9);
+  const minSwing = Math.floor(progress0 / pickDamage + 1e-9) + 1;
   for (let swing = minSwing; swing <= maxSwing; swing += 1) {
-    const gameMsToSwing = ((swing - progress0) / damagePerSec) * 1000;
+    const progressAtSwing = swing * pickDamage;
+    const gameMsToSwing = ((progressAtSwing - progress0) / damagePerSec) * 1000;
     events.push({
       type: "swing",
       atMs: segmentStartAtMs + gameMsToSwing / rateScale,
@@ -263,7 +265,8 @@ export function advanceWithEvents(
   } = snapshot;
 
   const digRate = digRateFor(digRateUpgradeCount);
-  const damagePerSec = digRate * pickDamageFor(pickDamageUpgradeCount);
+  const pickDamage = pickDamageFor(pickDamageUpgradeCount);
+  const damagePerSec = digRate * pickDamage;
   const throughput = smelterThroughputFor(smelterUpgradeCount);
   const capacity = carryCapacityFor(carryCapacityUpgradeCount);
   const heapCapacity = heapCapacityFor(carryCapacityUpgradeCount);
@@ -395,6 +398,7 @@ export function advanceWithEvents(
           miningHardness,
           windowRealMs,
           damagePerSec,
+          pickDamage,
           rateScale,
         );
       } else {
@@ -406,6 +410,7 @@ export function advanceWithEvents(
           miningHardness,
           windowRealMs,
           damagePerSec,
+          pickDamage,
           rateScale,
         );
         faceSwingProgress += partialDamage;

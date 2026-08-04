@@ -409,6 +409,42 @@ describe("mining engine advanceWithEvents", () => {
     ]);
   });
 
+  it("emits one swing per Dig Rate interval when Pick Damage exceeds 1", () => {
+    const { events } = advanceWithEvents(
+      snap({ pickDamageUpgradeCount: 1 }),
+      2_500,
+    );
+    expect(events.filter((e) => e.type === "swing")).toEqual<MiningEvent[]>([
+      { type: "swing", atMs: 1000 },
+      { type: "swing", atMs: 2000 },
+    ]);
+  });
+
+  it("keeps Swing cadence but increases damage and earlier Face break after Pick Damage upgrade", () => {
+    const dtMs = 5_000;
+    const base = advanceWithEvents(snap({ pickDamageUpgradeCount: 0 }), dtMs);
+    const upgraded = advanceWithEvents(snap({ pickDamageUpgradeCount: 1 }), dtMs);
+    const baseSwings = base.events.filter((e) => e.type === "swing");
+    const upgradedSwings = upgraded.events.filter((e) => e.type === "swing");
+    expect(upgradedSwings.map((e) => e.atMs)).toEqual(baseSwings.map((e) => e.atMs));
+    expect(upgraded.snapshot.faceSwingProgress).toBeGreaterThan(
+      base.snapshot.faceSwingProgress,
+    );
+    const almostBroken = snap({ faceSwingProgress: 990 });
+    const longBase = advanceWithEvents(almostBroken, 15_000);
+    const longUpgraded = advanceWithEvents(
+      snap({ faceSwingProgress: 990, pickDamageUpgradeCount: 1 }),
+      15_000,
+    );
+    const baseBreakMs = longBase.events.find((e) => e.type === "faceBroken")?.atMs;
+    const upgradedBreakMs = longUpgraded.events.find(
+      (e) => e.type === "faceBroken",
+    )?.atMs;
+    expect(baseBreakMs).toBeDefined();
+    expect(upgradedBreakMs).toBeDefined();
+    expect(upgradedBreakMs!).toBeLessThan(baseBreakMs!);
+  });
+
   it("emits faceBroken at the hardness crossing offset", () => {
     const { events } = advanceWithEvents(snap({ faceSwingProgress: 999 }), 2_000);
     expect(events.filter((e) => e.type === "faceBroken")).toEqual([
@@ -447,6 +483,21 @@ describe("mining engine advanceWithEvents", () => {
     const once = advanceWithEvents(snap(), 2_500);
     let manyEvents: MiningEvent[] = [];
     let cursor = snap();
+    for (let i = 0; i < 10; i += 1) {
+      const step = advanceWithEvents(cursor, 250);
+      manyEvents = manyEvents.concat(
+        step.events.map((e) => ({ ...e, atMs: e.atMs + i * 250 })),
+      );
+      cursor = step.snapshot;
+    }
+    expect(manyEvents).toEqual(once.events);
+  });
+
+  it("is chunk-neutral for swing events over 2500 ms when Pick Damage exceeds 1", () => {
+    const upgraded = snap({ pickDamageUpgradeCount: 1 });
+    const once = advanceWithEvents(upgraded, 2_500);
+    let manyEvents: MiningEvent[] = [];
+    let cursor = upgraded;
     for (let i = 0; i < 10; i += 1) {
       const step = advanceWithEvents(cursor, 250);
       manyEvents = manyEvents.concat(

@@ -11,6 +11,7 @@ import {
   digRateFor,
   HAUL_ROUND_TRIP_MS,
   heapCapacityFor,
+  pickDamageFor,
   pickupMsPerLoad,
 } from "../core/mining-engine";
 import type { MiningSession } from "../core/mining-session";
@@ -47,6 +48,8 @@ export interface TunnelSnapshot {
   faceSwingProgress: number;
   /** Fraction of the in-progress Swing (`0…1`) while swinging. */
   swingFraction: number;
+  /** Pick Damage per Swing for the current Crew. */
+  pickDamage: number;
   digRate: number;
   haulPhase: TunnelHaulPhase;
   /** `0` at Haul start, rising to `1` at round-trip end; `0` when not hauling. */
@@ -279,12 +282,14 @@ export function createMinePresenter(
   }
 
   function swingFractionAt(nowMs: number, hauling: boolean): number {
+    const pickDamage = pickDamageFor(session.snapshot.pickDamageUpgradeCount);
+    const swingsAtTick = faceSwingProgressAtTick / pickDamage;
     if (hauling) {
-      return faceSwingProgressAtTick - Math.floor(faceSwingProgressAtTick);
+      return swingsAtTick - Math.floor(swingsAtTick);
     }
-    const progress =
-      faceSwingProgressAtTick + miner.digRate * (nowMs - simNowMs) / 1000;
-    const clamped = Math.max(0, progress);
+    const swings =
+      swingsAtTick + miner.digRate * (nowMs - simNowMs) / 1000;
+    const clamped = Math.max(0, swings);
     return clamped - Math.floor(clamped);
   }
 
@@ -315,7 +320,8 @@ export function createMinePresenter(
   function snapshot(nowMs: number = simNowMs): TunnelSnapshot {
     cleanFalls(nowMs);
     const snap = session.snapshot;
-    const whole = Math.floor(snap.faceSwingProgress);
+    const pickDamage = pickDamageFor(snap.pickDamageUpgradeCount);
+    const whole = Math.floor(snap.faceSwingProgress / pickDamage);
     const remaining = snap.haulRemainingMs;
     const twoDwarf = isTwoDwarf();
     const phase = twoDwarf ? null : haulAnimPhase(remaining);
@@ -340,6 +346,7 @@ export function createMinePresenter(
       advance: snap.advance,
       faceSwingProgress: whole,
       swingFraction,
+      pickDamage,
       digRate: miner.digRate,
       haulPhase: phase ?? "none",
       haulProgress: twoDwarf ? 0 : haulProgress(remaining),
