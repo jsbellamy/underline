@@ -62,18 +62,6 @@ function spyMiningAudio(): MiningAudio & {
   };
 }
 
-function absoluteCueTimes(
-  audio: ReturnType<typeof spyMiningAudio>,
-): number[] {
-  const times: number[] = [];
-  for (const batch of audio.queuedBatches) {
-    for (const event of batch.events) {
-      times.push(batch.baseMs + event.atMs);
-    }
-  }
-  return times;
-}
-
 function swingCueTimes(audio: ReturnType<typeof spyMiningAudio>): number[] {
   const times: number[] = [];
   for (const batch of audio.queuedBatches) {
