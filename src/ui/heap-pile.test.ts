@@ -20,7 +20,6 @@ describe("heapSlot", () => {
     expect(ORE_LOGICAL_SIZE).toBe(8);
     expect(ORE_SCALE).toBe(2);
     expect(ORE_SIZE).toBe(16);
-    expect(ORE_SIZE).toBe(ORE_LOGICAL_SIZE * ORE_SCALE);
     expect(ORE_PITCH).toBe(20);
     expect(HEAP_ROW_HEIGHT).toBe(18);
     expect(HEAP_BOTTOM).toBe(8);

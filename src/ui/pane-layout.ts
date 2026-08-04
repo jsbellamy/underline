@@ -28,7 +28,7 @@ export const FACE_X = 432;
 
 /** Logical Ore tile size in source pixels (#433). */
 export const ORE_LOGICAL_SIZE = 8;
-/** Integer nearest-neighbour draw scale for Heap Ore chunks. */
+/** Integer nearest-neighbor draw scale for Heap Ore chunks. */
 export const ORE_SCALE = 2;
 /** Ore square in Pane pixels. */
 export const ORE_SIZE = ORE_LOGICAL_SIZE * ORE_SCALE;
