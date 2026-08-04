@@ -45,17 +45,18 @@ runtime band. The sidecar `reduction` records `crop_box`, `crop_size`,
 | **Asset class** | `tile-sheet` |
 | **Raw** | `assets-raw/tunnel/tile-sheet/<key>.png` — magenta-keyed logical grid |
 | **Sidecar** | `assets-raw/tunnel/tile-sheet/<key>.source.json`, schema `tunnel-art-source/0` |
-| **Runtime destination** | `src/assets/tunnel/tiles/<key>/<item>.png` — each exactly **16×16** |
+| **Runtime destination** | `src/assets/tunnel/tiles/<key>/<item>.png` — each exactly the sidecar-declared `cell_w×cell_h` |
 | **Runtime shape** | Per-item RGBA, binary alpha, one logical Cell per pixel |
 | **Visual vocabulary** | Crisp pixel tiles; every logical Cell is identity |
-| **Geometry** | Grid recovery at pitch 16 using `pipeline/recovery.py`; **no resize** |
+| **Geometry** | Grid recovery at pitch derived from raw resolution over the expected logical grid (`source_width/grid_w`, `source_height/grid_h`) using `pipeline/recovery.py`; **no resize** |
 | **Review context** | Tunnel floor/wall assembly tiles |
 | **Validator** | `npm run assets:verify` |
 
 **Exemption — may never be resized.** Every logical Cell is identity. A sheet
-whose grid cannot be recovered at exactly 16×16 is regenerated, never rescaled
-into shape. The sidecar `reduction` records `cell_w: 16`, `cell_h: 16`,
-`columns`, `gutter`, `items` (ids in row-major order), and `resample: null`.
+whose grid cannot be recovered at the sidecar-declared Cell size and derived pitch
+is regenerated, never rescaled into shape. The sidecar `reduction` records
+`cell_w`, `cell_h`, `columns`, `gutter`, `items` (ids in row-major order), and
+`resample: null`.
 
 ## Archived Raw Bundle schema
 

@@ -24,8 +24,6 @@ REPORT_SCHEMA = "tunnel-art-report/0"
 
 ASSET_CLASSES = ("background", "tile-sheet")
 BACKGROUND_RUNTIME_SIZE = (480, 112)
-TILE_CELL_SIZE = (16, 16)
-TILE_PITCH_PX = 16
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
 _RAW_ROOT_REL = Path("assets-raw") / "tunnel"
@@ -172,9 +170,9 @@ def _parse_tile_reduction(reduction: object) -> TileSheetReduction:
     gutter = reduction.get("gutter")
     items = reduction.get("items")
     resample = reduction.get("resample")
-    if not isinstance(cell_w, int) or isinstance(cell_w, bool) or cell_w != TILE_CELL_SIZE[0]:
+    if not isinstance(cell_w, int) or isinstance(cell_w, bool) or cell_w <= 0:
         raise TunnelArtError("missing or invalid reduction.cell_w", reason_code="invalid_sidecar")
-    if not isinstance(cell_h, int) or isinstance(cell_h, bool) or cell_h != TILE_CELL_SIZE[1]:
+    if not isinstance(cell_h, int) or isinstance(cell_h, bool) or cell_h <= 0:
         raise TunnelArtError("missing or invalid reduction.cell_h", reason_code="invalid_sidecar")
     if not isinstance(columns, int) or isinstance(columns, bool) or columns <= 0:
         raise TunnelArtError("missing or invalid reduction.columns", reason_code="invalid_sidecar")
@@ -317,12 +315,21 @@ def recover_tile_sheet_cells(raw_path: Path, reduction: TileSheetReduction) -> l
     src, fg, bbox = key(raw_path)
     x0, y0, x1, y1 = 0, 0, src.width - 1, src.height - 1
     bbox = (x0, y0, x1, y1)
-    pitch_val = float(TILE_PITCH_PX)
-    band_lo, band_hi = pitch_val * 0.98, pitch_val * 1.02
-    pitch_y_fit = detect_pitch(src, fg, "y", band_lo, band_hi)
-    pitch_x_fit = detect_pitch(src, fg, "x", band_lo, band_hi)
-    pitch_y = {"pitch": pitch_val, "phase": pitch_y_fit["phase"], "score": pitch_y_fit["score"]}
-    pitch_x = {"pitch": pitch_val, "phase": pitch_x_fit["phase"], "score": pitch_x_fit["score"]}
+    grid_w, grid_h = _expected_tile_grid_size(reduction)
+    pitch_x_val = src.width / grid_w
+    pitch_y_val = src.height / grid_h
+    max_pitch = max(pitch_x_val, pitch_y_val)
+    if max_pitch > 0 and abs(pitch_x_val - pitch_y_val) / max_pitch > 0.02:
+        raise TunnelArtError(
+            f"tile pitch mismatch for {raw_path.name}: pitch_x={pitch_x_val:.3f} pitch_y={pitch_y_val:.3f}",
+            reason_code="geometry_mismatch",
+        )
+    band_lo_x, band_hi_x = pitch_x_val * 0.98, pitch_x_val * 1.02
+    band_lo_y, band_hi_y = pitch_y_val * 0.98, pitch_y_val * 1.02
+    pitch_y_fit = detect_pitch(src, fg, "y", band_lo_y, band_hi_y)
+    pitch_x_fit = detect_pitch(src, fg, "x", band_lo_x, band_hi_x)
+    pitch_y = {"pitch": pitch_y_val, "phase": pitch_y_fit["phase"], "score": pitch_y_fit["score"]}
+    pitch_x = {"pitch": pitch_x_val, "phase": pitch_x_fit["phase"], "score": pitch_x_fit["score"]}
     if pitch_y["score"] < MIN_GRID_SCORE or pitch_x["score"] < MIN_GRID_SCORE:
         raise TunnelArtError(
             f"grid recovery failed for {raw_path.name}: "
@@ -603,8 +610,17 @@ def verify_tunnel_assets(repo_root: Path | None = None) -> TunnelArtReport:
                         )
                         break
             else:
+                reduction = source.reduction
+                if not isinstance(reduction, TileSheetReduction):
+                    bundle_failed = True
+                    fail_reason = "tile-sheet verify requires tile-sheet reduction"
+                    break
                 try:
-                    read_cells(runtime_path, size=TILE_CELL_SIZE, label="tile")
+                    read_cells(
+                        runtime_path,
+                        size=(reduction.cell_w, reduction.cell_h),
+                        label="tile",
+                    )
                 except RasterError as exc:
                     bundle_failed = True
                     fail_reason = str(exc)
