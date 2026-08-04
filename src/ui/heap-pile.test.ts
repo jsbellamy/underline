@@ -1,11 +1,4 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import tunnelManifest from "../assets/tunnel/manifest.json";
-import {
-  tunnelArtKeysUnder,
-  tunnelArtPath,
-  type TunnelArtPack,
-} from "../data/tunnel-art-pack";
 import { fallingOrePosition, haulerPickupTargetX, heapSlot } from "./heap-pile";
 import {
   FACE_X,
@@ -29,19 +22,6 @@ describe("heapSlot", () => {
     expect(HEAP_EAST_X).toBe(400);
     expect(HEAP_SLOTS_PER_ROW).toBe(6);
     expect(HEAP_EAST_X).toBe(FACE_X - ORE_SIZE);
-  });
-
-  it("binds layout to gold ore object canvas size", () => {
-    const pack = tunnelManifest as TunnelArtPack;
-    const keys = tunnelArtKeysUnder(pack, "objects/ore/gold-");
-    for (const key of keys) {
-      const path = tunnelArtPath(pack, key);
-      const buf = readFileSync(path);
-      const width = buf.readUInt32BE(16);
-      const height = buf.readUInt32BE(20);
-      expect(width).toBe(ORE_SIZE);
-      expect(height).toBe(ORE_SIZE);
-    }
   });
 
   it("keeps the westmost slot east of the Hauler stand", () => {

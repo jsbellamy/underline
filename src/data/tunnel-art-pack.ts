@@ -35,6 +35,23 @@ export function tunnelArtPath(pack: TunnelArtPack, key: string): string {
   throw new Error(`Unknown tunnel art key: ${key}`);
 }
 
+export function tunnelArtContentBottomGap(
+  pack: TunnelArtPack,
+  key: string,
+  canvasSize: number,
+): number {
+  const path = tunnelArtPath(pack, key);
+  const entry = pack.entries.find((e) => e.relative_path === path);
+  if (!entry) {
+    throw new Error(`Unknown tunnel art key: ${key}`);
+  }
+  if (!entry.content_box) {
+    throw new Error(`Tunnel art entry missing content_box: ${key}`);
+  }
+  const [, , , y1] = entry.content_box;
+  return canvasSize - 1 - y1;
+}
+
 export function tunnelArtKeysUnder(pack: TunnelArtPack, prefix: string): string[] {
   const keys: string[] = [];
   for (const entry of pack.entries) {

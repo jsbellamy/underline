@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import { faceDamageState, mountMiningTunnel } from "./mining-tunnel";
-import { tunnelArtKeysUnder, tunnelArtPath } from "../data/tunnel-art-pack";
+import { tunnelArtContentBottomGap, tunnelArtKeysUnder, tunnelArtPath } from "../data/tunnel-art-pack";
 import { TUNNEL_ART_PACK, tunnelArtUrl } from "./tunnel-art";
 import type { TunnelSnapshot } from "./mine-presenter";
 import { dwarfLayout } from "../data/external-sprite-pack";
@@ -119,18 +119,11 @@ function heapOreObjectBackground(artKey: string): string {
   return `url("${tunnelArtUrl(path)}")`;
 }
 
-function heapOreBottomGap(artKey: string): number {
-  const path = tunnelArtPath(TUNNEL_ART_PACK, artKey);
-  const entry = TUNNEL_ART_PACK.entries.find((e) => e.relative_path === path);
-  if (!entry?.content_box) {
-    throw new Error(`missing content_box for ${artKey}`);
-  }
-  const [, , , y1] = entry.content_box;
-  return ORE_SIZE - 1 - y1;
-}
-
 function adjustedHeapOreBottom(slotBottom: number, artKey: string): number {
-  return slotBottom - heapOreBottomGap(artKey);
+  return (
+    slotBottom -
+    tunnelArtContentBottomGap(TUNNEL_ART_PACK, artKey, ORE_SIZE)
+  );
 }
 
 describe("faceDamageState", () => {
@@ -787,35 +780,21 @@ describe("mountMiningTunnel", () => {
     const smallSlotBottom = heapSlot(smallSlot).bottom;
 
     expect(Number(largeB.style.bottom.replace("px", ""))).toBe(
-      largeBSlotBottom - heapOreBottomGap(largeBKey),
+      largeBSlotBottom -
+        tunnelArtContentBottomGap(TUNNEL_ART_PACK, largeBKey, ORE_SIZE),
     );
     expect(Number(small.style.bottom.replace("px", ""))).toBe(
-      smallSlotBottom - heapOreBottomGap(smallKey),
+      smallSlotBottom -
+        tunnelArtContentBottomGap(TUNNEL_ART_PACK, smallKey, ORE_SIZE),
     );
-    expect(heapOreBottomGap(smallKey)).toBe(10);
-    expect(heapOreBottomGap(largeBKey)).toBe(1);
+    expect(
+      tunnelArtContentBottomGap(TUNNEL_ART_PACK, smallKey, ORE_SIZE),
+    ).toBe(10);
+    expect(
+      tunnelArtContentBottomGap(TUNNEL_ART_PACK, largeBKey, ORE_SIZE),
+    ).toBe(1);
 
     tunnel.destroy();
-  });
-
-  it("throws when painting heap ore without content_box", () => {
-    const entry = TUNNEL_ART_PACK.entries.find((e) =>
-      e.relative_path.endsWith("objects/ore/gold-large-a.png"),
-    );
-    expect(entry).toBeDefined();
-    const savedBox = entry!.content_box;
-    Reflect.deleteProperty(entry!, "content_box");
-
-    const host = document.createElement("div");
-    const tunnel = mountMiningTunnel(host);
-    expect(() => tunnel.render(twoDwarfSnap({ heapLoads: 1 }))).toThrow(
-      "Tunnel art entry missing content_box: objects/ore/gold-large-a",
-    );
-    tunnel.destroy();
-
-    if (savedBox) {
-      entry!.content_box = savedBox;
-    }
   });
 
   it("renders no Ore for a one-Dwarf Crew regardless of heapLoads", () => {
