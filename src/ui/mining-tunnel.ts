@@ -100,12 +100,16 @@ function dwarfLeft(snap: TunnelSnapshot): number {
   return Math.round(CART_MARK_X + ((t - 0.5) / 0.5) * span);
 }
 
-function visibleHeapLoads(snap: TunnelSnapshot): number {
-  if (
+function isPickupReturnLeg(snap: TunnelSnapshot): boolean {
+  return (
     snap.crewSize === 2 &&
     snap.hauler?.phase === "pickup" &&
     snap.hauler.pickupProgress > 0.5
-  ) {
+  );
+}
+
+function visibleHeapLoads(snap: TunnelSnapshot): number {
+  if (isPickupReturnLeg(snap)) {
     return snap.heapLoads - 1;
   }
   return snap.heapLoads;
@@ -283,11 +287,7 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
   let lastSnap: TunnelSnapshot | null = null;
 
   function reconcileCarriedOre(snap: TunnelSnapshot): void {
-    const show =
-      snap.crewSize === 2 &&
-      snap.hauler?.phase === "pickup" &&
-      snap.hauler.pickupProgress > 0.5 &&
-      snap.heapLoads >= 1;
+    const show = isPickupReturnLeg(snap) && snap.heapLoads >= 1;
 
     if (!show) {
       if (carriedOre) {
