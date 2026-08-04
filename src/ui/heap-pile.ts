@@ -6,9 +6,26 @@ import {
   HEAP_EAST_X,
   HEAP_ROW_HEIGHT,
   HEAP_SLOTS_PER_ROW,
+  MINING_MARK_X,
   ORE_PITCH,
+  ORE_SIZE,
   ORE_SPAWN_BOTTOM,
 } from "./pane-layout";
+
+export type FallingOreDestination = "bag" | "heap";
+
+function bagOrePosition(progress: number): { left: number; bottom: number } {
+  const dwarfW = DWARF_FRAME_W * DWARF_SCALE;
+  const settledLeft = MINING_MARK_X + Math.round((dwarfW - ORE_SIZE) / 2);
+  const settledBottom = HEAP_BOTTOM;
+  return {
+    left: Math.round(HEAP_EAST_X + (settledLeft - HEAP_EAST_X) * progress),
+    bottom: Math.round(
+      ORE_SPAWN_BOTTOM +
+        (settledBottom - ORE_SPAWN_BOTTOM) * progress * progress,
+    ),
+  };
+}
 
 export function heapSlot(index: number): { left: number; bottom: number } {
   if (!Number.isInteger(index) || index < 0) {
@@ -23,11 +40,15 @@ export function heapSlot(index: number): { left: number; bottom: number } {
 }
 
 export function fallingOrePosition(
+  destination: FallingOreDestination,
   slot: number,
   progress: number,
 ): { left: number; bottom: number } {
   if (progress < 0 || progress > 1) {
     throw new Error(`Invalid fall progress: ${progress}`);
+  }
+  if (destination === "bag") {
+    return bagOrePosition(progress);
   }
   const settled = heapSlot(slot);
   return {

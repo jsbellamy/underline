@@ -56,8 +56,12 @@ export interface TunnelSnapshot {
   hauler?: HaulerSnapshot;
   crewSize: number;
   heapLoads: number;
-  /** Ore still falling into the pile; empty when nothing is in flight. */
-  fallingOre: readonly { slot: number; progress: number }[];
+  /** Ore still falling toward the Bag or Heap; empty when nothing is in flight. */
+  fallingOre: readonly {
+    destination: "bag" | "heap";
+    slot: number;
+    progress: number;
+  }[];
 }
 
 export const FACE_SLIDE_MS = 400;
@@ -157,6 +161,9 @@ export function createMinePresenter(
   const activeFalls: number[] = [];
 
   function truncateFalls(): void {
+    if (!isTwoDwarf()) {
+      return;
+    }
     const cap = session.snapshot.heapLoads;
     while (activeFalls.length > cap) {
       activeFalls.shift();
@@ -164,6 +171,15 @@ export function createMinePresenter(
   }
 
   function cleanFalls(nowMs: number): void {
+    if (!isTwoDwarf()) {
+      for (let i = activeFalls.length - 1; i >= 0; i -= 1) {
+        const progress = (nowMs - activeFalls[i]!) / ORE_FALL_MS;
+        if (progress >= 1) {
+          activeFalls.splice(i, 1);
+        }
+      }
+      return;
+    }
     const heapLoads = session.snapshot.heapLoads;
     for (let i = activeFalls.length - 1; i >= 0; i -= 1) {
       const spawnSimMs = activeFalls[i]!;
@@ -175,12 +191,26 @@ export function createMinePresenter(
     }
   }
 
-  function projectFallingOre(nowMs: number): readonly { slot: number; progress: number }[] {
+  function projectFallingOre(
+    nowMs: number,
+  ): readonly { destination: "bag" | "heap"; slot: number; progress: number }[] {
     if (!isTwoDwarf()) {
-      return [];
+      const result: { destination: "bag"; slot: number; progress: number }[] = [];
+      for (let i = 0; i < activeFalls.length; i += 1) {
+        const spawnSimMs = activeFalls[i]!;
+        const progress = Math.min(
+          1,
+          Math.max(0, (nowMs - spawnSimMs) / ORE_FALL_MS),
+        );
+        if (progress >= 1) {
+          continue;
+        }
+        result.push({ destination: "bag", slot: i, progress });
+      }
+      return result;
     }
     const heapLoads = session.snapshot.heapLoads;
-    const result: { slot: number; progress: number }[] = [];
+    const result: { destination: "heap"; slot: number; progress: number }[] = [];
     for (let i = 0; i < activeFalls.length; i += 1) {
       const spawnSimMs = activeFalls[i]!;
       const progress = Math.min(
@@ -191,7 +221,7 @@ export function createMinePresenter(
       if (progress >= 1 || slot < 0 || i > heapLoads - 1) {
         continue;
       }
-      result.push({ slot, progress });
+      result.push({ destination: "heap", slot, progress });
     }
     return result;
   }

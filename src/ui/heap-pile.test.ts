@@ -7,6 +7,7 @@ import {
   HEAP_EAST_X,
   HEAP_ROW_HEIGHT,
   HEAP_SLOTS_PER_ROW,
+  MINING_MARK_X,
   ORE_FALL_MS,
   ORE_PITCH,
   ORE_SIZE,
@@ -60,35 +61,59 @@ describe("fallingOrePosition", () => {
     expect(ORE_SPAWN_BOTTOM).toBe(56);
   });
 
-  const worked: Array<{
-    slot: number;
-    progress: number;
-    left: number;
-    bottom: number;
-  }> = [
-    { slot: 0, progress: 0, left: 400, bottom: 56 },
-    { slot: 0, progress: 0.5, left: 400, bottom: 44 },
-    { slot: 0, progress: 1, left: 400, bottom: 8 },
-    { slot: 5, progress: 0, left: 400, bottom: 56 },
-    { slot: 5, progress: 0.5, left: 310, bottom: 44 },
-    { slot: 5, progress: 1, left: 220, bottom: 8 },
-  ];
+  describe("heap destination", () => {
+    const worked: Array<{
+      slot: number;
+      progress: number;
+      left: number;
+      bottom: number;
+    }> = [
+      { slot: 0, progress: 0, left: 400, bottom: 56 },
+      { slot: 0, progress: 0.5, left: 400, bottom: 44 },
+      { slot: 0, progress: 1, left: 400, bottom: 8 },
+      { slot: 5, progress: 0, left: 400, bottom: 56 },
+      { slot: 5, progress: 0.5, left: 310, bottom: 44 },
+      { slot: 5, progress: 1, left: 220, bottom: 8 },
+    ];
 
-  for (const { slot, progress, left, bottom } of worked) {
-    it(`slot ${slot} at progress ${progress} is left ${left} bottom ${bottom}`, () => {
-      expect(fallingOrePosition(slot, progress)).toEqual({ left, bottom });
+    for (const { slot, progress, left, bottom } of worked) {
+      it(`slot ${slot} at progress ${progress} is left ${left} bottom ${bottom}`, () => {
+        expect(fallingOrePosition("heap", slot, progress)).toEqual({ left, bottom });
+      });
+    }
+
+    it("at progress 1 deep-equals heapSlot for every worked slot", () => {
+      for (const slot of [0, 5]) {
+        expect(fallingOrePosition("heap", slot, 1)).toEqual(heapSlot(slot));
+      }
     });
-  }
+  });
 
-  it("at progress 1 deep-equals heapSlot for every worked slot", () => {
-    for (const slot of [0, 5]) {
-      expect(fallingOrePosition(slot, 1)).toEqual(heapSlot(slot));
+  describe("bag destination", () => {
+    const bagLeft = MINING_MARK_X + Math.round((26 * 3 - ORE_SIZE) / 2);
+
+    const worked: Array<{
+      progress: number;
+      left: number;
+      bottom: number;
+    }> = [
+      { progress: 0, left: HEAP_EAST_X, bottom: ORE_SPAWN_BOTTOM },
+      { progress: 0.5, left: 389, bottom: 44 },
+      { progress: 1, left: bagLeft, bottom: HEAP_BOTTOM },
+    ];
+
+    for (const { progress, left, bottom } of worked) {
+      it(`at progress ${progress} is left ${left} bottom ${bottom}`, () => {
+        expect(fallingOrePosition("bag", 0, progress)).toEqual({ left, bottom });
+      });
     }
   });
 
   it("throws when progress is outside 0…1", () => {
-    expect(() => fallingOrePosition(0, -0.1)).toThrow();
-    expect(() => fallingOrePosition(0, 1.1)).toThrow();
+    expect(() => fallingOrePosition("heap", 0, -0.1)).toThrow();
+    expect(() => fallingOrePosition("heap", 0, 1.1)).toThrow();
+    expect(() => fallingOrePosition("bag", 0, -0.1)).toThrow();
+    expect(() => fallingOrePosition("bag", 0, 1.1)).toThrow();
   });
 });
 
