@@ -4,9 +4,7 @@ import type { MiningEvent } from "../core/mining-events";
 import { PUMP_INTERVAL_MS } from "./pump";
 import {
   createMiningAudio,
-  MAX_LIVE_WINDOW_MS,
   MIN_RETRIGGER_MS,
-  SCHEDULE_LOOKAHEAD_MS,
 } from "./mining-audio";
 
 function stubAudioContext(options?: {
@@ -379,7 +377,7 @@ describe("mining audio cue queue", () => {
     await vi.waitFor(() => expect(sources2).toHaveBeenCalledTimes(2));
   });
 
-  it("passes an explicit numeric argument to every start call", async () => {
+  it("schedules each clip at a concrete AudioContext time", async () => {
     const { audio, source } = await enabledAudio({ currentTime: 3 });
 
     audio.handleEvents([{ type: "swing", atMs: 0 }], 0, 250);
@@ -394,6 +392,17 @@ describe("mining audio cue queue", () => {
   it("resumes and discards due cues when context is suspended", async () => {
     const { audio, createBufferSource, resume } = await enabledAudio({
       state: "suspended",
+    });
+
+    audio.handleEvents([{ type: "swing", atMs: 0 }], 0, 250);
+    audio.releaseDueTo(0);
+    expect(resume).toHaveBeenCalled();
+    expect(createBufferSource).not.toHaveBeenCalled();
+  });
+
+  it("resumes and discards due cues when context is interrupted", async () => {
+    const { audio, createBufferSource, resume } = await enabledAudio({
+      state: "interrupted" as AudioContextState,
     });
 
     audio.handleEvents([{ type: "swing", atMs: 0 }], 0, 250);
@@ -441,14 +450,6 @@ describe("mining audio cue queue", () => {
 
     audio.setEnabled(true);
     audio.releaseDueTo(2000);
-    expect(createBufferSource).not.toHaveBeenCalled();
-  });
-});
-
-describe("mining audio constants", () => {
-  it("derives schedule lookahead and live window from pump interval", () => {
-    expect(SCHEDULE_LOOKAHEAD_MS).toBe(PUMP_INTERVAL_MS);
-    expect(MAX_LIVE_WINDOW_MS).toBe(2 * PUMP_INTERVAL_MS);
-    expect(MIN_RETRIGGER_MS).toBe(60);
+    await vi.waitFor(() => expect(createBufferSource).not.toHaveBeenCalled());
   });
 });

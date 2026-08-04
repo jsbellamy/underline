@@ -127,10 +127,6 @@ export function createMiningAudio(deps: MiningAudioDeps): MiningAudio {
   }
 
   function releaseDueTo(nowMs: number): void {
-    if (!enabled || !context) {
-      return;
-    }
-
     const scheduleBeforeMs = nowMs + SCHEDULE_LOOKAHEAD_MS;
     const toSchedule: QueuedCue[] = [];
     for (let i = cueQueue.length - 1; i >= 0; i--) {
@@ -139,6 +135,10 @@ export function createMiningAudio(deps: MiningAudioDeps): MiningAudio {
         toSchedule.push(cue);
         cueQueue.splice(i, 1);
       }
+    }
+
+    if (!enabled || !context) {
+      return;
     }
 
     toSchedule.sort((a, b) => a.atMs - b.atMs);
@@ -176,6 +176,10 @@ export function createMiningAudio(deps: MiningAudioDeps): MiningAudio {
             void context?.resume?.();
           })
           .catch(() => {});
+      } else {
+        for (const key of Object.keys(lastScheduledStartSec)) {
+          delete lastScheduledStartSec[key as AudioClipId];
+        }
       }
     },
     handleEvents,

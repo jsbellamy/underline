@@ -274,7 +274,7 @@ describe("mine presenter", () => {
     expect(audio.releasedAt).toEqual([]);
   });
 
-  it("passes advance dtMs to mining audio handleEvents", () => {
+  it("queues cues with the advance window length on each tick", () => {
     const session = createMiningSession({
       store: memoryStore(),
       now: () => 0,
