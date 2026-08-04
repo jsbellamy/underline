@@ -51,12 +51,13 @@ const testPack = {
 };
 
 describe("mining audio", () => {
-  it("starts disabled and ignores swing events until enabled", () => {
+  it("starts disabled and ignores handleEvents until enabled", () => {
     const createAudioContext = vi.fn(() => stubAudioContext().context);
     const audio = createMiningAudio({ createAudioContext });
 
     expect(audio.isEnabled()).toBe(false);
-    audio.swing(3);
+    audio.handleEvents([{ type: "swing", atMs: 0 }], 0);
+    audio.releaseDueTo(1000);
     expect(createAudioContext).not.toHaveBeenCalled();
   });
 
@@ -64,8 +65,14 @@ describe("mining audio", () => {
     const createAudioContext = vi.fn(() => stubAudioContext().context);
     const audio = createMiningAudio({ createAudioContext });
 
-    audio.swing(3);
-    audio.faceBroken(2);
+    audio.handleEvents(
+      [
+        { type: "swing", atMs: 0 },
+        { type: "faceBroken", atMs: 100 },
+      ],
+      0,
+    );
+    audio.releaseDueTo(200);
 
     expect(createAudioContext).not.toHaveBeenCalled();
   });
@@ -91,7 +98,7 @@ describe("mining audio", () => {
     expect(createAudioContext).toHaveBeenCalledTimes(1);
   });
 
-  it("starts at most one swing voice when count exceeds 1", async () => {
+  it("starts at most one swing voice per queued swing cue", async () => {
     const { context: ctx, createBufferSource } = stubAudioContext();
     const createAudioContext = vi.fn(() => ctx);
     const fetchMock = vi.fn(async () => ({
@@ -108,11 +115,20 @@ describe("mining audio", () => {
     audio.setEnabled(true);
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
 
-    audio.swing(8);
-    await vi.waitFor(() => expect(createBufferSource).toHaveBeenCalledTimes(1));
+    audio.handleEvents(
+      [
+        { type: "swing", atMs: 0 },
+        { type: "swing", atMs: 10 },
+        { type: "swing", atMs: 20 },
+      ],
+      0,
+    );
+    audio.releaseDueTo(100);
+    await vi.waitFor(() => expect(createBufferSource).toHaveBeenCalledTimes(3));
 
     createBufferSource.mockClear();
-    audio.faceBroken(5);
+    audio.handleEvents([{ type: "faceBroken", atMs: 0 }], 200);
+    audio.releaseDueTo(300);
     await vi.waitFor(() => expect(createBufferSource).toHaveBeenCalledTimes(1));
   });
 
@@ -131,13 +147,14 @@ describe("mining audio", () => {
     });
 
     audio.setEnabled(true);
-    audio.swing(1);
+    audio.handleEvents([{ type: "swing", atMs: 0 }], 0);
     await vi.waitFor(() =>
       expect(clipUrlFor).toHaveBeenCalledWith(testPack, "swing"),
     );
 
     clipUrlFor.mockClear();
-    audio.faceBroken(1);
+    audio.handleEvents([{ type: "faceBroken", atMs: 0 }], 100);
+    audio.releaseDueTo(200);
     await vi.waitFor(() =>
       expect(clipUrlFor).toHaveBeenCalledWith(testPack, "break"),
     );

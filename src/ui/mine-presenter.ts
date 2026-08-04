@@ -41,6 +41,7 @@ export interface MinePresenter {
   snapshot(nowMs?: number): TunnelSnapshot;
   start(): void;
   advanceMs(dtMs: number): void;
+  releaseAudioDueTo(nowMs: number): void;
   syncDigRate(): void;
   setSoundEnabled(enabled: boolean): void;
   readonly simNowMs: number;
@@ -90,16 +91,11 @@ export function createMinePresenter(
     }
   }
 
-  let swingCycleRemainderMs = 0;
   let faceSlide = 1;
   let faceSlideElapsedMs = 0;
   let lastAdvance = session.snapshot.advance;
   let simNowMs = 0;
   let faceSwingProgressAtTick = session.snapshot.faceSwingProgress;
-
-  function swingCycleMs(): number {
-    return 1000 / anim.digRate;
-  }
 
   function syncHaulAnim(): void {
     anim.setHauling(haulAnimPhase(session.snapshot.haulRemainingMs), simNowMs);
@@ -160,14 +156,15 @@ export function createMinePresenter(
     setSoundEnabled(enabled: boolean) {
       audio?.setEnabled(enabled);
     },
+    releaseAudioDueTo(nowMs: number) {
+      audio?.releaseDueTo(nowMs);
+    },
     advanceMs(dtMs: number) {
+      const windowStartSimMs = simNowMs;
       simNowMs += dtMs;
-      const before = session.snapshot.advance;
-      const haulingBefore = session.snapshot.haulRemainingMs > 0;
-      session.advanceLive(dtMs);
-      const gained = session.snapshot.advance - before;
-      if (audio && gained > 0) {
-        audio.faceBroken(gained);
+      const { events } = session.advanceLive(dtMs);
+      if (audio) {
+        audio.handleEvents(events, windowStartSimMs);
       }
 
       faceSwingProgressAtTick = session.snapshot.faceSwingProgress;
@@ -183,19 +180,6 @@ export function createMinePresenter(
       }
 
       syncHaulAnim();
-
-      const haulingAfter = session.snapshot.haulRemainingMs > 0;
-      if (!haulingBefore && !haulingAfter) {
-        const cycleMs = swingCycleMs();
-        swingCycleRemainderMs += dtMs;
-        const completed = Math.floor(swingCycleRemainderMs / cycleMs);
-        swingCycleRemainderMs -= completed * cycleMs;
-        if (audio && completed > 0) {
-          audio.swing(completed);
-        }
-      } else if (!haulingAfter) {
-        swingCycleRemainderMs = 0;
-      }
     },
   };
 }

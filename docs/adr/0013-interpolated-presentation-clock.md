@@ -23,7 +23,8 @@ ADR 0010 fixed the economy on a 250 ms sim tick; that cadence must not change.
 Run **two clocks**:
 
 1. **Sim clock** — `MinePresenter.simNowMs`, advanced by `dtMs` inside
-   `advanceMs` on each pump tick. Economy and audio stay on this path.
+   `advanceMs` on each pump tick. Economy stays on this path; mining audio
+   **cues** are stamped here but not played (see Audio below).
 2. **Presentation clock** — `mountPaneShell` caches `lastSimNowMs` and
    `lastTickAtMs` on each tick and, on every render frame, samples:
 
@@ -60,6 +61,14 @@ longer calls `anim.advanceMs`.
 clip so `SWING_IMPACT_FRAME` (pick contact) is displayed when `swingFraction`
 is 0 — i.e. when `faceSwingProgress` crosses an integer. Walk and idle are
 unchanged.
+
+**Audio release (#378, Nightglass ADR-0003 departure):** `advanceMs` passes
+`MiningEvent`s from `advanceLive` to `MiningAudio.handleEvents(events,
+windowStartSimMs)` using the sim time *before* `dtMs` is applied, so each cue's
+absolute time is `windowStart + event.atMs`. Nothing plays on the tick path.
+`mountPaneShell`'s `render` calls `releaseAudioDueTo(presentationNowMs())`
+before `snapshot`, so impact sounds align with the interpolated swing frame
+rather than the 250 ms pump cadence.
 
 ## Consequences
 

@@ -14,6 +14,8 @@ import { dwarfFramePaths, type ExternalSpritePack } from "../data/external-sprit
 import { dwarfFrameUrl, dwarfFrameUrlsFor } from "./dwarf-frames";
 import { mountPaneShell } from "./pane-root";
 import { mountMiningTunnel } from "./mining-tunnel";
+import { createMinePresenter } from "./mine-presenter";
+import { createMiningAudio } from "./mining-audio";
 import type { TunnelSnapshot } from "./mine-presenter";
 import { PUMP_INTERVAL_MS } from "./pump";
 import { DWARF_SCALE, PANE_HEIGHT, PANE_WIDTH, TUNNEL_HEIGHT } from "./pane-layout";
@@ -45,6 +47,7 @@ function stubPresenter(setSoundEnabled = vi.fn()) {
     }),
     syncDigRate: vi.fn(),
     setSoundEnabled,
+    releaseAudioDueTo: vi.fn(),
   };
 }
 
@@ -338,6 +341,7 @@ describe("mountPaneShell mining Pane", () => {
         },
         syncDigRate: vi.fn(),
         setSoundEnabled: vi.fn(),
+        releaseAudioDueTo: vi.fn(),
       };
 
       const shell = mountPaneShell(root, {
@@ -395,6 +399,7 @@ describe("mountPaneShell mining Pane", () => {
         },
         syncDigRate: vi.fn(),
         setSoundEnabled: vi.fn(),
+        releaseAudioDueTo: vi.fn(),
       };
 
       const shell = mountPaneShell(root, {
@@ -421,6 +426,105 @@ describe("mountPaneShell mining Pane", () => {
       expect(afterTick).toBeGreaterThanOrEqual(beforeTick);
 
       shell.destroy();
+    });
+
+    it("calls releaseAudioDueTo with the same presentation clock as snapshot", () => {
+      const pump = createPanePumpSchedule();
+      const root = document.createElement("main");
+      const releaseAudioDueTo = vi.fn();
+      const snapshot = vi.fn((_nowMs?: number) => ({
+        animation: "swing" as const,
+        facing: "east" as const,
+        frameIndex: 0,
+        advance: 0,
+        faceSwingProgress: 0,
+        swingFraction: 0,
+        digRate: 1,
+        haulPhase: "none" as const,
+        haulProgress: 0,
+        faceSlide: 1,
+      }));
+      const presenter = {
+        anim: createDwarfAnimController({ digRate: 1 }),
+        simNowMs: 0,
+        snapshot,
+        start: vi.fn(),
+        advanceMs(dt: number) {
+          this.simNowMs += dt;
+        },
+        syncDigRate: vi.fn(),
+        setSoundEnabled: vi.fn(),
+        releaseAudioDueTo,
+      };
+
+      const shell = mountPaneShell(root, {
+        dockWindow: stubDockWindow(),
+        busFactory: stubBusFactory(),
+        deferPump: true,
+        presenter,
+        pumpSchedule: pump.pumpSchedule,
+      });
+
+      shell.startPump();
+      pump.setClock(PUMP_INTERVAL_MS);
+      pump.runIntervals();
+
+      pump.setClock(PUMP_INTERVAL_MS + 100);
+      pump.runRafAt(PUMP_INTERVAL_MS + 100);
+
+      expect(releaseAudioDueTo).toHaveBeenCalled();
+      const releaseArg =
+        releaseAudioDueTo.mock.calls[releaseAudioDueTo.mock.calls.length - 1]![0];
+      const snapshotArg =
+        snapshot.mock.calls[snapshot.mock.calls.length - 1]![0];
+      expect(releaseArg).toBe(snapshotArg);
+      expect(releaseArg).toBe(PUMP_INTERVAL_MS + 100);
+
+      shell.destroy();
+    });
+
+    it("plays a queued swing cue on the first render frame at or after its time", async () => {
+      const pump = createPanePumpSchedule();
+      const root = document.createElement("main");
+      const createAudioContext = stubAudioContextFactory();
+      vi.stubGlobal(
+        "fetch",
+        vi.fn(async () => ({
+          ok: true,
+          arrayBuffer: async () => new ArrayBuffer(8),
+        })),
+      );
+      const store = browserSaveStore();
+      const session = createMiningSession({ store, now: () => 0 });
+      const audio = createMiningAudio({ createAudioContext });
+      audio.setEnabled(true);
+      const presenter = createMinePresenter(session, { audio });
+
+      const shell = mountPaneShell(root, {
+        dockWindow: stubDockWindow(),
+        busFactory: stubBusFactory(),
+        deferPump: true,
+        session,
+        presenter,
+        pumpSchedule: pump.pumpSchedule,
+      });
+
+      shell.startPump();
+      for (let tick = 1; tick <= 4; tick += 1) {
+        pump.setClock(PUMP_INTERVAL_MS * tick);
+        pump.runIntervals();
+      }
+
+      const source =
+        createAudioContext.mock.results[0]!.value.createBufferSource;
+      expect(source).not.toHaveBeenCalled();
+
+      pump.setClock(1000);
+      pump.runRafAt(1000);
+      await vi.waitFor(() => expect(source).toHaveBeenCalled());
+
+      shell.destroy();
+      vi.unstubAllGlobals();
     });
   });
 
