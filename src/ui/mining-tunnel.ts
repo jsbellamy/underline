@@ -32,10 +32,26 @@ export interface MiningTunnelView {
   destroy(): void;
 }
 
-const FACE = "#27A6A3";
-const FACE_DEEP = "#176873";
-const CRACK = "#72E2D2";
+const HEAP_ORE_PLACEHOLDER = "#27A6A3";
 const CART_FILL = "#5C4A58";
+
+export type FaceDamageState = "intact" | "chipped" | "cracked" | "crumbling";
+
+export function faceDamageState(progress: number): FaceDamageState {
+  if (progress < 0 || progress > 1) {
+    throw new Error(`Face damage progress out of range: ${progress}`);
+  }
+  if (progress < 0.25) {
+    return "intact";
+  }
+  if (progress < 0.5) {
+    return "chipped";
+  }
+  if (progress < 0.75) {
+    return "cracked";
+  }
+  return "crumbling";
+}
 
 function haulerFieldsEqual(
   a: TunnelSnapshot["hauler"],
@@ -300,7 +316,7 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
       ore.style.bottom = `${bottom}px`;
       ore.style.width = `${ORE_SIZE}px`;
       ore.style.height = `${ORE_SIZE}px`;
-      ore.style.background = FACE;
+      ore.style.background = HEAP_ORE_PLACEHOLDER;
       oreElements.push(ore);
       heap.append(ore);
     }
@@ -327,7 +343,7 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
       carriedOre.dataset["oreCarried"] = "";
       carriedOre.style.width = `${ORE_SIZE}px`;
       carriedOre.style.height = `${ORE_SIZE}px`;
-      carriedOre.style.background = FACE;
+      carriedOre.style.background = HEAP_ORE_PLACEHOLDER;
       tunnel.append(carriedOre);
     }
 
@@ -367,24 +383,18 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
     faceColumn.style.height = `${PANE_HEIGHT}px`;
     faceColumn.style.left = `${faceColumnLeft}px`;
 
-    const existingCrack = faceColumn.querySelector(".pane-face-crack");
-    if (existingCrack) {
-      existingCrack.remove();
-    }
-
     const hardness = hardnessFor(snap.advance);
-    const crackProgress =
+    const faceProgress =
       (snap.faceSwingProgress + snap.swingFraction) / hardness;
-    if (crackProgress > 0) {
-      const crack = document.createElement("div");
-      crack.className = "pane-face-crack";
-      crack.style.opacity = String(0.25 + crackProgress * 0.75);
-      crack.style.background = CRACK;
-      faceColumn.style.background = FACE_DEEP;
-      faceColumn.append(crack);
-    } else {
-      faceColumn.style.background = FACE;
-    }
+    const damageState = faceDamageState(faceProgress);
+    const faceTilePath = tunnelArtPath(
+      TUNNEL_ART_PACK,
+      `tiles/face/${damageState}`,
+    );
+    faceColumn.style.backgroundImage = `url("${tunnelArtUrl(faceTilePath)}")`;
+    faceColumn.style.backgroundRepeat = "repeat-y";
+    faceColumn.style.backgroundSize = "48px 48px";
+    faceColumn.style.imageRendering = "pixelated";
 
     dwarf.style.left = `${dwarfLeft(snap)}px`;
 

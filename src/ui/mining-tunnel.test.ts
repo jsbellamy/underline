@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 
 import { describe, expect, it } from "vitest";
-import { mountMiningTunnel } from "./mining-tunnel";
+import { faceDamageState, mountMiningTunnel } from "./mining-tunnel";
 import { tunnelArtPath } from "../data/tunnel-art-pack";
 import { TUNNEL_ART_PACK, tunnelArtUrl } from "./tunnel-art";
 import type { TunnelSnapshot } from "./mine-presenter";
@@ -106,6 +106,27 @@ function oreAtSlot(host: HTMLElement, slot: number): HTMLElement {
   }
   return ore;
 }
+
+function faceTileBackground(state: string): string {
+  const path = tunnelArtPath(TUNNEL_ART_PACK, `tiles/face/${state}`);
+  return `url("${tunnelArtUrl(path)}")`;
+}
+
+describe("faceDamageState", () => {
+  it("maps worked progress boundaries to damage quarters", () => {
+    expect(faceDamageState(0)).toBe("intact");
+    expect(faceDamageState(0.25)).toBe("chipped");
+    expect(faceDamageState(0.4999)).toBe("chipped");
+    expect(faceDamageState(0.5)).toBe("cracked");
+    expect(faceDamageState(0.75)).toBe("crumbling");
+    expect(faceDamageState(1)).toBe("crumbling");
+  });
+
+  it("throws when progress is outside 0…1", () => {
+    expect(() => faceDamageState(-0.01)).toThrow();
+    expect(() => faceDamageState(1.01)).toThrow();
+  });
+});
 
 describe("mountMiningTunnel", () => {
   it("never scrolls the world transform at any Advance", () => {
@@ -226,7 +247,7 @@ describe("mountMiningTunnel", () => {
     tunnel.destroy();
   });
 
-  it("carries at most one Face crack after any render", () => {
+  it("creates no pane-face-crack elements after any render", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
 
@@ -239,9 +260,7 @@ describe("mountMiningTunnel", () => {
         swingFraction: 0.5,
         faceSlide: 0.3,
       });
-      expect(host.querySelectorAll(".pane-face-crack").length).toBeLessThanOrEqual(
-        1,
-      );
+      expect(host.querySelectorAll(".pane-face-crack").length).toBe(0);
     }
 
     tunnel.destroy();
@@ -255,27 +274,49 @@ describe("mountMiningTunnel", () => {
     for (const element of host.querySelectorAll<HTMLElement>("*")) {
       expect(element.style.background).not.toBe("#1D1720");
       expect(element.style.background).not.toBe("#3B2F3A");
+      expect(element.style.background).not.toBe("#176873");
+      expect(element.style.background).not.toBe("#72E2D2");
     }
-    expect(faceColumn(host).style.background).toBe("#27A6A3");
+    expect(faceColumn(host).style.backgroundImage).toBe(
+      faceTileBackground("intact"),
+    );
     expect(host.querySelector(".pane-tunnel-floor")).toBeNull();
 
     tunnel.destroy();
   });
 
-  it("deepens the Face and draws a crack when Swing progress is positive", () => {
+  it("paints the Face column from the damage-quarter tile", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
-    tunnel.render({
-      ...baseSnap,
-      animation: "swing",
-      advance: 10,
-      faceSwingProgress: 2,
-      faceSlide: 0.6,
-    });
 
-    const face = faceColumn(host);
-    expect(face.style.background).toBe("#176873");
-    expect(face.querySelector(".pane-face-crack")).not.toBeNull();
+    const quarters: Array<{
+      state: string;
+      faceSwingProgress: number;
+      swingFraction: number;
+    }> = [
+      { state: "intact", faceSwingProgress: 0, swingFraction: 0 },
+      { state: "chipped", faceSwingProgress: 250, swingFraction: 0 },
+      { state: "cracked", faceSwingProgress: 500, swingFraction: 0 },
+      { state: "crumbling", faceSwingProgress: 750, swingFraction: 0 },
+      { state: "crumbling", faceSwingProgress: 1000, swingFraction: 0 },
+    ];
+
+    for (const { state, faceSwingProgress, swingFraction } of quarters) {
+      tunnel.render({
+        ...baseSnap,
+        advance: 0,
+        faceSwingProgress,
+        swingFraction,
+        faceSlide: 0.6,
+      });
+
+      const face = faceColumn(host);
+      expect(face.style.backgroundImage).toBe(faceTileBackground(state));
+      expect(face.style.backgroundRepeat).toBe("repeat-y");
+      expect(face.style.backgroundSize).toBe("48px 48px");
+      expect(face.style.imageRendering).toBe("pixelated");
+      expect(face.querySelector(".pane-face-crack")).toBeNull();
+    }
 
     tunnel.destroy();
   });

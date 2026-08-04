@@ -93,19 +93,6 @@ html.dock-window body {
   position: absolute;
 }
 
-.pane-face-crack {
-  position: absolute;
-  left: 40%;
-  top: 18%;
-  width: 3px;
-  height: 64%;
-  transform: rotate(8deg);
-  box-shadow:
-    4px 8px 0 0 currentColor,
-    -3px 20px 0 0 currentColor;
-  color: #72e2d2;
-}
-
 .pane-dwarf {
   position: absolute;
   display: block;
