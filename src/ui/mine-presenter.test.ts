@@ -4,7 +4,9 @@ import {
   advance as advanceEngine,
   advanceWithEvents,
   HAUL_ROUND_TRIP_MS,
+  heapCapacityFor,
   initialSnapshot,
+  pickupMsPerLoad,
 } from "../core/mining-engine";
 import {
   persistSettings,
@@ -501,5 +503,105 @@ describe("mine presenter", () => {
 
     presenter.advanceMs(200);
     expect(presenter.snapshot().faceSlide).toBe(1);
+  });
+
+  it("omits hauler and adds crewSize and heapLoads for a one-Dwarf Crew", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+    presenter.advanceMs(1000);
+    const snap = presenter.snapshot();
+    expect(snap.crewSize).toBe(1);
+    expect(snap.heapLoads).toBe(0);
+    expect(snap.hauler).toBeUndefined();
+  });
+
+  it("with crewSize 2 the Miner never walks and always faces east across a Haul", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+      snapshot: {
+        ...initialSnapshot(),
+        crewSize: 2,
+        haulRemainingMs: HAUL_ROUND_TRIP_MS,
+        bagLoads: heapCapacityFor(0),
+      },
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+    for (let t = 0; t <= HAUL_ROUND_TRIP_MS; t += 250) {
+      presenter.advanceMs(250);
+      const snap = presenter.snapshot();
+      expect(snap.animation).not.toBe("walk");
+      expect(snap.facing).toBe("east");
+    }
+  });
+
+  it("with crewSize 2 idles the Miner on a full Heap and resumes swing when a Load drains", () => {
+    const cap = heapCapacityFor(0);
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+      snapshot: {
+        ...initialSnapshot(),
+        crewSize: 2,
+        heapLoads: cap,
+      },
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+    expect(presenter.snapshot().animation).toBe("idle");
+    presenter.advanceMs(pickupMsPerLoad(0));
+    expect(presenter.snapshot().animation).toBe("swing");
+  });
+
+  it("with crewSize 2 exposes hauler clip state on the hauler sub-object", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+      snapshot: {
+        ...initialSnapshot(),
+        crewSize: 2,
+        heapLoads: 1,
+        pickupProgressMs: 2_500,
+        haulSpeedUpgradeCount: 0,
+      },
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+    const picking = presenter.snapshot();
+    expect(picking.hauler).toBeDefined();
+    expect(picking.hauler!.phase).toBe("pickup");
+    expect(picking.hauler!.animation).toBe("idle");
+    expect(picking.hauler!.facing).toBe("east");
+    expect(picking.hauler!.pickupProgress).toBeCloseTo(0.25, 5);
+
+    const hauling = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+      snapshot: {
+        ...initialSnapshot(),
+        crewSize: 2,
+        haulRemainingMs: HAUL_ROUND_TRIP_MS,
+        bagLoads: heapCapacityFor(0),
+      },
+    });
+    const haulPresenter = createMinePresenter(hauling);
+    haulPresenter.start();
+    const outLeg = haulPresenter.snapshot();
+    expect(outLeg.hauler!.phase).toBe("out");
+    expect(outLeg.hauler!.animation).toBe("walk");
+    expect(outLeg.hauler!.facing).toBe("west");
+    expect(outLeg.hauler!.pickupProgress).toBe(0);
+
+    haulPresenter.advanceMs(HAUL_ROUND_TRIP_MS / 2 + 1);
+    const backLeg = haulPresenter.snapshot();
+    expect(backLeg.hauler!.phase).toBe("back");
+    expect(backLeg.hauler!.animation).toBe("walk");
+    expect(backLeg.hauler!.facing).toBe("east");
+    expect(backLeg.hauler!.haulProgress).toBeGreaterThan(0);
   });
 });

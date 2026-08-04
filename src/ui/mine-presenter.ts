@@ -7,7 +7,12 @@ import {
   type DwarfFacing,
   type HaulAnimPhase,
 } from "../core/dwarf-anim-state";
-import { digRateFor, HAUL_ROUND_TRIP_MS } from "../core/mining-engine";
+import {
+  digRateFor,
+  HAUL_ROUND_TRIP_MS,
+  heapCapacityFor,
+  pickupMsPerLoad,
+} from "../core/mining-engine";
 import type { MiningSession } from "../core/mining-session";
 import type { SaveStore } from "../core/mining-save";
 import { loadSettings } from "../core/settings-save";
@@ -17,6 +22,20 @@ import {
 } from "./mining-audio";
 
 export type TunnelHaulPhase = "none" | HaulAnimPhase;
+export type HaulerTravelPhase = HaulAnimPhase;
+export type HaulerPhase = "pickup" | HaulerTravelPhase;
+
+export interface HaulerSnapshot {
+  animation: DwarfAnimId;
+  facing: DwarfFacing;
+  frameIndex: number;
+  /** "pickup" while lifting a Load at the Face, else the travel phase. */
+  phase: HaulerPhase;
+  /** 0 at Haul start, 1 at round-trip end; 0 while picking up. */
+  haulProgress: number;
+  /** Fraction of the current Load's pickup, 0…1; 0 while travelling. */
+  pickupProgress: number;
+}
 
 export interface TunnelSnapshot {
   animation: DwarfAnimId;
@@ -33,6 +52,10 @@ export interface TunnelSnapshot {
   haulProgress: number;
   /** Face slide-in progress (`0` at Advance bump, `1` when settled). */
   faceSlide: number;
+  /** Absent when the Crew is one Dwarf. */
+  hauler?: HaulerSnapshot;
+  crewSize: number;
+  heapLoads: number;
 }
 
 export const FACE_SLIDE_MS = 400;
@@ -71,11 +94,50 @@ function haulProgress(haulRemainingMs: number): number {
   return 1 - haulRemainingMs / HAUL_ROUND_TRIP_MS;
 }
 
+function haulerPhase(
+  haulRemainingMs: number,
+  pickupProgressMs: number,
+): HaulerPhase {
+  if (haulRemainingMs > 0) {
+    return haulAnimPhase(haulRemainingMs)!;
+  }
+  if (pickupProgressMs > 0) {
+    return "pickup";
+  }
+  return "pickup";
+}
+
+function pickupProgressFraction(
+  haulRemainingMs: number,
+  pickupProgressMs: number,
+  haulSpeedUpgradeCount: number,
+): number {
+  if (haulRemainingMs > 0) {
+    return 0;
+  }
+  const pickupMs = pickupMsPerLoad(haulSpeedUpgradeCount);
+  return Math.min(1, Math.max(0, pickupProgressMs / pickupMs));
+}
+
+function frameIndexFor(
+  ctrl: DwarfAnimController,
+  nowMs: number,
+  swingFraction: number,
+): number {
+  if (ctrl.animation === "swing") {
+    return ctrl.frameIndexForSwingFraction(swingFraction);
+  }
+  return ctrl.frameIndexAt(nowMs);
+}
+
 export function createMinePresenter(
   session: MiningSession,
   options: MinePresenterOptions = {},
 ): MinePresenter {
-  const anim = createDwarfAnimController({
+  const miner = createDwarfAnimController({
+    digRate: digRateFor(session.snapshot.digRateUpgradeCount),
+  });
+  const hauler = createDwarfAnimController({
     digRate: digRateFor(session.snapshot.digRateUpgradeCount),
   });
 
@@ -97,8 +159,40 @@ export function createMinePresenter(
   let simNowMs = 0;
   let faceSwingProgressAtTick = session.snapshot.faceSwingProgress;
 
+  function isTwoDwarf(): boolean {
+    return session.snapshot.crewSize === 2;
+  }
+
+  function syncMinerAnim(): void {
+    if (isTwoDwarf()) {
+      miner.setHauling(null, simNowMs);
+      const cap = heapCapacityFor(session.snapshot.carryCapacityUpgradeCount);
+      if (session.snapshot.heapLoads >= cap) {
+        miner.stopMining(simNowMs);
+      } else {
+        miner.startMining(simNowMs);
+      }
+      return;
+    }
+    miner.setHauling(
+      haulAnimPhase(session.snapshot.haulRemainingMs),
+      simNowMs,
+    );
+  }
+
+  function syncHaulerAnim(): void {
+    if (!isTwoDwarf()) {
+      return;
+    }
+    hauler.setHauling(
+      haulAnimPhase(session.snapshot.haulRemainingMs),
+      simNowMs,
+    );
+  }
+
   function syncHaulAnim(): void {
-    anim.setHauling(haulAnimPhase(session.snapshot.haulRemainingMs), simNowMs);
+    syncMinerAnim();
+    syncHaulerAnim();
   }
 
   function swingFractionAt(nowMs: number, hauling: boolean): number {
@@ -106,53 +200,90 @@ export function createMinePresenter(
       return faceSwingProgressAtTick - Math.floor(faceSwingProgressAtTick);
     }
     const progress =
-      faceSwingProgressAtTick + anim.digRate * (nowMs - simNowMs) / 1000;
+      faceSwingProgressAtTick + miner.digRate * (nowMs - simNowMs) / 1000;
     const clamped = Math.max(0, progress);
     return clamped - Math.floor(clamped);
+  }
+
+  function buildHaulerSnapshot(nowMs: number): HaulerSnapshot | undefined {
+    if (!isTwoDwarf()) {
+      return undefined;
+    }
+    const snap = session.snapshot;
+    const remaining = snap.haulRemainingMs;
+    const phase = haulerPhase(remaining, snap.pickupProgressMs);
+    const travelling = remaining > 0;
+    const swingFrac = swingFractionAt(nowMs, travelling);
+
+    return {
+      animation: hauler.animation,
+      facing: hauler.facing,
+      frameIndex: frameIndexFor(hauler, nowMs, swingFrac),
+      phase,
+      haulProgress: travelling ? haulProgress(remaining) : 0,
+      pickupProgress: pickupProgressFraction(
+        remaining,
+        snap.pickupProgressMs,
+        snap.haulSpeedUpgradeCount,
+      ),
+    };
   }
 
   function snapshot(nowMs: number = simNowMs): TunnelSnapshot {
     const snap = session.snapshot;
     const whole = Math.floor(snap.faceSwingProgress);
     const remaining = snap.haulRemainingMs;
-    const phase = haulAnimPhase(remaining);
-    const hauling = remaining > 0;
+    const twoDwarf = isTwoDwarf();
+    const phase = twoDwarf ? null : haulAnimPhase(remaining);
+    const hauling = twoDwarf ? false : remaining > 0;
 
     let swingFraction = 0;
     let frameIndex: number;
 
-    if (anim.animation === "swing") {
+    if (miner.animation === "swing") {
       swingFraction = swingFractionAt(nowMs, hauling);
-      frameIndex = anim.frameIndexForSwingFraction(swingFraction);
+      frameIndex = miner.frameIndexForSwingFraction(swingFraction);
     } else {
-      frameIndex = anim.frameIndexAt(nowMs);
+      frameIndex = miner.frameIndexAt(nowMs);
     }
 
+    const haulerSnap = buildHaulerSnapshot(nowMs);
+
     return {
-      animation: anim.animation,
-      facing: anim.facing,
+      animation: miner.animation,
+      facing: miner.facing,
       frameIndex,
       advance: snap.advance,
       faceSwingProgress: whole,
       swingFraction,
-      digRate: anim.digRate,
+      digRate: miner.digRate,
       haulPhase: phase ?? "none",
-      haulProgress: haulProgress(remaining),
+      haulProgress: twoDwarf ? 0 : haulProgress(remaining),
       faceSlide,
+      ...(haulerSnap !== undefined ? { hauler: haulerSnap } : {}),
+      crewSize: snap.crewSize,
+      heapLoads: snap.heapLoads,
     };
   }
 
   return {
-    anim,
+    anim: miner,
     get simNowMs() {
       return simNowMs;
     },
     snapshot,
     start() {
-      anim.startMining(simNowMs);
+      if (isTwoDwarf()) {
+        syncMinerAnim();
+        syncHaulerAnim();
+      } else {
+        miner.startMining(simNowMs);
+      }
     },
     syncDigRate() {
-      anim.setDigRate(digRateFor(session.snapshot.digRateUpgradeCount));
+      const rate = digRateFor(session.snapshot.digRateUpgradeCount);
+      miner.setDigRate(rate);
+      hauler.setDigRate(rate);
     },
     setSoundEnabled(enabled: boolean) {
       audio?.setEnabled(enabled);
