@@ -6,7 +6,7 @@ Colony corner chip, cyan Face, no Dig Rate / Ore / Ingots on the Pane.
 import type { TunnelSnapshot } from "./mine-presenter";
 import { hardnessFor } from "../core/mining-engine";
 import { dwarfLayout, type ExternalSpritePack } from "../data/external-sprite-pack";
-import { tunnelArtKeysUnder, tunnelArtPath } from "../data/tunnel-art-pack";
+import { tunnelArtKeysUnder, tunnelArtContentBottomGap, tunnelArtPath } from "../data/tunnel-art-pack";
 import { DWARF_PACK, dwarfFrameUrlsFor } from "./dwarf-frames";
 import { HAULER_PACK, haulerFrameUrlsFor } from "./hauler-frames";
 import { fallingOrePosition, haulerPickupTargetX, heapSlot } from "./heap-pile";
@@ -28,21 +28,11 @@ import { TUNNEL_ART_PACK, tunnelArtUrl } from "./tunnel-art";
 
 const HEAP_ORE_KEYS = tunnelArtKeysUnder(TUNNEL_ART_PACK, "objects/ore/gold-");
 
-function heapOreBottomGap(artKey: string): number {
-  const path = tunnelArtPath(TUNNEL_ART_PACK, artKey);
-  const entry = TUNNEL_ART_PACK.entries.find((e) => e.relative_path === path);
-  if (!entry) {
-    throw new Error(`Unknown tunnel art key: ${artKey}`);
-  }
-  if (!entry.content_box) {
-    throw new Error(`Tunnel art entry missing content_box: ${artKey}`);
-  }
-  const [, , , y1] = entry.content_box;
-  return ORE_SIZE - 1 - y1;
-}
-
 function adjustedHeapOreBottom(slotBottom: number, artKey: string): number {
-  return slotBottom - heapOreBottomGap(artKey);
+  return (
+    slotBottom -
+    tunnelArtContentBottomGap(TUNNEL_ART_PACK, artKey, ORE_SIZE)
+  );
 }
 
 function paintHeapOre(
