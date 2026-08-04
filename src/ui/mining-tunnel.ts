@@ -8,6 +8,7 @@ import { hardnessFor } from "../core/mining-engine";
 import { dwarfLayout, type ExternalSpritePack } from "../data/external-sprite-pack";
 import { DWARF_PACK, dwarfFrameUrlsFor } from "./dwarf-frames";
 import { HAULER_PACK, haulerFrameUrlsFor } from "./hauler-frames";
+import { heapSlot } from "./heap-pile";
 import {
   BLOCK_SIZE,
   CART_HEIGHT,
@@ -18,6 +19,7 @@ import {
   FACE_X,
   HAULER_MARK_X,
   MINING_MARK_X,
+  ORE_SIZE,
   PANE_HEIGHT,
   PANE_WIDTH,
 } from "./pane-layout";
@@ -153,6 +155,10 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
   cart.style.height = `${CART_HEIGHT}px`;
   cart.style.background = CART_FILL;
 
+  const heap = document.createElement("div");
+  heap.className = "pane-heap";
+  const oreElements: HTMLElement[] = [];
+
   const dwarf = document.createElement("img");
   dwarf.className = "pane-dwarf";
   dwarf.alt = "Dwarf";
@@ -202,6 +208,54 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
 
   tunnel.append(world, cart, dwarf);
   host.replaceChildren(tunnel);
+
+  let heapMounted = false;
+
+  function mountHeap(): void {
+    if (!heapMounted) {
+      tunnel.insertBefore(heap, cart);
+      heapMounted = true;
+    }
+  }
+
+  function unmountHeap(): void {
+    if (heapMounted) {
+      while (oreElements.length > 0) {
+        const ore = oreElements.pop()!;
+        ore.remove();
+      }
+      heap.remove();
+      heapMounted = false;
+    }
+  }
+
+  function reconcileHeap(loads: number, crewSize: number): void {
+    if (crewSize !== 2) {
+      unmountHeap();
+      return;
+    }
+    mountHeap();
+    const targetCount = loads;
+    while (oreElements.length > targetCount) {
+      const ore = oreElements.pop()!;
+      ore.remove();
+    }
+    while (oreElements.length < targetCount) {
+      const slot = oreElements.length;
+      const ore = document.createElement("div");
+      ore.className = "pane-ore";
+      ore.dataset["ore"] = "";
+      ore.dataset["oreSlot"] = String(slot);
+      const { left, bottom } = heapSlot(slot);
+      ore.style.left = `${left}px`;
+      ore.style.bottom = `${bottom}px`;
+      ore.style.width = `${ORE_SIZE}px`;
+      ore.style.height = `${ORE_SIZE}px`;
+      ore.style.background = FACE;
+      oreElements.push(ore);
+      heap.append(ore);
+    }
+  }
 
   let haulerMounted = false;
   let lastSnap: TunnelSnapshot | null = null;
@@ -305,6 +359,8 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
     } else {
       unmountHauler();
     }
+
+    reconcileHeap(snap.heapLoads, snap.crewSize);
   }
 
   return {

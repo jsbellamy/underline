@@ -80,6 +80,17 @@ html.dock-window body {
   z-index: 4;
 }
 
+.pane-heap {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.pane-ore {
+  position: absolute;
+}
+
 .pane-face-crack {
   position: absolute;
   left: 40%;

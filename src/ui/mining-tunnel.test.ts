@@ -20,8 +20,12 @@ import {
   FACE_X,
   HAULER_MARK_X,
   MINING_MARK_X,
+  ORE_SIZE,
   PANE_WIDTH,
 } from "./pane-layout";
+import { heapSlot } from "./heap-pile";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 const baseSnap: TunnelSnapshot = {
   animation: "idle",
@@ -105,6 +109,18 @@ function haulerLeft(host: HTMLElement): number {
     throw new Error("Hauler not found");
   }
   return Number(hauler.style.left.replace("px", ""));
+}
+
+function oreElements(host: HTMLElement): HTMLElement[] {
+  return [...host.querySelectorAll<HTMLElement>("[data-ore]")];
+}
+
+function oreAtSlot(host: HTMLElement, slot: number): HTMLElement {
+  const ore = host.querySelector<HTMLElement>(`[data-ore-slot="${slot}"]`);
+  if (!ore) {
+    throw new Error(`Ore at slot ${slot} not found`);
+  }
+  return ore;
 }
 
 describe("mountMiningTunnel", () => {
@@ -528,6 +544,83 @@ describe("mountMiningTunnel", () => {
     expect(dwarf!.dataset["anim"]).toBe("swing");
     expect(dwarf!.dataset["frame"]).toBe("2");
 
+    tunnel.destroy();
+  });
+
+  it("renders one Ore per heapLoads behind both Dwarves for a two-Dwarf Crew", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    tunnel.render(twoDwarfSnap({ heapLoads: 3 }));
+
+    const heap = host.querySelector(".pane-heap");
+    expect(heap).not.toBeNull();
+
+    const ores = oreElements(host);
+    expect(ores.length).toBe(3);
+
+    for (let i = 0; i < 3; i += 1) {
+      const ore = oreAtSlot(host, i);
+      const { left, bottom } = heapSlot(i);
+      expect(ore.style.left).toBe(`${left}px`);
+      expect(ore.style.bottom).toBe(`${bottom}px`);
+      expect(ore.style.width).toBe(`${ORE_SIZE}px`);
+      expect(ore.style.height).toBe(`${ORE_SIZE}px`);
+      expect(ore.style.background).toBe("#27A6A3");
+    }
+
+    const css = readFileSync(resolve("src/styles.css"), "utf8");
+    expect(css).toMatch(/\.pane-heap\s*\{[^}]*z-index:\s*3/);
+    expect(css).toMatch(/\.pane-cart\s*\{[^}]*z-index:\s*4/);
+    expect(css).toMatch(/\.pane-dwarf\s*\{[^}]*z-index:\s*5/);
+
+    tunnel.destroy();
+  });
+
+  it("renders no Ore for a one-Dwarf Crew regardless of heapLoads", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    tunnel.render({ ...baseSnap, advance: 3, crewSize: 1, heapLoads: 5 });
+
+    expect(host.querySelector(".pane-heap")).toBeNull();
+    expect(oreElements(host).length).toBe(0);
+    tunnel.destroy();
+  });
+
+  it("removes highest-index Ore first when heapLoads shrinks", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    tunnel.render(twoDwarfSnap({ heapLoads: 3 }));
+    tunnel.render(twoDwarfSnap({ heapLoads: 2 }));
+
+    const ores = oreElements(host);
+    expect(ores.length).toBe(2);
+    expect(oreAtSlot(host, 0)).not.toBeNull();
+    expect(oreAtSlot(host, 1)).not.toBeNull();
+    expect(host.querySelector("[data-ore-slot=\"2\"]")).toBeNull();
+
+    tunnel.destroy();
+  });
+
+  it("does not mutate the DOM when rendering the same two-Dwarf heap snapshot twice", async () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    const snap = twoDwarfSnap({ advance: 10, heapLoads: 4 });
+
+    tunnel.render(snap);
+
+    const observer = new MutationObserver(() => {});
+    observer.observe(host, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      characterData: true,
+    });
+
+    tunnel.render(snap);
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(observer.takeRecords()).toEqual([]);
+    observer.disconnect();
     tunnel.destroy();
   });
 });
