@@ -8,6 +8,7 @@ import {
 import {
   persistSettings,
 } from "../core/settings-save";
+import type { MiningEvent } from "../core/mining-events";
 import { createMinePresenter, FACE_SLIDE_MS } from "./mine-presenter";
 import type { MiningAudio } from "./mining-audio";
 
@@ -27,28 +28,47 @@ function memoryStore() {
 }
 
 function spyMiningAudio(): MiningAudio & {
-  swings: number[];
-  breaks: number[];
+  queuedBatches: { events: readonly MiningEvent[]; baseMs: number }[];
+  releasedAt: number[];
 } {
-  const swings: number[] = [];
-  const breaks: number[] = [];
+  const queuedBatches: { events: readonly MiningEvent[]; baseMs: number }[] =
+    [];
+  const releasedAt: number[] = [];
   return {
-    swings,
-    breaks,
-    swing(count: number) {
-      swings.push(count);
+    queuedBatches,
+    releasedAt,
+    handleEvents(events, baseMs) {
+      queuedBatches.push({ events, baseMs });
     },
-    faceBroken(count: number) {
-      breaks.push(count);
+    releaseDueTo(nowMs) {
+      releasedAt.push(nowMs);
     },
-    handleEvents() {},
-    releaseDueTo() {},
     setEnabled() {},
     isEnabled() {
       return true;
     },
     destroy() {},
   };
+}
+
+function absoluteCueTimes(
+  audio: ReturnType<typeof spyMiningAudio>,
+): number[] {
+  const times: number[] = [];
+  for (const batch of audio.queuedBatches) {
+    for (const event of batch.events) {
+      times.push(batch.baseMs + event.atMs);
+    }
+  }
+  return times;
+}
+
+function swingCueTimes(audio: ReturnType<typeof spyMiningAudio>): number[] {
+  return absoluteCueTimes(audio).filter((t) =>
+    audio.queuedBatches.some((b) =>
+      b.events.some((e) => e.type === "swing" && b.baseMs + e.atMs === t),
+    ),
+  );
 }
 
 describe("mine presenter", () => {
@@ -178,7 +198,7 @@ describe("mine presenter", () => {
     expect(presenter.snapshot().animation).toBe("swing");
   });
 
-  it("emits swing counts from elapsed ms at Dig Rate 1", () => {
+  it("queues swing cues at exact sim times on tick without releasing audio", () => {
     const session = createMiningSession({
       store: memoryStore(),
       now: () => 0,
@@ -187,17 +207,15 @@ describe("mine presenter", () => {
     const presenter = createMinePresenter(session, { audio });
     presenter.start();
 
-    presenter.advanceMs(1000);
-    expect(audio.swings).toEqual([1]);
+    for (let i = 0; i < 12; i += 1) {
+      presenter.advanceMs(250);
+    }
 
-    presenter.advanceMs(500);
-    expect(audio.swings).toEqual([1]);
-
-    presenter.advanceMs(500);
-    expect(audio.swings).toEqual([1, 1]);
+    expect(swingCueTimes(audio)).toEqual([1000, 2000, 3000]);
+    expect(audio.releasedAt).toEqual([]);
   });
 
-  it("is chunk-neutral for swing counts", () => {
+  it("is chunk-neutral for queued swing cue times", () => {
     const sessionA = createMiningSession({
       store: memoryStore(),
       now: () => 0,
@@ -218,14 +236,11 @@ describe("mine presenter", () => {
     presenterB.start();
     presenterB.advanceMs(1000);
 
-    const totalA = audioA.swings.reduce((sum, n) => sum + n, 0);
-    const totalB = audioB.swings.reduce((sum, n) => sum + n, 0);
-    expect(totalA).toBe(1);
-    expect(totalB).toBe(1);
-    expect(totalA).toBe(totalB);
+    expect(swingCueTimes(audioA)[0]).toBeCloseTo(1000, 5);
+    expect(swingCueTimes(audioB)[0]).toBeCloseTo(1000, 5);
   });
 
-  it("emits faceBroken with Face breaks gained in the tick", () => {
+  it("queues a faceBroken cue from engine events instead of advance delta", () => {
     const session = createMiningSession({
       store: memoryStore(),
       now: () => 0,
@@ -235,7 +250,25 @@ describe("mine presenter", () => {
     presenter.start();
 
     presenter.advanceMs(1_080_000);
-    expect(audio.breaks).toEqual([1]);
+
+    const breakCues = audio.queuedBatches.flatMap((b) =>
+      b.events
+        .filter((e) => e.type === "faceBroken")
+        .map((e) => ({ atMs: b.baseMs + e.atMs })),
+    );
+    expect(breakCues).toHaveLength(1);
+    expect(audio.releasedAt).toEqual([]);
+  });
+
+  it("releaseAudioDueTo delegates to mining audio", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+    });
+    const audio = spyMiningAudio();
+    const presenter = createMinePresenter(session, { audio });
+    presenter.releaseAudioDueTo(1500);
+    expect(audio.releasedAt).toEqual([1500]);
   });
 
   it("constructs audio enabled from persisted settings", () => {
@@ -352,7 +385,7 @@ describe("mine presenter", () => {
     expect(snap.haulProgress).toBe(0);
   });
 
-  it("does not emit swing audio during a Haul", () => {
+  it("queues no swing cues during a Haul and keeps exact spacing before and after", () => {
     const session = createMiningSession({
       store: memoryStore(),
       now: () => 0,
@@ -361,11 +394,28 @@ describe("mine presenter", () => {
     const presenter = createMinePresenter(session, { audio });
     presenter.start();
 
-    presenter.advanceMs(100_000);
-    const swingsBeforeHaul = audio.swings.length;
+    const haulStartMs = 100_000;
+    const haulEndMs = 108_000;
 
-    presenter.advanceMs(HAUL_ROUND_TRIP_MS);
-    expect(audio.swings.length).toBe(swingsBeforeHaul);
+    presenter.advanceMs(99_000);
+    const beforeHaul = swingCueTimes(audio).filter((t) => t <= 99_000);
+    expect(beforeHaul[beforeHaul.length - 1]).toBeCloseTo(99_000, 5);
+    expect(
+      beforeHaul.every((t, i) => i === 0 || t - beforeHaul[i - 1]! === 1000),
+    ).toBe(true);
+
+    presenter.advanceMs(HAUL_ROUND_TRIP_MS + 3_000);
+    const allSwings = swingCueTimes(audio);
+    const duringHaul = allSwings.filter(
+      (t) => t > haulStartMs && t < haulEndMs,
+    );
+    expect(duringHaul).toEqual([]);
+
+    const afterHaul = allSwings.filter((t) => t >= haulEndMs);
+    expect(afterHaul.length).toBeGreaterThanOrEqual(2);
+    expect(
+      afterHaul.every((t, i) => i === 0 || t - afterHaul[i - 1]! === 1000),
+    ).toBe(true);
   });
 
   it("stays in swing after a Face break without walking", () => {

@@ -32,8 +32,6 @@ export interface MiningAudioDeps {
 }
 
 export interface MiningAudio {
-  swing(count: number): void;
-  faceBroken(count: number): void;
   /** Queues cues from a tick batch, keyed by each event's atMs. Does not play them. */
   handleEvents(events: readonly MiningEvent[], baseMs: number): void;
   /** Plays every queued cue with atMs <= nowMs, in atMs order, then drops them. */
@@ -143,18 +141,6 @@ export function createMiningAudio(deps: MiningAudioDeps): MiningAudio {
       if (next) {
         void ensureLoaded().catch(() => {});
       }
-    },
-    swing(count: number) {
-      if (!enabled || count < 1) {
-        return;
-      }
-      playClip("swing");
-    },
-    faceBroken(count: number) {
-      if (!enabled || count < 1) {
-        return;
-      }
-      playClip("break");
     },
     handleEvents,
     releaseDueTo,

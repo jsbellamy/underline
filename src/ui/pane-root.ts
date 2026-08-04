@@ -283,7 +283,9 @@ export function mountPaneShell(
       },
       onAdvance: () => {},
       render: () => {
-        tunnel?.render(presenter.snapshot(presentationNowMs()));
+        const nowMs = presentationNowMs();
+        presenter.releaseAudioDueTo(nowMs);
+        tunnel?.render(presenter.snapshot(nowMs));
       },
       frameMetrics,
       now: now,
