@@ -1,6 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { createMiningSession } from "../core/mining-session";
-import { HAUL_ROUND_TRIP_MS, initialSnapshot } from "../core/mining-engine";
+import {
+  advance as advanceEngine,
+  HAUL_ROUND_TRIP_MS,
+  initialSnapshot,
+} from "../core/mining-engine";
 import {
   persistSettings,
 } from "../core/settings-save";
@@ -280,5 +284,29 @@ describe("mine presenter", () => {
     presenter.start();
     presenter.advanceMs(10);
     expect(presenter.snapshot().animation).toBe("swing");
+  });
+
+  it("resets faceSlide to 0 when Advance increases and drives it to 1 over FACE_SLIDE_MS", () => {
+    const almostBroken = advanceEngine(initialSnapshot(), 1_071_999);
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+      snapshot: almostBroken,
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+
+    expect(presenter.snapshot().faceSlide).toBe(1);
+    expect(presenter.snapshot().advance).toBe(0);
+
+    presenter.advanceMs(1);
+    expect(presenter.snapshot().advance).toBe(1);
+    expect(presenter.snapshot().faceSlide).toBeCloseTo(1 / 400, 5);
+
+    presenter.advanceMs(200);
+    expect(presenter.snapshot().faceSlide).toBeCloseTo(201 / 400, 5);
+
+    presenter.advanceMs(200);
+    expect(presenter.snapshot().faceSlide).toBe(1);
   });
 });

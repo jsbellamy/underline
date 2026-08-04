@@ -1,4 +1,4 @@
-/** Pane mining Tunnel: planted Dwarf at 3×, scrolling Face, placeholder fills.
+/** Pane mining Tunnel: fixed-camera arena, Cart, Dwarf Haul travel, Face slide-in.
 
 Composition from [Prototype the mining scene at 480x112](#318): full-band Tunnel,
 Colony corner chip, cyan Face, no Dig Rate / Ore / Ingots on the Pane.
@@ -9,7 +9,13 @@ import { dwarfLayout } from "../data/external-sprite-pack";
 import { DWARF_PACK, dwarfFrameUrlsFor } from "./dwarf-frames";
 import {
   BLOCK_SIZE,
+  CART_HEIGHT,
+  CART_MARK_X,
+  CART_WIDTH,
+  CART_X,
   DWARF_SCALE,
+  FACE_X,
+  MINING_MARK_X,
   PANE_HEIGHT,
   PANE_WIDTH,
 } from "./pane-layout";
@@ -26,8 +32,10 @@ const FACE = "#27A6A3";
 const FACE_DEEP = "#176873";
 const CRACK = "#72E2D2";
 const FLOOR = "#3B2F3A";
+const CART_FILL = "#5C4A58";
 
-const VISIBLE_COLUMNS = Math.ceil(PANE_WIDTH / BLOCK_SIZE) + 2;
+const VISIBLE_COLUMNS = Math.ceil(PANE_WIDTH / BLOCK_SIZE);
+const FACE_COLUMN_INDEX = Math.floor(FACE_X / BLOCK_SIZE);
 
 export const MINING_TUNNEL_VISIBLE_COLUMNS = VISIBLE_COLUMNS;
 
@@ -41,8 +49,25 @@ function snapEquals(a: TunnelSnapshot, b: TunnelSnapshot): boolean {
     a.swingFraction === b.swingFraction &&
     a.digRate === b.digRate &&
     a.haulPhase === b.haulPhase &&
-    a.haulProgress === b.haulProgress
+    a.haulProgress === b.haulProgress &&
+    a.faceSlide === b.faceSlide
   );
+}
+
+function faceLeft(faceSlide: number): number {
+  return FACE_X + (1 - faceSlide) * (PANE_WIDTH - FACE_X);
+}
+
+function dwarfLeft(snap: TunnelSnapshot): number {
+  if (snap.faceSlide < 1) {
+    return MINING_MARK_X;
+  }
+  const span = MINING_MARK_X - CART_MARK_X;
+  const t = snap.haulProgress;
+  if (t <= 0.5) {
+    return Math.round(MINING_MARK_X - (t / 0.5) * span);
+  }
+  return Math.round(CART_MARK_X + ((t - 0.5) / 0.5) * span);
 }
 
 export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
@@ -62,6 +87,10 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
   for (let i = 0; i < VISIBLE_COLUMNS; i += 1) {
     const col = document.createElement("div");
     col.className = "pane-block";
+    col.style.left = `${i * BLOCK_SIZE}px`;
+    if (i === FACE_COLUMN_INDEX) {
+      col.dataset["face"] = "";
+    }
     columns.push(col);
     world.append(col);
   }
@@ -69,7 +98,16 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
   const floor = document.createElement("div");
   floor.className = "pane-tunnel-floor";
   floor.style.background = FLOOR;
+  floor.style.left = "0px";
+  floor.style.width = `${PANE_WIDTH}px`;
   world.append(floor);
+
+  const cart = document.createElement("div");
+  cart.className = "pane-cart";
+  cart.style.left = `${CART_X}px`;
+  cart.style.width = `${CART_WIDTH}px`;
+  cart.style.height = `${CART_HEIGHT}px`;
+  cart.style.background = CART_FILL;
 
   const dwarf = document.createElement("img");
   dwarf.className = "pane-dwarf";
@@ -82,6 +120,9 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
   dwarf.style.height = `${dwarfH}px`;
   dwarf.style.imageRendering = "pixelated";
 
+  const dwarfBottom = 10;
+  dwarf.style.bottom = `${dwarfBottom}px`;
+
   const urlCache = new Map<string, string[]>();
   function urlsFor(animation: string, facing: string): string[] {
     const key = `${animation}:${facing}`;
@@ -93,13 +134,7 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
     return urls;
   }
 
-  // Planted Dwarf: feet near floor, left of centre-east so Face reads ahead.
-  const dwarfScreenX = Math.floor(PANE_WIDTH * 0.38) - dwarfW;
-  const dwarfBottom = 10;
-  dwarf.style.left = `${dwarfScreenX}px`;
-  dwarf.style.bottom = `${dwarfBottom}px`;
-
-  tunnel.append(world, dwarf);
+  tunnel.append(world, cart, dwarf);
   host.replaceChildren(tunnel);
 
   let lastSnap: TunnelSnapshot | null = null;
@@ -110,19 +145,13 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
     }
     lastSnap = { ...snap };
 
-    const faceScreenX = PANE_WIDTH - BLOCK_SIZE - 16;
-    const scrollX = Math.max(
-      0,
-      snap.advance * BLOCK_SIZE - (faceScreenX - BLOCK_SIZE),
-    );
-    world.style.transform = `translateX(${-scrollX}px)`;
+    world.style.transform = "";
 
-    const startIndex = Math.floor(scrollX / BLOCK_SIZE) - 1;
+    const faceColumnLeft = faceLeft(snap.faceSlide);
 
-    for (let j = 0; j < VISIBLE_COLUMNS; j += 1) {
-      const worldIndex = startIndex + j;
-      const col = columns[j]!;
-      col.style.left = `${worldIndex * BLOCK_SIZE}px`;
+    for (let i = 0; i < VISIBLE_COLUMNS; i += 1) {
+      const gridLeft = i * BLOCK_SIZE;
+      const col = columns[i]!;
       col.style.width = `${BLOCK_SIZE}px`;
       col.style.height = `${PANE_HEIGHT}px`;
 
@@ -131,9 +160,8 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
         existingCrack.remove();
       }
 
-      if (worldIndex < snap.advance) {
-        col.style.background = HOLLOW;
-      } else if (worldIndex === snap.advance) {
+      if (i === FACE_COLUMN_INDEX) {
+        col.style.left = `${faceColumnLeft}px`;
         const hardness = hardnessFor(snap.advance);
         const crackProgress =
           (snap.faceSwingProgress + snap.swingFraction) / hardness;
@@ -148,12 +176,16 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
           col.style.background = FACE;
         }
       } else {
-        col.style.background = SOLID;
+        col.style.left = `${gridLeft}px`;
+        if (gridLeft < FACE_X) {
+          col.style.background = HOLLOW;
+        } else {
+          col.style.background = SOLID;
+        }
       }
     }
 
-    floor.style.left = `${startIndex * BLOCK_SIZE}px`;
-    floor.style.width = `${VISIBLE_COLUMNS * BLOCK_SIZE}px`;
+    dwarf.style.left = `${dwarfLeft(snap)}px`;
 
     const urls = urlsFor(snap.animation, snap.facing);
     const frame = urls[snap.frameIndex] ?? urls[0];

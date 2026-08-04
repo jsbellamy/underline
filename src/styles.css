@@ -74,6 +74,12 @@ html.dock-window body {
   top: 0;
 }
 
+.pane-cart {
+  position: absolute;
+  bottom: 8px;
+  z-index: 4;
+}
+
 .pane-face-crack {
   position: absolute;
   left: 40%;
