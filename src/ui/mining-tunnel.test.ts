@@ -364,11 +364,7 @@ describe("mountMiningTunnel", () => {
   it("defines HAULER_MARK_X west of the Miner at the worked value", () => {
     expect(HAULER_MARK_X).toBe(180);
     expect(HAULER_MARK_X + DWARF_FRAME_W * DWARF_SCALE).toBe(MINING_MARK_X);
-  });
-
-  it("matches HAULER_PACK layout to DWARF_PACK for mark arithmetic", () => {
     expect(dwarfLayout(HAULER_PACK)).toEqual(dwarfLayout(DWARF_PACK));
-    expect(HAULER_MARK_X).toBe(180);
   });
 
   it("pins the Miner at MINING_MARK_X when a Hauler is present", () => {
