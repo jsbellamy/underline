@@ -22,8 +22,7 @@ import {
 } from "./mining-audio";
 
 export type TunnelHaulPhase = "none" | HaulAnimPhase;
-export type HaulerTravelPhase = HaulAnimPhase;
-export type HaulerPhase = "pickup" | HaulerTravelPhase;
+export type HaulerPhase = "pickup" | HaulAnimPhase;
 
 export interface HaulerSnapshot {
   animation: DwarfAnimId;
@@ -94,15 +93,9 @@ function haulProgress(haulRemainingMs: number): number {
   return 1 - haulRemainingMs / HAUL_ROUND_TRIP_MS;
 }
 
-function haulerPhase(
-  haulRemainingMs: number,
-  pickupProgressMs: number,
-): HaulerPhase {
+function haulerPhase(haulRemainingMs: number): HaulerPhase {
   if (haulRemainingMs > 0) {
-    return haulAnimPhase(haulRemainingMs)!;
-  }
-  if (pickupProgressMs > 0) {
-    return "pickup";
+    return haulAnimPhase(haulRemainingMs) ?? "pickup";
   }
   return "pickup";
 }
@@ -211,7 +204,7 @@ export function createMinePresenter(
     }
     const snap = session.snapshot;
     const remaining = snap.haulRemainingMs;
-    const phase = haulerPhase(remaining, snap.pickupProgressMs);
+    const phase = haulerPhase(remaining);
     const travelling = remaining > 0;
     const swingFrac = swingFractionAt(nowMs, travelling);
 
