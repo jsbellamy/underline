@@ -1,7 +1,7 @@
 # Tunnel art contract
 
-Normative authority for **game** tunnel scenery — backgrounds and tile sheets
-that ship under `src/assets/tunnel/`. This contract is deliberately outside the
+Normative authority for **game** tunnel scenery — backgrounds, tile sheets, and
+object-set assets that ship under `src/assets/tunnel/`. This contract is deliberately outside the
 first-room Art Cohort: no Master Palette membership, no Gate score, no Identity
 Lock, and no conformance to `assets/palettes/first-room.json`.
 
@@ -58,6 +58,28 @@ is regenerated, never rescaled into shape. The sidecar `reduction` records
 `cell_w`, `cell_h`, `columns`, `gutter`, `items` (ids in row-major order), and
 `resample: null`.
 
+### `object-set`
+
+| Field | Value |
+| ----- | ----- |
+| **Asset class** | `object-set` |
+| **Raw** | `assets-raw/tunnel/object-set/<key>.png` — one transparent PNG per object |
+| **Sidecar** | `assets-raw/tunnel/object-set/<key>.source.json`, schema `tunnel-art-source/0` |
+| **Runtime destination** | `src/assets/tunnel/<path>/<key>.png` — full repo-relative runtime PNG path |
+| **Runtime shape** | Single RGBA object, binary alpha, exact sidecar dimensions |
+| **Visual vocabulary** | Pre-separated objects; no keying, no grid recovery |
+| **Geometry** | Validate and re-encode only — **no crop, no resize, no palette step** |
+| **Review context** | Tunnel heap ore chunks and similar discrete objects |
+| **Validator** | `npm run assets:verify` |
+
+**No resize exemption — strictest class.** The pipeline verifies the archived
+PNG matches the sidecar `reduction` dimensions and binary-alpha rules, then
+re-encodes without transforming geometry. The sidecar `reduction` records
+`width`, `height`, and `resample: null`. The build measures each runtime PNG's
+fully-opaque content box and records it on the manifest entry as
+`content_box: [x0, y0, x1, y1]` (inclusive pixel coordinates). That field is
+additive and optional — it appears only on `object-set` entries.
+
 ## Archived Raw Bundle schema
 
 A complete bundle is `<key>.png` plus `<key>.source.json` under the class
@@ -69,7 +91,7 @@ directory. Schema `tunnel-art-source/0` carries at minimum:
 | `acquisition_tool` | Tool that produced the raw |
 | `prompt` | Exact generation prompt string |
 | `raw_sha256` | SHA-256 of the archived PNG |
-| `asset_class` | `background` or `tile-sheet` |
+| `asset_class` | `background`, `tile-sheet`, or `object-set` |
 | `runtime_destination` | Repo-relative runtime path or directory |
 | `source_resolution` | `[width, height]` of the archived PNG |
 | `reduction` | Class-specific crop/grid record (see above) |
@@ -108,6 +130,7 @@ hash-binding every runtime PNG to its archived raw. Per entry:
 | `sha256` | SHA-256 of the runtime PNG |
 | `source_relative_path` | Repo-relative archived raw path |
 | `source_sha256` | SHA-256 of the archived raw |
+| `content_box` | Optional — `object-set` only: `[x0, y0, x1, y1]` inclusive fully-opaque bounding box |
 
 ## Prompt shells
 

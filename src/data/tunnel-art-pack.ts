@@ -7,6 +7,7 @@ export interface TunnelArtEntry {
   sha256: string;
   source_relative_path: string;
   source_sha256: string;
+  content_box?: [number, number, number, number];
 }
 
 export interface TunnelArtPack {
