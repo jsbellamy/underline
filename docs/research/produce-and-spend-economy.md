@@ -108,7 +108,6 @@ Resolve mining, Haul delivery, and Smelter drain for `min(away, 8h)` at half rat
 
 - Prestige / reset mechanics.
 - Haul distance growing with Advance.
-- A Haul Speed upgrade ladder.
 - Cart / Face art (Art Cohort work, #113).
 - High Dig Rate presentation compression / presentation clock (map fog; see Nightglass ADR-0003 analogue).
 - Ore per second is `0.1 × damage per second` regardless of Advance, because
