@@ -632,11 +632,16 @@ describe("mining engine advanceWithEvents", () => {
       bagOre: 10,
       haulRemainingMs: HAUL_ROUND_TRIP_MS,
     });
-    const beforeProgress = midHaul.faceSwingProgress;
     const { snapshot, events } = advanceWithEvents(midHaul, 5_000);
     expect(snapshot.haulRemainingMs).toBeGreaterThan(0);
-    expect(snapshot.faceSwingProgress).toBeGreaterThan(beforeProgress);
-    expect(events.filter((e) => e.type === "swing").length).toBeGreaterThan(0);
+    expect(snapshot.faceSwingProgress).toBe(5);
+    expect(events.filter((e) => e.type === "swing")).toEqual([
+      { type: "swing", atMs: 1000 },
+      { type: "swing", atMs: 2000 },
+      { type: "swing", atMs: 3000 },
+      { type: "swing", atMs: 4000 },
+      { type: "swing", atMs: 5000 },
+    ]);
   });
 
   it("orders event atMs across drop, pickup, and Bag-full boundaries", () => {
@@ -649,7 +654,7 @@ describe("mining engine advanceWithEvents", () => {
       expect(atMs[i]).toBeGreaterThanOrEqual(atMs[i - 1]!);
     }
     expect(events.some((e) => e.type === "swing")).toBe(true);
-    expect(atMs.some((t) => t >= 99_000 && t <= 101_000)).toBe(true);
+    expect(atMs).toContain(100_000);
   });
 
   it("is chunk-neutral for a two-Dwarf Crew", () => {
