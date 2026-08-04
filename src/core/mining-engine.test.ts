@@ -16,11 +16,17 @@ import {
   digRateFor,
   dropDamageFor,
   hardnessFor,
+  haulSpeedFor,
+  heapCapacityFor,
+  HIRE_HAULER_COST,
   initialSnapshot,
   nextCarryCapacityUpgradeCost,
   nextDigRateUpgradeCost,
+  nextHaulSpeedUpgradeCost,
   nextSmelterUpgradeCost,
   oreForDrop,
+  pickupMsPerLoad,
+  PICKUP_MS_PER_LOAD,
   smelterThroughputFor,
   type MiningSnapshot,
 } from "./mining-engine";
@@ -224,6 +230,39 @@ describe("mining engine Smelter Upgrade", () => {
   });
 });
 
+describe("mining engine Haul Speed and Hire Hauler upgrades", () => {
+  it("buys Haul Speed when Ingots cover the cost", () => {
+    const rich = snap({ ingots: 5 });
+    const bought = buyUpgrade(rich, "haulSpeed");
+    expect(bought.ingots).toBe(0);
+    expect(bought.haulSpeedUpgradeCount).toBe(1);
+    expect(haulSpeedFor(bought.haulSpeedUpgradeCount)).toBe(1.25);
+  });
+
+  it("throws when Haul Speed is unaffordable", () => {
+    expect(() => buyUpgrade(snap({ ingots: 4 }), "haulSpeed")).toThrow(/Upgrade/);
+  });
+
+  it("hires the Hauler when Ingots cover the cost", () => {
+    const rich = snap({ ingots: 160 });
+    const bought = buyUpgrade(rich, "hireHauler");
+    expect(bought.ingots).toBe(0);
+    expect(bought.crewSize).toBe(2);
+  });
+
+  it("throws when Hire Hauler is unaffordable", () => {
+    expect(() => buyUpgrade(snap({ ingots: 159 }), "hireHauler")).toThrow(
+      /Upgrade/,
+    );
+  });
+
+  it("throws when the Hauler is already hired", () => {
+    expect(() => buyUpgrade(snap({ crewSize: 2, ingots: 200 }), "hireHauler")).toThrow(
+      /Hauler/,
+    );
+  });
+});
+
 describe("mining engine buyUpgrade default", () => {
   it("defaults to Dig Rate when upgrade id is omitted", () => {
     const rich = snap({ ingots: 5 });
@@ -307,6 +346,348 @@ describe("mining engine advanceWithEvents", () => {
       cursor = step.snapshot;
     }
     expect(manyEvents).toEqual(once.events);
+  });
+
+  const ONE_DWARF_200S_SNAPSHOT = {
+    schemaVersion: 3 as const,
+    advance: 0,
+    ore: 4.240000000000003,
+    ingots: 5,
+    digRateUpgradeCount: 0,
+    smelterUpgradeCount: 0,
+    carryCapacityUpgradeCount: 0,
+    crewSize: 1,
+    heapLoads: 0,
+    heapOre: 0,
+    haulSpeedUpgradeCount: 0,
+    pickupProgressMs: 0,
+    faceSwingProgress: 192,
+    smelterProgress: 0.7599999999999998,
+    bagOre: 9,
+    bagLoads: 9,
+    haulRemainingMs: 0,
+  };
+
+  const ONE_DWARF_200S_EVENTS: MiningEvent[] = [
+    { type: "swing", atMs: 1000 },
+    { type: "swing", atMs: 2000 },
+    { type: "swing", atMs: 3000 },
+    { type: "swing", atMs: 4000 },
+    { type: "swing", atMs: 5000 },
+    { type: "swing", atMs: 6000 },
+    { type: "swing", atMs: 7000 },
+    { type: "swing", atMs: 8000 },
+    { type: "swing", atMs: 9000 },
+    { type: "swing", atMs: 10000 },
+    { type: "swing", atMs: 11000 },
+    { type: "swing", atMs: 12000 },
+    { type: "swing", atMs: 13000 },
+    { type: "swing", atMs: 14000 },
+    { type: "swing", atMs: 15000 },
+    { type: "swing", atMs: 16000 },
+    { type: "swing", atMs: 17000 },
+    { type: "swing", atMs: 18000 },
+    { type: "swing", atMs: 19000 },
+    { type: "swing", atMs: 20000 },
+    { type: "swing", atMs: 21000 },
+    { type: "swing", atMs: 22000 },
+    { type: "swing", atMs: 23000 },
+    { type: "swing", atMs: 24000 },
+    { type: "swing", atMs: 25000 },
+    { type: "swing", atMs: 26000 },
+    { type: "swing", atMs: 27000 },
+    { type: "swing", atMs: 28000 },
+    { type: "swing", atMs: 29000 },
+    { type: "swing", atMs: 30000 },
+    { type: "swing", atMs: 31000 },
+    { type: "swing", atMs: 32000 },
+    { type: "swing", atMs: 33000 },
+    { type: "swing", atMs: 34000 },
+    { type: "swing", atMs: 35000 },
+    { type: "swing", atMs: 36000 },
+    { type: "swing", atMs: 37000 },
+    { type: "swing", atMs: 38000 },
+    { type: "swing", atMs: 39000 },
+    { type: "swing", atMs: 40000 },
+    { type: "swing", atMs: 41000 },
+    { type: "swing", atMs: 42000 },
+    { type: "swing", atMs: 43000 },
+    { type: "swing", atMs: 44000 },
+    { type: "swing", atMs: 45000 },
+    { type: "swing", atMs: 46000 },
+    { type: "swing", atMs: 47000 },
+    { type: "swing", atMs: 48000 },
+    { type: "swing", atMs: 49000 },
+    { type: "swing", atMs: 50000 },
+    { type: "swing", atMs: 51000 },
+    { type: "swing", atMs: 52000 },
+    { type: "swing", atMs: 53000 },
+    { type: "swing", atMs: 54000 },
+    { type: "swing", atMs: 55000 },
+    { type: "swing", atMs: 56000 },
+    { type: "swing", atMs: 57000 },
+    { type: "swing", atMs: 58000 },
+    { type: "swing", atMs: 59000 },
+    { type: "swing", atMs: 60000 },
+    { type: "swing", atMs: 61000 },
+    { type: "swing", atMs: 62000 },
+    { type: "swing", atMs: 63000 },
+    { type: "swing", atMs: 64000 },
+    { type: "swing", atMs: 65000 },
+    { type: "swing", atMs: 66000 },
+    { type: "swing", atMs: 67000 },
+    { type: "swing", atMs: 68000 },
+    { type: "swing", atMs: 69000 },
+    { type: "swing", atMs: 70000 },
+    { type: "swing", atMs: 71000 },
+    { type: "swing", atMs: 72000 },
+    { type: "swing", atMs: 73000 },
+    { type: "swing", atMs: 74000 },
+    { type: "swing", atMs: 75000 },
+    { type: "swing", atMs: 76000 },
+    { type: "swing", atMs: 77000 },
+    { type: "swing", atMs: 78000 },
+    { type: "swing", atMs: 79000 },
+    { type: "swing", atMs: 80000 },
+    { type: "swing", atMs: 81000 },
+    { type: "swing", atMs: 82000 },
+    { type: "swing", atMs: 83000 },
+    { type: "swing", atMs: 84000 },
+    { type: "swing", atMs: 85000 },
+    { type: "swing", atMs: 86000 },
+    { type: "swing", atMs: 87000 },
+    { type: "swing", atMs: 88000 },
+    { type: "swing", atMs: 89000 },
+    { type: "swing", atMs: 90000 },
+    { type: "swing", atMs: 91000 },
+    { type: "swing", atMs: 92000 },
+    { type: "swing", atMs: 93000 },
+    { type: "swing", atMs: 94000 },
+    { type: "swing", atMs: 95000 },
+    { type: "swing", atMs: 96000 },
+    { type: "swing", atMs: 97000 },
+    { type: "swing", atMs: 98000 },
+    { type: "swing", atMs: 99000 },
+    { type: "swing", atMs: 100000 },
+    { type: "swing", atMs: 109000 },
+    { type: "swing", atMs: 110000 },
+    { type: "swing", atMs: 111000 },
+    { type: "swing", atMs: 112000 },
+    { type: "swing", atMs: 113000 },
+    { type: "swing", atMs: 114000 },
+    { type: "swing", atMs: 115000 },
+    { type: "swing", atMs: 116000 },
+    { type: "swing", atMs: 117000 },
+    { type: "swing", atMs: 118000 },
+    { type: "swing", atMs: 119000 },
+    { type: "swing", atMs: 120000 },
+    { type: "swing", atMs: 121000 },
+    { type: "swing", atMs: 122000 },
+    { type: "swing", atMs: 123000 },
+    { type: "swing", atMs: 124000 },
+    { type: "swing", atMs: 125000 },
+    { type: "swing", atMs: 126000 },
+    { type: "swing", atMs: 127000 },
+    { type: "swing", atMs: 128000 },
+    { type: "swing", atMs: 129000 },
+    { type: "swing", atMs: 130000 },
+    { type: "swing", atMs: 131000 },
+    { type: "swing", atMs: 132000 },
+    { type: "swing", atMs: 133000 },
+    { type: "swing", atMs: 134000 },
+    { type: "swing", atMs: 135000 },
+    { type: "swing", atMs: 136000 },
+    { type: "swing", atMs: 137000 },
+    { type: "swing", atMs: 138000 },
+    { type: "swing", atMs: 139000 },
+    { type: "swing", atMs: 140000 },
+    { type: "swing", atMs: 141000 },
+    { type: "swing", atMs: 142000 },
+    { type: "swing", atMs: 143000 },
+    { type: "swing", atMs: 144000 },
+    { type: "swing", atMs: 145000 },
+    { type: "swing", atMs: 146000 },
+    { type: "swing", atMs: 147000 },
+    { type: "swing", atMs: 148000 },
+    { type: "swing", atMs: 149000 },
+    { type: "swing", atMs: 150000 },
+    { type: "swing", atMs: 151000 },
+    { type: "swing", atMs: 152000 },
+    { type: "swing", atMs: 153000 },
+    { type: "swing", atMs: 154000 },
+    { type: "swing", atMs: 155000 },
+    { type: "swing", atMs: 156000 },
+    { type: "swing", atMs: 157000 },
+    { type: "swing", atMs: 158000 },
+    { type: "swing", atMs: 159000 },
+    { type: "swing", atMs: 160000 },
+    { type: "swing", atMs: 161000 },
+    { type: "swing", atMs: 162000 },
+    { type: "swing", atMs: 163000 },
+    { type: "swing", atMs: 164000 },
+    { type: "swing", atMs: 165000 },
+    { type: "swing", atMs: 166000 },
+    { type: "swing", atMs: 167000 },
+    { type: "swing", atMs: 168000 },
+    { type: "swing", atMs: 169000 },
+    { type: "swing", atMs: 170000 },
+    { type: "swing", atMs: 171000 },
+    { type: "swing", atMs: 172000 },
+    { type: "swing", atMs: 173000 },
+    { type: "swing", atMs: 174000 },
+    { type: "swing", atMs: 175000 },
+    { type: "swing", atMs: 176000 },
+    { type: "swing", atMs: 177000 },
+    { type: "swing", atMs: 178000 },
+    { type: "swing", atMs: 179000 },
+    { type: "swing", atMs: 180000 },
+    { type: "swing", atMs: 181000 },
+    { type: "swing", atMs: 182000 },
+    { type: "swing", atMs: 183000 },
+    { type: "swing", atMs: 184000 },
+    { type: "swing", atMs: 185000 },
+    { type: "swing", atMs: 186000 },
+    { type: "swing", atMs: 187000 },
+    { type: "swing", atMs: 188000 },
+    { type: "swing", atMs: 189000 },
+    { type: "swing", atMs: 190000 },
+    { type: "swing", atMs: 191000 },
+    { type: "swing", atMs: 192000 },
+    { type: "swing", atMs: 193000 },
+    { type: "swing", atMs: 194000 },
+    { type: "swing", atMs: 195000 },
+    { type: "swing", atMs: 196000 },
+    { type: "swing", atMs: 197000 },
+    { type: "swing", atMs: 198000 },
+    { type: "swing", atMs: 199000 },
+    { type: "swing", atMs: 200000 },
+  ];
+
+  it("keeps one-Dwarf Crew advance identical to pre-slice behavior at 200s", () => {
+    const result = advanceWithEvents(snap({ crewSize: 1 }), 200_000);
+    expect(result.snapshot).toEqual(ONE_DWARF_200S_SNAPSHOT);
+    expect(result.events).toEqual(ONE_DWARF_200S_EVENTS);
+  });
+
+  it("drops Ore into the Heap with a two-Dwarf Crew", () => {
+    const after = advance(snap({ crewSize: 2 }), 10_000);
+    expect(after.heapLoads).toBe(1);
+    expect(after.bagLoads).toBe(0);
+    expect(after.heapOre).toBe(1);
+  });
+
+  it("stalls the Miner when the Heap is full", () => {
+    const before = snap({
+      crewSize: 2,
+      heapLoads: 10,
+      heapOre: 10,
+      bagLoads: 10,
+      bagOre: 10,
+      haulRemainingMs: 100_000,
+    });
+    const { snapshot, events } = advanceWithEvents(before, 100_000);
+    expect(snapshot.heapLoads).toBe(10);
+    expect(snapshot.faceSwingProgress).toBe(before.faceSwingProgress);
+    expect(events.filter((e) => e.type === "swing")).toHaveLength(0);
+  });
+
+  it("picks up one Load from the Heap at pickupMsPerLoad", () => {
+    const almost = advance(snap({ crewSize: 2, heapLoads: 1, heapOre: 1 }), 9_999);
+    expect(almost.bagLoads).toBe(0);
+    expect(almost.heapLoads).toBe(1);
+
+    const picked = advance(
+      snap({ crewSize: 2, heapLoads: 1, heapOre: 1, pickupProgressMs: 9_999 }),
+      1,
+    );
+    expect(picked.bagLoads).toBe(1);
+    expect(picked.heapLoads).toBe(0);
+    expect(picked.bagOre).toBe(1);
+    expect(picked.heapOre).toBe(0);
+    expect(picked.pickupProgressMs).toBe(0);
+  });
+
+  it("departs only when the Hauler's Bag is full", () => {
+    const at99s = advance(
+      snap({ crewSize: 2, heapLoads: 10, heapOre: 10, bagLoads: 0 }),
+      99_999,
+    );
+    expect(at99s.haulRemainingMs).toBe(0);
+    expect(at99s.bagLoads).toBe(9);
+
+    const at100s = advance(
+      snap({ crewSize: 2, heapLoads: 10, heapOre: 10, bagLoads: 0 }),
+      100_000,
+    );
+    expect(at100s.haulRemainingMs).toBe(HAUL_ROUND_TRIP_MS);
+    expect(at100s.bagLoads).toBe(10);
+  });
+
+  it("keeps the Miner swinging during a two-Dwarf Haul", () => {
+    const midHaul = snap({
+      crewSize: 2,
+      heapLoads: 0,
+      heapOre: 0,
+      bagLoads: 10,
+      bagOre: 10,
+      haulRemainingMs: HAUL_ROUND_TRIP_MS,
+    });
+    const { snapshot, events } = advanceWithEvents(midHaul, 5_000);
+    expect(snapshot.haulRemainingMs).toBeGreaterThan(0);
+    expect(snapshot.faceSwingProgress).toBe(5);
+    expect(events.filter((e) => e.type === "swing")).toEqual([
+      { type: "swing", atMs: 1000 },
+      { type: "swing", atMs: 2000 },
+      { type: "swing", atMs: 3000 },
+      { type: "swing", atMs: 4000 },
+      { type: "swing", atMs: 5000 },
+    ]);
+  });
+
+  it("orders event atMs across drop, pickup, and Bag-full boundaries", () => {
+    const { events } = advanceWithEvents(
+      snap({ crewSize: 2, heapLoads: 9, heapOre: 9 }),
+      110_000,
+    );
+    const atMs = events.map((e) => e.atMs);
+    for (let i = 1; i < atMs.length; i += 1) {
+      expect(atMs[i]).toBeGreaterThanOrEqual(atMs[i - 1]!);
+    }
+    expect(events.some((e) => e.type === "swing")).toBe(true);
+    expect(atMs).toContain(100_000);
+  });
+
+  it("is chunk-neutral for a two-Dwarf Crew", () => {
+    const once = advance(snap({ crewSize: 2 }), 60_000);
+    let many = snap({ crewSize: 2 });
+    for (let i = 0; i < 240; i += 1) {
+      many = advance(many, 250);
+    }
+    expect(many).toEqual(once);
+  });
+});
+
+describe("mining engine Crew and Heap", () => {
+  it("initializes Crew, Heap, and pickup fields on a fresh Snapshot", () => {
+    const s = initialSnapshot();
+    expect(s.crewSize).toBe(1);
+    expect(s.heapLoads).toBe(0);
+    expect(s.heapOre).toBe(0);
+    expect(s.haulSpeedUpgradeCount).toBe(0);
+    expect(s.pickupProgressMs).toBe(0);
+  });
+
+  it("exports pickup constants and derived helpers with worked values", () => {
+    expect(PICKUP_MS_PER_LOAD).toBe(10_000);
+    expect(HIRE_HAULER_COST).toBe(160);
+    expect(haulSpeedFor(0)).toBe(1);
+    expect(haulSpeedFor(1)).toBe(1.25);
+    expect(haulSpeedFor(4)).toBe(2);
+    expect(pickupMsPerLoad(0)).toBe(10_000);
+    expect(pickupMsPerLoad(1)).toBe(8_000);
+    expect(nextHaulSpeedUpgradeCost(0)).toBe(5);
+    expect(nextHaulSpeedUpgradeCost(3)).toBe(40);
+    expect(heapCapacityFor(0)).toBe(10);
   });
 });
 

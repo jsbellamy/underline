@@ -42,6 +42,11 @@ describe("mining save seam", () => {
       digRateUpgradeCount: 2,
       smelterUpgradeCount: 1,
       carryCapacityUpgradeCount: 1,
+      crewSize: 1,
+      heapLoads: 0,
+      heapOre: 0,
+      haulSpeedUpgradeCount: 0,
+      pickupProgressMs: 0,
       faceSwingProgress: 1.25,
       smelterProgress: 0.4,
       bagOre: 3.5,
@@ -81,6 +86,11 @@ describe("mining save seam", () => {
       digRateUpgradeCount: 2,
       smelterUpgradeCount: 1,
       carryCapacityUpgradeCount: 0,
+      crewSize: 1,
+      heapLoads: 0,
+      heapOre: 0,
+      haulSpeedUpgradeCount: 0,
+      pickupProgressMs: 0,
       faceSwingProgress: 1.25,
       smelterProgress: 0.4,
       bagOre: 0,
@@ -113,6 +123,11 @@ describe("mining save seam", () => {
       digRateUpgradeCount: 2,
       smelterUpgradeCount: 0,
       carryCapacityUpgradeCount: 0,
+      crewSize: 1,
+      heapLoads: 0,
+      heapOre: 0,
+      haulSpeedUpgradeCount: 0,
+      pickupProgressMs: 0,
       faceSwingProgress: 1.25,
       smelterProgress: 0.4,
       bagOre: 0,
@@ -177,6 +192,24 @@ describe("mining save seam", () => {
     const loaded = loadSave(store);
     expect(loaded.snapshot).toEqual(initialSnapshot());
     expect(loaded.savedAtMs).toBeUndefined();
+  });
+
+  it("round-trips v3 save without persisting interim Crew fields", () => {
+    const withCrew = {
+      ...initialSnapshot(),
+      crewSize: 2,
+      heapLoads: 5,
+      heapOre: 5,
+      haulSpeedUpgradeCount: 2,
+      pickupProgressMs: 3000,
+    };
+    persistSave(withCrew, 1_700_000_000_000, store);
+    const loaded = loadSave(store);
+    expect(loaded.snapshot.crewSize).toBe(1);
+    expect(loaded.snapshot.heapLoads).toBe(0);
+    expect(loaded.snapshot.heapOre).toBe(0);
+    expect(loaded.snapshot.haulSpeedUpgradeCount).toBe(0);
+    expect(loaded.snapshot.pickupProgressMs).toBe(0);
   });
 
   it("clears the save key", () => {

@@ -38,7 +38,11 @@ function isSchemaVersion(value: unknown): value is typeof SCHEMA_VERSION {
 
 function isUpgradeId(value: unknown): value is UpgradeId {
   return (
-    value === "digRate" || value === "smelter" || value === "carryCapacity"
+    value === "digRate" ||
+    value === "smelter" ||
+    value === "carryCapacity" ||
+    value === "haulSpeed" ||
+    value === "hireHauler"
   );
 }
 
