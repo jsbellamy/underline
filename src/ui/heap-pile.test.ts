@@ -1,18 +1,30 @@
 import { describe, expect, it } from "vitest";
 import { fallingOrePosition, haulerPickupTargetX, heapSlot } from "./heap-pile";
 import {
+  DWARF_FRAME_W,
+  DWARF_SCALE,
   FACE_X,
+  HAULER_GRAB_X,
   HAULER_MARK_X,
   HAULER_PICKUP_X,
+  HEAP_BIN_CEILING_Y,
+  HEAP_BIN_EAST_X,
+  HEAP_BIN_FLOOR_Y,
+  HEAP_BIN_WEST_X,
   HEAP_BOTTOM,
   HEAP_EAST_X,
+  HEAP_GRAB_REACH_PX,
+  HEAP_PILE_SEED,
+  HEAP_RENDER_CEILING,
   HEAP_ROW_HEIGHT,
   HEAP_SLOTS_PER_ROW,
+  HEAP_SPAWN_X,
   MINING_MARK_X,
   ORE_FALL_MS,
   ORE_PITCH,
   ORE_SIZE,
   ORE_SPAWN_BOTTOM,
+  PANE_HEIGHT,
 } from "./pane-layout";
 
 describe("heapSlot", () => {
@@ -24,6 +36,26 @@ describe("heapSlot", () => {
     expect(HEAP_EAST_X).toBe(400);
     expect(HEAP_SLOTS_PER_ROW).toBe(6);
     expect(HEAP_EAST_X).toBe(FACE_X - ORE_SIZE);
+  });
+
+  it("exports heap bin and pile constants with worked values", () => {
+    expect(HEAP_RENDER_CEILING).toBe(24);
+    expect(HEAP_BIN_FLOOR_Y).toBe(8);
+    expect(HEAP_BIN_WEST_X).toBe(192);
+    expect(HEAP_BIN_EAST_X).toBe(432);
+    expect(HEAP_BIN_CEILING_Y).toBe(112);
+    expect(HEAP_SPAWN_X).toBe(416);
+    expect(HAULER_GRAB_X).toBe(361);
+    expect(HEAP_GRAB_REACH_PX).toBe(48);
+    expect(HEAP_PILE_SEED).toBe(1);
+    expect(HEAP_BIN_FLOOR_Y).toBe(HEAP_BOTTOM);
+    expect(HEAP_BIN_WEST_X).toBe(HAULER_MARK_X);
+    expect(HEAP_BIN_EAST_X).toBe(FACE_X);
+    expect(HEAP_BIN_CEILING_Y).toBe(PANE_HEIGHT);
+    expect(HEAP_SPAWN_X).toBe(FACE_X - ORE_SIZE / 2);
+    expect(HAULER_GRAB_X).toBe(
+      HAULER_PICKUP_X + (DWARF_FRAME_W * DWARF_SCALE) / 2,
+    );
   });
 
   it("keeps the westmost slot east of the Hauler stand", () => {
