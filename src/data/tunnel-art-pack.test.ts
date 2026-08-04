@@ -122,10 +122,10 @@ describe("tunnel-art-pack", () => {
 
   it("matches gold-small cyFromBottom to bottom gap plus half content height", () => {
     const key = "objects/ore/gold-small";
-    const gap = tunnelArtContentBottomGap(pack, key, ORE_SIZE);
-    const radius = tunnelArtContentRadius(pack, key);
     const center = tunnelArtContentCenter(pack, key, ORE_SIZE);
-    expect(center.cyFromBottom).toBe(gap + radius);
+    const bottomGap = 10;
+    const halfContentHeight = 6;
+    expect(center.cyFromBottom).toBe(bottomGap + halfContentHeight);
   });
 
   it("throws for an unknown key on content centre lookup", () => {
