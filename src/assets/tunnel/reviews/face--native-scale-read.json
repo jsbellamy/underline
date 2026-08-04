@@ -1,0 +1,97 @@
+{
+  "schema": "tunnel-art-native-scale-read/0",
+  "asset_key": "face",
+  "issue": 420,
+  "reviewed_pngs": {
+    "intact": {
+      "path": "src/assets/tunnel/tiles/face/intact.png",
+      "sha256": "11d91315704ba88c6d9c8dd2d632faff61719ed02e93582f1786d870fb05d79a"
+    },
+    "chipped": {
+      "path": "src/assets/tunnel/tiles/face/chipped.png",
+      "sha256": "77042a0a62c6db0242b081cd3fbaa56e8a5e084eceea668c74eda562223dd297"
+    },
+    "cracked": {
+      "path": "src/assets/tunnel/tiles/face/cracked.png",
+      "sha256": "0c78c9a287a523750bbac02695dc302c8ff347e6a6eb571831d1be5279996d69"
+    },
+    "crumbling": {
+      "path": "src/assets/tunnel/tiles/face/crumbling.png",
+      "sha256": "781f5cccb0c7bcdc7843757ea3e90c86756471ef9c22d94c195820efc010664f"
+    }
+  },
+  "inspection": {
+    "native_scale": true,
+    "nearest_neighbor_enlargement": "4x",
+    "compositing_background": "src/assets/tunnel/background/tunnel-interior.png",
+    "tile_scale": 3,
+    "column_size": [
+      48,
+      112
+    ],
+    "vertical_repeat": true,
+    "composites": [
+      "src/assets/tunnel/reviews/face--composite-native.png",
+      "src/assets/tunnel/reviews/face--composite-4x.png"
+    ]
+  },
+  "style_cohort": [
+    "src/assets/tunnel/background/tunnel-interior.png",
+    "assets/characters/dwarf/idle/east/frame_000.png",
+    "assets/characters/dwarf/swing/east/frame_000.png"
+  ],
+  "style_alignment": {
+    "verdict": "pass",
+    "rationale": "Warm plum-brown rock vocabulary sampled from tunnel-interior; chunky 16x16 cells with first-room cyan-crystal ramp; crystal seam reads at 3x against dim tunnel band."
+  },
+  "identity_continuity": {
+    "verdict": "pass",
+    "rationale": "First face tile family; establishes cyan-ore vertical seam damage progression for #421 wiring."
+  },
+  "questions": [
+    {
+      "id": "damage_order",
+      "question": "The four states are ordered unambiguously by damage at native scale.",
+      "verdict": "PASS",
+      "notes": "intact full seam \u2192 chipped edge scars \u2192 cracked fracture void \u2192 crumbling large voids and loose fragments; progression reads left-to-right in composite."
+    },
+    {
+      "id": "hue_removed",
+      "question": "Each state remains distinguishable from the other three with hue removed.",
+      "verdict": "PASS",
+      "notes": "Geometry differs: solid seam, edge chips, central fracture, scattered fragments; value patterns do not collapse when desaturated."
+    },
+    {
+      "id": "vertical_seam",
+      "question": "Each tile repeats vertically with no visible seam.",
+      "verdict": "PASS",
+      "notes": "Row 0 equals row 15 on all four tiles; 3x vertical repeat in 48x112 column shows no horizontal discontinuity."
+    },
+    {
+      "id": "cyan_confinement",
+      "question": "Cyan appears only in crystal Cells; the surrounding rock is not recolored.",
+      "verdict": "PASS",
+      "notes": "Cyan-class pixels confined to seam columns x5-10; rock uses warm plum-brown ramp only."
+    },
+    {
+      "id": "dimensions_and_edges",
+      "question": "Every tile is exactly 16x16 with no magenta and no anti-aliased edge pixels.",
+      "verdict": "PASS",
+      "notes": "All four PNGs 16x16 RGBA binary alpha; zero magenta and zero semi-transparent pixels."
+    }
+  ],
+  "machine_checks": {
+    "assets_verify": "PASS",
+    "magenta_pixels": 0,
+    "semi_transparent_pixels": 0,
+    "row0_row15_match": {
+      "intact": 16,
+      "chipped": 16,
+      "cracked": 16,
+      "crumbling": 16
+    }
+  },
+  "overall": "PASS",
+  "reviewed_at": "2026-08-04T07:15:00+00:00",
+  "reviewer_identity": "cursor-agent/issue-420"
+}

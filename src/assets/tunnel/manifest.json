@@ -5,6 +5,30 @@
       "sha256": "3441e65b28ba5fdb7f666d29ee646ac627d694b725e791b354b5e44651ba36ec",
       "source_relative_path": "assets-raw/tunnel/background/tunnel-interior.png",
       "source_sha256": "5ea8c626f530f048861424b12542b40f1fae9f9fc9c0c449c6cd338fcdc4a959"
+    },
+    {
+      "relative_path": "src/assets/tunnel/tiles/face/chipped.png",
+      "sha256": "77042a0a62c6db0242b081cd3fbaa56e8a5e084eceea668c74eda562223dd297",
+      "source_relative_path": "assets-raw/tunnel/tile-sheet/face.png",
+      "source_sha256": "af20ddb017ad60ec81c0f0aa983745ffd0f2e732176b73496517f6f39e6ae974"
+    },
+    {
+      "relative_path": "src/assets/tunnel/tiles/face/cracked.png",
+      "sha256": "0c78c9a287a523750bbac02695dc302c8ff347e6a6eb571831d1be5279996d69",
+      "source_relative_path": "assets-raw/tunnel/tile-sheet/face.png",
+      "source_sha256": "af20ddb017ad60ec81c0f0aa983745ffd0f2e732176b73496517f6f39e6ae974"
+    },
+    {
+      "relative_path": "src/assets/tunnel/tiles/face/crumbling.png",
+      "sha256": "781f5cccb0c7bcdc7843757ea3e90c86756471ef9c22d94c195820efc010664f",
+      "source_relative_path": "assets-raw/tunnel/tile-sheet/face.png",
+      "source_sha256": "af20ddb017ad60ec81c0f0aa983745ffd0f2e732176b73496517f6f39e6ae974"
+    },
+    {
+      "relative_path": "src/assets/tunnel/tiles/face/intact.png",
+      "sha256": "11d91315704ba88c6d9c8dd2d632faff61719ed02e93582f1786d870fb05d79a",
+      "source_relative_path": "assets-raw/tunnel/tile-sheet/face.png",
+      "source_sha256": "af20ddb017ad60ec81c0f0aa983745ffd0f2e732176b73496517f6f39e6ae974"
     }
   ],
   "schema": "tunnel-art-pack/0"
