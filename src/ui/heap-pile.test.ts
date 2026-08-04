@@ -1,4 +1,11 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
+import tunnelManifest from "../assets/tunnel/manifest.json";
+import {
+  tunnelArtKeysUnder,
+  tunnelArtPath,
+  type TunnelArtPack,
+} from "../data/tunnel-art-pack";
 import { fallingOrePosition, haulerPickupTargetX, heapSlot } from "./heap-pile";
 import {
   FACE_X,
@@ -8,24 +15,33 @@ import {
   HEAP_ROW_HEIGHT,
   HEAP_SLOTS_PER_ROW,
   ORE_FALL_MS,
-  ORE_LOGICAL_SIZE,
   ORE_PITCH,
-  ORE_SCALE,
   ORE_SIZE,
   ORE_SPAWN_BOTTOM,
 } from "./pane-layout";
 
 describe("heapSlot", () => {
   it("exports layout constants with worked values", () => {
-    expect(ORE_LOGICAL_SIZE).toBe(8);
-    expect(ORE_SCALE).toBe(2);
-    expect(ORE_SIZE).toBe(16);
-    expect(ORE_PITCH).toBe(20);
-    expect(HEAP_ROW_HEIGHT).toBe(18);
+    expect(ORE_SIZE).toBe(32);
+    expect(ORE_PITCH).toBe(36);
+    expect(HEAP_ROW_HEIGHT).toBe(34);
     expect(HEAP_BOTTOM).toBe(8);
-    expect(HEAP_EAST_X).toBe(416);
-    expect(HEAP_SLOTS_PER_ROW).toBe(12);
+    expect(HEAP_EAST_X).toBe(400);
+    expect(HEAP_SLOTS_PER_ROW).toBe(6);
     expect(HEAP_EAST_X).toBe(FACE_X - ORE_SIZE);
+  });
+
+  it("binds layout to gold ore object canvas size", () => {
+    const pack = tunnelManifest as TunnelArtPack;
+    const keys = tunnelArtKeysUnder(pack, "objects/ore/gold-");
+    for (const key of keys) {
+      const path = tunnelArtPath(pack, key);
+      const buf = readFileSync(path);
+      const width = buf.readUInt32BE(16);
+      const height = buf.readUInt32BE(20);
+      expect(width).toBe(ORE_SIZE);
+      expect(height).toBe(ORE_SIZE);
+    }
   });
 
   it("keeps the westmost slot east of the Hauler stand", () => {
@@ -35,12 +51,12 @@ describe("heapSlot", () => {
   });
 
   const worked: Array<{ index: number; left: number; bottom: number }> = [
-    { index: 0, left: 416, bottom: 8 },
-    { index: 1, left: 396, bottom: 8 },
-    { index: 11, left: 196, bottom: 8 },
-    { index: 12, left: 416, bottom: 26 },
-    { index: 23, left: 196, bottom: 26 },
-    { index: 24, left: 416, bottom: 44 },
+    { index: 0, left: 400, bottom: 8 },
+    { index: 1, left: 364, bottom: 8 },
+    { index: 5, left: 220, bottom: 8 },
+    { index: 6, left: 400, bottom: 42 },
+    { index: 11, left: 220, bottom: 42 },
+    { index: 12, left: 400, bottom: 76 },
   ];
 
   for (const { index, left, bottom } of worked) {
@@ -70,12 +86,12 @@ describe("fallingOrePosition", () => {
     left: number;
     bottom: number;
   }> = [
-    { slot: 0, progress: 0, left: 416, bottom: 56 },
-    { slot: 0, progress: 0.5, left: 416, bottom: 44 },
-    { slot: 0, progress: 1, left: 416, bottom: 8 },
-    { slot: 11, progress: 0, left: 416, bottom: 56 },
-    { slot: 11, progress: 0.5, left: 306, bottom: 44 },
-    { slot: 11, progress: 1, left: 196, bottom: 8 },
+    { slot: 0, progress: 0, left: 400, bottom: 56 },
+    { slot: 0, progress: 0.5, left: 400, bottom: 44 },
+    { slot: 0, progress: 1, left: 400, bottom: 8 },
+    { slot: 5, progress: 0, left: 400, bottom: 56 },
+    { slot: 5, progress: 0.5, left: 310, bottom: 44 },
+    { slot: 5, progress: 1, left: 220, bottom: 8 },
   ];
 
   for (const { slot, progress, left, bottom } of worked) {
@@ -85,7 +101,7 @@ describe("fallingOrePosition", () => {
   }
 
   it("at progress 1 deep-equals heapSlot for every worked slot", () => {
-    for (const slot of [0, 11]) {
+    for (const slot of [0, 5]) {
       expect(fallingOrePosition(slot, 1)).toEqual(heapSlot(slot));
     }
   });
@@ -98,11 +114,12 @@ describe("fallingOrePosition", () => {
 
 describe("haulerPickupTargetX", () => {
   const worked: Array<{ heapLoads: number; target: number }> = [
-    { heapLoads: 1, target: 338 },
-    { heapLoads: 5, target: 258 },
-    { heapLoads: 10, target: 192 },
-    { heapLoads: 12, target: 192 },
-    { heapLoads: 20, target: 198 },
+    { heapLoads: 1, target: 322 },
+    { heapLoads: 3, target: 250 },
+    { heapLoads: 5, target: 192 },
+    { heapLoads: 6, target: 192 },
+    { heapLoads: 10, target: 214 },
+    { heapLoads: 20, target: 286 },
   ];
 
   for (const { heapLoads, target } of worked) {
@@ -117,7 +134,7 @@ describe("haulerPickupTargetX", () => {
   });
 
   it("never targets west of the Hauler stand", () => {
-    for (const n of [1, 5, 10, 12, 20]) {
+    for (const n of [1, 3, 5, 6, 10, 20]) {
       expect(haulerPickupTargetX(n)).toBeGreaterThanOrEqual(HAULER_MARK_X);
     }
   });

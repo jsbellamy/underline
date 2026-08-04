@@ -2,7 +2,7 @@
 
 import { describe, expect, it } from "vitest";
 import { faceDamageState, mountMiningTunnel } from "./mining-tunnel";
-import { tunnelArtPath } from "../data/tunnel-art-pack";
+import { tunnelArtKeysUnder, tunnelArtPath } from "../data/tunnel-art-pack";
 import { TUNNEL_ART_PACK, tunnelArtUrl } from "./tunnel-art";
 import type { TunnelSnapshot } from "./mine-presenter";
 import { dwarfLayout } from "../data/external-sprite-pack";
@@ -112,9 +112,25 @@ function faceTileBackground(state: string): string {
   return `url("${tunnelArtUrl(path)}")`;
 }
 
-function heapOreTileBackground(variant: string): string {
-  const path = tunnelArtPath(TUNNEL_ART_PACK, `tiles/heap-ore/${variant}`);
+const HEAP_ORE_KEYS = tunnelArtKeysUnder(TUNNEL_ART_PACK, "objects/ore/gold-");
+
+function heapOreObjectBackground(artKey: string): string {
+  const path = tunnelArtPath(TUNNEL_ART_PACK, artKey);
   return `url("${tunnelArtUrl(path)}")`;
+}
+
+function heapOreBottomGap(artKey: string): number {
+  const path = tunnelArtPath(TUNNEL_ART_PACK, artKey);
+  const entry = TUNNEL_ART_PACK.entries.find((e) => e.relative_path === path);
+  if (!entry?.content_box) {
+    throw new Error(`missing content_box for ${artKey}`);
+  }
+  const [, , , y1] = entry.content_box;
+  return ORE_SIZE - 1 - y1;
+}
+
+function adjustedHeapOreBottom(slotBottom: number, artKey: string): number {
+  return slotBottom - heapOreBottomGap(artKey);
 }
 
 describe("faceDamageState", () => {
@@ -472,19 +488,19 @@ describe("mountMiningTunnel", () => {
         heapLoads: 1,
         cases: [
           { pickupProgress: 0, expected: 192 },
-          { pickupProgress: 0.25, expected: 265 },
-          { pickupProgress: 0.5, expected: 338 },
-          { pickupProgress: 0.75, expected: 265 },
+          { pickupProgress: 0.25, expected: 257 },
+          { pickupProgress: 0.5, expected: 322 },
+          { pickupProgress: 0.75, expected: 257 },
           { pickupProgress: 1, expected: 192 },
         ],
       },
       {
-        heapLoads: 5,
+        heapLoads: 10,
         cases: [
           { pickupProgress: 0, expected: 192 },
-          { pickupProgress: 0.25, expected: 225 },
-          { pickupProgress: 0.5, expected: 258 },
-          { pickupProgress: 0.75, expected: 225 },
+          { pickupProgress: 0.25, expected: 203 },
+          { pickupProgress: 0.5, expected: 214 },
+          { pickupProgress: 0.75, expected: 203 },
           { pickupProgress: 1, expected: 192 },
         ],
       },
@@ -694,14 +710,15 @@ describe("mountMiningTunnel", () => {
 
     for (let i = 0; i < 3; i += 1) {
       const ore = oreAtSlot(host, i);
+      const artKey = HEAP_ORE_KEYS[i % HEAP_ORE_KEYS.length]!;
       const { left, bottom } = heapSlot(i);
       expect(ore.style.left).toBe(`${left}px`);
-      expect(ore.style.bottom).toBe(`${bottom}px`);
+      expect(ore.style.bottom).toBe(
+        `${adjustedHeapOreBottom(bottom, artKey)}px`,
+      );
       expect(ore.style.width).toBe(`${ORE_SIZE}px`);
       expect(ore.style.height).toBe(`${ORE_SIZE}px`);
-      expect(ore.style.backgroundImage).toBe(
-        heapOreTileBackground(["chunk-a", "chunk-b", "chunk-c"][i % 3]!),
-      );
+      expect(ore.style.backgroundImage).toBe(heapOreObjectBackground(artKey));
       expect(ore.style.imageRendering).toBe("pixelated");
     }
 
@@ -716,13 +733,16 @@ describe("mountMiningTunnel", () => {
   it("paints settled Heap chunks from the art pack with stable variants", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
-    tunnel.render(twoDwarfSnap({ heapLoads: 4 }));
+    tunnel.render(twoDwarfSnap({ heapLoads: 3 }));
 
-    const variants = ["chunk-a", "chunk-b", "chunk-c", "chunk-a"] as const;
-    for (const [slot, variant] of variants.entries()) {
+    const variants = HEAP_ORE_KEYS.slice(0, 3);
+    for (const [slot, artKey] of variants.entries()) {
       const ore = oreAtSlot(host, slot);
-      expect(ore.dataset["oreVariant"]).toBe(variant);
-      expect(ore.style.backgroundImage).toBe(heapOreTileBackground(variant));
+      expect(ore.dataset["oreVariant"]).toBe(artKey);
+      expect(ore.dataset["oreVariant"]!.startsWith("objects/ore/gold-")).toBe(
+        true,
+      );
+      expect(ore.style.backgroundImage).toBe(heapOreObjectBackground(artKey));
       expect(ore.style.backgroundImage.length).toBeGreaterThan(0);
     }
 
@@ -741,11 +761,61 @@ describe("mountMiningTunnel", () => {
     );
 
     const carried = host.querySelector<HTMLElement>("[data-ore-carried]");
+    const artKey = HEAP_ORE_KEYS[3]!;
     expect(carried).not.toBeNull();
-    expect(carried!.dataset["oreVariant"]).toBe("chunk-a");
-    expect(carried!.style.backgroundImage).toBe(heapOreTileBackground("chunk-a"));
+    expect(carried!.dataset["oreVariant"]).toBe(artKey);
+    expect(carried!.style.backgroundImage).toBe(heapOreObjectBackground(artKey));
 
     tunnel.destroy();
+  });
+
+  it("bottom-aligns heap objects by content_box so contents rest on the floor", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    tunnel.render(twoDwarfSnap({ heapLoads: 6 }));
+
+    const largeBSlot = 1;
+    const smallSlot = 5;
+    const largeBKey = HEAP_ORE_KEYS[largeBSlot]!;
+    const smallKey = HEAP_ORE_KEYS[smallSlot]!;
+    expect(largeBKey).toBe("objects/ore/gold-large-b");
+    expect(smallKey).toBe("objects/ore/gold-small");
+
+    const largeB = oreAtSlot(host, largeBSlot);
+    const small = oreAtSlot(host, smallSlot);
+    const largeBSlotBottom = heapSlot(largeBSlot).bottom;
+    const smallSlotBottom = heapSlot(smallSlot).bottom;
+
+    expect(Number(largeB.style.bottom.replace("px", ""))).toBe(
+      largeBSlotBottom - heapOreBottomGap(largeBKey),
+    );
+    expect(Number(small.style.bottom.replace("px", ""))).toBe(
+      smallSlotBottom - heapOreBottomGap(smallKey),
+    );
+    expect(heapOreBottomGap(smallKey)).toBe(10);
+    expect(heapOreBottomGap(largeBKey)).toBe(1);
+
+    tunnel.destroy();
+  });
+
+  it("throws when painting heap ore without content_box", () => {
+    const entry = TUNNEL_ART_PACK.entries.find((e) =>
+      e.relative_path.endsWith("objects/ore/gold-large-a.png"),
+    );
+    expect(entry).toBeDefined();
+    const savedBox = entry!.content_box;
+    Reflect.deleteProperty(entry!, "content_box");
+
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    expect(() => tunnel.render(twoDwarfSnap({ heapLoads: 1 }))).toThrow(
+      "Tunnel art entry missing content_box: objects/ore/gold-large-a",
+    );
+    tunnel.destroy();
+
+    if (savedBox) {
+      entry!.content_box = savedBox;
+    }
   });
 
   it("renders no Ore for a one-Dwarf Crew regardless of heapLoads", () => {
@@ -810,10 +880,16 @@ describe("mountMiningTunnel", () => {
     const settled = oreAtSlot(host, 0);
     const fallingPos = fallingOrePosition(1, 0.5);
     const settledPos = heapSlot(0);
+    const fallingKey = HEAP_ORE_KEYS[1]!;
+    const settledKey = HEAP_ORE_KEYS[0]!;
     expect(falling.style.left).toBe(`${fallingPos.left}px`);
-    expect(falling.style.bottom).toBe(`${fallingPos.bottom}px`);
+    expect(falling.style.bottom).toBe(
+      `${adjustedHeapOreBottom(fallingPos.bottom, fallingKey)}px`,
+    );
     expect(settled.style.left).toBe(`${settledPos.left}px`);
-    expect(settled.style.bottom).toBe(`${settledPos.bottom}px`);
+    expect(settled.style.bottom).toBe(
+      `${adjustedHeapOreBottom(settledPos.bottom, settledKey)}px`,
+    );
 
     tunnel.destroy();
   });
