@@ -7,6 +7,7 @@ import {
   initialSnapshot,
   nextCarryCapacityUpgradeCost,
   nextHaulSpeedUpgradeCost,
+  nextPickDamageUpgradeCost,
   nextSmelterUpgradeCost,
 } from "../core/mining-engine";
 import { toWireSnapshot } from "../core/wire-snapshot";
@@ -201,6 +202,71 @@ describe("Colony Dock surface", () => {
 });
 
 describe("mountColonyView", () => {
+  it("shows Pick Damage between Dig Rate and Ore", () => {
+    const host = document.createElement("div");
+    const view = mountColonyView(host);
+    view.render(
+      toWireSnapshot({
+        ...initialSnapshot(),
+        pickDamageUpgradeCount: 2,
+      }),
+    );
+    expect(host.querySelector("[data-pick-damage]")?.textContent).toBe(
+      "2.25 damage/Swing",
+    );
+    const status = host.querySelector(".dock-colony-status");
+    const children = Array.from(status?.children ?? []);
+    const pickDamageIndex = children.findIndex(
+      (el) => el.matches("dd[data-pick-damage]"),
+    );
+    const digRateIndex = children.findIndex((el) => el.matches("dd[data-dig-rate]"));
+    const oreIndex = children.findIndex((el) => el.matches("dd[data-ore]"));
+    expect(pickDamageIndex).toBeGreaterThan(digRateIndex);
+    expect(pickDamageIndex).toBeLessThan(oreIndex);
+    view.destroy();
+  });
+
+  it("shows the Pick Damage Upgrade offer and disables it when Ingots are short", () => {
+    const host = document.createElement("div");
+    const view = mountColonyView(host);
+    view.render(
+      toWireSnapshot({
+        ...initialSnapshot(),
+        pickDamageUpgradeCount: 0,
+        ingots: 4,
+      }),
+    );
+    const btn = host.querySelector<HTMLButtonElement>(
+      "[data-buy-pick-damage-upgrade]",
+    );
+    expect(btn?.textContent).toBe(
+      `Buy Pick Damage Upgrade (×1.5 Pick Damage) — ${nextPickDamageUpgradeCost(0)} Ingots`,
+    );
+    expect(btn?.disabled).toBe(true);
+    view.render(
+      toWireSnapshot({
+        ...initialSnapshot(),
+        pickDamageUpgradeCount: 0,
+        ingots: 5,
+      }),
+    );
+    expect(btn?.disabled).toBe(false);
+    view.destroy();
+  });
+
+  it("fires onBuyUpgrade with pickDamage when the Pick Damage Upgrade is pressed", () => {
+    const onBuy = vi.fn();
+    const host = document.createElement("div");
+    const view = mountColonyView(host, { onBuyUpgrade: onBuy });
+    view.render(toWireSnapshot({ ...initialSnapshot(), ingots: 5 }));
+    host
+      .querySelector<HTMLButtonElement>("[data-buy-pick-damage-upgrade]")
+      ?.click();
+    expect(onBuy).toHaveBeenCalledOnce();
+    expect(onBuy).toHaveBeenCalledWith("pickDamage");
+    view.destroy();
+  });
+
   it("shows Crew as 1 Dwarf or 2 Dwarves with roles", () => {
     const host = document.createElement("div");
     const view = mountColonyView(host);
@@ -291,13 +357,14 @@ describe("mountColonyView", () => {
     view.destroy();
   });
 
-  it("orders upgrade buttons Dig Rate, Smelter, Carry Capacity, Haul Speed, Hire Hauler", () => {
+  it("orders upgrade buttons Dig Rate, Pick Damage, Smelter, Carry Capacity, Haul Speed, Hire Hauler", () => {
     const host = document.createElement("div");
     const view = mountColonyView(host);
     view.render(toWireSnapshot(initialSnapshot()));
     const row = host.querySelector(".dock-colony-upgrade");
     const selectors = [
       "[data-buy-upgrade]",
+      "[data-buy-pick-damage-upgrade]",
       "[data-buy-smelter-upgrade]",
       "[data-buy-carry-capacity-upgrade]",
       "[data-buy-haul-speed-upgrade]",
@@ -305,6 +372,7 @@ describe("mountColonyView", () => {
     ];
     const children = Array.from(row?.children ?? []);
     expect(children.map((el) => el.matches(selectors.join(", ")))).toEqual([
+      true,
       true,
       true,
       true,

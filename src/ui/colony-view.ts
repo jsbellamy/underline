@@ -7,9 +7,11 @@ import {
   carryCapacityFor,
   heapCapacityFor,
   nextDigRateUpgradeCost,
+  nextPickDamageUpgradeCost,
   nextSmelterUpgradeCost,
   nextCarryCapacityUpgradeCost,
   nextHaulSpeedUpgradeCost,
+  pickDamageFor,
   smelterThroughputFor,
   HIRE_HAULER_COST,
   DROPS_PER_FACE,
@@ -56,6 +58,11 @@ export function mountColonyView(
   const digRateDd = document.createElement("dd");
   digRateDd.dataset["digRate"] = "";
 
+  const pickDamageDt = document.createElement("dt");
+  pickDamageDt.textContent = "Pick Damage";
+  const pickDamageDd = document.createElement("dd");
+  pickDamageDd.dataset["pickDamage"] = "";
+
   const oreDt = document.createElement("dt");
   oreDt.textContent = "Ore";
   const oreDd = document.createElement("dd");
@@ -99,6 +106,8 @@ export function mountColonyView(
   status.append(
     digRateDt,
     digRateDd,
+    pickDamageDt,
+    pickDamageDd,
     oreDt,
     oreDd,
     ingotsDt,
@@ -125,6 +134,13 @@ export function mountColonyView(
   digRateUpgradeBtn.dataset["buyUpgrade"] = "";
   digRateUpgradeBtn.addEventListener("click", () => {
     options.onBuyUpgrade?.("digRate");
+  });
+  const pickDamageUpgradeBtn = document.createElement("button");
+  pickDamageUpgradeBtn.type = "button";
+  pickDamageUpgradeBtn.className = "dock-buy-pick-damage-upgrade";
+  pickDamageUpgradeBtn.dataset["buyPickDamageUpgrade"] = "";
+  pickDamageUpgradeBtn.addEventListener("click", () => {
+    options.onBuyUpgrade?.("pickDamage");
   });
   const smelterUpgradeBtn = document.createElement("button");
   smelterUpgradeBtn.type = "button";
@@ -156,6 +172,7 @@ export function mountColonyView(
   });
   upgradeRow.append(
     digRateUpgradeBtn,
+    pickDamageUpgradeBtn,
     smelterUpgradeBtn,
     carryCapacityUpgradeBtn,
     haulSpeedUpgradeBtn,
@@ -188,6 +205,7 @@ export function mountColonyView(
   function render(snapshot: WireSnapshot): void {
     const digRate = digRateFor(snapshot.digRateUpgradeCount);
     const digCost = nextDigRateUpgradeCost(snapshot.digRateUpgradeCount);
+    const pickDamageCost = nextPickDamageUpgradeCost(snapshot.pickDamageUpgradeCount);
     const smelterCost = nextSmelterUpgradeCost(snapshot.smelterUpgradeCount);
     const carryCapacityCost = nextCarryCapacityUpgradeCost(
       snapshot.carryCapacityUpgradeCount,
@@ -200,6 +218,7 @@ export function mountColonyView(
       (snapshot.faceSwingProgress / hardnessFor(snapshot.advance)) * 100,
     );
     digRateDd.textContent = `${formatRate(digRate)} Swing/sec`;
+    pickDamageDd.textContent = `${formatRate(pickDamageFor(snapshot.pickDamageUpgradeCount))} damage/Swing`;
     oreDd.textContent = formatAmount(snapshot.ore);
     ingotsDd.textContent = formatAmount(snapshot.ingots);
     smelterDd.textContent = `${formatRate(throughput)} Ore/sec`;
@@ -221,6 +240,9 @@ export function mountColonyView(
     faceDd.textContent = `${snapshot.advance + 1} — ${facePercent}%`;
     digRateUpgradeBtn.textContent = `Buy Upgrade (+0.25 Dig Rate) — ${digCost} Ingots`;
     digRateUpgradeBtn.disabled = snapshot.ingots < digCost;
+    pickDamageUpgradeBtn.textContent =
+      `Buy Pick Damage Upgrade (×1.5 Pick Damage) — ${pickDamageCost} Ingots`;
+    pickDamageUpgradeBtn.disabled = snapshot.ingots < pickDamageCost;
     smelterUpgradeBtn.textContent =
       `Buy Smelter Upgrade (+0.02 Ore/sec) — ${smelterCost} Ingots`;
     smelterUpgradeBtn.disabled = snapshot.ingots < smelterCost;
