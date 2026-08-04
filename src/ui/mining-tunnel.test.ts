@@ -26,6 +26,8 @@ const baseSnap = {
   haulPhase: "none" as const,
   haulProgress: 0,
   faceSlide: 1,
+  crewSize: 1,
+  heapLoads: 0,
 };
 
 function countDescendants(element: HTMLElement): number {

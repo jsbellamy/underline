@@ -5,12 +5,12 @@ import dwarfManifest from "../../assets/characters/dwarf/manifest.json";
 import { browserSaveStore } from "../core/mining-save";
 import { createMiningSession } from "../core/mining-session";
 import { initialSnapshot } from "../core/mining-engine";
-import {
-  persistSettings,
-  SETTINGS_KEY,
-} from "../core/settings-save";
+import { persistSettings, SETTINGS_KEY } from "../core/settings-save";
 import { createDwarfAnimController } from "../core/dwarf-anim-state";
-import { dwarfFramePaths, type ExternalSpritePack } from "../data/external-sprite-pack";
+import {
+  dwarfFramePaths,
+  type ExternalSpritePack,
+} from "../data/external-sprite-pack";
 import { dwarfFrameUrl, dwarfFrameUrlsFor } from "./dwarf-frames";
 import { mountPaneShell } from "./pane-root";
 import { mountMiningTunnel } from "./mining-tunnel";
@@ -18,22 +18,29 @@ import { createMinePresenter } from "./mine-presenter";
 import { createMiningAudio } from "./mining-audio";
 import type { TunnelSnapshot } from "./mine-presenter";
 import { PUMP_INTERVAL_MS } from "./pump";
-import { DWARF_SCALE, PANE_HEIGHT, PANE_WIDTH, TUNNEL_HEIGHT } from "./pane-layout";
+import {
+  DWARF_SCALE,
+  PANE_HEIGHT,
+  PANE_WIDTH,
+  TUNNEL_HEIGHT,
+} from "./pane-layout";
 
 function stubPresenter(setSoundEnabled = vi.fn()) {
   const anim = createDwarfAnimController({ digRate: 1 });
   let simNowMs = 0;
   const snapshot = (nowMs?: number): TunnelSnapshot => ({
-      animation: "swing" as const,
-      facing: "east" as const,
-      frameIndex: 0,
-      advance: 0,
-      faceSwingProgress: 0,
-      swingFraction: nowMs !== undefined ? nowMs / 1000 : simNowMs / 1000,
-      digRate: 1,
-      haulPhase: "none" as const,
-      haulProgress: 0,
-      faceSlide: 1,
+    animation: "swing" as const,
+    facing: "east" as const,
+    frameIndex: 0,
+    advance: 0,
+    faceSwingProgress: 0,
+    swingFraction: nowMs !== undefined ? nowMs / 1000 : simNowMs / 1000,
+    digRate: 1,
+    haulPhase: "none" as const,
+    haulProgress: 0,
+    faceSlide: 1,
+    crewSize: 1,
+    heapLoads: 0,
   });
   return {
     anim,
@@ -74,7 +81,7 @@ function stubAudioContextFactory() {
   const createAudioContext = vi.fn(
     () =>
       ({
-        decodeAudioData: vi.fn(async () => ({} as AudioBuffer)),
+        decodeAudioData: vi.fn(async () => ({}) as AudioBuffer),
         createBufferSource: vi.fn(() => ({
           connect: vi.fn(),
           start: vi.fn(),
@@ -291,6 +298,8 @@ describe("mountPaneShell mining Pane", () => {
       haulPhase: "none" as const,
       haulProgress: 0,
       faceSlide: 1,
+      crewSize: 1,
+      heapLoads: 0,
     };
 
     tunnel.render({ ...base, advance: 0 });
@@ -332,6 +341,8 @@ describe("mountPaneShell mining Pane", () => {
             haulPhase: "none" as const,
             haulProgress: 0,
             faceSlide: 1,
+            crewSize: 1,
+            heapLoads: 0,
           };
         },
         start: vi.fn(),
@@ -375,6 +386,8 @@ describe("mountPaneShell mining Pane", () => {
             haulPhase: "none" as const,
             haulProgress: 0,
             faceSlide: 1,
+            crewSize: 1,
+            heapLoads: 0,
           };
         },
         start: vi.fn(),
@@ -433,6 +446,8 @@ describe("mountPaneShell mining Pane", () => {
             haulPhase: "none" as const,
             haulProgress: 0,
             faceSlide: 1,
+            crewSize: 1,
+            heapLoads: 0,
           };
         },
         start: vi.fn(),
@@ -485,6 +500,8 @@ describe("mountPaneShell mining Pane", () => {
         haulPhase: "none" as const,
         haulProgress: 0,
         faceSlide: 1,
+        crewSize: 1,
+        heapLoads: 0,
       }));
       const presenter = {
         anim: createDwarfAnimController({ digRate: 1 }),
@@ -516,7 +533,9 @@ describe("mountPaneShell mining Pane", () => {
 
       expect(releaseAudioDueTo).toHaveBeenCalled();
       const releaseArg =
-        releaseAudioDueTo.mock.calls[releaseAudioDueTo.mock.calls.length - 1]![0];
+        releaseAudioDueTo.mock.calls[
+          releaseAudioDueTo.mock.calls.length - 1
+        ]![0];
       const snapshotArg =
         snapshot.mock.calls[snapshot.mock.calls.length - 1]![0];
       expect(releaseArg).toBe(snapshotArg);
@@ -528,7 +547,8 @@ describe("mountPaneShell mining Pane", () => {
     it("queues cues at or ahead of the lagged presentation clock on the first rAF after a tick", () => {
       const pump = createPanePumpSchedule();
       const root = document.createElement("main");
-      const queuedBatches: { baseMs: number; events: { atMs: number }[] }[] = [];
+      const queuedBatches: { baseMs: number; events: { atMs: number }[] }[] =
+        [];
       const releaseAudioDueTo = vi.fn();
       const snapshot = vi.fn((_nowMs?: number) => ({
         animation: "swing" as const,
@@ -541,6 +561,8 @@ describe("mountPaneShell mining Pane", () => {
         haulPhase: "none" as const,
         haulProgress: 0,
         faceSlide: 1,
+        crewSize: 1,
+        heapLoads: 0,
       }));
       let simNowMs = 0;
       const presenter = {

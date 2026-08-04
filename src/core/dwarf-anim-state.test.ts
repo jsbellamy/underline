@@ -131,3 +131,35 @@ describe("dwarf anim state", () => {
     expect(allowed).toContain(ctrl.animation);
   });
 });
+
+describe("createDwarfAnimController", () => {
+  it("Miner-shaped: swings at the Face and idles on stopMining without ever hauling", () => {
+    const miner = createDwarfAnimController({ digRate: 1 });
+    miner.startMining(0);
+    expect(miner.animation).toBe("swing");
+    expect(miner.facing).toBe("east");
+    miner.setHauling(null, 100);
+    expect(miner.animation).toBe("swing");
+    expect(miner.facing).toBe("east");
+    miner.stopMining(200);
+    expect(miner.animation).toBe("idle");
+    expect(miner.facing).toBe("east");
+    miner.startMining(300);
+    expect(miner.animation).toBe("swing");
+  });
+
+  it("Hauler-shaped: walks the lane legs and idles east while not hauling", () => {
+    const hauler = createDwarfAnimController({ digRate: 1 });
+    expect(hauler.animation).toBe("idle");
+    expect(hauler.facing).toBe("east");
+    hauler.setHauling("out", 0);
+    expect(hauler.animation).toBe("walk");
+    expect(hauler.facing).toBe("west");
+    hauler.setHauling("back", 100);
+    expect(hauler.animation).toBe("walk");
+    expect(hauler.facing).toBe("east");
+    hauler.setHauling(null, 500);
+    expect(hauler.animation).toBe("idle");
+    expect(hauler.facing).toBe("east");
+  });
+});
