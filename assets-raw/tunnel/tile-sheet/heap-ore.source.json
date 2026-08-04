@@ -1,0 +1,25 @@
+{
+  "schema": "tunnel-art-source/0",
+  "provider": "cursor-agent",
+  "acquisition_tool": "cursor-agent/issue-433",
+  "prompt": "TRUE chunky pixel art static asset sheet only. Three 8x8 logical items in an exact 3-column by 1-row grid, rendered large as crisp square Cells, separated by two full magenta #FF00FF logical gutter Cells. Flat magenta #FF00FF keyed background outside and around every item. Overall canvas aspect exactly 3.5:1. No labels, numbers, margins, anti-aliasing, blur, gradients, or dithering.\n\nSubject: three loose chunks of cyan crystal ore broken out of a mine face and dropped on the ground. Same material as a cyan crystal seam in warm dark plum-brown rock: angular shard geometry, neutral upper-left local highlight, warm shadow underneath. Each chunk is a compact lump that sits flat on the ground with a clear silhouette - magenta must surround each chunk on all four sides so it reads as a separate object, not as a filled tile.\n\nItem 1 \"chunk-a\": a single blocky angular shard, widest at the base, one bright highlight facet.\nItem 2 \"chunk-b\": two fused smaller shards leaning together, a notch between them at the top.\nItem 3 \"chunk-c\": a squat rounded lump with a chipped upper corner and more attached plum-brown rock than the other two.\n\nThe three must be distinguishable from each other by silhouette alone at native scale. Cyan is confined to crystal Cells - do not paint a glow or recolor the ground.\n\nNo characters, no tools, no pickaxe, no cart, no text, no UI, no borders, no vignette.",
+  "raw_sha256": "9cca4a1f7c07f8f78a72c04d1fd7e66b25843dad424af0ea6320c42617e03fde",
+  "asset_class": "tile-sheet",
+  "runtime_destination": "src/assets/tunnel/tiles/heap-ore",
+  "source_resolution": [
+    1124,
+    324
+  ],
+  "reduction": {
+    "cell_w": 8,
+    "cell_h": 8,
+    "columns": 3,
+    "gutter": 2,
+    "items": [
+      "chunk-a",
+      "chunk-b",
+      "chunk-c"
+    ],
+    "resample": null
+  }
+}
