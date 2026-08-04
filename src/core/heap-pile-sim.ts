@@ -297,6 +297,3 @@ export function createHeapPileSim(options: HeapPileSimOptions): HeapPileSim {
 
   return api;
 }
-
-// Exported for deterministic stream tests.
-export { mulberry32 };
