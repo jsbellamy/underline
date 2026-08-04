@@ -21,6 +21,7 @@ import {
   type MiningAudio,
 } from "./mining-audio";
 import { ORE_FALL_MS } from "./pane-layout";
+import type { FallingOreDestination } from "./heap-pile";
 
 export type TunnelHaulPhase = "none" | HaulAnimPhase;
 export type HaulerPhase = "pickup" | HaulAnimPhase;
@@ -58,7 +59,7 @@ export interface TunnelSnapshot {
   heapLoads: number;
   /** Ore still falling toward the Bag or Heap; empty when nothing is in flight. */
   fallingOre: readonly {
-    destination: "bag" | "heap";
+    destination: FallingOreDestination;
     slot: number;
     progress: number;
   }[];
@@ -193,7 +194,11 @@ export function createMinePresenter(
 
   function projectFallingOre(
     nowMs: number,
-  ): readonly { destination: "bag" | "heap"; slot: number; progress: number }[] {
+  ): readonly {
+    destination: FallingOreDestination;
+    slot: number;
+    progress: number;
+  }[] {
     if (!isTwoDwarf()) {
       const result: { destination: "bag"; slot: number; progress: number }[] = [];
       for (let i = 0; i < activeFalls.length; i += 1) {
