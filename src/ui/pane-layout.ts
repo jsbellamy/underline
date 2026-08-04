@@ -26,12 +26,8 @@ export const CART_HEIGHT = 24;
 /** Face column mark — east of the Dwarf's mining stand. */
 export const FACE_X = 432;
 
-/** Logical Ore tile size in source pixels (#433). */
-export const ORE_LOGICAL_SIZE = 8;
-/** Integer nearest-neighbor draw scale for Heap Ore chunks. */
-export const ORE_SCALE = 2;
-/** Ore square in Pane pixels. */
-export const ORE_SIZE = ORE_LOGICAL_SIZE * ORE_SCALE;
+/** Native Ore object size in Pane pixels — object-set art is never scaled (#442). */
+export const ORE_SIZE = 32;
 /** Horizontal spacing between Ore slots. */
 export const ORE_PITCH = ORE_SIZE + 4;
 /** Vertical spacing between Heap rows. */
