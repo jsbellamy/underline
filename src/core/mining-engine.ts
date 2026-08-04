@@ -4,6 +4,8 @@ Authority: `docs/research/tick-snapshot-save-model.md`,
 `docs/research/produce-and-spend-economy.md`.
 */
 
+import type { MiningEvent } from "./mining-events";
+
 export const SCHEMA_VERSION = 3 as const;
 
 /** Face damage capacity at Advance 0 on the exponential curve. */
@@ -134,16 +136,47 @@ export function nextCarryCapacityUpgradeCost(
   return FIRST_UPGRADE_COST * 2 ** carryCapacityUpgradeCount;
 }
 
+function collectMiningEvents(
+  events: MiningEvent[],
+  progress0: number,
+  damageDelta: number,
+  hardness: number,
+  segmentStartAtMs: number,
+  damagePerSec: number,
+  rateScale: number,
+): void {
+  const endProgress = Math.min(progress0 + damageDelta, hardness);
+  const breaking = endProgress >= hardness - 1e-9;
+  const maxSwing = breaking
+    ? hardness - 1
+    : Math.floor(endProgress + 1e-9);
+  const minSwing = Math.floor(progress0 + 1e-9) + 1;
+  for (let swing = minSwing; swing <= maxSwing; swing += 1) {
+    const gameMsToSwing = ((swing - progress0) / damagePerSec) * 1000;
+    events.push({
+      type: "swing",
+      atMs: segmentStartAtMs + gameMsToSwing / rateScale,
+    });
+  }
+  if (breaking) {
+    const gameMsToBreak = (damageDelta / damagePerSec) * 1000;
+    events.push({
+      type: "faceBroken",
+      atMs: segmentStartAtMs + gameMsToBreak / rateScale,
+    });
+  }
+}
+
 /**
  * Event-jump mining for `dtMs` with per-segment Smelter drain (ADR 0012).
  * Ore drops fill the Bag; a full Bag suspends mining for a rate-scaled Haul
  * round trip and delivers at the midpoint.
  */
-export function advance(
+export function advanceWithEvents(
   snapshot: MiningSnapshot,
   dtMs: number,
   options: AdvanceOptions = {},
-): MiningSnapshot {
+): { snapshot: MiningSnapshot; events: MiningEvent[] } {
   if (!(dtMs >= 0)) {
     throw new Error(`dtMs must be non-negative, got ${dtMs}`);
   }
@@ -152,6 +185,8 @@ export function advance(
     throw new Error(`rateScale must be non-negative, got ${rateScale}`);
   }
 
+  const events: MiningEvent[] = [];
+  let windowRealMs = 0;
   let gameMs = dtMs * rateScale;
   let {
     advance: advanceCount,
@@ -184,6 +219,10 @@ export function advance(
     bagLoads = 0;
   };
 
+  const consumeGameMs = (segmentGameMs: number): void => {
+    windowRealMs += segmentGameMs / rateScale;
+  };
+
   while (gameMs > 0) {
     if (haulRemainingMs > 0) {
       const msToDelivery =
@@ -194,6 +233,7 @@ export function advance(
       feedSmelter(segmentMs / 1000);
       const wasAboveDelivery = haulRemainingMs > HAUL_DELIVERY_MS;
       haulRemainingMs -= segmentMs;
+      consumeGameMs(segmentMs);
       gameMs -= segmentMs;
       if (wasAboveDelivery && haulRemainingMs <= HAUL_DELIVERY_MS) {
         deliverBag();
@@ -208,6 +248,7 @@ export function advance(
 
     if (damagePerSec <= 0) {
       feedSmelter(gameMs / 1000);
+      consumeGameMs(gameMs);
       gameMs = 0;
       break;
     }
@@ -228,13 +269,34 @@ export function advance(
     const timeToEventMs = timeToEventSec * 1000;
 
     if (timeToEventMs > gameMs) {
+      const partialDamage = damagePerSec * (gameMs / 1000);
+      collectMiningEvents(
+        events,
+        faceSwingProgress,
+        partialDamage,
+        hardness,
+        windowRealMs,
+        damagePerSec,
+        rateScale,
+      );
       feedSmelter(gameMs / 1000);
-      faceSwingProgress += damagePerSec * (gameMs / 1000);
+      faceSwingProgress += partialDamage;
+      consumeGameMs(gameMs);
       gameMs = 0;
       continue;
     }
 
+    collectMiningEvents(
+      events,
+      faceSwingProgress,
+      eventDamage,
+      hardness,
+      windowRealMs,
+      damagePerSec,
+      rateScale,
+    );
     feedSmelter(timeToEventMs / 1000);
+    consumeGameMs(timeToEventMs);
     gameMs -= timeToEventMs;
     bagOre += orePerDrop;
     bagLoads += 1;
@@ -255,20 +317,33 @@ export function advance(
   ingots += minted;
   smelterProgress -= minted;
 
+  events.sort((a, b) => a.atMs - b.atMs);
+
   return {
-    schemaVersion: SCHEMA_VERSION,
-    advance: advanceCount,
-    ore,
-    ingots,
-    digRateUpgradeCount,
-    smelterUpgradeCount,
-    carryCapacityUpgradeCount,
-    faceSwingProgress,
-    smelterProgress,
-    bagOre,
-    bagLoads,
-    haulRemainingMs,
+    snapshot: {
+      schemaVersion: SCHEMA_VERSION,
+      advance: advanceCount,
+      ore,
+      ingots,
+      digRateUpgradeCount,
+      smelterUpgradeCount,
+      carryCapacityUpgradeCount,
+      faceSwingProgress,
+      smelterProgress,
+      bagOre,
+      bagLoads,
+      haulRemainingMs,
+    },
+    events,
   };
+}
+
+export function advance(
+  snapshot: MiningSnapshot,
+  dtMs: number,
+  options: AdvanceOptions = {},
+): MiningSnapshot {
+  return advanceWithEvents(snapshot, dtMs, options).snapshot;
 }
 
 export function buyUpgrade(
