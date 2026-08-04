@@ -6,7 +6,7 @@ Colony corner chip, cyan Face, no Dig Rate / Ore / Ingots on the Pane.
 import type { TunnelSnapshot } from "./mine-presenter";
 import { hardnessFor } from "../core/mining-engine";
 import { dwarfLayout, type ExternalSpritePack } from "../data/external-sprite-pack";
-import { tunnelArtPath } from "../data/tunnel-art-pack";
+import { tunnelArtKeysUnder, tunnelArtPath } from "../data/tunnel-art-pack";
 import { DWARF_PACK, dwarfFrameUrlsFor } from "./dwarf-frames";
 import { HAULER_PACK, haulerFrameUrlsFor } from "./hauler-frames";
 import { fallingOrePosition, haulerPickupTargetX, heapSlot } from "./heap-pile";
@@ -26,15 +26,36 @@ import {
 } from "./pane-layout";
 import { TUNNEL_ART_PACK, tunnelArtUrl } from "./tunnel-art";
 
-const HEAP_ORE_VARIANTS = ["chunk-a", "chunk-b", "chunk-c"] as const;
-type HeapOreVariant = (typeof HEAP_ORE_VARIANTS)[number];
+const HEAP_ORE_KEYS = tunnelArtKeysUnder(TUNNEL_ART_PACK, "objects/ore/gold-");
 
-function paintHeapOre(ore: HTMLElement, variant: HeapOreVariant): void {
-  const tilePath = tunnelArtPath(TUNNEL_ART_PACK, `tiles/heap-ore/${variant}`);
+function heapOreBottomGap(artKey: string): number {
+  const path = tunnelArtPath(TUNNEL_ART_PACK, artKey);
+  const entry = TUNNEL_ART_PACK.entries.find((e) => e.relative_path === path);
+  if (!entry) {
+    throw new Error(`Unknown tunnel art key: ${artKey}`);
+  }
+  if (!entry.content_box) {
+    throw new Error(`Tunnel art entry missing content_box: ${artKey}`);
+  }
+  const [, , , y1] = entry.content_box;
+  return ORE_SIZE - 1 - y1;
+}
+
+function adjustedHeapOreBottom(slotBottom: number, artKey: string): number {
+  return slotBottom - heapOreBottomGap(artKey);
+}
+
+function paintHeapOre(
+  ore: HTMLElement,
+  artKey: string,
+  slotBottom: number,
+): void {
+  const tilePath = tunnelArtPath(TUNNEL_ART_PACK, artKey);
   ore.style.backgroundImage = `url("${tunnelArtUrl(tilePath)}")`;
   ore.style.backgroundSize = `${ORE_SIZE}px ${ORE_SIZE}px`;
   ore.style.imageRendering = "pixelated";
-  ore.dataset["oreVariant"] = variant;
+  ore.dataset["oreVariant"] = artKey;
+  ore.style.bottom = `${adjustedHeapOreBottom(slotBottom, artKey)}px`;
 }
 
 export interface MiningTunnelView {
@@ -294,13 +315,14 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
       if (!ore) {
         continue;
       }
+      const artKey = HEAP_ORE_KEYS[slot % HEAP_ORE_KEYS.length]!;
       const progress = fallingBySlot.get(slot);
       const { left, bottom } =
         progress !== undefined
           ? fallingOrePosition(slot, progress)
           : heapSlot(slot);
       ore.style.left = `${left}px`;
-      ore.style.bottom = `${bottom}px`;
+      ore.style.bottom = `${adjustedHeapOreBottom(bottom, artKey)}px`;
     }
   }
 
@@ -322,14 +344,11 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
       ore.dataset["ore"] = "";
       ore.dataset["oreSlot"] = String(slot);
       const { left, bottom } = heapSlot(slot);
+      const artKey = HEAP_ORE_KEYS[slot % HEAP_ORE_KEYS.length]!;
       ore.style.left = `${left}px`;
-      ore.style.bottom = `${bottom}px`;
       ore.style.width = `${ORE_SIZE}px`;
       ore.style.height = `${ORE_SIZE}px`;
-      paintHeapOre(
-        ore,
-        HEAP_ORE_VARIANTS[slot % HEAP_ORE_VARIANTS.length]!,
-      );
+      paintHeapOre(ore, artKey, bottom);
       oreElements.push(ore);
       heap.append(ore);
     }
@@ -359,13 +378,11 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
       tunnel.append(carriedOre);
     }
 
-    paintHeapOre(
-      carriedOre,
-      HEAP_ORE_VARIANTS[(snap.heapLoads - 1) % HEAP_ORE_VARIANTS.length]!,
-    );
+    const artKey =
+      HEAP_ORE_KEYS[(snap.heapLoads - 1) % HEAP_ORE_KEYS.length]!;
+    paintHeapOre(carriedOre, artKey, dwarfBottom);
 
     carriedOre.style.left = `${haulerLeft(snap)}px`;
-    carriedOre.style.bottom = `${dwarfBottom}px`;
   }
 
   function mountHauler(): void {

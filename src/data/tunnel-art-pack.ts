@@ -34,3 +34,18 @@ export function tunnelArtPath(pack: TunnelArtPack, key: string): string {
   }
   throw new Error(`Unknown tunnel art key: ${key}`);
 }
+
+export function tunnelArtKeysUnder(pack: TunnelArtPack, prefix: string): string[] {
+  const keys: string[] = [];
+  for (const entry of pack.entries) {
+    const key = tunnelArtKey(entry.relative_path);
+    if (key.startsWith(prefix)) {
+      keys.push(key);
+    }
+  }
+  if (keys.length === 0) {
+    throw new Error(`No tunnel art keys under prefix: ${prefix}`);
+  }
+  keys.sort();
+  return keys;
+}
