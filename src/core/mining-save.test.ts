@@ -33,13 +33,14 @@ describe("mining save seam", () => {
     store = memoryStore();
   });
 
-  it("round-trips authoritative v4 fields through underline-save-v1", () => {
+  it("round-trips authoritative v5 fields through underline-save-v1", () => {
     const snap: MiningSnapshot = {
       schemaVersion: SCHEMA_VERSION,
       advance: 3,
       ore: 1.5,
       ingots: 7,
       digRateUpgradeCount: 2,
+      pickDamageUpgradeCount: 1,
       smelterUpgradeCount: 1,
       carryCapacityUpgradeCount: 1,
       crewSize: 2,
@@ -62,7 +63,7 @@ describe("mining save seam", () => {
     });
   });
 
-  it("migrates schemaVersion 2 to v4 with Bag and Crew fields defaulted to zero", () => {
+  it("migrates schemaVersion 2 to v5 with Bag and Crew fields defaulted to zero", () => {
     store.setItem(
       SAVE_KEY,
       JSON.stringify({
@@ -84,6 +85,7 @@ describe("mining save seam", () => {
       ore: 1.5,
       ingots: 7,
       digRateUpgradeCount: 2,
+      pickDamageUpgradeCount: 0,
       smelterUpgradeCount: 1,
       carryCapacityUpgradeCount: 0,
       crewSize: 1,
@@ -100,7 +102,7 @@ describe("mining save seam", () => {
     expect(loaded.savedAtMs).toBe(1_700_000_000_000);
   });
 
-  it("migrates schemaVersion 1 upgradeCount through v2 shape to v4", () => {
+  it("migrates schemaVersion 1 upgradeCount through v2 shape to v5", () => {
     store.setItem(
       SAVE_KEY,
       JSON.stringify({
@@ -121,6 +123,7 @@ describe("mining save seam", () => {
       ore: 1.5,
       ingots: 7,
       digRateUpgradeCount: 2,
+      pickDamageUpgradeCount: 0,
       smelterUpgradeCount: 0,
       carryCapacityUpgradeCount: 0,
       crewSize: 1,
@@ -137,7 +140,7 @@ describe("mining save seam", () => {
     expect(loaded.savedAtMs).toBe(1_700_000_000_000);
   });
 
-  it("migrates schemaVersion 3 to v4 with one-Dwarf Crew defaults", () => {
+  it("migrates schemaVersion 3 to v5 with one-Dwarf Crew defaults", () => {
     store.setItem(
       SAVE_KEY,
       JSON.stringify({
@@ -163,6 +166,7 @@ describe("mining save seam", () => {
       ore: 1.5,
       ingots: 7,
       digRateUpgradeCount: 2,
+      pickDamageUpgradeCount: 0,
       smelterUpgradeCount: 1,
       carryCapacityUpgradeCount: 1,
       crewSize: 1,
@@ -179,7 +183,55 @@ describe("mining save seam", () => {
     expect(loaded.savedAtMs).toBe(1_700_000_000_000);
   });
 
-  it("rewrites v4 on persist after loading a v1 save", () => {
+  it("migrates schemaVersion 4 to v5 with pickDamageUpgradeCount defaulted to zero", () => {
+    store.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        schemaVersion: 4,
+        savedAtMs: 1_700_000_000_000,
+        advance: 3,
+        ore: 1.5,
+        ingots: 7,
+        digRateUpgradeCount: 2,
+        smelterUpgradeCount: 1,
+        carryCapacityUpgradeCount: 1,
+        crewSize: 2,
+        heapLoads: 3,
+        heapOre: 7,
+        haulSpeedUpgradeCount: 2,
+        pickupProgressMs: 4_200,
+        faceSwingProgress: 1.25,
+        smelterProgress: 0.4,
+        bagOre: 3.5,
+        bagLoads: 4,
+        haulRemainingMs: 2000,
+      }),
+    );
+    const loaded = loadSave(store);
+    expect(loaded.snapshot).toEqual({
+      schemaVersion: SCHEMA_VERSION,
+      advance: 3,
+      ore: 1.5,
+      ingots: 7,
+      digRateUpgradeCount: 2,
+      pickDamageUpgradeCount: 0,
+      smelterUpgradeCount: 1,
+      carryCapacityUpgradeCount: 1,
+      crewSize: 2,
+      heapLoads: 3,
+      heapOre: 7,
+      haulSpeedUpgradeCount: 2,
+      pickupProgressMs: 4_200,
+      faceSwingProgress: 1.25,
+      smelterProgress: 0.4,
+      bagOre: 3.5,
+      bagLoads: 4,
+      haulRemainingMs: 2000,
+    });
+    expect(loaded.savedAtMs).toBe(1_700_000_000_000);
+  });
+
+  it("rewrites v5 on persist after loading a v1 save", () => {
     store.setItem(
       SAVE_KEY,
       JSON.stringify({
@@ -208,6 +260,7 @@ describe("mining save seam", () => {
     expect(raw.bagOre).toBe(0);
     expect(raw.bagLoads).toBe(0);
     expect(raw.haulRemainingMs).toBe(0);
+    expect(raw.pickDamageUpgradeCount).toBe(0);
     expect(raw.upgradeCount).toBeUndefined();
   });
 

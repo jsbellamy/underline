@@ -6,7 +6,8 @@ import {
   HAUL_ROUND_TRIP_MS,
   HARDNESS_GROWTH,
   OPENING_CARRY_CAPACITY,
-  PICK_DAMAGE,
+  nextPickDamageUpgradeCost,
+  pickDamageFor,
   SMELTER_THROUGHPUT,
   UPGRADE_CARRY_CAPACITY,
   advance,
@@ -178,11 +179,54 @@ describe("mining engine offline catch-up", () => {
   });
 });
 
+describe("mining engine Pick Damage Upgrade", () => {
+  it("derives Pick Damage and next cost from pickDamageUpgradeCount", () => {
+    expect(pickDamageFor(0)).toBe(1);
+    expect(pickDamageFor(1)).toBe(1.5);
+    expect(pickDamageFor(2)).toBe(2.25);
+    expect(pickDamageFor(3)).toBe(3.375);
+    expect(pickDamageFor(4)).toBe(5.0625);
+    expect(nextPickDamageUpgradeCost(0)).toBe(5);
+    expect(nextPickDamageUpgradeCost(1)).toBe(10);
+    expect(nextPickDamageUpgradeCost(2)).toBe(20);
+    expect(nextPickDamageUpgradeCost(3)).toBe(40);
+    expect(nextPickDamageUpgradeCost(4)).toBe(80);
+  });
+
+  it("initializes pickDamageUpgradeCount to 0", () => {
+    expect(initialSnapshot().pickDamageUpgradeCount).toBe(0);
+  });
+
+  it("preserves pickDamageUpgradeCount across advanceWithEvents", () => {
+    const before = snap({ pickDamageUpgradeCount: 3 });
+    const { snapshot: after } = advanceWithEvents(before, 1_000);
+    expect(after.pickDamageUpgradeCount).toBe(3);
+  });
+
+  it("multiplies damage per second by Pick Damage at equal Dig Rate", () => {
+    const dtMs = 10_000;
+    const at0 = advance(snap({ pickDamageUpgradeCount: 0 }), dtMs);
+    const at2 = advance(snap({ pickDamageUpgradeCount: 2 }), dtMs);
+    expect(at2.faceSwingProgress).toBeCloseTo(at0.faceSwingProgress * 2.25, 10);
+  });
+
+  it("buys a Pick Damage Upgrade when Ingots cover the cost", () => {
+    const rich = snap({ ingots: 5 });
+    const bought = buyUpgrade(rich, "pickDamage");
+    expect(bought.ingots).toBe(0);
+    expect(bought.pickDamageUpgradeCount).toBe(1);
+    expect(pickDamageFor(bought.pickDamageUpgradeCount)).toBe(1.5);
+  });
+
+  it("throws when the Pick Damage Upgrade is unaffordable", () => {
+    expect(() => buyUpgrade(snap({ ingots: 4 }), "pickDamage")).toThrow(/Upgrade/);
+  });
+});
+
 describe("mining engine Hardness curve", () => {
-  it("pins opening Face capacity and Pick Damage per economy contract", () => {
+  it("pins opening Face capacity per economy contract", () => {
     expect(FACE_BASE_HARDNESS).toBe(1000);
     expect(HARDNESS_GROWTH).toBe(1.15);
-    expect(PICK_DAMAGE).toBe(1);
   });
 
   it("maps advance to exponential Hardness per economy contract", () => {
@@ -411,11 +455,12 @@ describe("mining engine advanceWithEvents", () => {
   });
 
   const ONE_DWARF_200S_SNAPSHOT = {
-    schemaVersion: 4 as const,
+    schemaVersion: 5 as const,
     advance: 0,
     ore: 4.240000000000003,
     ingots: 5,
     digRateUpgradeCount: 0,
+    pickDamageUpgradeCount: 0,
     smelterUpgradeCount: 0,
     carryCapacityUpgradeCount: 0,
     crewSize: 1,
@@ -775,7 +820,7 @@ describe("mining engine Crew and Heap", () => {
 describe("mining engine Bag and Haul", () => {
   it("initializes Bag fields and SCHEMA_VERSION to zero", () => {
     const s = initialSnapshot();
-    expect(s.schemaVersion).toBe(4);
+    expect(s.schemaVersion).toBe(5);
     expect(s.bagOre).toBe(0);
     expect(s.bagLoads).toBe(0);
     expect(s.haulRemainingMs).toBe(0);
