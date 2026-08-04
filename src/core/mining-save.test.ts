@@ -62,7 +62,7 @@ describe("mining save seam", () => {
     });
   });
 
-  it("migrates schemaVersion 2 to v3 with Bag fields defaulted to zero", () => {
+  it("migrates schemaVersion 2 to v4 with Bag and Crew fields defaulted to zero", () => {
     store.setItem(
       SAVE_KEY,
       JSON.stringify({
@@ -157,17 +157,25 @@ describe("mining save seam", () => {
       }),
     );
     const loaded = loadSave(store);
-    expect(loaded.snapshot.crewSize).toBe(1);
-    expect(loaded.snapshot.heapLoads).toBe(0);
-    expect(loaded.snapshot.heapOre).toBe(0);
-    expect(loaded.snapshot.haulSpeedUpgradeCount).toBe(0);
-    expect(loaded.snapshot.pickupProgressMs).toBe(0);
-    expect(loaded.snapshot.advance).toBe(3);
-    expect(loaded.snapshot.ore).toBe(1.5);
-    expect(loaded.snapshot.ingots).toBe(7);
-    expect(loaded.snapshot.digRateUpgradeCount).toBe(2);
-    expect(loaded.snapshot.smelterUpgradeCount).toBe(1);
-    expect(loaded.snapshot.carryCapacityUpgradeCount).toBe(1);
+    expect(loaded.snapshot).toEqual({
+      schemaVersion: SCHEMA_VERSION,
+      advance: 3,
+      ore: 1.5,
+      ingots: 7,
+      digRateUpgradeCount: 2,
+      smelterUpgradeCount: 1,
+      carryCapacityUpgradeCount: 1,
+      crewSize: 1,
+      heapLoads: 0,
+      heapOre: 0,
+      haulSpeedUpgradeCount: 0,
+      pickupProgressMs: 0,
+      faceSwingProgress: 1.25,
+      smelterProgress: 0.4,
+      bagOre: 3.5,
+      bagLoads: 4,
+      haulRemainingMs: 2000,
+    });
     expect(loaded.savedAtMs).toBe(1_700_000_000_000);
   });
 
