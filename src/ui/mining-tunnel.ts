@@ -26,13 +26,23 @@ import {
 } from "./pane-layout";
 import { TUNNEL_ART_PACK, tunnelArtUrl } from "./tunnel-art";
 
+const HEAP_ORE_VARIANTS = ["chunk-a", "chunk-b", "chunk-c"] as const;
+type HeapOreVariant = (typeof HEAP_ORE_VARIANTS)[number];
+
+function paintHeapOre(ore: HTMLElement, variant: HeapOreVariant): void {
+  const tilePath = tunnelArtPath(TUNNEL_ART_PACK, `tiles/heap-ore/${variant}`);
+  ore.style.backgroundImage = `url("${tunnelArtUrl(tilePath)}")`;
+  ore.style.backgroundSize = `${ORE_SIZE}px ${ORE_SIZE}px`;
+  ore.style.imageRendering = "pixelated";
+  ore.dataset["oreVariant"] = variant;
+}
+
 export interface MiningTunnelView {
   root: HTMLElement;
   render(snap: TunnelSnapshot): void;
   destroy(): void;
 }
 
-const HEAP_ORE_PLACEHOLDER = "#27A6A3";
 const CART_FILL = "#5C4A58";
 
 export type FaceDamageState = "intact" | "chipped" | "cracked" | "crumbling";
@@ -316,7 +326,10 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
       ore.style.bottom = `${bottom}px`;
       ore.style.width = `${ORE_SIZE}px`;
       ore.style.height = `${ORE_SIZE}px`;
-      ore.style.background = HEAP_ORE_PLACEHOLDER;
+      paintHeapOre(
+        ore,
+        HEAP_ORE_VARIANTS[slot % HEAP_ORE_VARIANTS.length]!,
+      );
       oreElements.push(ore);
       heap.append(ore);
     }
@@ -343,9 +356,13 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
       carriedOre.dataset["oreCarried"] = "";
       carriedOre.style.width = `${ORE_SIZE}px`;
       carriedOre.style.height = `${ORE_SIZE}px`;
-      carriedOre.style.background = HEAP_ORE_PLACEHOLDER;
       tunnel.append(carriedOre);
     }
+
+    paintHeapOre(
+      carriedOre,
+      HEAP_ORE_VARIANTS[(snap.heapLoads - 1) % HEAP_ORE_VARIANTS.length]!,
+    );
 
     carriedOre.style.left = `${haulerLeft(snap)}px`;
     carriedOre.style.bottom = `${dwarfBottom}px`;
