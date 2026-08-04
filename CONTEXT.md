@@ -390,7 +390,7 @@ downtime and the Pane's travel animation.
 _Avoid_: walk speed, move speed
 
 **Cart**:
-The fixed delivery point at the Pane's west edge where a Haul ends.
+The fixed delivery point east of the reserved west band where a Haul ends.
 _Avoid_: minecart (the game word is Cart), depot, dropoff
 
 **Smelter**:

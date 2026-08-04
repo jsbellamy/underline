@@ -18,7 +18,7 @@ export const BLOCK_SIZE = 48;
 /** External dwarf pack frame width in source pixels. */
 export const DWARF_FRAME_W = 26;
 
-/** Cart placeholder at the Pane's west edge. */
+/** Cart placeholder east of the reserved west band (0…104). */
 export const CART_X = 104;
 export const CART_WIDTH = 40;
 export const CART_HEIGHT = 24;
