@@ -125,7 +125,7 @@ def test_game_language_pane_control_cluster_names_colony_sound_quit() -> None:
 
 def test_game_language_crew_is_two_dwarf_cap() -> None:
     section = _game_language_section()
-    body = _entry_body(section, "Crew")
+    body = _normalized(_entry_body(section, "Crew"))
     assert "Dwarves the Colony has" in body
     assert "one Miner, one Hauler" in body
     assert "Two at most" in body
@@ -134,7 +134,7 @@ def test_game_language_crew_is_two_dwarf_cap() -> None:
 
 def test_game_language_miner_holds_face_and_swings() -> None:
     section = _game_language_section()
-    body = _entry_body(section, "Miner")
+    body = _normalized(_entry_body(section, "Miner"))
     assert "holding the Face and Swinging" in body
     assert "never leaves the Face" in body
     assert "drops Ore into the Heap" in body
@@ -166,9 +166,12 @@ def test_game_language_heap_is_face_backpressure() -> None:
 def test_game_language_dwarf_entry_spends_miner_reservation() -> None:
     section = _game_language_section()
     body = _normalized(_entry_body(section, "Dwarf"))
+    assert "character species in the Crew" in body
+    assert "assigned one job — Miner or Hauler" in body
     assert "assets/characters/dwarf/" in body
     assert "east/west facing only" in body
     assert "Miner" in body
+    assert "_Avoid_: worker, unit, character" in body
     assert "miner (that is a job" not in body
     assert "A being, not a job" not in body
     assert "only one of them" not in body

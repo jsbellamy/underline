@@ -12,7 +12,14 @@ ADR_README = ROOT / "docs" / "adr" / "README.md"
 def test_adr_0014_exists_and_is_accepted() -> None:
     text = ADR.read_text(encoding="utf-8")
     assert ADR.is_file()
-    assert "## Status" in text
+    for section in (
+        "## Status",
+        "## Context",
+        "## Decision",
+        "## Consequences",
+        "## Rejected alternatives",
+    ):
+        assert section in text
     assert "Accepted (2026-08-03)" in text
 
 
