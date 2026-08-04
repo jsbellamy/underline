@@ -47,12 +47,23 @@ export const HAUL_ROUND_TRIP_MS = 8000;
 /** First Upgrade cost in Ingots; doubles each buy. */
 export const FIRST_UPGRADE_COST = 5;
 
+/** Ms to lift one Load from the Heap before Haul Speed upgrades. */
+export const PICKUP_MS_PER_LOAD = 10_000;
+
+/** Ingots to hire the second Dwarf (Hauler). */
+export const HIRE_HAULER_COST = 160;
+
 /** Offline catch-up rate vs live. */
 export const OFFLINE_RATE_SCALE = 0.5;
 
 const HAUL_DELIVERY_MS = HAUL_ROUND_TRIP_MS / 2;
 
-export type UpgradeId = "digRate" | "smelter" | "carryCapacity";
+export type UpgradeId =
+  | "digRate"
+  | "smelter"
+  | "carryCapacity"
+  | "haulSpeed"
+  | "hireHauler";
 
 export interface MiningSnapshot {
   schemaVersion: typeof SCHEMA_VERSION;
@@ -62,6 +73,15 @@ export interface MiningSnapshot {
   digRateUpgradeCount: number;
   smelterUpgradeCount: number;
   carryCapacityUpgradeCount: number;
+  /** Dwarves in the Crew: 1 before the Hauler is hired, 2 after. */
+  crewSize: number;
+  /** Loads waiting at the Face for the Hauler; capped at heapCapacityFor(...). */
+  heapLoads: number;
+  /** Ore those Loads carry. */
+  heapOre: number;
+  haulSpeedUpgradeCount: number;
+  /** Elapsed ms toward lifting the current Load out of the Heap. */
+  pickupProgressMs: number;
   /** Damage dealt to the current Face (`0…hardnessFor(advance)`); equals Swings spent when Pick Damage is 1. */
   faceSwingProgress: number;
   /** Fractional Ore fed toward the next Ingot (`0…1`). */
@@ -100,6 +120,11 @@ export function initialSnapshot(): MiningSnapshot {
     digRateUpgradeCount: 0,
     smelterUpgradeCount: 0,
     carryCapacityUpgradeCount: 0,
+    crewSize: 1,
+    heapLoads: 0,
+    heapOre: 0,
+    haulSpeedUpgradeCount: 0,
+    pickupProgressMs: 0,
     faceSwingProgress: 0,
     smelterProgress: 0,
     bagOre: 0,
@@ -120,6 +145,23 @@ export function carryCapacityFor(carryCapacityUpgradeCount: number): number {
   return (
     OPENING_CARRY_CAPACITY + UPGRADE_CARRY_CAPACITY * carryCapacityUpgradeCount
   );
+}
+
+export function haulSpeedFor(haulSpeedUpgradeCount: number): number {
+  return 1 + 0.25 * haulSpeedUpgradeCount;
+}
+
+export function pickupMsPerLoad(haulSpeedUpgradeCount: number): number {
+  return PICKUP_MS_PER_LOAD / haulSpeedFor(haulSpeedUpgradeCount);
+}
+
+export function nextHaulSpeedUpgradeCost(haulSpeedUpgradeCount: number): number {
+  return FIRST_UPGRADE_COST * 2 ** haulSpeedUpgradeCount;
+}
+
+/** The Heap's cap in Loads — the same number as the Bag's. */
+export function heapCapacityFor(carryCapacityUpgradeCount: number): number {
+  return carryCapacityFor(carryCapacityUpgradeCount);
 }
 
 export function nextDigRateUpgradeCost(digRateUpgradeCount: number): number {
@@ -169,8 +211,9 @@ function collectMiningEvents(
 
 /**
  * Event-jump mining for `dtMs` with per-segment Smelter drain (ADR 0012).
- * Ore drops fill the Bag; a full Bag suspends mining for a rate-scaled Haul
- * round trip and delivers at the midpoint.
+ * One-Dwarf Crew: Ore drops fill the Bag; a full Bag suspends mining for a Haul.
+ * Two-Dwarf Crew: Miner drops into the capped Heap; Hauler picks Loads into the
+ * Bag and departs only when full (ADR 0014).
  */
 export function advanceWithEvents(
   snapshot: MiningSnapshot,
@@ -195,6 +238,11 @@ export function advanceWithEvents(
     digRateUpgradeCount,
     smelterUpgradeCount,
     carryCapacityUpgradeCount,
+    crewSize,
+    heapLoads,
+    heapOre,
+    haulSpeedUpgradeCount,
+    pickupProgressMs,
     faceSwingProgress,
     smelterProgress,
     bagOre,
@@ -206,6 +254,9 @@ export function advanceWithEvents(
   const damagePerSec = digRate * PICK_DAMAGE;
   const throughput = smelterThroughputFor(smelterUpgradeCount);
   const capacity = carryCapacityFor(carryCapacityUpgradeCount);
+  const heapCapacity = heapCapacityFor(carryCapacityUpgradeCount);
+  const pickupMs = pickupMsPerLoad(haulSpeedUpgradeCount);
+  const isTwoDwarf = crewSize === 2;
 
   const feedSmelter = (segmentSec: number): void => {
     const fed = Math.min(ore, throughput * segmentSec);
@@ -223,93 +274,172 @@ export function advanceWithEvents(
     windowRealMs += segmentGameMs / rateScale;
   };
 
+  const startHaulIfBagFull = (): void => {
+    if (bagLoads >= capacity) {
+      haulRemainingMs = HAUL_ROUND_TRIP_MS;
+    }
+  };
+
+  const creditDrop = (orePerDrop: number): void => {
+    if (isTwoDwarf) {
+      heapOre += orePerDrop;
+      heapLoads += 1;
+    } else {
+      bagOre += orePerDrop;
+      bagLoads += 1;
+      startHaulIfBagFull();
+    }
+  };
+
+  const transferHeapLoadToBag = (): void => {
+    const orePerLoad = heapOre / heapLoads;
+    heapOre -= orePerLoad;
+    heapLoads -= 1;
+    bagOre += orePerLoad;
+    bagLoads += 1;
+    pickupProgressMs = 0;
+    startHaulIfBagFull();
+  };
+
+  const miningAllowed = (): boolean => {
+    if (damagePerSec <= 0) {
+      return false;
+    }
+    if (isTwoDwarf) {
+      return heapLoads < heapCapacity;
+    }
+    return haulRemainingMs === 0 && bagLoads < capacity;
+  };
+
+  const pickupAllowed = (): boolean => {
+    return (
+      isTwoDwarf &&
+      haulRemainingMs === 0 &&
+      heapLoads > 0 &&
+      bagLoads < capacity
+    );
+  };
+
   while (gameMs > 0) {
+    if (!isTwoDwarf && bagLoads >= capacity && haulRemainingMs === 0) {
+      haulRemainingMs = HAUL_ROUND_TRIP_MS;
+      continue;
+    }
+
+    const candidates: number[] = [gameMs];
+
     if (haulRemainingMs > 0) {
-      const msToDelivery =
+      const msToHaulEvent =
         haulRemainingMs > HAUL_DELIVERY_MS
           ? haulRemainingMs - HAUL_DELIVERY_MS
           : haulRemainingMs;
-      const segmentMs = Math.min(msToDelivery, gameMs);
-      feedSmelter(segmentMs / 1000);
-      const wasAboveDelivery = haulRemainingMs > HAUL_DELIVERY_MS;
+      candidates.push(msToHaulEvent);
+    }
+
+    if (pickupAllowed()) {
+      candidates.push(pickupMs - pickupProgressMs);
+    }
+
+    let miningEventMs: number | null = null;
+    let miningEventDamage = 0;
+    let miningHardness = 0;
+    let miningDropsSoFar = 0;
+    let miningDropDamage = 0;
+
+    if (miningAllowed()) {
+      miningHardness = hardnessFor(advanceCount);
+      miningDropDamage = dropDamageFor(advanceCount);
+      miningDropsSoFar = Math.min(
+        DROPS_PER_FACE,
+        Math.floor(faceSwingProgress / miningDropDamage + 1e-9),
+      );
+      const nextDropAt = (miningDropsSoFar + 1) * miningDropDamage;
+      const damageToNextDrop = nextDropAt - faceSwingProgress;
+      const damageToBreak = miningHardness - faceSwingProgress;
+      miningEventDamage = Math.min(damageToNextDrop, damageToBreak);
+      miningEventMs = (miningEventDamage / damagePerSec) * 1000;
+      candidates.push(miningEventMs);
+    }
+
+    const segmentMs = Math.min(...candidates);
+
+    if (segmentMs <= 0) {
+      break;
+    }
+
+    const atMiningBoundary =
+      miningEventMs !== null && segmentMs >= miningEventMs - 1e-9;
+    const atPickupBoundary =
+      pickupAllowed() && segmentMs >= pickupMs - pickupProgressMs - 1e-9;
+    const hauling = haulRemainingMs > 0;
+    const wasAboveDelivery = hauling && haulRemainingMs > HAUL_DELIVERY_MS;
+
+    if (miningAllowed()) {
+      if (atMiningBoundary) {
+        collectMiningEvents(
+          events,
+          faceSwingProgress,
+          miningEventDamage,
+          miningHardness,
+          windowRealMs,
+          damagePerSec,
+          rateScale,
+        );
+      } else {
+        const partialDamage = damagePerSec * (segmentMs / 1000);
+        collectMiningEvents(
+          events,
+          faceSwingProgress,
+          partialDamage,
+          miningHardness,
+          windowRealMs,
+          damagePerSec,
+          rateScale,
+        );
+        faceSwingProgress += partialDamage;
+      }
+    }
+
+    feedSmelter(segmentMs / 1000);
+
+    if (pickupAllowed()) {
+      pickupProgressMs += segmentMs;
+    }
+
+    if (hauling) {
       haulRemainingMs -= segmentMs;
-      consumeGameMs(segmentMs);
-      gameMs -= segmentMs;
       if (wasAboveDelivery && haulRemainingMs <= HAUL_DELIVERY_MS) {
         deliverBag();
+      }
+    }
+
+    consumeGameMs(segmentMs);
+    gameMs -= segmentMs;
+
+    if (atPickupBoundary) {
+      transferHeapLoadToBag();
+      if (!atMiningBoundary) {
+        continue;
+      }
+    }
+
+    if (atMiningBoundary) {
+      const orePerDrop = oreForDrop(advanceCount);
+      creditDrop(orePerDrop);
+      const landedDrop = miningDropsSoFar + 1;
+      faceSwingProgress = Math.min(
+        landedDrop * miningDropDamage,
+        miningHardness,
+      );
+      if (faceSwingProgress >= miningHardness) {
+        advanceCount += 1;
+        faceSwingProgress = 0;
       }
       continue;
     }
 
-    if (bagLoads >= capacity) {
-      haulRemainingMs = HAUL_ROUND_TRIP_MS;
-      continue;
-    }
-
-    if (damagePerSec <= 0) {
-      feedSmelter(gameMs / 1000);
-      consumeGameMs(gameMs);
-      gameMs = 0;
+    if (!miningAllowed() && !pickupAllowed() && haulRemainingMs === 0) {
       break;
-    }
-
-    const hardness = hardnessFor(advanceCount);
-    const dropDamage = dropDamageFor(advanceCount);
-    const orePerDrop = oreForDrop(advanceCount);
-
-    const dropsSoFar = Math.min(
-      DROPS_PER_FACE,
-      Math.floor(faceSwingProgress / dropDamage + 1e-9),
-    );
-    const nextDropAt = (dropsSoFar + 1) * dropDamage;
-    const damageToNextDrop = nextDropAt - faceSwingProgress;
-    const damageToBreak = hardness - faceSwingProgress;
-    const eventDamage = Math.min(damageToNextDrop, damageToBreak);
-    const timeToEventSec = eventDamage / damagePerSec;
-    const timeToEventMs = timeToEventSec * 1000;
-
-    if (timeToEventMs > gameMs) {
-      const partialDamage = damagePerSec * (gameMs / 1000);
-      collectMiningEvents(
-        events,
-        faceSwingProgress,
-        partialDamage,
-        hardness,
-        windowRealMs,
-        damagePerSec,
-        rateScale,
-      );
-      feedSmelter(gameMs / 1000);
-      faceSwingProgress += partialDamage;
-      consumeGameMs(gameMs);
-      gameMs = 0;
-      continue;
-    }
-
-    collectMiningEvents(
-      events,
-      faceSwingProgress,
-      eventDamage,
-      hardness,
-      windowRealMs,
-      damagePerSec,
-      rateScale,
-    );
-    feedSmelter(timeToEventMs / 1000);
-    consumeGameMs(timeToEventMs);
-    gameMs -= timeToEventMs;
-    bagOre += orePerDrop;
-    bagLoads += 1;
-    const landedDrop = dropsSoFar + 1;
-    faceSwingProgress = Math.min(landedDrop * dropDamage, hardness);
-
-    if (faceSwingProgress >= hardness) {
-      advanceCount += 1;
-      faceSwingProgress = 0;
-    }
-
-    if (bagLoads >= capacity) {
-      haulRemainingMs = HAUL_ROUND_TRIP_MS;
     }
   }
 
@@ -328,6 +458,11 @@ export function advanceWithEvents(
       digRateUpgradeCount,
       smelterUpgradeCount,
       carryCapacityUpgradeCount,
+      crewSize,
+      heapLoads,
+      heapOre,
+      haulSpeedUpgradeCount,
+      pickupProgressMs,
       faceSwingProgress,
       smelterProgress,
       bagOre,
@@ -350,6 +485,35 @@ export function buyUpgrade(
   snapshot: MiningSnapshot,
   upgrade: UpgradeId = "digRate",
 ): MiningSnapshot {
+  if (upgrade === "hireHauler") {
+    if (snapshot.crewSize >= 2) {
+      throw new Error("Hauler already hired; crewSize is already 2");
+    }
+    const cost = HIRE_HAULER_COST;
+    if (snapshot.ingots < cost) {
+      throw new Error(`Upgrade costs ${cost} Ingots; have ${snapshot.ingots}`);
+    }
+    return {
+      ...snapshot,
+      schemaVersion: SCHEMA_VERSION,
+      ingots: snapshot.ingots - cost,
+      crewSize: 2,
+    };
+  }
+
+  if (upgrade === "haulSpeed") {
+    const cost = nextHaulSpeedUpgradeCost(snapshot.haulSpeedUpgradeCount);
+    if (snapshot.ingots < cost) {
+      throw new Error(`Upgrade costs ${cost} Ingots; have ${snapshot.ingots}`);
+    }
+    return {
+      ...snapshot,
+      schemaVersion: SCHEMA_VERSION,
+      ingots: snapshot.ingots - cost,
+      haulSpeedUpgradeCount: snapshot.haulSpeedUpgradeCount + 1,
+    };
+  }
+
   if (upgrade === "smelter") {
     const cost = nextSmelterUpgradeCost(snapshot.smelterUpgradeCount);
     if (snapshot.ingots < cost) {
