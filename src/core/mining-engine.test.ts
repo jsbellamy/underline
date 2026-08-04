@@ -818,7 +818,7 @@ describe("mining engine Crew and Heap", () => {
 });
 
 describe("mining engine Bag and Haul", () => {
-  it("initializes Bag fields and SCHEMA_VERSION to zero", () => {
+  it("initializes Bag fields and sets SCHEMA_VERSION to 5", () => {
     const s = initialSnapshot();
     expect(s.schemaVersion).toBe(5);
     expect(s.bagOre).toBe(0);

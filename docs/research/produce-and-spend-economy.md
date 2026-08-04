@@ -13,7 +13,7 @@ Hardness grows exponentially with Advance; Yield scales with Hardness. Ore drops
 | Knob | Value |
 | --- | --- |
 | Face Hardness | `1000 × 1.15^Advance` damage |
-| Pick Damage | 1 damage per Swing |
+| Pick Damage | `1.5^n` damage per Swing (opening `n = 0` → 1); first cost 5 Ingots, doubling |
 | Ore drop | every 1% of the Face's Hardness → 100 drops per Face |
 | Ore per drop | `1 × 1.15^Advance` (Ore per Face `100 × 1.15^Advance`; a flat 0.1 Ore per damage) |
 | Carry Capacity | 10 Loads opening, +5 per Upgrade, first cost 5 Ingots, doubling |
@@ -31,12 +31,12 @@ Hardness is the Face's total damage capacity from current Advance. After a break
 | Quantity | Formula |
 | --- | --- |
 | Face Hardness | `1000 × 1.15^Advance` damage |
-| Pick Damage | 1 damage per Swing |
+| Pick Damage | `1.5^n` damage per Swing (opening 1) |
 | Ore per Face | `100 × 1.15^Advance` (100 drops × `1 × 1.15^Advance` per drop) |
 
 ## Opening rates (derived)
 
-At Advance 0 (Hardness 1000, Pick Damage 1):
+At Advance 0 (Hardness 1000, Pick Damage 1 at `pickDamageUpgradeCount = 0`):
 
 - First Face: **1000 Swings** ≈ **16.7 min** at opening Dig Rate (1.0 Swing/sec)
 - Gross Ore out: **0.1 Ore/sec** (`100 Ore / 1000 s` mining time)
@@ -54,6 +54,16 @@ At Advance 0 (Hardness 1000, Pick Damage 1):
 | 3 | 20 | 1.75 |
 | 4 | 40 | 2.00 |
 | 5 | 80 | 2.25 |
+
+### Pick Damage Upgrade
+
+| Buy # | Cost (Ingots) | Pick Damage after |
+| ---: | ---: | ---: |
+| 1 | 5 | 1.5 |
+| 2 | 10 | 2.25 |
+| 3 | 20 | 3.375 |
+| 4 | 40 | 5.0625 |
+| 5 | 80 | 7.59375 |
 
 ### Smelter Upgrade
 
