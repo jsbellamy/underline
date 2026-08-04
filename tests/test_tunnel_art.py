@@ -20,6 +20,7 @@ from pipeline.tunnel_art import (
     build_tunnel_assets,
     discover_tunnel_bundles,
     parse_tunnel_source,
+    recover_tile_sheet_cells,
     verify_tunnel_assets,
 )
 
@@ -68,6 +69,8 @@ def _tile_sidecar(
     columns: int,
     gutter: int,
     items: list[str],
+    cell_w: int = 16,
+    cell_h: int = 16,
 ) -> dict[str, object]:
     return {
         "schema": SOURCE_SCHEMA,
@@ -79,8 +82,8 @@ def _tile_sidecar(
         "runtime_destination": "src/assets/tunnel/tiles/test-tiles",
         "source_resolution": source_resolution,
         "reduction": {
-            "cell_w": 16,
-            "cell_h": 16,
+            "cell_w": cell_w,
+            "cell_h": cell_h,
             "columns": columns,
             "gutter": gutter,
             "items": items,
@@ -118,15 +121,16 @@ def _render_tile_sheet(
     gutter: int,
     item_cells: dict[str, list[list[tuple[int, int, int] | None]]],
     item_order: list[str],
+    cell_w: int = 16,
+    cell_h: int = 16,
+    pitch: int = TILE_PITCH,
 ) -> Image.Image:
-    cell_w = 16
-    cell_h = 16
     rows = (len(item_order) + columns - 1) // columns
     grid_w = columns * cell_w + (columns - 1) * gutter
     grid_h = rows * cell_h + (rows - 1) * gutter
     image = Image.new(
         "RGBA",
-        (grid_w * TILE_PITCH + TILE_BORDER_PAD * 2, grid_h * TILE_PITCH + TILE_BORDER_PAD * 2),
+        (grid_w * pitch + TILE_BORDER_PAD * 2, grid_h * pitch + TILE_BORDER_PAD * 2),
         (*MAGENTA, 255),
     )
     pixels = image.load()
@@ -142,14 +146,20 @@ def _render_tile_sheet(
                 rgb = cells[gy][gx]
                 if rgb is None:
                     continue
-                _draw_tile_block(pixels, origin_gx + gx, origin_gy + gy, TILE_PITCH, rgb)
+                _draw_tile_block(pixels, origin_gx + gx, origin_gy + gy, pitch, rgb)
     return image
 
 
-def _checker_cells(rgb: tuple[int, int, int], alt: tuple[int, int, int]) -> list[list[tuple[int, int, int] | None]]:
+def _checker_cells(
+    rgb: tuple[int, int, int],
+    alt: tuple[int, int, int],
+    *,
+    cell_w: int = 16,
+    cell_h: int = 16,
+) -> list[list[tuple[int, int, int] | None]]:
     return [
-        [rgb if (x + y) % 2 == 0 else alt for x in range(16)]
-        for y in range(16)
+        [rgb if (x + y) % 2 == 0 else alt for x in range(cell_w)]
+        for y in range(cell_h)
     ]
 
 
@@ -159,6 +169,41 @@ def _fixture_roots(tmp_path: Path) -> tuple[Path, Path]:
     raw_root.mkdir(parents=True)
     runtime_root.mkdir(parents=True)
     return raw_root, runtime_root
+
+
+def test_parse_tile_source_accepts_8x8_and_rejects_invalid_cell_dims(tmp_path: Path) -> None:
+    raw_path = tmp_path / "ore.png"
+    _write_png(raw_path, Image.new("RGBA", (100, 100), (*MAGENTA, 255)))
+    raw_sha = sha256_file(raw_path)
+    base = _tile_sidecar(
+        raw_sha256=raw_sha,
+        source_resolution=[100, 100],
+        columns=2,
+        gutter=1,
+        items=["a", "b"],
+        cell_w=8,
+        cell_h=8,
+    )
+    source = parse_tunnel_source(base, raw_path)
+    reduction = source.reduction
+    assert reduction.cell_w == 8
+    assert reduction.cell_h == 8
+
+    for bad_w in (0, -1, True, "8", 8.0):
+        doc = dict(base)
+        doc["reduction"] = dict(base["reduction"])
+        doc["reduction"]["cell_w"] = bad_w
+        with pytest.raises(TunnelArtError) as exc_info:
+            parse_tunnel_source(doc, raw_path)
+        assert exc_info.value.reason_code == "invalid_sidecar"
+
+    for bad_h in (0, -1, True, "8", 8.0):
+        doc = dict(base)
+        doc["reduction"] = dict(base["reduction"])
+        doc["reduction"]["cell_h"] = bad_h
+        with pytest.raises(TunnelArtError) as exc_info:
+            parse_tunnel_source(doc, raw_path)
+        assert exc_info.value.reason_code == "invalid_sidecar"
 
 
 def test_parse_tunnel_source_rejects_missing_required_field(tmp_path: Path) -> None:
@@ -278,6 +323,91 @@ def test_build_tile_sheet_items_are_16x16_and_match_source(tmp_path: Path) -> No
         for y in range(16):
             for x in range(16):
                 assert actual_cells[y][x] == expected_cells[y][x]
+
+
+def test_build_tile_sheet_items_are_8x8_and_match_source(tmp_path: Path) -> None:
+    raw_root, _runtime_root = _fixture_roots(tmp_path)
+    tile_dir = raw_root / "tile-sheet"
+    tile_dir.mkdir(parents=True)
+    pitch = 12
+    item_a = _checker_cells(STONE, STONE_LIGHT, cell_w=8, cell_h=8)
+    item_b = _checker_cells(STONE_LIGHT, STONE, cell_w=8, cell_h=8)
+    item_c = _checker_cells(STONE, STONE_LIGHT, cell_w=8, cell_h=8)
+    item_d = _checker_cells(STONE_LIGHT, STONE, cell_w=8, cell_h=8)
+    sheet = _render_tile_sheet(
+        columns=2,
+        gutter=1,
+        item_cells={"ore-a": item_a, "ore-b": item_b, "ore-c": item_c, "ore-d": item_d},
+        item_order=["ore-a", "ore-b", "ore-c", "ore-d"],
+        cell_w=8,
+        cell_h=8,
+        pitch=pitch,
+    )
+    raw_path = tile_dir / "heap-ore.png"
+    raw_sha = _write_png(raw_path, sheet)
+    sidecar = _tile_sidecar(
+        raw_sha256=raw_sha,
+        source_resolution=[sheet.width, sheet.height],
+        columns=2,
+        gutter=1,
+        items=["ore-a", "ore-b", "ore-c", "ore-d"],
+        cell_w=8,
+        cell_h=8,
+    )
+    sidecar["runtime_destination"] = "src/assets/tunnel/tiles/heap-ore"
+    (tile_dir / "heap-ore.source.json").write_text(json.dumps(sidecar), encoding="utf-8")
+
+    report = build_tunnel_assets(tmp_path)
+    assert report.outcome == "PASS"
+
+    for item_id, expected_cells in (
+        ("ore-a", item_a),
+        ("ore-b", item_b),
+        ("ore-c", item_c),
+        ("ore-d", item_d),
+    ):
+        runtime_path = tmp_path / "src/assets/tunnel/tiles/heap-ore" / f"{item_id}.png"
+        with Image.open(runtime_path) as image:
+            assert image.size == (8, 8)
+        actual_cells = read_cells(runtime_path, size=(8, 8), label="tile")
+        for y in range(8):
+            for x in range(8):
+                assert actual_cells[y][x] == expected_cells[y][x]
+
+    verify_report = verify_tunnel_assets(tmp_path)
+    assert verify_report.outcome == "PASS"
+
+
+def test_recover_tile_sheet_cells_rejects_axis_stretched_raw(tmp_path: Path) -> None:
+    raw_root, _runtime_root = _fixture_roots(tmp_path)
+    tile_dir = raw_root / "tile-sheet"
+    tile_dir.mkdir(parents=True)
+    sheet = _render_tile_sheet(
+        columns=2,
+        gutter=1,
+        item_cells={
+            "a": _checker_cells(STONE, STONE_LIGHT),
+            "b": _checker_cells(STONE_LIGHT, STONE),
+        },
+        item_order=["a", "b"],
+    )
+    stretched = sheet.resize((sheet.width, sheet.height + 40), Image.NEAREST)
+    raw_path = tile_dir / "stretched.png"
+    raw_sha = _write_png(raw_path, stretched)
+    sidecar = _tile_sidecar(
+        raw_sha256=raw_sha,
+        source_resolution=[stretched.width, stretched.height],
+        columns=2,
+        gutter=1,
+        items=["a", "b"],
+    )
+    (tile_dir / "stretched.source.json").write_text(json.dumps(sidecar), encoding="utf-8")
+
+    source = parse_tunnel_source(sidecar, raw_path)
+    with pytest.raises(TunnelArtError) as exc_info:
+        recover_tile_sheet_cells(raw_path, source.reduction)
+    assert exc_info.value.reason_code == "geometry_mismatch"
+    assert "pitch" in str(exc_info.value).lower()
 
 
 def test_verify_fails_on_mutated_runtime_and_emits_report(tmp_path: Path) -> None:
