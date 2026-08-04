@@ -102,7 +102,11 @@ function fallingOreEqual(
     return false;
   }
   for (let i = 0; i < a.length; i += 1) {
-    if (a[i]!.slot !== b[i]!.slot || a[i]!.progress !== b[i]!.progress) {
+    if (
+      a[i]!.destination !== b[i]!.destination ||
+      a[i]!.slot !== b[i]!.slot ||
+      a[i]!.progress !== b[i]!.progress
+    ) {
       return false;
     }
   }
@@ -224,6 +228,7 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
   const heap = document.createElement("div");
   heap.className = "pane-heap";
   const oreElements: HTMLElement[] = [];
+  const bagFallElements: HTMLElement[] = [];
 
   const dwarf = document.createElement("img");
   dwarf.className = "pane-dwarf";
@@ -297,7 +302,9 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
 
   function positionHeapOre(snap: TunnelSnapshot): void {
     const fallingBySlot = new Map(
-      snap.fallingOre.map((entry) => [entry.slot, entry.progress]),
+      snap.fallingOre
+        .filter((entry) => entry.destination === "heap")
+        .map((entry) => [entry.slot, entry.progress]),
     );
     const loads = visibleHeapLoads(snap);
     for (let slot = 0; slot < loads; slot += 1) {
@@ -309,10 +316,35 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
       const progress = fallingBySlot.get(slot);
       const { left, bottom } =
         progress !== undefined
-          ? fallingOrePosition(slot, progress)
+          ? fallingOrePosition("heap", slot, progress)
           : heapSlot(slot);
       ore.style.left = `${left}px`;
       ore.style.bottom = `${adjustedHeapOreBottom(bottom, artKey)}px`;
+    }
+  }
+
+  function reconcileBagFalls(snap: TunnelSnapshot): void {
+    const bagFalls = snap.fallingOre.filter((entry) => entry.destination === "bag");
+    while (bagFallElements.length > bagFalls.length) {
+      const ore = bagFallElements.pop()!;
+      ore.remove();
+    }
+    while (bagFallElements.length < bagFalls.length) {
+      const ore = document.createElement("div");
+      ore.className = "pane-ore";
+      ore.dataset["ore"] = "";
+      ore.style.width = `${ORE_SIZE}px`;
+      ore.style.height = `${ORE_SIZE}px`;
+      bagFallElements.push(ore);
+      tunnel.append(ore);
+    }
+    for (let i = 0; i < bagFalls.length; i += 1) {
+      const entry = bagFalls[i]!;
+      const ore = bagFallElements[i]!;
+      const artKey = HEAP_ORE_KEYS[entry.slot % HEAP_ORE_KEYS.length]!;
+      const { left, bottom } = fallingOrePosition("bag", entry.slot, entry.progress);
+      ore.style.left = `${left}px`;
+      paintHeapOre(ore, artKey, bottom);
     }
   }
 
@@ -462,6 +494,7 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
 
     reconcileHeap(visibleHeapLoads(snap), snap.crewSize);
     positionHeapOre(snap);
+    reconcileBagFalls(snap);
     reconcileCarriedOre(snap);
   }
 

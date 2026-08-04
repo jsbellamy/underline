@@ -670,15 +670,15 @@ describe("mine presenter", () => {
     presenter.advanceMs(10_000);
     expect(presenter.snapshot().heapLoads).toBe(1);
     expect(presenter.snapshot(10_000).fallingOre).toEqual([
-      { slot: 0, progress: 0 },
+      { destination: "heap", slot: 0, progress: 0 },
     ]);
     expect(presenter.snapshot(10_125).fallingOre).toEqual([
-      { slot: 0, progress: 0.5 },
+      { destination: "heap", slot: 0, progress: 0.5 },
     ]);
     expect(presenter.snapshot(10_000 + ORE_FALL_MS).fallingOre).toEqual([]);
   });
 
-  it("reports fallingOre as empty for a one-Dwarf Crew", () => {
+  it("seeds a bag-bound fallingOre entry for a one-Dwarf Crew", () => {
     const session = createMiningSession({
       store: memoryStore(),
       now: () => 0,
@@ -686,6 +686,45 @@ describe("mine presenter", () => {
     const presenter = createMinePresenter(session);
     presenter.start();
     presenter.advanceMs(10_000);
+    expect(session.snapshot.bagLoads).toBe(1);
+    expect(presenter.snapshot(10_000).fallingOre).toEqual([
+      { destination: "bag", slot: 0, progress: 0 },
+    ]);
+    expect(presenter.snapshot(10_125).fallingOre).toEqual([
+      { destination: "bag", slot: 0, progress: 0.5 },
+    ]);
+    expect(presenter.snapshot(10_000 + ORE_FALL_MS).fallingOre).toEqual([]);
+  });
+
+  it("keeps heapLoads at zero while a one-Dwarf fall is in flight", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+    presenter.advanceMs(10_000);
+    const engineBefore = { ...session.snapshot };
+    const midFall = presenter.snapshot(10_125);
+    expect(midFall.heapLoads).toBe(0);
+    expect(midFall.fallingOre).toEqual([
+      { destination: "bag", slot: 0, progress: 0.5 },
+    ]);
+    expect(session.snapshot).toEqual(engineBefore);
+  });
+
+  it("reports no fallingOre after offline catch-up with a saved Bag", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+      snapshot: {
+        ...initialSnapshot(),
+        bagLoads: 5,
+        bagOre: 5,
+      },
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
     expect(presenter.snapshot().fallingOre).toEqual([]);
   });
 

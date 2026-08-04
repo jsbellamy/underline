@@ -797,7 +797,37 @@ describe("mountMiningTunnel", () => {
     tunnel.destroy();
   });
 
-  it("renders no Ore for a one-Dwarf Crew regardless of heapLoads", () => {
+  it("renders a transient bag-bound fall for a one-Dwarf Crew", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    tunnel.render({
+      ...baseSnap,
+      advance: 3,
+      fallingOre: [{ destination: "bag", slot: 0, progress: 0.5 }],
+    });
+
+    expect(host.querySelector(".pane-heap")).toBeNull();
+    const ores = oreElements(host);
+    expect(ores.length).toBe(1);
+    const fallingPos = fallingOrePosition("bag", 0, 0.5);
+    const artKey = HEAP_ORE_KEYS[0]!;
+    expect(ores[0]!.style.left).toBe(`${fallingPos.left}px`);
+    expect(ores[0]!.style.bottom).toBe(
+      `${adjustedHeapOreBottom(fallingPos.bottom, artKey)}px`,
+    );
+    expect(ores[0]!.dataset["oreSlot"]).toBeUndefined();
+
+    tunnel.render({
+      ...baseSnap,
+      advance: 3,
+      fallingOre: [],
+    });
+    expect(oreElements(host).length).toBe(0);
+
+    tunnel.destroy();
+  });
+
+  it("renders no Ore for a one-Dwarf Crew when nothing is falling", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
     tunnel.render({ ...baseSnap, advance: 3, crewSize: 1, heapLoads: 5 });
@@ -851,13 +881,13 @@ describe("mountMiningTunnel", () => {
     tunnel.render(
       twoDwarfSnap({
         heapLoads: 2,
-        fallingOre: [{ slot: 1, progress: 0.5 }],
+        fallingOre: [{ destination: "heap", slot: 1, progress: 0.5 }],
       }),
     );
 
     const falling = oreAtSlot(host, 1);
     const settled = oreAtSlot(host, 0);
-    const fallingPos = fallingOrePosition(1, 0.5);
+    const fallingPos = fallingOrePosition("heap", 1, 0.5);
     const settledPos = heapSlot(0);
     const fallingKey = HEAP_ORE_KEYS[1]!;
     const settledKey = HEAP_ORE_KEYS[0]!;
@@ -878,7 +908,7 @@ describe("mountMiningTunnel", () => {
     const tunnel = mountMiningTunnel(host);
     const snap = twoDwarfSnap({
       heapLoads: 2,
-      fallingOre: [{ slot: 1, progress: 0.25 }],
+      fallingOre: [{ destination: "heap", slot: 1, progress: 0.25 }],
     });
 
     tunnel.render(snap);
@@ -905,7 +935,7 @@ describe("mountMiningTunnel", () => {
     tunnel.render(
       twoDwarfSnap({
         heapLoads: 1,
-        fallingOre: [{ slot: 0, progress: 0.25 }],
+        fallingOre: [{ destination: "heap", slot: 0, progress: 0.25 }],
       }),
     );
     const before = oreAtSlot(host, 0).style.bottom;
@@ -913,7 +943,7 @@ describe("mountMiningTunnel", () => {
     tunnel.render(
       twoDwarfSnap({
         heapLoads: 1,
-        fallingOre: [{ slot: 0, progress: 0.75 }],
+        fallingOre: [{ destination: "heap", slot: 0, progress: 0.75 }],
       }),
     );
     const after = oreAtSlot(host, 0).style.bottom;
