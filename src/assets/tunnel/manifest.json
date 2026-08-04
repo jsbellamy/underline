@@ -8,27 +8,27 @@
     },
     {
       "relative_path": "src/assets/tunnel/tiles/face/chipped.png",
-      "sha256": "77042a0a62c6db0242b081cd3fbaa56e8a5e084eceea668c74eda562223dd297",
+      "sha256": "5a927d458325e96ed2854e9da0a72f8066f58d352572c570f9f11a6f604be1db",
       "source_relative_path": "assets-raw/tunnel/tile-sheet/face.png",
-      "source_sha256": "af20ddb017ad60ec81c0f0aa983745ffd0f2e732176b73496517f6f39e6ae974"
+      "source_sha256": "b1d8d737659ecfe5a5d12273ec032aa4ab6fb7b84a938796e779ce92d05d160a"
     },
     {
       "relative_path": "src/assets/tunnel/tiles/face/cracked.png",
-      "sha256": "0c78c9a287a523750bbac02695dc302c8ff347e6a6eb571831d1be5279996d69",
+      "sha256": "d6e7b80f1fc199ea343bc4105f2727c554764df5263d5c9498ff802339999a48",
       "source_relative_path": "assets-raw/tunnel/tile-sheet/face.png",
-      "source_sha256": "af20ddb017ad60ec81c0f0aa983745ffd0f2e732176b73496517f6f39e6ae974"
+      "source_sha256": "b1d8d737659ecfe5a5d12273ec032aa4ab6fb7b84a938796e779ce92d05d160a"
     },
     {
       "relative_path": "src/assets/tunnel/tiles/face/crumbling.png",
-      "sha256": "781f5cccb0c7bcdc7843757ea3e90c86756471ef9c22d94c195820efc010664f",
+      "sha256": "452f5c839fae92c74df633e0b9c66215654067fdca1d3fbf00cc193025082757",
       "source_relative_path": "assets-raw/tunnel/tile-sheet/face.png",
-      "source_sha256": "af20ddb017ad60ec81c0f0aa983745ffd0f2e732176b73496517f6f39e6ae974"
+      "source_sha256": "b1d8d737659ecfe5a5d12273ec032aa4ab6fb7b84a938796e779ce92d05d160a"
     },
     {
       "relative_path": "src/assets/tunnel/tiles/face/intact.png",
-      "sha256": "11d91315704ba88c6d9c8dd2d632faff61719ed02e93582f1786d870fb05d79a",
+      "sha256": "bcfd41684fc0d9f1c483e6240a63a3b5a05bc8c95d3db4ac50775069518b3636",
       "source_relative_path": "assets-raw/tunnel/tile-sheet/face.png",
-      "source_sha256": "af20ddb017ad60ec81c0f0aa983745ffd0f2e732176b73496517f6f39e6ae974"
+      "source_sha256": "b1d8d737659ecfe5a5d12273ec032aa4ab6fb7b84a938796e779ce92d05d160a"
     },
     {
       "relative_path": "src/assets/tunnel/tiles/heap-ore/chunk-a.png",
