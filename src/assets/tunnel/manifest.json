@@ -29,6 +29,24 @@
       "sha256": "11d91315704ba88c6d9c8dd2d632faff61719ed02e93582f1786d870fb05d79a",
       "source_relative_path": "assets-raw/tunnel/tile-sheet/face.png",
       "source_sha256": "af20ddb017ad60ec81c0f0aa983745ffd0f2e732176b73496517f6f39e6ae974"
+    },
+    {
+      "relative_path": "src/assets/tunnel/tiles/heap-ore/chunk-a.png",
+      "sha256": "b428eef388e5b0ac9dcb99dc23c337d175fe6c005b3c58757b2d73f83cc40461",
+      "source_relative_path": "assets-raw/tunnel/tile-sheet/heap-ore.png",
+      "source_sha256": "9cca4a1f7c07f8f78a72c04d1fd7e66b25843dad424af0ea6320c42617e03fde"
+    },
+    {
+      "relative_path": "src/assets/tunnel/tiles/heap-ore/chunk-b.png",
+      "sha256": "3874ad37cdf3dd017c7fd766df404b35c9ec94bbc2ac7b077ab224b114ad74f8",
+      "source_relative_path": "assets-raw/tunnel/tile-sheet/heap-ore.png",
+      "source_sha256": "9cca4a1f7c07f8f78a72c04d1fd7e66b25843dad424af0ea6320c42617e03fde"
+    },
+    {
+      "relative_path": "src/assets/tunnel/tiles/heap-ore/chunk-c.png",
+      "sha256": "49d1e8ccd02744e193a6aa05e0ea2e70511198aeb06b386471bcfe16ccd8d583",
+      "source_relative_path": "assets-raw/tunnel/tile-sheet/heap-ore.png",
+      "source_sha256": "9cca4a1f7c07f8f78a72c04d1fd7e66b25843dad424af0ea6320c42617e03fde"
     }
   ],
   "schema": "tunnel-art-pack/0"

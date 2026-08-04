@@ -1,0 +1,89 @@
+{
+  "schema": "tunnel-art-native-scale-read/0",
+  "asset_key": "heap-ore",
+  "issue": 433,
+  "reviewed_pngs": {
+    "chunk-a": {
+      "path": "src/assets/tunnel/tiles/heap-ore/chunk-a.png",
+      "sha256": "b428eef388e5b0ac9dcb99dc23c337d175fe6c005b3c58757b2d73f83cc40461"
+    },
+    "chunk-b": {
+      "path": "src/assets/tunnel/tiles/heap-ore/chunk-b.png",
+      "sha256": "3874ad37cdf3dd017c7fd766df404b35c9ec94bbc2ac7b077ab224b114ad74f8"
+    },
+    "chunk-c": {
+      "path": "src/assets/tunnel/tiles/heap-ore/chunk-c.png",
+      "sha256": "49d1e8ccd02744e193a6aa05e0ea2e70511198aeb06b386471bcfe16ccd8d583"
+    }
+  },
+  "inspection": {
+    "native_scale": true,
+    "nearest_neighbor_enlargement": "4x",
+    "compositing_background": "src/assets/tunnel/background/tunnel-interior.png",
+    "heap_chunk_scale": 2,
+    "heap_chunk_pitch": 20,
+    "heap_chunk_y": 96,
+    "face_tile_scale": 1,
+    "face_tile_y": 96,
+    "composites": [
+      "src/assets/tunnel/reviews/heap-ore--composite-native.png",
+      "src/assets/tunnel/reviews/heap-ore--composite-4x.png"
+    ]
+  },
+  "style_cohort": [
+    "src/assets/tunnel/background/tunnel-interior.png",
+    "src/assets/tunnel/tiles/face/intact.png",
+    "src/assets/tunnel/tiles/face/chipped.png",
+    "src/assets/tunnel/tiles/face/cracked.png",
+    "src/assets/tunnel/tiles/face/crumbling.png",
+    "assets-raw/tunnel/tile-sheet/face.source.json"
+  ],
+  "style_alignment": {
+    "verdict": "pass",
+    "rationale": "Cyan crystal and warm plum-brown rock ramp sampled from face intact tile; chunky 8x8 cells enlarged to 16px on tunnel-interior floor band match face material family."
+  },
+  "identity_continuity": {
+    "verdict": "pass",
+    "rationale": "First heap-ore chunk family; loose floor lumps read as ore chipped from the face seam for #434 wiring."
+  },
+  "questions": [
+    {
+      "id": "discrete_lump",
+      "question": "Each chunk reads as a discrete lump of ore at 16px, not as a filled square or an indistinct blob.",
+      "verdict": "PASS",
+      "notes": "Transparent margins on all four sides; angular shard silhouettes read as separate lumps at 2x on floor band."
+    },
+    {
+      "id": "silhouette_distinct",
+      "question": "The three are distinguishable from one another by silhouette alone when laid out in a row.",
+      "verdict": "PASS",
+      "notes": "chunk-a single peak, chunk-b twin peaks with top notch, chunk-c wider rock-heavy lump with chipped corner."
+    },
+    {
+      "id": "face_material",
+      "question": "The chunks read as the same material as the Face tiles - same cyan crystal and plum-brown rock family.",
+      "verdict": "PASS",
+      "notes": "Shared cyan ramp (#18-58-71 through #114-226-210) and plum-brown rock values beside intact face tile in composite."
+    },
+    {
+      "id": "transparent_margin",
+      "question": "Every Cell outside a chunk's silhouette is transparent, so the background shows through on all four sides.",
+      "verdict": "PASS",
+      "notes": "Binary alpha runtime PNGs; floor band visible around every opaque pixel at native and 4x enlargement."
+    },
+    {
+      "id": "dimensions_and_edges",
+      "question": "Every tile is exactly 8x8, with no magenta inside a silhouette and no anti-aliased edge pixels.",
+      "verdict": "PASS",
+      "notes": "All three PNGs 8x8 RGBA binary alpha; zero magenta and zero semi-transparent pixels."
+    }
+  ],
+  "machine_checks": {
+    "magenta_pixels": 0,
+    "semi_transparent_pixels": 0,
+    "assets_verify": "PASS"
+  },
+  "overall": "PASS",
+  "reviewed_at": "2026-08-04T17:30:00+00:00",
+  "reviewer_identity": "cursor-agent/issue-433"
+}
