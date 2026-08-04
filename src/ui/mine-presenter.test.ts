@@ -29,17 +29,24 @@ function memoryStore() {
 }
 
 function spyMiningAudio(): MiningAudio & {
-  queuedBatches: { events: readonly MiningEvent[]; baseMs: number }[];
+  queuedBatches: {
+    events: readonly MiningEvent[];
+    baseMs: number;
+    dtMs: number;
+  }[];
   releasedAt: number[];
 } {
-  const queuedBatches: { events: readonly MiningEvent[]; baseMs: number }[] =
-    [];
+  const queuedBatches: {
+    events: readonly MiningEvent[];
+    baseMs: number;
+    dtMs: number;
+  }[] = [];
   const releasedAt: number[] = [];
   return {
     queuedBatches,
     releasedAt,
-    handleEvents(events, baseMs) {
-      queuedBatches.push({ events, baseMs });
+    handleEvents(events, baseMs, dtMs) {
+      queuedBatches.push({ events, baseMs, dtMs });
     },
     releaseDueTo(nowMs) {
       releasedAt.push(nowMs);
@@ -265,6 +272,22 @@ describe("mine presenter", () => {
     );
     expect(breakCues).toEqual([expectedBreakAtMs]);
     expect(audio.releasedAt).toEqual([]);
+  });
+
+  it("passes advance dtMs to mining audio handleEvents", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+    });
+    const audio = spyMiningAudio();
+    const presenter = createMinePresenter(session, { audio });
+    presenter.start();
+
+    presenter.advanceMs(250);
+    expect(audio.queuedBatches[0]?.dtMs).toBe(250);
+
+    presenter.advanceMs(100);
+    expect(audio.queuedBatches[1]?.dtMs).toBe(100);
   });
 
   it("releases queued audio when the caller supplies a presentation time", () => {

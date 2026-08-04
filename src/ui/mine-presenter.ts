@@ -164,7 +164,7 @@ export function createMinePresenter(
       simNowMs += dtMs;
       const { events } = session.advanceLive(dtMs);
       if (audio) {
-        audio.handleEvents(events, windowStartSimMs);
+        audio.handleEvents(events, windowStartSimMs, dtMs);
       }
 
       faceSwingProgressAtTick = session.snapshot.faceSwingProgress;
