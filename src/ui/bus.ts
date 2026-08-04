@@ -42,7 +42,8 @@ function isUpgradeId(value: unknown): value is UpgradeId {
     value === "smelter" ||
     value === "carryCapacity" ||
     value === "haulSpeed" ||
-    value === "hireHauler"
+    value === "hireHauler" ||
+    value === "pickDamage"
   );
 }
 
