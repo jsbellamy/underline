@@ -10,6 +10,7 @@ import {
   SMELTER_THROUGHPUT,
   UPGRADE_CARRY_CAPACITY,
   advance,
+  advanceWithEvents,
   buyUpgrade,
   carryCapacityFor,
   digRateFor,
@@ -23,6 +24,7 @@ import {
   smelterThroughputFor,
   type MiningSnapshot,
 } from "./mining-engine";
+import type { MiningEvent } from "./mining-events";
 
 function snap(partial: Partial<MiningSnapshot> = {}): MiningSnapshot {
   return { ...initialSnapshot(), ...partial };
@@ -228,6 +230,83 @@ describe("mining engine buyUpgrade default", () => {
     const bought = buyUpgrade(rich);
     expect(bought.digRateUpgradeCount).toBe(1);
     expect(bought.smelterUpgradeCount).toBe(0);
+  });
+});
+
+describe("mining engine advanceWithEvents", () => {
+  it("live advance snapshot is unchanged when events are collected", () => {
+    const before = snap();
+    const options = { rateScale: 0.5 };
+    const dtMs = 3_000;
+    expect(advance(before, dtMs, options)).toEqual(
+      advanceWithEvents(before, dtMs, options).snapshot,
+    );
+  });
+
+  it("emits swing at 1000 and 2000 ms for Dig Rate 1 over 2500 ms", () => {
+    const { events } = advanceWithEvents(snap(), 2_500);
+    expect(events).toEqual<MiningEvent[]>([
+      { type: "swing", atMs: 1000 },
+      { type: "swing", atMs: 2000 },
+    ]);
+  });
+
+  it("emits swing at 800 and 1600 ms for Dig Rate 1.25 over 2000 ms", () => {
+    const { events } = advanceWithEvents(
+      snap({ digRateUpgradeCount: 1 }),
+      2_000,
+    );
+    expect(events).toEqual<MiningEvent[]>([
+      { type: "swing", atMs: 800 },
+      { type: "swing", atMs: 1600 },
+    ]);
+  });
+
+  it("emits faceBroken at the hardness crossing offset", () => {
+    const { events } = advanceWithEvents(snap({ faceSwingProgress: 999 }), 2_000);
+    expect(events.filter((e) => e.type === "faceBroken")).toEqual([
+      { type: "faceBroken", atMs: 1000 },
+    ]);
+  });
+
+  it("emits no swing during a Haul", () => {
+    const fullBag = advance(snap(), 100_000);
+    expect(fullBag.haulRemainingMs).toBeGreaterThan(0);
+    const { events } = advanceWithEvents(fullBag, 4_000);
+    expect(events.filter((e) => e.type === "swing")).toHaveLength(0);
+  });
+
+  it("doubles swing atMs under rateScale 0.5", () => {
+    const { events } = advanceWithEvents(snap(), 5_000, { rateScale: 0.5 });
+    expect(events).toEqual<MiningEvent[]>([
+      { type: "swing", atMs: 2000 },
+      { type: "swing", atMs: 4000 },
+    ]);
+  });
+
+  it("emits faceBroken without swing for discarded partial at break", () => {
+    const almostBroken = snap({ faceSwingProgress: 999 });
+    const { events, snapshot } = advanceWithEvents(almostBroken, 2_000);
+    expect(events).toEqual<MiningEvent[]>([
+      { type: "faceBroken", atMs: 1000 },
+      { type: "swing", atMs: 2000 },
+    ]);
+    expect(snapshot.advance).toBe(1);
+    expect(snapshot.faceSwingProgress).toBe(1);
+  });
+
+  it("is chunk-neutral for events over 2500 ms", () => {
+    const once = advanceWithEvents(snap(), 2_500);
+    let manyEvents: MiningEvent[] = [];
+    let cursor = snap();
+    for (let i = 0; i < 10; i += 1) {
+      const step = advanceWithEvents(cursor, 250);
+      manyEvents = manyEvents.concat(
+        step.events.map((e) => ({ ...e, atMs: e.atMs + i * 250 })),
+      );
+      cursor = step.snapshot;
+    }
+    expect(manyEvents).toEqual(once.events);
   });
 });
 

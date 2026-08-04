@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   OFFLINE_RATE_SCALE,
   advance,
+  advanceWithEvents,
   digRateFor,
   initialSnapshot,
   nextDigRateUpgradeCost,
@@ -126,10 +127,34 @@ describe("mining session", () => {
       now: () => 0,
       onPublish,
     });
-    session.advanceLive(1_080_000);
+    const result = session.advanceLive(1_080_000);
+    expect(result.snapshot).toBe(session.snapshot);
     expect(session.snapshot.advance).toBe(1);
     session.publish();
     expect(onPublish).toHaveBeenCalledOnce();
     expect(onPublish.mock.calls[0]?.[0].advance).toBe(1);
+  });
+
+  it("advanceLive returns snapshot and events without offline boot events", () => {
+    const store = memoryStore();
+    const saved = advance(initialSnapshot(), 0);
+    store.setItem(
+      "underline-save-v1",
+      JSON.stringify({
+        ...saved,
+        savedAtMs: 1_000,
+      }),
+    );
+    const now = 1_000 + MIN_OFFLINE_MS;
+    const session = createMiningSession({
+      store,
+      now: () => now,
+    });
+    const afterBoot = session.snapshot;
+    const { events } = session.advanceLive(0);
+    expect(events).toEqual([]);
+    expect(session.advanceLive(2_500).events).toEqual(
+      advanceWithEvents(afterBoot, 2_500).events,
+    );
   });
 });

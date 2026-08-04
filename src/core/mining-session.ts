@@ -3,10 +3,12 @@
 import {
   OFFLINE_RATE_SCALE,
   advance,
+  advanceWithEvents,
   buyUpgrade,
   type MiningSnapshot,
   type UpgradeId,
 } from "./mining-engine";
+import type { MiningEvent } from "./mining-events";
 import {
   browserSaveStore,
   loadSave,
@@ -26,7 +28,10 @@ export const AUTOSAVE_MS = 10_000;
 export interface MiningSession {
   readonly snapshot: MiningSnapshot;
   wireSnapshot(): WireSnapshot;
-  advanceLive(dtMs: number): MiningSnapshot;
+  advanceLive(dtMs: number): {
+    snapshot: MiningSnapshot;
+    events: readonly MiningEvent[];
+  };
   tryBuyUpgrade(upgrade: UpgradeId): boolean;
   publish(): void;
   persist(): void;
@@ -90,8 +95,9 @@ export function createMiningSession(
     },
     wireSnapshot,
     advanceLive(dtMs: number) {
-      snapshot = advance(snapshot, dtMs);
-      return snapshot;
+      const result = advanceWithEvents(snapshot, dtMs);
+      snapshot = result.snapshot;
+      return result;
     },
     tryBuyUpgrade(upgrade: UpgradeId) {
       try {
