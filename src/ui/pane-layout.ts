@@ -38,6 +38,10 @@ export const HEAP_BOTTOM = 8;
 export const HEAP_EAST_X = FACE_X - ORE_SIZE;
 /** Westmost slot of a row sits at HEAP_EAST_X - ORE_PITCH * (HEAP_SLOTS_PER_ROW - 1). */
 export const HEAP_SLOTS_PER_ROW = 13;
+/** spawn → settled duration for Ore falling from the Face. */
+export const ORE_FALL_MS = 250;
+/** spawn height for falling Ore, mid-Face. */
+export const ORE_SPAWN_BOTTOM = 56;
 
 export const CART_MARK_X = CART_X + CART_WIDTH + 8;
 const dwarfW = DWARF_FRAME_W * DWARF_SCALE;

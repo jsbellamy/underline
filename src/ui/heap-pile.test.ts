@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { haulerPickupTargetX, heapSlot } from "./heap-pile";
+import { fallingOrePosition, haulerPickupTargetX, heapSlot } from "./heap-pile";
 import {
   FACE_X,
   HAULER_MARK_X,
@@ -7,8 +7,10 @@ import {
   HEAP_EAST_X,
   HEAP_ROW_HEIGHT,
   HEAP_SLOTS_PER_ROW,
+  ORE_FALL_MS,
   ORE_PITCH,
   ORE_SIZE,
+  ORE_SPAWN_BOTTOM,
 } from "./pane-layout";
 
 describe("heapSlot", () => {
@@ -43,6 +45,44 @@ describe("heapSlot", () => {
 
   it("throws for a fractional index", () => {
     expect(() => heapSlot(1.5)).toThrow();
+  });
+});
+
+describe("fallingOrePosition", () => {
+  it("exports fall constants with worked values", () => {
+    expect(ORE_FALL_MS).toBe(250);
+    expect(ORE_SPAWN_BOTTOM).toBe(56);
+  });
+
+  const worked: Array<{
+    slot: number;
+    progress: number;
+    left: number;
+    bottom: number;
+  }> = [
+    { slot: 0, progress: 0, left: 328, bottom: 56 },
+    { slot: 0, progress: 0.5, left: 328, bottom: 44 },
+    { slot: 0, progress: 1, left: 328, bottom: 8 },
+    { slot: 12, progress: 0, left: 328, bottom: 56 },
+    { slot: 12, progress: 0.5, left: 256, bottom: 44 },
+    { slot: 12, progress: 1, left: 184, bottom: 8 },
+  ];
+
+  for (const { slot, progress, left, bottom } of worked) {
+    it(`slot ${slot} at progress ${progress} is left ${left} bottom ${bottom}`, () => {
+      expect(fallingOrePosition(slot, progress)).toEqual({ left, bottom });
+    });
+  }
+
+  it("at progress 1 deep-equals heapSlot for every worked slot", () => {
+    for (const slot of [0, 12]) {
+      expect(fallingOrePosition(slot, 1)).toEqual(heapSlot(slot));
+    }
+  });
+
+  it("throws when progress is outside 0…1", () => {
+    expect(() => fallingOrePosition(0, -0.1)).toThrow();
+    expect(() => fallingOrePosition(0, 1.1)).toThrow();
   });
 });
 

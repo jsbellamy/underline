@@ -3,6 +3,7 @@ import { createMiningSession } from "../core/mining-session";
 import {
   advance as advanceEngine,
   advanceWithEvents,
+  carryCapacityFor,
   HAUL_ROUND_TRIP_MS,
   heapCapacityFor,
   initialSnapshot,
@@ -14,6 +15,7 @@ import {
 import type { MiningEvent } from "../core/mining-events";
 import { createMinePresenter, FACE_SLIDE_MS } from "./mine-presenter";
 import type { MiningAudio } from "./mining-audio";
+import { ORE_FALL_MS } from "./pane-layout";
 import { PUMP_INTERVAL_MS } from "./pump";
 
 function memoryStore() {
@@ -652,5 +654,78 @@ describe("mine presenter", () => {
     expect(backLeg.hauler!.animation).toBe("walk");
     expect(backLeg.hauler!.facing).toBe("east");
     expect(backLeg.hauler!.haulProgress).toBeGreaterThan(0);
+  });
+
+  it("seeds a fallingOre entry from loadDropped whose progress tracks nowMs", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+      snapshot: {
+        ...initialSnapshot(),
+        crewSize: 2,
+      },
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+    presenter.advanceMs(10_000);
+    expect(presenter.snapshot().heapLoads).toBe(1);
+    expect(presenter.snapshot(10_000).fallingOre).toEqual([
+      { slot: 0, progress: 0 },
+    ]);
+    expect(presenter.snapshot(10_125).fallingOre).toEqual([
+      { slot: 0, progress: 0.5 },
+    ]);
+    expect(presenter.snapshot(10_000 + ORE_FALL_MS).fallingOre).toEqual([]);
+  });
+
+  it("reports fallingOre as empty for a one-Dwarf Crew", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+    presenter.advanceMs(10_000);
+    expect(presenter.snapshot().fallingOre).toEqual([]);
+  });
+
+  it("truncates newest falls when heapLoads drops below the active list", () => {
+    const cap = carryCapacityFor(0);
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+      snapshot: {
+        ...initialSnapshot(),
+        crewSize: 2,
+        bagLoads: cap,
+      },
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+    presenter.advanceMs(10_000);
+    presenter.advanceMs(10_000);
+    expect(session.snapshot.heapLoads).toBe(2);
+    const twoInFlight = presenter.snapshot(10_001).fallingOre;
+    expect(twoInFlight).toHaveLength(2);
+    expect(twoInFlight.every((f) => f.slot >= 0)).toBe(true);
+    presenter.advanceMs(pickupMsPerLoad(0));
+    const afterPickup = presenter.snapshot(10_001).fallingOre;
+    expect(afterPickup.length).toBeLessThanOrEqual(session.snapshot.heapLoads);
+    expect(afterPickup.every((f) => f.slot >= 0)).toBe(true);
+  });
+
+  it("reports no fallingOre after offline catch-up with a deep Heap", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+      snapshot: {
+        ...initialSnapshot(),
+        crewSize: 2,
+        heapLoads: 5,
+      },
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+    expect(presenter.snapshot().fallingOre).toEqual([]);
   });
 });
