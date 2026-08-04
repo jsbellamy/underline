@@ -6,7 +6,7 @@ Authority: `docs/research/tick-snapshot-save-model.md`,
 
 import type { MiningEvent } from "./mining-events";
 
-export const SCHEMA_VERSION = 3 as const;
+export const SCHEMA_VERSION = 4 as const;
 
 /** Face damage capacity at Advance 0 on the exponential curve. */
 export const FACE_BASE_HARDNESS = 1000;

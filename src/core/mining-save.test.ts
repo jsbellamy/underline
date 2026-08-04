@@ -33,7 +33,7 @@ describe("mining save seam", () => {
     store = memoryStore();
   });
 
-  it("round-trips authoritative v3 fields through underline-save-v1", () => {
+  it("round-trips authoritative v4 fields through underline-save-v1", () => {
     const snap: MiningSnapshot = {
       schemaVersion: SCHEMA_VERSION,
       advance: 3,
@@ -42,11 +42,11 @@ describe("mining save seam", () => {
       digRateUpgradeCount: 2,
       smelterUpgradeCount: 1,
       carryCapacityUpgradeCount: 1,
-      crewSize: 1,
-      heapLoads: 0,
-      heapOre: 0,
-      haulSpeedUpgradeCount: 0,
-      pickupProgressMs: 0,
+      crewSize: 2,
+      heapLoads: 3,
+      heapOre: 7,
+      haulSpeedUpgradeCount: 2,
+      pickupProgressMs: 4_200,
       faceSwingProgress: 1.25,
       smelterProgress: 0.4,
       bagOre: 3.5,
@@ -62,7 +62,7 @@ describe("mining save seam", () => {
     });
   });
 
-  it("migrates schemaVersion 2 to v3 with Bag fields defaulted to zero", () => {
+  it("migrates schemaVersion 2 to v4 with Bag and Crew fields defaulted to zero", () => {
     store.setItem(
       SAVE_KEY,
       JSON.stringify({
@@ -79,7 +79,7 @@ describe("mining save seam", () => {
     );
     const loaded = loadSave(store);
     expect(loaded.snapshot).toEqual({
-      schemaVersion: 3,
+      schemaVersion: SCHEMA_VERSION,
       advance: 3,
       ore: 1.5,
       ingots: 7,
@@ -100,7 +100,7 @@ describe("mining save seam", () => {
     expect(loaded.savedAtMs).toBe(1_700_000_000_000);
   });
 
-  it("migrates schemaVersion 1 upgradeCount through v2 shape to v3", () => {
+  it("migrates schemaVersion 1 upgradeCount through v2 shape to v4", () => {
     store.setItem(
       SAVE_KEY,
       JSON.stringify({
@@ -116,7 +116,7 @@ describe("mining save seam", () => {
     );
     const loaded = loadSave(store);
     expect(loaded.snapshot).toEqual({
-      schemaVersion: 3,
+      schemaVersion: SCHEMA_VERSION,
       advance: 3,
       ore: 1.5,
       ingots: 7,
@@ -137,7 +137,49 @@ describe("mining save seam", () => {
     expect(loaded.savedAtMs).toBe(1_700_000_000_000);
   });
 
-  it("rewrites v3 on persist after loading a v1 save", () => {
+  it("migrates schemaVersion 3 to v4 with one-Dwarf Crew defaults", () => {
+    store.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        schemaVersion: 3,
+        savedAtMs: 1_700_000_000_000,
+        advance: 3,
+        ore: 1.5,
+        ingots: 7,
+        digRateUpgradeCount: 2,
+        smelterUpgradeCount: 1,
+        carryCapacityUpgradeCount: 1,
+        faceSwingProgress: 1.25,
+        smelterProgress: 0.4,
+        bagOre: 3.5,
+        bagLoads: 4,
+        haulRemainingMs: 2000,
+      }),
+    );
+    const loaded = loadSave(store);
+    expect(loaded.snapshot).toEqual({
+      schemaVersion: SCHEMA_VERSION,
+      advance: 3,
+      ore: 1.5,
+      ingots: 7,
+      digRateUpgradeCount: 2,
+      smelterUpgradeCount: 1,
+      carryCapacityUpgradeCount: 1,
+      crewSize: 1,
+      heapLoads: 0,
+      heapOre: 0,
+      haulSpeedUpgradeCount: 0,
+      pickupProgressMs: 0,
+      faceSwingProgress: 1.25,
+      smelterProgress: 0.4,
+      bagOre: 3.5,
+      bagLoads: 4,
+      haulRemainingMs: 2000,
+    });
+    expect(loaded.savedAtMs).toBe(1_700_000_000_000);
+  });
+
+  it("rewrites v4 on persist after loading a v1 save", () => {
     store.setItem(
       SAVE_KEY,
       JSON.stringify({
@@ -154,10 +196,15 @@ describe("mining save seam", () => {
     const { snapshot } = loadSave(store);
     persistSave(snapshot, 200, store);
     const raw = JSON.parse(store.data[SAVE_KEY]!);
-    expect(raw.schemaVersion).toBe(3);
+    expect(raw.schemaVersion).toBe(SCHEMA_VERSION);
     expect(raw.digRateUpgradeCount).toBe(1);
     expect(raw.smelterUpgradeCount).toBe(0);
     expect(raw.carryCapacityUpgradeCount).toBe(0);
+    expect(raw.crewSize).toBe(1);
+    expect(raw.heapLoads).toBe(0);
+    expect(raw.heapOre).toBe(0);
+    expect(raw.haulSpeedUpgradeCount).toBe(0);
+    expect(raw.pickupProgressMs).toBe(0);
     expect(raw.bagOre).toBe(0);
     expect(raw.bagLoads).toBe(0);
     expect(raw.haulRemainingMs).toBe(0);
@@ -192,24 +239,6 @@ describe("mining save seam", () => {
     const loaded = loadSave(store);
     expect(loaded.snapshot).toEqual(initialSnapshot());
     expect(loaded.savedAtMs).toBeUndefined();
-  });
-
-  it("round-trips v3 save without persisting interim Crew fields", () => {
-    const withCrew = {
-      ...initialSnapshot(),
-      crewSize: 2,
-      heapLoads: 5,
-      heapOre: 5,
-      haulSpeedUpgradeCount: 2,
-      pickupProgressMs: 3000,
-    };
-    persistSave(withCrew, 1_700_000_000_000, store);
-    const loaded = loadSave(store);
-    expect(loaded.snapshot.crewSize).toBe(1);
-    expect(loaded.snapshot.heapLoads).toBe(0);
-    expect(loaded.snapshot.heapOre).toBe(0);
-    expect(loaded.snapshot.haulSpeedUpgradeCount).toBe(0);
-    expect(loaded.snapshot.pickupProgressMs).toBe(0);
   });
 
   it("clears the save key", () => {

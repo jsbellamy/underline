@@ -19,6 +19,27 @@ export interface LoadedSave {
   savedAtMs: number | undefined;
 }
 
+interface PersistedSaveV4 {
+  schemaVersion: 4;
+  savedAtMs: number;
+  advance: number;
+  ore: number;
+  ingots: number;
+  digRateUpgradeCount: number;
+  smelterUpgradeCount: number;
+  carryCapacityUpgradeCount: number;
+  crewSize: number;
+  heapLoads: number;
+  heapOre: number;
+  haulSpeedUpgradeCount: number;
+  pickupProgressMs: number;
+  faceSwingProgress: number;
+  smelterProgress: number;
+  bagOre: number;
+  bagLoads: number;
+  haulRemainingMs: number;
+}
+
 interface PersistedSaveV3 {
   schemaVersion: 3;
   savedAtMs: number;
@@ -58,10 +79,69 @@ interface PersistedSaveV1 {
   smelterProgress: number;
 }
 
-type PersistedSave = PersistedSaveV3 | PersistedSaveV2 | PersistedSaveV1;
+type PersistedSave = PersistedSaveV4 | PersistedSaveV3 | PersistedSaveV2 | PersistedSaveV1;
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function parseV4Fields(raw: {
+  advance: unknown;
+  ore: unknown;
+  ingots: unknown;
+  digRateUpgradeCount: unknown;
+  smelterUpgradeCount: unknown;
+  carryCapacityUpgradeCount: unknown;
+  crewSize: unknown;
+  heapLoads: unknown;
+  heapOre: unknown;
+  haulSpeedUpgradeCount: unknown;
+  pickupProgressMs: unknown;
+  faceSwingProgress: unknown;
+  smelterProgress: unknown;
+  bagOre: unknown;
+  bagLoads: unknown;
+  haulRemainingMs: unknown;
+}): MiningSnapshot | null {
+  if (
+    !isFiniteNumber(raw.advance) ||
+    !isFiniteNumber(raw.ore) ||
+    !isFiniteNumber(raw.ingots) ||
+    !isFiniteNumber(raw.digRateUpgradeCount) ||
+    !isFiniteNumber(raw.smelterUpgradeCount) ||
+    !isFiniteNumber(raw.carryCapacityUpgradeCount) ||
+    !isFiniteNumber(raw.crewSize) ||
+    !isFiniteNumber(raw.heapLoads) ||
+    !isFiniteNumber(raw.heapOre) ||
+    !isFiniteNumber(raw.haulSpeedUpgradeCount) ||
+    !isFiniteNumber(raw.pickupProgressMs) ||
+    !isFiniteNumber(raw.faceSwingProgress) ||
+    !isFiniteNumber(raw.smelterProgress) ||
+    !isFiniteNumber(raw.bagOre) ||
+    !isFiniteNumber(raw.bagLoads) ||
+    !isFiniteNumber(raw.haulRemainingMs)
+  ) {
+    return null;
+  }
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    advance: raw.advance,
+    ore: raw.ore,
+    ingots: raw.ingots,
+    digRateUpgradeCount: raw.digRateUpgradeCount,
+    smelterUpgradeCount: raw.smelterUpgradeCount,
+    carryCapacityUpgradeCount: raw.carryCapacityUpgradeCount,
+    crewSize: raw.crewSize,
+    heapLoads: raw.heapLoads,
+    heapOre: raw.heapOre,
+    haulSpeedUpgradeCount: raw.haulSpeedUpgradeCount,
+    pickupProgressMs: raw.pickupProgressMs,
+    faceSwingProgress: raw.faceSwingProgress,
+    smelterProgress: raw.smelterProgress,
+    bagOre: raw.bagOre,
+    bagLoads: raw.bagLoads,
+    haulRemainingMs: raw.haulRemainingMs,
+  };
 }
 
 function parseV3Fields(raw: {
@@ -189,10 +269,13 @@ function parseSnapshot(raw: PersistedSave): MiningSnapshot | null {
   if (raw.schemaVersion === 2) {
     return parseV2Fields(raw);
   }
+  if (raw.schemaVersion === 3) {
+    return parseV3Fields(raw);
+  }
   if (raw.schemaVersion !== SCHEMA_VERSION) {
     return null;
   }
-  return parseV3Fields(raw);
+  return parseV4Fields(raw);
 }
 
 export function loadSave(store: SaveStore): LoadedSave {
@@ -217,7 +300,7 @@ export function persistSave(
   savedAtMs: number,
   store: SaveStore,
 ): void {
-  const payload: PersistedSaveV3 = {
+  const payload: PersistedSaveV4 = {
     schemaVersion: SCHEMA_VERSION,
     savedAtMs,
     advance: snapshot.advance,
@@ -226,6 +309,11 @@ export function persistSave(
     digRateUpgradeCount: snapshot.digRateUpgradeCount,
     smelterUpgradeCount: snapshot.smelterUpgradeCount,
     carryCapacityUpgradeCount: snapshot.carryCapacityUpgradeCount,
+    crewSize: snapshot.crewSize,
+    heapLoads: snapshot.heapLoads,
+    heapOre: snapshot.heapOre,
+    haulSpeedUpgradeCount: snapshot.haulSpeedUpgradeCount,
+    pickupProgressMs: snapshot.pickupProgressMs,
     faceSwingProgress: snapshot.faceSwingProgress,
     smelterProgress: snapshot.smelterProgress,
     bagOre: snapshot.bagOre,
