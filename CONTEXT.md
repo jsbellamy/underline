@@ -326,7 +326,8 @@ the art side and the simulation side, and are meant to agree.
 _Avoid_: hit, strike, attack (nothing here is combat), tick
 
 **Pick Damage**:
-The damage one Swing deals to the Face.
+The damage one Swing deals to the Face. Pick Damage Upgrade multiplies Pick
+Damage; it is the lever that keeps the Face breakable as Hardness grows.
 _Avoid_: attack, power, DPS
 
 **Hardness**:
@@ -410,10 +411,11 @@ later without renaming.
 _Avoid_: bar (collides with UI vocabulary), bullion, coin, gold, currency
 
 **Upgrade**:
-A purchased Colony improvement bought with Ingots in the Dock. Three Upgrades
-exist for current play: **Dig Rate Upgrade** (raises Dig Rate), **Smelter Upgrade**
-(raises Smelter throughput), and **Carry Capacity Upgrade** (raises Carry
-Capacity).
+A purchased Colony improvement bought with Ingots in the Dock. Six colony
+purchases exist for current play: **Dig Rate Upgrade** (raises Dig Rate),
+**Pick Damage Upgrade** (multiplies Pick Damage), **Smelter Upgrade** (raises
+Smelter throughput), **Carry Capacity Upgrade** (raises Carry Capacity), **Haul
+Speed Upgrade** (raises Haul Speed), and hiring the **Hauler**.
 _Avoid_: perk, buff, unlock, research, upgrade tree
 
 **Pane**:

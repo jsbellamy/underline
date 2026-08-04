@@ -35,14 +35,26 @@ def _normalized(body: str) -> str:
     return re.sub(r"\s+", " ", body.strip())
 
 
-def test_game_language_upgrade_names_three_colony_purchases() -> None:
+def test_game_language_upgrade_names_every_colony_purchase() -> None:
     section = _game_language_section()
-    body = _entry_body(section, "Upgrade")
+    body = _normalized(_entry_body(section, "Upgrade"))
     assert "Dig Rate Upgrade" in body
+    assert "Pick Damage Upgrade" in body
     assert "Smelter Upgrade" in body
     assert "Carry Capacity Upgrade" in body
+    assert "Haul Speed Upgrade" in body
+    assert "Hauler" in body
+    assert "Three Upgrades" not in body
     assert "Singular by design" not in body
     assert "single-type" not in body.lower()
+
+
+def test_game_language_pick_damage_upgrade_multiplies_damage() -> None:
+    section = _game_language_section()
+    body = _normalized(_entry_body(section, "Pick Damage"))
+    assert "Pick Damage Upgrade multiplies Pick Damage" in body
+    assert "Face breakable as Hardness grows" in body
+    assert "_Avoid_: attack, power, DPS" in body
 
 
 def test_game_language_dig_rate_upgrade_raises_dig_rate() -> None:
