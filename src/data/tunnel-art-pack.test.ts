@@ -10,12 +10,15 @@ describe("tunnel-art-pack", () => {
 
   it("reads the on-disk tunnel-art-pack/0 manifest", () => {
     expect(pack.schema).toBe("tunnel-art-pack/0");
-    expect(pack.entries).toHaveLength(5);
+    expect(pack.entries).toHaveLength(8);
   });
 
   it("resolves a known key to the manifest relative_path", () => {
     expect(tunnelArtPath(pack, "background/tunnel-interior")).toBe(
       "src/assets/tunnel/background/tunnel-interior.png",
+    );
+    expect(tunnelArtPath(pack, "tiles/heap-ore/chunk-a")).toBe(
+      "src/assets/tunnel/tiles/heap-ore/chunk-a.png",
     );
   });
 
