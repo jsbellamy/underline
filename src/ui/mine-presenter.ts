@@ -31,7 +31,11 @@ export interface TunnelSnapshot {
   haulPhase: TunnelHaulPhase;
   /** `0` at Haul start, rising to `1` at round-trip end; `0` when not hauling. */
   haulProgress: number;
+  /** Face slide-in progress (`0` at Advance bump, `1` when settled). */
+  faceSlide: number;
 }
+
+export const FACE_SLIDE_MS = 400;
 
 export interface MinePresenter {
   snapshot(): TunnelSnapshot;
@@ -86,6 +90,9 @@ export function createMinePresenter(
   }
 
   let swingCycleRemainderMs = 0;
+  let faceSlide = 1;
+  let faceSlideElapsedMs = 0;
+  let lastAdvance = session.snapshot.advance;
 
   function swingCycleMs(): number {
     return 1000 / anim.digRate;
@@ -111,6 +118,7 @@ export function createMinePresenter(
       digRate: anim.digRate,
       haulPhase: phase ?? "none",
       haulProgress: haulProgress(remaining),
+      faceSlide,
     };
   }
 
@@ -133,6 +141,16 @@ export function createMinePresenter(
       const gained = session.snapshot.advance - before;
       if (audio && gained > 0) {
         audio.faceBroken(gained);
+      }
+
+      if (session.snapshot.advance > lastAdvance) {
+        faceSlide = 0;
+        faceSlideElapsedMs = 0;
+        lastAdvance = session.snapshot.advance;
+      }
+      if (faceSlide < 1) {
+        faceSlideElapsedMs += dtMs;
+        faceSlide = Math.min(1, faceSlideElapsedMs / FACE_SLIDE_MS);
       }
 
       syncHaulAnim();

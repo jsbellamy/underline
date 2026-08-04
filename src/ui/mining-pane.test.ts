@@ -30,6 +30,7 @@ function stubPresenter(setSoundEnabled = vi.fn()) {
       digRate: 1,
       haulPhase: "none" as const,
       haulProgress: 0,
+      faceSlide: 1,
   });
   return {
     anim,
@@ -280,6 +281,7 @@ describe("mountPaneShell mining Pane", () => {
       digRate: 1,
       haulPhase: "none" as const,
       haulProgress: 0,
+      faceSlide: 1,
     };
 
     tunnel.render({ ...base, advance: 0 });
