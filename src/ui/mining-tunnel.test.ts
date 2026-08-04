@@ -21,7 +21,7 @@ import {
   ORE_SIZE,
   PANE_WIDTH,
 } from "./pane-layout";
-import { heapSlot } from "./heap-pile";
+import { fallingOrePosition, heapSlot } from "./heap-pile";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -38,6 +38,7 @@ const baseSnap: TunnelSnapshot = {
   faceSlide: 1,
   crewSize: 1,
   heapLoads: 0,
+  fallingOre: [],
 };
 
 function twoDwarfSnap(
@@ -736,6 +737,77 @@ describe("mountMiningTunnel", () => {
 
     expect(observer.takeRecords()).toEqual([]);
     observer.disconnect();
+    tunnel.destroy();
+  });
+
+  it("positions a falling Ore at fallingOrePosition and settled neighbours at heapSlot", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    tunnel.render(
+      twoDwarfSnap({
+        heapLoads: 2,
+        fallingOre: [{ slot: 1, progress: 0.5 }],
+      }),
+    );
+
+    const falling = oreAtSlot(host, 1);
+    const settled = oreAtSlot(host, 0);
+    const fallingPos = fallingOrePosition(1, 0.5);
+    const settledPos = heapSlot(0);
+    expect(falling.style.left).toBe(`${fallingPos.left}px`);
+    expect(falling.style.bottom).toBe(`${fallingPos.bottom}px`);
+    expect(settled.style.left).toBe(`${settledPos.left}px`);
+    expect(settled.style.bottom).toBe(`${settledPos.bottom}px`);
+
+    tunnel.destroy();
+  });
+
+  it("does not mutate the DOM when rendering the same fallingOre snapshot twice", async () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    const snap = twoDwarfSnap({
+      heapLoads: 2,
+      fallingOre: [{ slot: 1, progress: 0.25 }],
+    });
+
+    tunnel.render(snap);
+
+    const observer = new MutationObserver(() => {});
+    observer.observe(host, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      characterData: true,
+    });
+
+    tunnel.render(snap);
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(observer.takeRecords()).toEqual([]);
+    observer.disconnect();
+    tunnel.destroy();
+  });
+
+  it("re-renders when only a fallingOre progress value changes", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    tunnel.render(
+      twoDwarfSnap({
+        heapLoads: 1,
+        fallingOre: [{ slot: 0, progress: 0.25 }],
+      }),
+    );
+    const before = oreAtSlot(host, 0).style.bottom;
+
+    tunnel.render(
+      twoDwarfSnap({
+        heapLoads: 1,
+        fallingOre: [{ slot: 0, progress: 0.75 }],
+      }),
+    );
+    const after = oreAtSlot(host, 0).style.bottom;
+
+    expect(after).not.toBe(before);
     tunnel.destroy();
   });
 });

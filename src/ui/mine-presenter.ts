@@ -20,6 +20,7 @@ import {
   createMiningAudio,
   type MiningAudio,
 } from "./mining-audio";
+import { ORE_FALL_MS } from "./pane-layout";
 
 export type TunnelHaulPhase = "none" | HaulAnimPhase;
 export type HaulerPhase = "pickup" | HaulAnimPhase;
@@ -55,6 +56,8 @@ export interface TunnelSnapshot {
   hauler?: HaulerSnapshot;
   crewSize: number;
   heapLoads: number;
+  /** Ore still falling into the pile; empty when nothing is in flight. */
+  fallingOre: readonly { slot: number; progress: number }[];
 }
 
 export const FACE_SLIDE_MS = 400;
@@ -151,6 +154,47 @@ export function createMinePresenter(
   let lastAdvance = session.snapshot.advance;
   let simNowMs = 0;
   let faceSwingProgressAtTick = session.snapshot.faceSwingProgress;
+  const activeFalls: number[] = [];
+
+  function truncateFalls(): void {
+    const cap = session.snapshot.heapLoads;
+    while (activeFalls.length > cap) {
+      activeFalls.shift();
+    }
+  }
+
+  function cleanFalls(nowMs: number): void {
+    const heapLoads = session.snapshot.heapLoads;
+    for (let i = activeFalls.length - 1; i >= 0; i -= 1) {
+      const spawnSimMs = activeFalls[i]!;
+      const progress = (nowMs - spawnSimMs) / ORE_FALL_MS;
+      const slot = heapLoads - 1 - i;
+      if (progress >= 1 || slot < 0 || i > heapLoads - 1) {
+        activeFalls.splice(i, 1);
+      }
+    }
+  }
+
+  function projectFallingOre(nowMs: number): readonly { slot: number; progress: number }[] {
+    if (!isTwoDwarf()) {
+      return [];
+    }
+    const heapLoads = session.snapshot.heapLoads;
+    const result: { slot: number; progress: number }[] = [];
+    for (let i = 0; i < activeFalls.length; i += 1) {
+      const spawnSimMs = activeFalls[i]!;
+      const progress = Math.min(
+        1,
+        Math.max(0, (nowMs - spawnSimMs) / ORE_FALL_MS),
+      );
+      const slot = heapLoads - 1 - i;
+      if (progress >= 1 || slot < 0 || i > heapLoads - 1) {
+        continue;
+      }
+      result.push({ slot, progress });
+    }
+    return result;
+  }
 
   function isTwoDwarf(): boolean {
     return session.snapshot.crewSize === 2;
@@ -234,6 +278,7 @@ export function createMinePresenter(
   }
 
   function snapshot(nowMs: number = simNowMs): TunnelSnapshot {
+    cleanFalls(nowMs);
     const snap = session.snapshot;
     const whole = Math.floor(snap.faceSwingProgress);
     const remaining = snap.haulRemainingMs;
@@ -267,6 +312,7 @@ export function createMinePresenter(
       ...(haulerSnap !== undefined ? { hauler: haulerSnap } : {}),
       crewSize: snap.crewSize,
       heapLoads: snap.heapLoads,
+      fallingOre: projectFallingOre(nowMs),
     };
   }
 
@@ -302,6 +348,13 @@ export function createMinePresenter(
       if (audio) {
         audio.handleEvents(events, windowStartSimMs, dtMs);
       }
+
+      for (const event of events) {
+        if (event.type === "loadDropped") {
+          activeFalls.unshift(windowStartSimMs + event.atMs);
+        }
+      }
+      truncateFalls();
 
       faceSwingProgressAtTick = session.snapshot.faceSwingProgress;
 

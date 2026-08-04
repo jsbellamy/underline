@@ -8,7 +8,7 @@ import { hardnessFor } from "../core/mining-engine";
 import { dwarfLayout, type ExternalSpritePack } from "../data/external-sprite-pack";
 import { DWARF_PACK, dwarfFrameUrlsFor } from "./dwarf-frames";
 import { HAULER_PACK, haulerFrameUrlsFor } from "./hauler-frames";
-import { haulerPickupTargetX, heapSlot } from "./heap-pile";
+import { fallingOrePosition, haulerPickupTargetX, heapSlot } from "./heap-pile";
 import {
   BLOCK_SIZE,
   CART_HEIGHT,
@@ -63,6 +63,21 @@ function haulerFieldsEqual(
   );
 }
 
+function fallingOreEqual(
+  a: TunnelSnapshot["fallingOre"],
+  b: TunnelSnapshot["fallingOre"],
+): boolean {
+  if (a.length !== b.length) {
+    return false;
+  }
+  for (let i = 0; i < a.length; i += 1) {
+    if (a[i]!.slot !== b[i]!.slot || a[i]!.progress !== b[i]!.progress) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function snapEquals(a: TunnelSnapshot, b: TunnelSnapshot): boolean {
   return (
     a.animation === b.animation &&
@@ -77,6 +92,7 @@ function snapEquals(a: TunnelSnapshot, b: TunnelSnapshot): boolean {
     a.faceSlide === b.faceSlide &&
     a.crewSize === b.crewSize &&
     a.heapLoads === b.heapLoads &&
+    fallingOreEqual(a.fallingOre, b.fallingOre) &&
     haulerFieldsEqual(a.hauler, b.hauler)
   );
 }
@@ -254,6 +270,26 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
     }
   }
 
+  function positionHeapOre(snap: TunnelSnapshot): void {
+    const fallingBySlot = new Map(
+      snap.fallingOre.map((entry) => [entry.slot, entry.progress]),
+    );
+    const loads = visibleHeapLoads(snap);
+    for (let slot = 0; slot < loads; slot += 1) {
+      const ore = oreElements[slot];
+      if (!ore) {
+        continue;
+      }
+      const progress = fallingBySlot.get(slot);
+      const { left, bottom } =
+        progress !== undefined
+          ? fallingOrePosition(slot, progress)
+          : heapSlot(slot);
+      ore.style.left = `${left}px`;
+      ore.style.bottom = `${bottom}px`;
+    }
+  }
+
   function reconcileHeap(loads: number, crewSize: number): void {
     if (crewSize !== 2) {
       unmountHeap();
@@ -329,7 +365,11 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
     if (lastSnap !== null && snapEquals(lastSnap, snap)) {
       return;
     }
-    lastSnap = { ...snap, ...(snap.hauler ? { hauler: { ...snap.hauler } } : {}) };
+    lastSnap = {
+      ...snap,
+      fallingOre: [...snap.fallingOre],
+      ...(snap.hauler ? { hauler: { ...snap.hauler } } : {}),
+    };
 
     world.style.transform = "";
 
@@ -412,6 +452,7 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
     }
 
     reconcileHeap(visibleHeapLoads(snap), snap.crewSize);
+    positionHeapOre(snap);
     reconcileCarriedOre(snap);
   }
 
