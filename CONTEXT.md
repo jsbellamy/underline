@@ -283,11 +283,20 @@ The container the player grows — everything Ingots are spent on. It is the
 Dock's first surface.
 _Avoid_: base, camp, settlement, town
 
+**Crew**:
+The Dwarves the Colony has. Two at most for this slice: one Miner, one Hauler.
+_Avoid_: team, party, roster, squad
+
 **Dwarf**:
-The mining character. A being, not a job: the Dwarf digs because the slice has
-only one of them, so "Miner" stays free for a job term if jobs ever arrive.
-The art is `assets/characters/dwarf/` — east/west facing only.
-_Avoid_: miner (that is a job, not a being), worker, unit, character
+The character species in the Crew. A Dwarf is assigned one job — Miner or
+Hauler — for this slice. The art is `assets/characters/dwarf/` — east/west
+facing only.
+_Avoid_: worker, unit, character
+
+**Miner**:
+The job of holding the Face and Swinging. The Miner never leaves the Face; it
+drops Ore into the Heap and stalls when the Heap is full.
+_Avoid_: digger, driller
 
 **Tunnel**:
 The horizontal passage the Dwarf digs east, extending indefinitely. Broken
@@ -303,6 +312,12 @@ where the Dwarf stands and Swings. Exactly one Face exists at a time; breaking
 it makes the next Mineable Block the Face.
 _Avoid_: facing (that is a Motion class property, a direction, not a block),
 front, wall, target
+
+**Heap**:
+Ore accumulated at the Face awaiting a Hauler, counted in Loads and capped at
+Carry Capacity. A full Heap stalls the Miner; this is the Tunnel's second
+backpressure point, after the Smelter.
+_Avoid_: pile, stockpile, buffer, queue
 
 **Swing**:
 One strike of the Dwarf's pick against the Face. The pipeline's `swing` Motion
@@ -362,6 +377,12 @@ _Avoid_: bag size, storage, limit
 The round trip from the Face to the Cart and back that delivers a full Bag. Only
 delivered Ore reaches the Colony.
 _Avoid_: trip, delivery run, fetch
+
+**Hauler**:
+The job of moving Ore from the Heap to the Cart. The Hauler picks Loads out of
+the Heap one at a time at a fixed pickup cost, then walks a Haul once its Bag
+is full.
+_Avoid_: carrier, porter, runner
 
 **Haul Speed**:
 How fast the Dwarf travels a Haul leg; one number shared by the simulation's
