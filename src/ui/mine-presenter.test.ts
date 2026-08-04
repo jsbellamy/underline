@@ -14,9 +14,23 @@ import {
 } from "../core/settings-save";
 import type { MiningEvent } from "../core/mining-events";
 import { SWING_IMPACT_FRAME } from "../data/dwarf-animation-timing";
+import { createHeapPileSim } from "../core/heap-pile-sim";
 import { createMinePresenter, FACE_SLIDE_MS } from "./mine-presenter";
 import type { MiningAudio } from "./mining-audio";
-import { ORE_FALL_MS } from "./pane-layout";
+import {
+  heapOreContentCenter,
+  heapOreRadius,
+} from "./heap-ore-variants";
+import {
+  HEAP_BIN_CEILING_Y,
+  HEAP_BIN_EAST_X,
+  HEAP_BIN_FLOOR_Y,
+  HEAP_BIN_WEST_X,
+  HEAP_PILE_SEED,
+  HEAP_SPAWN_X,
+  ORE_FALL_MS,
+  ORE_SPAWN_BOTTOM,
+} from "./pane-layout";
 import { PUMP_INTERVAL_MS } from "./pump";
 
 function memoryStore() {
@@ -870,5 +884,221 @@ describe("mine presenter", () => {
     const presenter = createMinePresenter(session);
     presenter.start();
     expect(presenter.snapshot().fallingOre).toEqual([]);
+  });
+
+  describe("heap pile on TunnelSnapshot", () => {
+    const twoDwarfBase = {
+      ...initialSnapshot(),
+      crewSize: 2,
+    };
+
+    function twoDwarfPresenter(
+      snapshotOverrides: Partial<typeof initialSnapshot> = {},
+    ) {
+      const session = createMiningSession({
+        store: memoryStore(),
+        now: () => 0,
+        snapshot: { ...twoDwarfBase, ...snapshotOverrides },
+      });
+      const presenter = createMinePresenter(session);
+      presenter.start();
+      return { session, presenter };
+    }
+
+    it("adds heapOre with id, left, bottom, variantIndex and keeps other fields", () => {
+      const { presenter } = twoDwarfPresenter({ heapLoads: 3 });
+      const snap = presenter.snapshot();
+      expect(snap.heapOre).toHaveLength(3);
+      for (const ore of snap.heapOre) {
+        expect(ore).toEqual(
+          expect.objectContaining({
+            id: expect.any(Number),
+            left: expect.any(Number),
+            bottom: expect.any(Number),
+            variantIndex: expect.any(Number),
+          }),
+        );
+        expect(ore.variantIndex).toBeGreaterThanOrEqual(0);
+        expect(ore.variantIndex).toBeLessThan(6);
+      }
+      expect(snap.carriedVariantIndex).toBeUndefined();
+      expect(snap.heapLoads).toBe(3);
+      expect(snap.crewSize).toBe(2);
+      expect(snap.fallingOre).toEqual([]);
+    });
+
+    it("pre-settles pileTargetCount bodies on first snapshot when heapLoads is 17", () => {
+      const { presenter } = twoDwarfPresenter({ heapLoads: 17 });
+      const snap = presenter.snapshot();
+      expect(snap.heapOre).toHaveLength(17);
+      const ids = snap.heapOre.map((o) => o.id);
+      expect(ids).toEqual([...ids].sort((a, b) => a - b));
+      for (const ore of snap.heapOre) {
+        expect(ore.bottom).toBeLessThanOrEqual(112);
+      }
+    });
+
+    it("targets zero bodies for a one-Dwarf Crew", () => {
+      const session = createMiningSession({
+        store: memoryStore(),
+        now: () => 0,
+      });
+      const presenter = createMinePresenter(session);
+      presenter.start();
+      const snap = presenter.snapshot();
+      expect(snap.heapOre).toEqual([]);
+      expect(snap.carriedVariantIndex).toBeUndefined();
+    });
+
+    it("targets heapLoads mid-pickup below the midpoint", () => {
+      const { presenter } = twoDwarfPresenter({
+        heapLoads: 5,
+        pickupProgressMs: 2_500,
+      });
+      expect(presenter.snapshot().heapOre).toHaveLength(5);
+    });
+
+    it("targets heapLoads minus one past the pickup midpoint", () => {
+      const { presenter } = twoDwarfPresenter({
+        heapLoads: 5,
+        pickupProgressMs: 7_500,
+      });
+      const snap = presenter.snapshot();
+      expect(snap.heapOre).toHaveLength(4);
+      expect(snap.carriedVariantIndex).toBeDefined();
+    });
+
+    it("caps simulated bodies at HEAP_RENDER_CEILING when heapLoads exceeds 24", () => {
+      const { presenter } = twoDwarfPresenter({ heapLoads: 40 });
+      expect(presenter.snapshot().heapOre).toHaveLength(24);
+    });
+
+    it("keeps pile target unchanged when heapLoads decrements at return-leg end", () => {
+      const beforeReturn = twoDwarfPresenter({
+        heapLoads: 3,
+        pickupProgressMs: 7_500,
+      });
+      const targetBefore = beforeReturn.presenter.snapshot().heapOre.length;
+
+      const afterReturn = twoDwarfPresenter({
+        heapLoads: 2,
+        pickupProgressMs: 0,
+      });
+      const targetAfter = afterReturn.presenter.snapshot().heapOre.length;
+      expect(targetBefore).toBe(2);
+      expect(targetAfter).toBe(2);
+    });
+
+    it("spawns one falling body when a single Load arrives during live play", () => {
+      const { presenter } = twoDwarfPresenter({ heapLoads: 0 });
+      presenter.advanceMs(10_000);
+      expect(presenter.snapshot().heapLoads).toBe(1);
+      const atDrop = presenter.simNowMs;
+      const snap = presenter.snapshot(atDrop + 50);
+      expect(snap.heapOre).toHaveLength(1);
+      expect(snap.heapOre[0]!.bottom).toBeLessThan(40);
+    });
+
+    it("settles five bodies when heapLoads jumps by five", () => {
+      const { presenter } = twoDwarfPresenter({ heapLoads: 5 });
+      const snap = presenter.snapshot();
+      expect(snap.heapOre).toHaveLength(5);
+      const bottoms = snap.heapOre.map((o) => o.bottom);
+      expect(new Set(bottoms).size).toBeGreaterThan(1);
+    });
+
+    it("does not throw when snapshot() follows snapshot(presentationTime)", () => {
+      const { presenter } = twoDwarfPresenter({ heapLoads: 5 });
+      presenter.advanceMs(250);
+      const t = presenter.simNowMs;
+      presenter.snapshot(t);
+      expect(() => presenter.snapshot()).not.toThrow();
+    });
+
+    it("cycles variant indices 0 through 5 then back to 0 across seven spawns", () => {
+      const { presenter } = twoDwarfPresenter({ heapLoads: 7 });
+      const variants = presenter.snapshot().heapOre.map((o) => o.variantIndex);
+      expect(variants).toEqual([0, 1, 2, 3, 4, 5, 0]);
+    });
+
+    it("keeps a body's variant after other bodies are removed", () => {
+      const { presenter } = twoDwarfPresenter({
+        heapLoads: 3,
+        pickupProgressMs: 7_500,
+      });
+      const before = presenter.snapshot();
+      const survivor = before.heapOre[0]!;
+      const { presenter: lifted } = twoDwarfPresenter({
+        heapLoads: 2,
+        pickupProgressMs: 7_500,
+      });
+      const after = lifted.snapshot();
+      const match = after.heapOre.find((o) => o.id === survivor.id);
+      expect(match?.variantIndex).toBe(survivor.variantIndex);
+    });
+
+    it("projects left and bottom from body centre and content offset", () => {
+      const { presenter } = twoDwarfPresenter({ heapLoads: 6 });
+      const snap = presenter.snapshot();
+
+      const oracle = createHeapPileSim({
+        bin: {
+          floorY: HEAP_BIN_FLOOR_Y,
+          westX: HEAP_BIN_WEST_X,
+          eastX: HEAP_BIN_EAST_X,
+          ceilingY: HEAP_BIN_CEILING_Y,
+        },
+        seed: HEAP_PILE_SEED,
+      });
+      for (let v = 0; v < 6; v += 1) {
+        oracle.spawnJittered(heapOreRadius(v), HEAP_SPAWN_X, ORE_SPAWN_BOTTOM);
+      }
+      oracle.settle();
+
+      function expectedForVariant(variantIndex: number): {
+        left: number;
+        bottom: number;
+      } {
+        const body = oracle.bodies[variantIndex]!;
+        const { cx, cyFromBottom } = heapOreContentCenter(variantIndex);
+        return {
+          left: Math.round(body.x - cx),
+          bottom: Math.round(body.y - cyFromBottom),
+        };
+      }
+
+      const largeB = snap.heapOre.find((o) => o.variantIndex === 1);
+      const small = snap.heapOre.find((o) => o.variantIndex === 5);
+      expect(largeB).toEqual(
+        expect.objectContaining(expectedForVariant(1)),
+      );
+      expect(small).toEqual(
+        expect.objectContaining(expectedForVariant(5)),
+      );
+    });
+
+    it("returns deeply equal snapshots when snapshot(t) is called twice", () => {
+      const { presenter } = twoDwarfPresenter({ heapLoads: 5 });
+      const t = 1000;
+      const a = presenter.snapshot(t);
+      const b = presenter.snapshot(t);
+      expect(a).toEqual(b);
+      expect(a.heapOre).toEqual(b.heapOre);
+    });
+
+    it("leaves bag fallingOre unchanged for a one-Dwarf Crew", () => {
+      const session = createMiningSession({
+        store: memoryStore(),
+        now: () => 0,
+      });
+      const presenter = createMinePresenter(session);
+      presenter.start();
+      presenter.advanceMs(10_000);
+      const snap = presenter.snapshot(10_125);
+      expect(snap.heapOre).toEqual([]);
+      expect(snap.fallingOre).toEqual([
+        { destination: "bag", slot: 0, progress: 0.5 },
+      ]);
+    });
   });
 });

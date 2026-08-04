@@ -39,6 +39,7 @@ const baseSnap: TunnelSnapshot = {
   faceSlide: 1,
   crewSize: 1,
   heapLoads: 0,
+  heapOre: [],
   fallingOre: [],
 };
 
