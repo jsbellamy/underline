@@ -16,7 +16,6 @@ import {
   CART_X,
   FACE_X,
   HAULER_MARK_X,
-  HAULER_PICKUP_X,
   MINING_MARK_X,
   ORE_SIZE,
   PANE_HEIGHT,
@@ -474,7 +473,7 @@ describe("mountMiningTunnel", () => {
   const pickupExcursionCases: Array<{ pickupProgress: number; expected: number }> = [
     { pickupProgress: 0, expected: HAULER_MARK_X },
     { pickupProgress: 0.25, expected: 257 },
-    { pickupProgress: 0.5, expected: HAULER_PICKUP_X },
+    { pickupProgress: 0.5, expected: 322 },
     { pickupProgress: 0.75, expected: 257 },
     { pickupProgress: 1, expected: HAULER_MARK_X },
   ];

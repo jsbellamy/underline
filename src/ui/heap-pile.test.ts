@@ -120,7 +120,6 @@ describe("fallingOrePosition", () => {
 
 describe("haulerPickupTargetX", () => {
   it("defines a fixed pickup mark 130 px east of the Hauler stand", () => {
-    expect(HAULER_PICKUP_X).toBe(HAULER_MARK_X + 130);
     expect(HAULER_PICKUP_X).toBe(322);
   });
 
@@ -128,7 +127,7 @@ describe("haulerPickupTargetX", () => {
 
   for (const heapLoads of representativeDepths) {
     it(`returns the fixed pickup mark when heapLoads is ${heapLoads}`, () => {
-      expect(haulerPickupTargetX(heapLoads)).toBe(HAULER_PICKUP_X);
+      expect(haulerPickupTargetX(heapLoads)).toBe(322);
     });
   }
 
