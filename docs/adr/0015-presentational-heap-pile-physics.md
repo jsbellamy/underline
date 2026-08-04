@@ -7,13 +7,13 @@ Accepted (2026-08-04)
 ## Context
 
 ADR 0014 capped the Heap in Loads and bound Miner throughput against Hauler pickup.
-The renderer still placed Ore on a fixed 32 px slot grid (`heapLoads` → slot index),
+The renderer originally placed Ore on a fixed 32 px slot grid (`heapLoads` → slot index),
 which mis-sized rocks at native 6–14 px radii, let slot 18 render at `bottom` 110 inside
 a 112 px Pane, and hid a Load at the pickup midpoint without a body-level model.
 Issue #455 delivered a deterministic circle-pile solver; issue #456 exposed per-variant
-radius and content-centre geometry from the tunnel art pack. This slice wires the solver
-into `createMinePresenter` and publishes settled body positions on `TunnelSnapshot.heapOre`
-while the renderer keeps using the slot grid until #458.
+radius and content-centre geometry from the tunnel art pack; issue #457 wired the solver
+into `createMinePresenter` and published settled body positions on `TunnelSnapshot.heapOre`;
+issue #458 switched the renderer to those bodies and retired the slot grid.
 
 ## Decision
 
@@ -33,19 +33,23 @@ while the renderer keeps using the slot grid until #458.
 - **Rendered bodies are capped** at `HEAP_RENDER_CEILING` 24 while `heapLoads` keeps
   counting, which also closes the existing defect where grid slot 18 rendered at `bottom`
   110 inside a 112 px Pane.
+- The renderer reconciles DOM from `heapOre` keyed by solver body id and paints
+  `carriedVariantIndex` for the lifted Load. Settled pile elements use presenter positions
+  directly; bag-bound falls for a one-Dwarf Crew keep the Bag arc via `fallingOre`.
 
 ## Consequences
 
 ### Positive
 
 - `TunnelSnapshot` carries pane-ready `heapOre` positions keyed by stable solver body ids.
-- Pickup midpoint lift matches the renderer's `visibleHeapLoads` rule via `pileTargetCount`.
+- Pickup midpoint lift matches `pileTargetCount` and `carriedVariantIndex` on the snapshot.
 - Offline catch-up and construction pre-settle from `HEAP_PILE_SEED` without special cases.
+- Mid-pile removal keeps surviving DOM nodes and variants because elements are keyed by id.
 
 ### Negative
 
-- `fallingOre` heap entries remain until #458 retires the slot grid; two parallel Heap
-  representations exist briefly.
+- `snapEquals` no longer compares `heapLoads`; the renderer reads `heapOre` and
+  `carriedVariantIndex` instead.
 
 ## Rejected alternatives
 

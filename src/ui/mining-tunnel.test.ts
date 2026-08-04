@@ -1035,9 +1035,4 @@ describe("mountMiningTunnel", () => {
 
     tunnel.destroy();
   });
-
-  it("does not define HEAP_ORE_KEYS in mining-tunnel.ts", () => {
-    const source = readFileSync(resolve("src/ui/mining-tunnel.ts"), "utf8");
-    expect(source).not.toMatch(/\bHEAP_ORE_KEYS\b/);
-  });
 });
