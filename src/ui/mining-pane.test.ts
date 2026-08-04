@@ -14,6 +14,8 @@ import {
 import { dwarfFrameUrl, dwarfFrameUrlsFor } from "./dwarf-frames";
 import { mountPaneShell } from "./pane-root";
 import { mountMiningTunnel } from "./mining-tunnel";
+import { tunnelArtPath } from "../data/tunnel-art-pack";
+import { TUNNEL_ART_PACK, tunnelArtUrl } from "./tunnel-art";
 import { createMinePresenter } from "./mine-presenter";
 import { createMiningAudio } from "./mining-audio";
 import type { TunnelSnapshot } from "./mine-presenter";
@@ -286,7 +288,7 @@ describe("mountPaneShell mining Pane", () => {
     shell.destroy();
   });
 
-  it("scales Face crack progress by Face Hardness at Advance 0 vs 10", () => {
+  it("scales Face damage quarter by Face Hardness at Advance 0 vs 10", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
     const base = {
@@ -305,19 +307,18 @@ describe("mountPaneShell mining Pane", () => {
     };
 
     tunnel.render({ ...base, advance: 0 });
-    const crackAt0 = host.querySelector<HTMLElement>(".pane-face-crack");
-    expect(crackAt0).not.toBeNull();
-    const opacityAt0 = Number(crackAt0!.style.opacity);
+    const faceAt0 = host.querySelector<HTMLElement>("[data-face]")!;
+    const crackedPath = tunnelArtPath(TUNNEL_ART_PACK, "tiles/face/cracked");
+    expect(faceAt0.style.backgroundImage).toBe(
+      `url("${tunnelArtUrl(crackedPath)}")`,
+    );
 
     tunnel.render({ ...base, advance: 10 });
-    const crackAt10 = host.querySelector<HTMLElement>(".pane-face-crack");
-    expect(crackAt10).not.toBeNull();
-    const opacityAt10 = Number(crackAt10!.style.opacity);
-
-    // Hardness 1000 vs ≈4045.55773 — same damage, fuller crack on the easier Face.
-    expect(opacityAt0).toBeCloseTo(0.625, 5);
-    expect(opacityAt10).toBeCloseTo(0.34269, 4);
-    expect(opacityAt0).toBeGreaterThan(opacityAt10);
+    const faceAt10 = host.querySelector<HTMLElement>("[data-face]")!;
+    const intactPath = tunnelArtPath(TUNNEL_ART_PACK, "tiles/face/intact");
+    expect(faceAt10.style.backgroundImage).toBe(
+      `url("${tunnelArtUrl(intactPath)}")`,
+    );
 
     tunnel.destroy();
   });
