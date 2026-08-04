@@ -1,23 +1,23 @@
 {
   "schema": "tunnel-art-native-scale-read/0",
   "asset_key": "face",
-  "issue": 420,
+  "issue": 438,
   "reviewed_pngs": {
     "intact": {
       "path": "src/assets/tunnel/tiles/face/intact.png",
-      "sha256": "11d91315704ba88c6d9c8dd2d632faff61719ed02e93582f1786d870fb05d79a"
+      "sha256": "bcfd41684fc0d9f1c483e6240a63a3b5a05bc8c95d3db4ac50775069518b3636"
     },
     "chipped": {
       "path": "src/assets/tunnel/tiles/face/chipped.png",
-      "sha256": "77042a0a62c6db0242b081cd3fbaa56e8a5e084eceea668c74eda562223dd297"
+      "sha256": "5a927d458325e96ed2854e9da0a72f8066f58d352572c570f9f11a6f604be1db"
     },
     "cracked": {
       "path": "src/assets/tunnel/tiles/face/cracked.png",
-      "sha256": "0c78c9a287a523750bbac02695dc302c8ff347e6a6eb571831d1be5279996d69"
+      "sha256": "d6e7b80f1fc199ea343bc4105f2727c554764df5263d5c9498ff802339999a48"
     },
     "crumbling": {
       "path": "src/assets/tunnel/tiles/face/crumbling.png",
-      "sha256": "781f5cccb0c7bcdc7843757ea3e90c86756471ef9c22d94c195820efc010664f"
+      "sha256": "452f5c839fae92c74df633e0b9c66215654067fdca1d3fbf00cc193025082757"
     }
   },
   "inspection": {
@@ -37,41 +37,44 @@
   },
   "style_cohort": [
     "src/assets/tunnel/background/tunnel-interior.png",
-    "assets/characters/dwarf/idle/east/frame_000.png",
-    "assets/characters/dwarf/swing/east/frame_000.png"
+    "src/assets/tunnel/tiles/face/intact.png",
+    "src/assets/tunnel/tiles/face/chipped.png",
+    "src/assets/tunnel/tiles/face/cracked.png",
+    "src/assets/tunnel/tiles/face/crumbling.png",
+    "assets-raw/tunnel/tile-sheet/face.source.json"
   ],
   "style_alignment": {
     "verdict": "pass",
-    "rationale": "Warm plum-brown rock vocabulary sampled from tunnel-interior; chunky 16x16 cells with first-room cyan-crystal ramp; crystal seam reads at 3x against dim tunnel band."
+    "rationale": "Warm plum-brown rock ramp sampled from tunnel-interior; chunky 16x16 strata cells read as the same tunnel wall material at 3x against the dim floor band, not a foreign patch."
   },
   "identity_continuity": {
     "verdict": "pass",
-    "rationale": "First face tile family; establishes cyan-ore vertical seam damage progression for #421 wiring."
+    "rationale": "Supersedes #420 cyan-ore seam face with generic rock; four damage keys and vertical-repeat footprint preserved for mining-tunnel wiring."
   },
   "questions": [
     {
-      "id": "damage_order",
-      "question": "The four states are ordered unambiguously by damage at native scale.",
+      "id": "plain_rock",
+      "question": "No tile contains ore, crystal, metal, or a coloured vein — the rock is unambiguously plain.",
       "verdict": "PASS",
-      "notes": "intact full seam \u2192 chipped edge scars \u2192 cracked fracture void \u2192 crumbling large voids and loose fragments; progression reads left-to-right in composite."
+      "notes": "All four tiles use plum-brown ramp only; zero cyan-class pixels in runtime PNGs or provider raw."
     },
     {
-      "id": "hue_removed",
-      "question": "Each state remains distinguishable from the other three with hue removed.",
+      "id": "damage_order",
+      "question": "The four states are ordered unambiguously by damage at native scale, with hue removed.",
       "verdict": "PASS",
-      "notes": "Geometry differs: solid seam, edge chips, central fracture, scattered fragments; value patterns do not collapse when desaturated."
+      "notes": "intact solid strata → chipped pale scars → cracked central fracture void → crumbling large cavity; progression reads left-to-right in composite."
     },
     {
       "id": "vertical_seam",
-      "question": "Each tile repeats vertically with no visible seam.",
+      "question": "Each tile repeats vertically down the full 112px column with no visible seam.",
       "verdict": "PASS",
-      "notes": "Row 0 equals row 15 on all four tiles; 3x vertical repeat in 48x112 column shows no horizontal discontinuity."
+      "notes": "Row 0 equals row 15 on all four tiles; 3x vertical repeat in 48x112 columns shows no horizontal discontinuity."
     },
     {
-      "id": "cyan_confinement",
-      "question": "Cyan appears only in crystal Cells; the surrounding rock is not recolored.",
+      "id": "material_match",
+      "question": "The rock reads as the same material as the tunnel background it sits against, not as a foreign patch.",
       "verdict": "PASS",
-      "notes": "Cyan-class pixels confined to seam columns x5-10; rock uses warm plum-brown ramp only."
+      "notes": "Shared plum-brown values (#1f1014–#69452c) against tunnel-interior crop; strata banding matches wall cobble vocabulary."
     },
     {
       "id": "dimensions_and_edges",
@@ -92,6 +95,6 @@
     }
   },
   "overall": "PASS",
-  "reviewed_at": "2026-08-04T07:15:00+00:00",
-  "reviewer_identity": "cursor-agent/issue-420"
+  "reviewed_at": "2026-08-04T19:00:00+00:00",
+  "reviewer_identity": "cursor-agent/issue-438"
 }
