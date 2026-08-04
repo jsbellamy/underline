@@ -112,6 +112,11 @@ function faceTileBackground(state: string): string {
   return `url("${tunnelArtUrl(path)}")`;
 }
 
+function heapOreTileBackground(variant: string): string {
+  const path = tunnelArtPath(TUNNEL_ART_PACK, `tiles/heap-ore/${variant}`);
+  return `url("${tunnelArtUrl(path)}")`;
+}
+
 describe("faceDamageState", () => {
   it("maps worked progress boundaries to damage quarters", () => {
     expect(faceDamageState(0)).toBe("intact");
@@ -467,19 +472,19 @@ describe("mountMiningTunnel", () => {
         heapLoads: 1,
         cases: [
           { pickupProgress: 0, expected: 192 },
-          { pickupProgress: 0.25, expected: 269 },
-          { pickupProgress: 0.5, expected: 346 },
-          { pickupProgress: 0.75, expected: 269 },
+          { pickupProgress: 0.25, expected: 265 },
+          { pickupProgress: 0.5, expected: 338 },
+          { pickupProgress: 0.75, expected: 265 },
           { pickupProgress: 1, expected: 192 },
         ],
       },
       {
-        heapLoads: 10,
+        heapLoads: 5,
         cases: [
           { pickupProgress: 0, expected: 192 },
-          { pickupProgress: 0.25, expected: 215 },
-          { pickupProgress: 0.5, expected: 238 },
-          { pickupProgress: 0.75, expected: 215 },
+          { pickupProgress: 0.25, expected: 225 },
+          { pickupProgress: 0.5, expected: 258 },
+          { pickupProgress: 0.75, expected: 225 },
           { pickupProgress: 1, expected: 192 },
         ],
       },
@@ -694,13 +699,51 @@ describe("mountMiningTunnel", () => {
       expect(ore.style.bottom).toBe(`${bottom}px`);
       expect(ore.style.width).toBe(`${ORE_SIZE}px`);
       expect(ore.style.height).toBe(`${ORE_SIZE}px`);
-      expect(ore.style.background).toBe("#27A6A3");
+      expect(ore.style.backgroundImage).toBe(
+        heapOreTileBackground(["chunk-a", "chunk-b", "chunk-c"][i % 3]!),
+      );
+      expect(ore.style.imageRendering).toBe("pixelated");
     }
 
     const css = readFileSync(resolve("src/styles.css"), "utf8");
     expect(css).toMatch(/\.pane-heap\s*\{[^}]*z-index:\s*3/);
     expect(css).toMatch(/\.pane-cart\s*\{[^}]*z-index:\s*4/);
     expect(css).toMatch(/\.pane-dwarf\s*\{[^}]*z-index:\s*5/);
+
+    tunnel.destroy();
+  });
+
+  it("paints settled Heap chunks from the art pack with stable variants", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    tunnel.render(twoDwarfSnap({ heapLoads: 4 }));
+
+    const variants = ["chunk-a", "chunk-b", "chunk-c", "chunk-a"] as const;
+    for (const [slot, variant] of variants.entries()) {
+      const ore = oreAtSlot(host, slot);
+      expect(ore.dataset["oreVariant"]).toBe(variant);
+      expect(ore.style.backgroundImage).toBe(heapOreTileBackground(variant));
+      expect(ore.style.backgroundImage.length).toBeGreaterThan(0);
+    }
+
+    tunnel.destroy();
+  });
+
+  it("paints the carried chunk with the variant of the westmost lifted slot", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+
+    tunnel.render(
+      twoDwarfSnap({
+        heapLoads: 4,
+        hauler: { phase: "pickup", pickupProgress: 0.75 },
+      }),
+    );
+
+    const carried = host.querySelector<HTMLElement>("[data-ore-carried]");
+    expect(carried).not.toBeNull();
+    expect(carried!.dataset["oreVariant"]).toBe("chunk-a");
+    expect(carried!.style.backgroundImage).toBe(heapOreTileBackground("chunk-a"));
 
     tunnel.destroy();
   });

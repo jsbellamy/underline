@@ -8,29 +8,39 @@ import {
   HEAP_ROW_HEIGHT,
   HEAP_SLOTS_PER_ROW,
   ORE_FALL_MS,
+  ORE_LOGICAL_SIZE,
   ORE_PITCH,
+  ORE_SCALE,
   ORE_SIZE,
   ORE_SPAWN_BOTTOM,
 } from "./pane-layout";
 
 describe("heapSlot", () => {
   it("exports layout constants with worked values", () => {
-    expect(ORE_SIZE).toBe(8);
-    expect(ORE_PITCH).toBe(12);
-    expect(HEAP_ROW_HEIGHT).toBe(10);
+    expect(ORE_LOGICAL_SIZE).toBe(8);
+    expect(ORE_SCALE).toBe(2);
+    expect(ORE_SIZE).toBe(16);
+    expect(ORE_PITCH).toBe(20);
+    expect(HEAP_ROW_HEIGHT).toBe(18);
     expect(HEAP_BOTTOM).toBe(8);
-    expect(HEAP_EAST_X).toBe(424);
-    expect(HEAP_SLOTS_PER_ROW).toBe(13);
+    expect(HEAP_EAST_X).toBe(416);
+    expect(HEAP_SLOTS_PER_ROW).toBe(12);
     expect(HEAP_EAST_X).toBe(FACE_X - ORE_SIZE);
   });
 
+  it("keeps the westmost slot east of the Hauler stand", () => {
+    expect(heapSlot(HEAP_SLOTS_PER_ROW - 1).left).toBeGreaterThanOrEqual(
+      HAULER_MARK_X,
+    );
+  });
+
   const worked: Array<{ index: number; left: number; bottom: number }> = [
-    { index: 0, left: 424, bottom: 8 },
-    { index: 1, left: 412, bottom: 8 },
-    { index: 12, left: 280, bottom: 8 },
-    { index: 13, left: 424, bottom: 18 },
-    { index: 25, left: 280, bottom: 18 },
-    { index: 26, left: 424, bottom: 28 },
+    { index: 0, left: 416, bottom: 8 },
+    { index: 1, left: 396, bottom: 8 },
+    { index: 11, left: 196, bottom: 8 },
+    { index: 12, left: 416, bottom: 26 },
+    { index: 23, left: 196, bottom: 26 },
+    { index: 24, left: 416, bottom: 44 },
   ];
 
   for (const { index, left, bottom } of worked) {
@@ -60,12 +70,12 @@ describe("fallingOrePosition", () => {
     left: number;
     bottom: number;
   }> = [
-    { slot: 0, progress: 0, left: 424, bottom: 56 },
-    { slot: 0, progress: 0.5, left: 424, bottom: 44 },
-    { slot: 0, progress: 1, left: 424, bottom: 8 },
-    { slot: 12, progress: 0, left: 424, bottom: 56 },
-    { slot: 12, progress: 0.5, left: 352, bottom: 44 },
-    { slot: 12, progress: 1, left: 280, bottom: 8 },
+    { slot: 0, progress: 0, left: 416, bottom: 56 },
+    { slot: 0, progress: 0.5, left: 416, bottom: 44 },
+    { slot: 0, progress: 1, left: 416, bottom: 8 },
+    { slot: 11, progress: 0, left: 416, bottom: 56 },
+    { slot: 11, progress: 0.5, left: 306, bottom: 44 },
+    { slot: 11, progress: 1, left: 196, bottom: 8 },
   ];
 
   for (const { slot, progress, left, bottom } of worked) {
@@ -75,7 +85,7 @@ describe("fallingOrePosition", () => {
   }
 
   it("at progress 1 deep-equals heapSlot for every worked slot", () => {
-    for (const slot of [0, 12]) {
+    for (const slot of [0, 11]) {
       expect(fallingOrePosition(slot, 1)).toEqual(heapSlot(slot));
     }
   });
@@ -88,11 +98,11 @@ describe("fallingOrePosition", () => {
 
 describe("haulerPickupTargetX", () => {
   const worked: Array<{ heapLoads: number; target: number }> = [
-    { heapLoads: 1, target: 346 },
-    { heapLoads: 5, target: 298 },
-    { heapLoads: 10, target: 238 },
-    { heapLoads: 13, target: 202 },
-    { heapLoads: 20, target: 274 },
+    { heapLoads: 1, target: 338 },
+    { heapLoads: 5, target: 258 },
+    { heapLoads: 10, target: 192 },
+    { heapLoads: 12, target: 192 },
+    { heapLoads: 20, target: 198 },
   ];
 
   for (const { heapLoads, target } of worked) {
@@ -107,7 +117,7 @@ describe("haulerPickupTargetX", () => {
   });
 
   it("never targets west of the Hauler stand", () => {
-    for (const n of [1, 5, 10, 13, 20]) {
+    for (const n of [1, 5, 10, 12, 20]) {
       expect(haulerPickupTargetX(n)).toBeGreaterThanOrEqual(HAULER_MARK_X);
     }
   });

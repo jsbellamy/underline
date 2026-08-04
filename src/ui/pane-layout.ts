@@ -26,8 +26,12 @@ export const CART_HEIGHT = 24;
 /** Face column mark — east of the Dwarf's mining stand. */
 export const FACE_X = 432;
 
-/** Placeholder Ore square in Pane pixels. */
-export const ORE_SIZE = 8;
+/** Logical Ore tile size in source pixels (#433). */
+export const ORE_LOGICAL_SIZE = 8;
+/** Integer nearest-neighbor draw scale for Heap Ore chunks. */
+export const ORE_SCALE = 2;
+/** Ore square in Pane pixels. */
+export const ORE_SIZE = ORE_LOGICAL_SIZE * ORE_SCALE;
 /** Horizontal spacing between Ore slots. */
 export const ORE_PITCH = ORE_SIZE + 4;
 /** Vertical spacing between Heap rows. */
@@ -36,8 +40,6 @@ export const HEAP_ROW_HEIGHT = ORE_SIZE + 2;
 export const HEAP_BOTTOM = 8;
 /** Slot 0 hugs the Face column. */
 export const HEAP_EAST_X = FACE_X - ORE_SIZE;
-/** Westmost slot of a row sits at HEAP_EAST_X - ORE_PITCH * (HEAP_SLOTS_PER_ROW - 1). */
-export const HEAP_SLOTS_PER_ROW = 13;
 /** spawn → settled duration for Ore falling from the Face. */
 export const ORE_FALL_MS = 250;
 /** spawn height for falling Ore, mid-Face. */
@@ -49,6 +51,10 @@ export const MINING_MARK_X = FACE_X - dwarfW;
 
 /** The Hauler's stand while lifting Loads — east of the Cart mark. */
 export const HAULER_MARK_X = CART_MARK_X + CART_WIDTH;
+
+/** Westmost slot of a row never lands west of HAULER_MARK_X. */
+export const HEAP_SLOTS_PER_ROW =
+  Math.floor((HEAP_EAST_X - HAULER_MARK_X) / ORE_PITCH) + 1;
 
 /** Presentation Haul speed derived from the engine's one Haul duration. */
 export const HAUL_SPEED_PX_PER_MS =
