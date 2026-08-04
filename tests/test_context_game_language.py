@@ -86,6 +86,22 @@ def test_game_language_yield_scales_with_hardness() -> None:
     assert "_Avoid_: drop, reward, loot, payout" in body
 
 
+def test_game_language_ore_is_yield_not_face_material() -> None:
+    section = _game_language_section()
+    raw_body = _entry_body(section, "Ore")
+    body = _normalized(raw_body.replace("**", ""))
+    assert "raw yield of a broken Mineable Block" in body
+    assert "not spendable" in body
+    assert "Smelter's input" in body
+    assert "plain rock" in body
+    assert "falls out" in body
+    assert "not what it is made of" in body
+    assert "material a Mineable Block is made of" not in body
+    assert "#112" not in body
+    assert "ore states" not in body
+    assert "_Avoid_: gold, currency, coins, resources, minerals" in body
+
+
 @pytest.mark.parametrize(
     "term,avoid_fragment",
     [

@@ -352,8 +352,8 @@ shaft-depth progression), distance, progress, score
 
 **Ore**:
 The raw yield of a broken Mineable Block. Ore is **not** spendable; it is the
-Smelter's input. It is also the material a Mineable Block is made of, which is
-why #112 calls the block's art its "ore states".
+Smelter's input. The Face is plain rock — Ore is what falls out of it, not what
+it is made of.
 _Avoid_: gold, currency, coins, resources, minerals
 
 **Yield**:
