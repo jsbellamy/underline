@@ -167,7 +167,7 @@ describe("Pane↔Dock close-the-loop bus", () => {
     expect(session.snapshot.smelterUpgradeCount).toBe(1);
     expect(session.snapshot.ingots).toBe(0);
     expect(dockRoot.querySelector("[data-smelter]")?.textContent).toContain(
-      "0.08",
+      "0.09",
     );
 
     pane.destroy();

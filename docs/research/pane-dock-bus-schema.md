@@ -63,7 +63,7 @@ Persist-aligned fields only — Dock derives the rest.
 | --- | --- |
 | Dig Rate | `1.0 + 0.25 × digRateUpgradeCount` |
 | Dig Rate next Upgrade cost | `5 × 2^digRateUpgradeCount` |
-| Smelter throughput | `0.06 + 0.02 × smelterUpgradeCount` Ore/sec |
+| Smelter throughput | `0.06 × 1.5^smelterUpgradeCount` Ore/sec |
 | Smelter next Upgrade cost | `5 × 2^smelterUpgradeCount` |
 | Carry Capacity | `10 + 5 × carryCapacityUpgradeCount` Loads |
 | Carry Capacity next Upgrade cost | `5 × 2^carryCapacityUpgradeCount` |

@@ -19,7 +19,7 @@ Hardness grows exponentially with Advance; Yield scales with Hardness. Ore drops
 | Carry Capacity | 10 Loads opening, +5 per Upgrade, first cost 5 Ingots, doubling |
 | Full Bag | mining suspends until the Haul delivers |
 | Haul round trip | 8000 ms, mining suspended for its whole duration |
-| Smelter throughput | 0.06 Ore/sec opening, +0.02 per Upgrade |
+| Smelter throughput | 0.06 Ore/sec opening, ×1.5 per Upgrade |
 | Dig Rate | 1.0 Swing/sec opening, +0.25 per Upgrade (unchanged) |
 | Offline | 50% rate, 8h cap; the rate scale applies to the Haul countdown too |
 | Loss | Numbers only rise | Spend is permanent; no decay / fail state |
@@ -69,11 +69,11 @@ At Advance 0 (Hardness 1000, Pick Damage 1 at `pickDamageUpgradeCount = 0`):
 
 | Buy # | Cost (Ingots) | Smelter throughput after (Ore/sec) |
 | ---: | ---: | ---: |
-| 1 | 5 | 0.08 |
-| 2 | 10 | 0.10 |
-| 3 | 20 | 0.12 |
-| 4 | 40 | 0.14 |
-| 5 | 80 | 0.16 |
+| 1 | 5 | 0.09 |
+| 2 | 10 | 0.135 |
+| 3 | 20 | 0.2025 |
+| 4 | 40 | 0.30375 |
+| 5 | 80 | 0.455625 |
 
 ### Carry Capacity Upgrade
 

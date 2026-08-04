@@ -244,7 +244,7 @@ export function mountColonyView(
       `Buy Pick Damage Upgrade (×1.5 Pick Damage) — ${pickDamageCost} Ingots`;
     pickDamageUpgradeBtn.disabled = snapshot.ingots < pickDamageCost;
     smelterUpgradeBtn.textContent =
-      `Buy Smelter Upgrade (+0.02 Ore/sec) — ${smelterCost} Ingots`;
+      `Buy Smelter Upgrade (×1.5 Ore/sec) — ${smelterCost} Ingots`;
     smelterUpgradeBtn.disabled = snapshot.ingots < smelterCost;
     carryCapacityUpgradeBtn.textContent =
       `Buy Carry Capacity Upgrade (+5 loads) — ${carryCapacityCost} Ingots`;

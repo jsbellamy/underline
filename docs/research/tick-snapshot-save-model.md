@@ -41,7 +41,7 @@ Persist only what cannot be derived. Key: `underline-save-v1` in **`localStorage
 | `ingots` | Spendable |
 | `digRateUpgradeCount` | Derives Dig Rate (`1.0 + 0.25×n`) and Dig Rate next cost (`5 × 2^n`) |
 | `pickDamageUpgradeCount` | Derives Pick Damage (`1.5^n` damage per Swing) and Pick Damage next cost (`5 × 2^n`) |
-| `smelterUpgradeCount` | Derives Smelter throughput (`0.06 + 0.02×n` Ore/sec) and Smelter next cost (`5 × 2^n`) |
+| `smelterUpgradeCount` | Derives Smelter throughput (`0.06 × 1.5^n` Ore/sec) and Smelter next cost (`5 × 2^n`) |
 | `carryCapacityUpgradeCount` | Derives Carry Capacity (`10 + 5×n` Loads) and Carry Capacity next cost (`5 × 2^n`) |
 | `faceSwingProgress` | Damage dealt to the current Face (`0…Hardness`; equals Swings spent when Pick Damage is 1) |
 | `smelterProgress` | Fractional Ore fed toward the next Ingot (`0…1`) |

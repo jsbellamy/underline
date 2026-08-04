@@ -32,8 +32,8 @@ export const UPGRADE_DIG_RATE = 0.25;
 /** Opening Smelter Ore→Ingot throughput (Ore/sec). */
 export const SMELTER_THROUGHPUT = 0.06;
 
-/** Smelter throughput gained per Smelter Upgrade. */
-export const UPGRADE_SMELTER_THROUGHPUT = 0.02;
+/** Per-Upgrade multiplier on Smelter throughput. */
+export const SMELTER_GROWTH = 1.5;
 
 /** Opening Carry Capacity in Loads before Upgrades. */
 export const OPENING_CARRY_CAPACITY = 10;
@@ -141,7 +141,7 @@ export function digRateFor(digRateUpgradeCount: number): number {
 }
 
 export function smelterThroughputFor(smelterUpgradeCount: number): number {
-  return SMELTER_THROUGHPUT + UPGRADE_SMELTER_THROUGHPUT * smelterUpgradeCount;
+  return SMELTER_THROUGHPUT * SMELTER_GROWTH ** smelterUpgradeCount;
 }
 
 export function carryCapacityFor(carryCapacityUpgradeCount: number): number {
