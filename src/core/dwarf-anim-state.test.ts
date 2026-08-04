@@ -67,7 +67,8 @@ describe("dwarf anim state", () => {
     ctrl.setHauling("out", 0);
     const walk = dwarfPlayback("walk", 1);
     const cycleMs = walk.durationsMs.reduce((a, b) => a + b, 0);
-    expect(ctrl.frameIndexAt(cycleMs * 3)).toBeGreaterThanOrEqual(0);
+    expect(ctrl.frameIndexAt(cycleMs * 3)).toBe(0);
+    expect(ctrl.frameIndexAt(cycleMs * 3 + 200)).toBe(4);
     expect(ctrl.animation).toBe("walk");
   });
 
@@ -97,7 +98,7 @@ describe("dwarf anim state", () => {
   it("maps swing fraction to frame index", () => {
     const ctrl = createDwarfAnimController({ digRate: 1 });
     expect(ctrl.frameIndexForSwingFraction(0)).toBe(0);
-    expect(ctrl.frameIndexForSwingFraction(0.5)).toBeGreaterThan(0);
+    expect(ctrl.frameIndexForSwingFraction(0.5)).toBe(4);
   });
 
   it("only selects among idle, swing, and walk", () => {
