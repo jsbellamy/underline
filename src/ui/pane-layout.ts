@@ -47,6 +47,8 @@ export const MINING_MARK_X = FACE_X - dwarfW;
 
 /** The Hauler's stand while lifting Loads — east of the Cart mark. */
 export const HAULER_MARK_X = CART_MARK_X + CART_WIDTH;
+/** Fixed pickup destination east of the stand — 130 px one-way excursion. */
+export const HAULER_PICKUP_X = HAULER_MARK_X + 130;
 
 /** Westmost slot of a row never lands west of HAULER_MARK_X. */
 export const HEAP_SLOTS_PER_ROW =
