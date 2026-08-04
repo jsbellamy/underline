@@ -3,14 +3,17 @@ import type { MiningEvent, MiningEventType } from "./mining-events";
 
 describe("mining events vocabulary", () => {
   it("a mining event carries an unscaled atMs offset from the advance window", () => {
-    const swingTypes: MiningEventType[] = ["swing", "faceBroken"];
-    expect(swingTypes).toHaveLength(2);
+    const eventTypes: MiningEventType[] = ["swing", "faceBroken", "loadDropped"];
+    expect(eventTypes).toHaveLength(3);
 
     const swing: MiningEvent = { type: "swing", atMs: 1000 };
     const faceBroken: MiningEvent = { type: "faceBroken", atMs: 2500 };
+    const loadDropped: MiningEvent = { type: "loadDropped", atMs: 10_000 };
     expect(swing.type).toBe("swing");
     expect(faceBroken.type).toBe("faceBroken");
+    expect(loadDropped.type).toBe("loadDropped");
     expect(swing.atMs).toBe(1000);
     expect(faceBroken.atMs).toBe(2500);
+    expect(loadDropped.atMs).toBe(10_000);
   });
 });

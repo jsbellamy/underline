@@ -1,4 +1,4 @@
-export type MiningEventType = "swing" | "faceBroken";
+export type MiningEventType = "swing" | "faceBroken" | "loadDropped";
 
 export interface MiningEvent {
   readonly type: MiningEventType;

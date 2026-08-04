@@ -24,6 +24,7 @@ import {
   nextDigRateUpgradeCost,
   nextHaulSpeedUpgradeCost,
   nextSmelterUpgradeCost,
+  OFFLINE_RATE_SCALE,
   oreForDrop,
   pickupMsPerLoad,
   PICKUP_MS_PER_LOAD,
@@ -290,6 +291,66 @@ describe("mining engine advanceWithEvents", () => {
     ]);
   });
 
+  it("emits loadDropped at 10000 ms for the first Ore drop at Dig Rate 1", () => {
+    const dropDamage = dropDamageFor(0);
+    const digRate = digRateFor(0);
+    const firstDropAtMs = (dropDamage / digRate) * 1000;
+    expect(firstDropAtMs).toBe(10_000);
+
+    const { events } = advanceWithEvents(snap(), firstDropAtMs);
+    expect(events.filter((e) => e.type === "loadDropped")).toEqual([
+      { type: "loadDropped", atMs: firstDropAtMs },
+    ]);
+  });
+
+  it("emits one loadDropped per Ore drop for a two-Dwarf Crew", () => {
+    const dropDamage = dropDamageFor(0);
+    const digRate = digRateFor(0);
+    const firstDropAtMs = (dropDamage / digRate) * 1000;
+
+    const { events } = advanceWithEvents(snap({ crewSize: 2 }), firstDropAtMs);
+    expect(events.filter((e) => e.type === "loadDropped")).toEqual([
+      { type: "loadDropped", atMs: firstDropAtMs },
+    ]);
+  });
+
+  it("emits one loadDropped for every credited Ore drop", () => {
+    const before = snap();
+    const dtMs = 100_000;
+    const { events, snapshot } = advanceWithEvents(before, dtMs);
+    const dropEvents = events.filter((e) => e.type === "loadDropped");
+    expect(dropEvents).toHaveLength(snapshot.bagLoads - before.bagLoads);
+  });
+
+  it("returns events sorted by non-decreasing atMs", () => {
+    const { events } = advanceWithEvents(snap(), 100_000);
+    for (let i = 1; i < events.length; i += 1) {
+      expect(events[i]!.atMs).toBeGreaterThanOrEqual(events[i - 1]!.atMs);
+    }
+  });
+
+  it("is chunk-neutral for loadDropped events live and offline", () => {
+    for (const rateScale of [1, OFFLINE_RATE_SCALE] as const) {
+      const dtMs = 25_000;
+      const stepMs = 250;
+      const once = advanceWithEvents(snap(), dtMs, { rateScale });
+      const loadDroppedOnce = once.events.filter((e) => e.type === "loadDropped");
+
+      let loadDroppedMany: MiningEvent[] = [];
+      let cursor = snap();
+      for (let i = 0; i < dtMs / stepMs; i += 1) {
+        const step = advanceWithEvents(cursor, stepMs, { rateScale });
+        loadDroppedMany = loadDroppedMany.concat(
+          step.events
+            .filter((e) => e.type === "loadDropped")
+            .map((e) => ({ ...e, atMs: e.atMs + i * stepMs })),
+        );
+        cursor = step.snapshot;
+      }
+      expect(loadDroppedMany).toEqual(loadDroppedOnce);
+    }
+  });
+
   it("emits swing at 800 and 1600 ms for Dig Rate 1.25 over 2000 ms", () => {
     const { events } = advanceWithEvents(
       snap({ digRateUpgradeCount: 1 }),
@@ -328,6 +389,7 @@ describe("mining engine advanceWithEvents", () => {
     const { events, snapshot } = advanceWithEvents(almostBroken, 2_000);
     expect(events).toEqual<MiningEvent[]>([
       { type: "faceBroken", atMs: 1000 },
+      { type: "loadDropped", atMs: 1000 },
       { type: "swing", atMs: 2000 },
     ]);
     expect(snapshot.advance).toBe(1);
@@ -379,6 +441,7 @@ describe("mining engine advanceWithEvents", () => {
     { type: "swing", atMs: 8000 },
     { type: "swing", atMs: 9000 },
     { type: "swing", atMs: 10000 },
+    { type: "loadDropped", atMs: 10000 },
     { type: "swing", atMs: 11000 },
     { type: "swing", atMs: 12000 },
     { type: "swing", atMs: 13000 },
@@ -389,6 +452,7 @@ describe("mining engine advanceWithEvents", () => {
     { type: "swing", atMs: 18000 },
     { type: "swing", atMs: 19000 },
     { type: "swing", atMs: 20000 },
+    { type: "loadDropped", atMs: 20000 },
     { type: "swing", atMs: 21000 },
     { type: "swing", atMs: 22000 },
     { type: "swing", atMs: 23000 },
@@ -399,6 +463,7 @@ describe("mining engine advanceWithEvents", () => {
     { type: "swing", atMs: 28000 },
     { type: "swing", atMs: 29000 },
     { type: "swing", atMs: 30000 },
+    { type: "loadDropped", atMs: 30000 },
     { type: "swing", atMs: 31000 },
     { type: "swing", atMs: 32000 },
     { type: "swing", atMs: 33000 },
@@ -409,6 +474,7 @@ describe("mining engine advanceWithEvents", () => {
     { type: "swing", atMs: 38000 },
     { type: "swing", atMs: 39000 },
     { type: "swing", atMs: 40000 },
+    { type: "loadDropped", atMs: 40000 },
     { type: "swing", atMs: 41000 },
     { type: "swing", atMs: 42000 },
     { type: "swing", atMs: 43000 },
@@ -419,6 +485,7 @@ describe("mining engine advanceWithEvents", () => {
     { type: "swing", atMs: 48000 },
     { type: "swing", atMs: 49000 },
     { type: "swing", atMs: 50000 },
+    { type: "loadDropped", atMs: 50000 },
     { type: "swing", atMs: 51000 },
     { type: "swing", atMs: 52000 },
     { type: "swing", atMs: 53000 },
@@ -429,6 +496,7 @@ describe("mining engine advanceWithEvents", () => {
     { type: "swing", atMs: 58000 },
     { type: "swing", atMs: 59000 },
     { type: "swing", atMs: 60000 },
+    { type: "loadDropped", atMs: 60000 },
     { type: "swing", atMs: 61000 },
     { type: "swing", atMs: 62000 },
     { type: "swing", atMs: 63000 },
@@ -439,6 +507,7 @@ describe("mining engine advanceWithEvents", () => {
     { type: "swing", atMs: 68000 },
     { type: "swing", atMs: 69000 },
     { type: "swing", atMs: 70000 },
+    { type: "loadDropped", atMs: 70000 },
     { type: "swing", atMs: 71000 },
     { type: "swing", atMs: 72000 },
     { type: "swing", atMs: 73000 },
@@ -449,6 +518,7 @@ describe("mining engine advanceWithEvents", () => {
     { type: "swing", atMs: 78000 },
     { type: "swing", atMs: 79000 },
     { type: "swing", atMs: 80000 },
+    { type: "loadDropped", atMs: 80000 },
     { type: "swing", atMs: 81000 },
     { type: "swing", atMs: 82000 },
     { type: "swing", atMs: 83000 },
@@ -459,6 +529,7 @@ describe("mining engine advanceWithEvents", () => {
     { type: "swing", atMs: 88000 },
     { type: "swing", atMs: 89000 },
     { type: "swing", atMs: 90000 },
+    { type: "loadDropped", atMs: 90000 },
     { type: "swing", atMs: 91000 },
     { type: "swing", atMs: 92000 },
     { type: "swing", atMs: 93000 },
@@ -469,6 +540,7 @@ describe("mining engine advanceWithEvents", () => {
     { type: "swing", atMs: 98000 },
     { type: "swing", atMs: 99000 },
     { type: "swing", atMs: 100000 },
+    { type: "loadDropped", atMs: 100000 },
     { type: "swing", atMs: 109000 },
     { type: "swing", atMs: 110000 },
     { type: "swing", atMs: 111000 },
@@ -479,6 +551,7 @@ describe("mining engine advanceWithEvents", () => {
     { type: "swing", atMs: 116000 },
     { type: "swing", atMs: 117000 },
     { type: "swing", atMs: 118000 },
+    { type: "loadDropped", atMs: 118000 },
     { type: "swing", atMs: 119000 },
     { type: "swing", atMs: 120000 },
     { type: "swing", atMs: 121000 },
@@ -489,6 +562,7 @@ describe("mining engine advanceWithEvents", () => {
     { type: "swing", atMs: 126000 },
     { type: "swing", atMs: 127000 },
     { type: "swing", atMs: 128000 },
+    { type: "loadDropped", atMs: 128000 },
     { type: "swing", atMs: 129000 },
     { type: "swing", atMs: 130000 },
     { type: "swing", atMs: 131000 },
@@ -499,6 +573,7 @@ describe("mining engine advanceWithEvents", () => {
     { type: "swing", atMs: 136000 },
     { type: "swing", atMs: 137000 },
     { type: "swing", atMs: 138000 },
+    { type: "loadDropped", atMs: 138000 },
     { type: "swing", atMs: 139000 },
     { type: "swing", atMs: 140000 },
     { type: "swing", atMs: 141000 },
@@ -509,6 +584,7 @@ describe("mining engine advanceWithEvents", () => {
     { type: "swing", atMs: 146000 },
     { type: "swing", atMs: 147000 },
     { type: "swing", atMs: 148000 },
+    { type: "loadDropped", atMs: 148000 },
     { type: "swing", atMs: 149000 },
     { type: "swing", atMs: 150000 },
     { type: "swing", atMs: 151000 },
@@ -519,6 +595,7 @@ describe("mining engine advanceWithEvents", () => {
     { type: "swing", atMs: 156000 },
     { type: "swing", atMs: 157000 },
     { type: "swing", atMs: 158000 },
+    { type: "loadDropped", atMs: 158000 },
     { type: "swing", atMs: 159000 },
     { type: "swing", atMs: 160000 },
     { type: "swing", atMs: 161000 },
@@ -529,6 +606,7 @@ describe("mining engine advanceWithEvents", () => {
     { type: "swing", atMs: 166000 },
     { type: "swing", atMs: 167000 },
     { type: "swing", atMs: 168000 },
+    { type: "loadDropped", atMs: 168000 },
     { type: "swing", atMs: 169000 },
     { type: "swing", atMs: 170000 },
     { type: "swing", atMs: 171000 },
@@ -539,6 +617,7 @@ describe("mining engine advanceWithEvents", () => {
     { type: "swing", atMs: 176000 },
     { type: "swing", atMs: 177000 },
     { type: "swing", atMs: 178000 },
+    { type: "loadDropped", atMs: 178000 },
     { type: "swing", atMs: 179000 },
     { type: "swing", atMs: 180000 },
     { type: "swing", atMs: 181000 },
@@ -549,6 +628,7 @@ describe("mining engine advanceWithEvents", () => {
     { type: "swing", atMs: 186000 },
     { type: "swing", atMs: 187000 },
     { type: "swing", atMs: 188000 },
+    { type: "loadDropped", atMs: 188000 },
     { type: "swing", atMs: 189000 },
     { type: "swing", atMs: 190000 },
     { type: "swing", atMs: 191000 },
@@ -559,6 +639,7 @@ describe("mining engine advanceWithEvents", () => {
     { type: "swing", atMs: 196000 },
     { type: "swing", atMs: 197000 },
     { type: "swing", atMs: 198000 },
+    { type: "loadDropped", atMs: 198000 },
     { type: "swing", atMs: 199000 },
     { type: "swing", atMs: 200000 },
   ];

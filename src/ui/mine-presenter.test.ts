@@ -75,11 +75,15 @@ function absoluteCueTimes(
 }
 
 function swingCueTimes(audio: ReturnType<typeof spyMiningAudio>): number[] {
-  return absoluteCueTimes(audio).filter((t) =>
-    audio.queuedBatches.some((b) =>
-      b.events.some((e) => e.type === "swing" && b.baseMs + e.atMs === t),
-    ),
-  );
+  const times: number[] = [];
+  for (const batch of audio.queuedBatches) {
+    for (const event of batch.events) {
+      if (event.type === "swing") {
+        times.push(batch.baseMs + event.atMs);
+      }
+    }
+  }
+  return times;
 }
 
 describe("mine presenter", () => {
