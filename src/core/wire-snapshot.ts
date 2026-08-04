@@ -16,6 +16,7 @@ export interface WireSnapshot {
   ore: number;
   ingots: number;
   digRateUpgradeCount: number;
+  pickDamageUpgradeCount: number;
   smelterUpgradeCount: number;
   carryCapacityUpgradeCount: number;
   crewSize: number;
@@ -40,6 +41,7 @@ export function toWireSnapshot(
     ore: snapshot.ore,
     ingots: snapshot.ingots,
     digRateUpgradeCount: snapshot.digRateUpgradeCount,
+    pickDamageUpgradeCount: snapshot.pickDamageUpgradeCount,
     smelterUpgradeCount: snapshot.smelterUpgradeCount,
     carryCapacityUpgradeCount: snapshot.carryCapacityUpgradeCount,
     crewSize: snapshot.crewSize,

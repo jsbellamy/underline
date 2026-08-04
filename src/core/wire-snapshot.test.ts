@@ -30,6 +30,7 @@ describe("wire Snapshot", () => {
       ore: 1.25,
       ingots: 3,
       digRateUpgradeCount: 1,
+      pickDamageUpgradeCount: 0,
       smelterUpgradeCount: 0,
       carryCapacityUpgradeCount: 0,
       crewSize: 2,

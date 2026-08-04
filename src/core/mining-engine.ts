@@ -6,7 +6,7 @@ Authority: `docs/research/tick-snapshot-save-model.md`,
 
 import type { MiningEvent } from "./mining-events";
 
-export const SCHEMA_VERSION = 4 as const;
+export const SCHEMA_VERSION = 5 as const;
 
 /** Face damage capacity at Advance 0 on the exponential curve. */
 export const FACE_BASE_HARDNESS = 1000;
@@ -14,8 +14,8 @@ export const FACE_BASE_HARDNESS = 1000;
 /** Per-Advance multiplier on Face Hardness. */
 export const HARDNESS_GROWTH = 1.15;
 
-/** Damage dealt per Swing (Pick). */
-export const PICK_DAMAGE = 1;
+/** Per-Upgrade multiplier on Pick Damage. */
+export const PICK_DAMAGE_GROWTH = 1.5;
 
 /** Ore drops credited per Face before it breaks. */
 export const DROPS_PER_FACE = 100;
@@ -63,7 +63,8 @@ export type UpgradeId =
   | "smelter"
   | "carryCapacity"
   | "haulSpeed"
-  | "hireHauler";
+  | "hireHauler"
+  | "pickDamage";
 
 export interface MiningSnapshot {
   schemaVersion: typeof SCHEMA_VERSION;
@@ -71,6 +72,7 @@ export interface MiningSnapshot {
   ore: number;
   ingots: number;
   digRateUpgradeCount: number;
+  pickDamageUpgradeCount: number;
   smelterUpgradeCount: number;
   carryCapacityUpgradeCount: number;
   /** Dwarves in the Crew: 1 before the Hauler is hired, 2 after. */
@@ -118,6 +120,7 @@ export function initialSnapshot(): MiningSnapshot {
     ore: 0,
     ingots: 0,
     digRateUpgradeCount: 0,
+    pickDamageUpgradeCount: 0,
     smelterUpgradeCount: 0,
     carryCapacityUpgradeCount: 0,
     crewSize: 1,
@@ -170,6 +173,14 @@ export function nextDigRateUpgradeCost(digRateUpgradeCount: number): number {
 
 export function nextSmelterUpgradeCost(smelterUpgradeCount: number): number {
   return FIRST_UPGRADE_COST * 2 ** smelterUpgradeCount;
+}
+
+export function pickDamageFor(pickDamageUpgradeCount: number): number {
+  return PICK_DAMAGE_GROWTH ** pickDamageUpgradeCount;
+}
+
+export function nextPickDamageUpgradeCost(pickDamageUpgradeCount: number): number {
+  return FIRST_UPGRADE_COST * 2 ** pickDamageUpgradeCount;
 }
 
 export function nextCarryCapacityUpgradeCost(
@@ -236,6 +247,7 @@ export function advanceWithEvents(
     ore,
     ingots,
     digRateUpgradeCount,
+    pickDamageUpgradeCount,
     smelterUpgradeCount,
     carryCapacityUpgradeCount,
     crewSize,
@@ -251,7 +263,7 @@ export function advanceWithEvents(
   } = snapshot;
 
   const digRate = digRateFor(digRateUpgradeCount);
-  const damagePerSec = digRate * PICK_DAMAGE;
+  const damagePerSec = digRate * pickDamageFor(pickDamageUpgradeCount);
   const throughput = smelterThroughputFor(smelterUpgradeCount);
   const capacity = carryCapacityFor(carryCapacityUpgradeCount);
   const heapCapacity = heapCapacityFor(carryCapacityUpgradeCount);
@@ -457,6 +469,7 @@ export function advanceWithEvents(
       ore,
       ingots,
       digRateUpgradeCount,
+      pickDamageUpgradeCount,
       smelterUpgradeCount,
       carryCapacityUpgradeCount,
       crewSize,
@@ -538,6 +551,19 @@ export function buyUpgrade(
       schemaVersion: SCHEMA_VERSION,
       ingots: snapshot.ingots - cost,
       carryCapacityUpgradeCount: snapshot.carryCapacityUpgradeCount + 1,
+    };
+  }
+
+  if (upgrade === "pickDamage") {
+    const cost = nextPickDamageUpgradeCost(snapshot.pickDamageUpgradeCount);
+    if (snapshot.ingots < cost) {
+      throw new Error(`Upgrade costs ${cost} Ingots; have ${snapshot.ingots}`);
+    }
+    return {
+      ...snapshot,
+      schemaVersion: SCHEMA_VERSION,
+      ingots: snapshot.ingots - cost,
+      pickDamageUpgradeCount: snapshot.pickDamageUpgradeCount + 1,
     };
   }
 
