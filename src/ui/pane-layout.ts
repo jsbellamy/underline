@@ -34,6 +34,18 @@ export const ORE_PITCH = ORE_SIZE + 4;
 export const HEAP_ROW_HEIGHT = ORE_SIZE + 2;
 /** Heap floor band — rests on the 8px floor. */
 export const HEAP_BOTTOM = 8;
+/** Vertical cap for pile rendering — ~36% bin coverage at radii 6–14. */
+export const HEAP_RENDER_CEILING = 24;
+/** Heap bin floor and ceiling in Pane coordinates. */
+export const HEAP_BIN_FLOOR_Y = HEAP_BOTTOM;
+export const HEAP_BIN_EAST_X = FACE_X;
+export const HEAP_BIN_CEILING_Y = PANE_HEIGHT;
+/** Horizontal spawn for Ore entering the Heap bin from the Face. */
+export const HEAP_SPAWN_X = FACE_X - ORE_SIZE / 2;
+/** Horizontal reach for Heap grab interactions. */
+export const HEAP_GRAB_REACH_PX = 48;
+/** Seeded RNG stream for Heap pile layout (#455). */
+export const HEAP_PILE_SEED = 1;
 /** Slot 0 hugs the Face column. */
 export const HEAP_EAST_X = FACE_X - ORE_SIZE;
 /** spawn → settled duration for Ore falling from the Face. */
@@ -49,6 +61,10 @@ export const MINING_MARK_X = FACE_X - dwarfW;
 export const HAULER_MARK_X = CART_MARK_X + CART_WIDTH;
 /** Fixed pickup destination east of the stand — 130 px one-way excursion. */
 export const HAULER_PICKUP_X = HAULER_MARK_X + 130;
+/** Heap bin west edge — aligns with the Hauler stand. */
+export const HEAP_BIN_WEST_X = HAULER_MARK_X;
+/** Hauler sprite centre at the far end of its fixed pickup excursion. */
+export const HAULER_GRAB_X = HAULER_PICKUP_X + (DWARF_FRAME_W * DWARF_SCALE) / 2;
 
 /** Westmost slot of a row never lands west of HAULER_MARK_X. */
 export const HEAP_SLOTS_PER_ROW =

@@ -35,11 +35,10 @@ export function tunnelArtPath(pack: TunnelArtPack, key: string): string {
   throw new Error(`Unknown tunnel art key: ${key}`);
 }
 
-export function tunnelArtContentBottomGap(
+function tunnelArtEntryWithContentBox(
   pack: TunnelArtPack,
   key: string,
-  canvasSize: number,
-): number {
+): TunnelArtEntry & { content_box: [number, number, number, number] } {
   const path = tunnelArtPath(pack, key);
   const entry = pack.entries.find((e) => e.relative_path === path);
   if (!entry) {
@@ -48,6 +47,34 @@ export function tunnelArtContentBottomGap(
   if (!entry.content_box) {
     throw new Error(`Tunnel art entry missing content_box: ${key}`);
   }
+  return entry as TunnelArtEntry & { content_box: [number, number, number, number] };
+}
+
+export function tunnelArtContentRadius(pack: TunnelArtPack, key: string): number {
+  const entry = tunnelArtEntryWithContentBox(pack, key);
+  const [x0, y0, x1, y1] = entry.content_box;
+  return (x1 - x0 + 1 + (y1 - y0 + 1)) / 4;
+}
+
+export function tunnelArtContentCenter(
+  pack: TunnelArtPack,
+  key: string,
+  canvasSize: number,
+): { cx: number; cyFromBottom: number } {
+  const entry = tunnelArtEntryWithContentBox(pack, key);
+  const [x0, y0, x1, y1] = entry.content_box;
+  return {
+    cx: (x0 + x1 + 1) / 2,
+    cyFromBottom: canvasSize - (y0 + y1 + 1) / 2,
+  };
+}
+
+export function tunnelArtContentBottomGap(
+  pack: TunnelArtPack,
+  key: string,
+  canvasSize: number,
+): number {
+  const entry = tunnelArtEntryWithContentBox(pack, key);
   const [, , , y1] = entry.content_box;
   return canvasSize - 1 - y1;
 }

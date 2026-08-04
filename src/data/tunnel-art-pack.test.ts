@@ -4,6 +4,8 @@ import tunnelManifest from "../assets/tunnel/manifest.json";
 import { ORE_SIZE } from "../ui/pane-layout";
 import {
   tunnelArtContentBottomGap,
+  tunnelArtContentCenter,
+  tunnelArtContentRadius,
   tunnelArtKeysUnder,
   tunnelArtPath,
   type TunnelArtPack,
@@ -71,6 +73,71 @@ describe("tunnel-art-pack", () => {
       expect(width).toBe(ORE_SIZE);
       expect(height).toBe(ORE_SIZE);
     }
+  });
+
+  const goldRadiusWorked: Array<{ key: string; radius: number }> = [
+    { key: "objects/ore/gold-large-a", radius: 12 },
+    { key: "objects/ore/gold-large-b", radius: 13.75 },
+    { key: "objects/ore/gold-large-c", radius: 14 },
+    { key: "objects/ore/gold-medium-a", radius: 9.5 },
+    { key: "objects/ore/gold-medium-b", radius: 10 },
+    { key: "objects/ore/gold-small", radius: 6 },
+  ];
+
+  for (const { key, radius } of goldRadiusWorked) {
+    it(`returns content radius ${radius} for ${key}`, () => {
+      expect(tunnelArtContentRadius(pack, key)).toBe(radius);
+    });
+  }
+
+  it("throws for an unknown key on content radius lookup", () => {
+    expect(() => tunnelArtContentRadius(pack, "background/missing")).toThrow(
+      "Unknown tunnel art key: background/missing",
+    );
+  });
+
+  it("throws when content_box is missing for content radius lookup", () => {
+    expect(() =>
+      tunnelArtContentRadius(pack, "background/tunnel-interior"),
+    ).toThrow("Tunnel art entry missing content_box: background/tunnel-interior");
+  });
+
+  const goldCenterWorked: Array<{ key: string; cx: number }> = [
+    { key: "objects/ore/gold-large-a", cx: 16 },
+    { key: "objects/ore/gold-large-b", cx: 15.5 },
+    { key: "objects/ore/gold-large-c", cx: 16 },
+    { key: "objects/ore/gold-medium-a", cx: 16 },
+    { key: "objects/ore/gold-medium-b", cx: 16 },
+    { key: "objects/ore/gold-small", cx: 16 },
+  ];
+
+  for (const { key, cx } of goldCenterWorked) {
+    it(`returns content centre cx ${cx} cyFromBottom 16 for ${key}`, () => {
+      expect(tunnelArtContentCenter(pack, key, ORE_SIZE)).toEqual({
+        cx,
+        cyFromBottom: 16,
+      });
+    });
+  }
+
+  it("matches gold-small cyFromBottom to bottom gap plus half content height", () => {
+    const key = "objects/ore/gold-small";
+    const gap = tunnelArtContentBottomGap(pack, key, ORE_SIZE);
+    const radius = tunnelArtContentRadius(pack, key);
+    const center = tunnelArtContentCenter(pack, key, ORE_SIZE);
+    expect(center.cyFromBottom).toBe(gap + radius);
+  });
+
+  it("throws for an unknown key on content centre lookup", () => {
+    expect(() => tunnelArtContentCenter(pack, "background/missing", ORE_SIZE)).toThrow(
+      "Unknown tunnel art key: background/missing",
+    );
+  });
+
+  it("throws when content_box is missing for content centre lookup", () => {
+    expect(() =>
+      tunnelArtContentCenter(pack, "background/tunnel-interior", ORE_SIZE),
+    ).toThrow("Tunnel art entry missing content_box: background/tunnel-interior");
   });
 
   it("throws when content_box is missing for bottom-gap lookup", () => {
