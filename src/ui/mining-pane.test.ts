@@ -312,6 +312,48 @@ describe("mountPaneShell mining Pane", () => {
   });
 
   describe("presentation clock", () => {
+    it("passes 0 to snapshot on the pre-tick mount render", () => {
+      const pump = createPanePumpSchedule();
+      const root = document.createElement("main");
+      const captured: number[] = [];
+      const presenter = {
+        anim: createDwarfAnimController({ digRate: 1 }),
+        simNowMs: 0,
+        snapshot(nowMs?: number) {
+          captured.push(nowMs ?? this.simNowMs);
+          return {
+            animation: "swing" as const,
+            facing: "east" as const,
+            frameIndex: 0,
+            advance: 0,
+            faceSwingProgress: 0,
+            swingFraction: 0,
+            digRate: 1,
+            haulPhase: "none" as const,
+            haulProgress: 0,
+            faceSlide: 1,
+          };
+        },
+        start: vi.fn(),
+        advanceMs: vi.fn(),
+        syncDigRate: vi.fn(),
+        setSoundEnabled: vi.fn(),
+        releaseAudioDueTo: vi.fn(),
+      };
+
+      const shell = mountPaneShell(root, {
+        dockWindow: stubDockWindow(),
+        busFactory: stubBusFactory(),
+        deferPump: true,
+        presenter,
+        pumpSchedule: pump.pumpSchedule,
+      });
+
+      expect(captured[0]).toBe(0);
+
+      shell.destroy();
+    });
+
     it("interpolates 100ms past a tick and clamps at PUMP_INTERVAL_MS", () => {
       const pump = createPanePumpSchedule();
       const root = document.createElement("main");
@@ -360,12 +402,12 @@ describe("mountPaneShell mining Pane", () => {
       captured.length = 0;
       pump.setClock(PUMP_INTERVAL_MS + 100);
       pump.runRafAt(PUMP_INTERVAL_MS + 100);
-      expect(captured[captured.length - 1]).toBe(PUMP_INTERVAL_MS + 100);
+      expect(captured[captured.length - 1]).toBe(100);
 
       captured.length = 0;
       pump.setClock(PUMP_INTERVAL_MS + 400);
       pump.runRafAt(PUMP_INTERVAL_MS + 400);
-      expect(captured[captured.length - 1]).toBe(PUMP_INTERVAL_MS + 250);
+      expect(captured[captured.length - 1]).toBe(PUMP_INTERVAL_MS);
 
       shell.destroy();
     });
@@ -478,7 +520,71 @@ describe("mountPaneShell mining Pane", () => {
       const snapshotArg =
         snapshot.mock.calls[snapshot.mock.calls.length - 1]![0];
       expect(releaseArg).toBe(snapshotArg);
-      expect(releaseArg).toBe(PUMP_INTERVAL_MS + 100);
+      expect(releaseArg).toBe(100);
+
+      shell.destroy();
+    });
+
+    it("queues cues at or ahead of the lagged presentation clock on the first rAF after a tick", () => {
+      const pump = createPanePumpSchedule();
+      const root = document.createElement("main");
+      const queuedBatches: { baseMs: number; events: { atMs: number }[] }[] = [];
+      const releaseAudioDueTo = vi.fn();
+      const snapshot = vi.fn((_nowMs?: number) => ({
+        animation: "swing" as const,
+        facing: "east" as const,
+        frameIndex: 0,
+        advance: 0,
+        faceSwingProgress: 0,
+        swingFraction: 0,
+        digRate: 1,
+        haulPhase: "none" as const,
+        haulProgress: 0,
+        faceSlide: 1,
+      }));
+      let simNowMs = 0;
+      const presenter = {
+        anim: createDwarfAnimController({ digRate: 1 }),
+        get simNowMs() {
+          return simNowMs;
+        },
+        snapshot,
+        start: vi.fn(),
+        advanceMs(dt: number) {
+          const baseMs = simNowMs;
+          simNowMs += dt;
+          queuedBatches.push({
+            baseMs,
+            events: [{ atMs: dt }],
+          });
+        },
+        syncDigRate: vi.fn(),
+        setSoundEnabled: vi.fn(),
+        releaseAudioDueTo,
+      };
+
+      const shell = mountPaneShell(root, {
+        dockWindow: stubDockWindow(),
+        busFactory: stubBusFactory(),
+        deferPump: true,
+        presenter,
+        pumpSchedule: pump.pumpSchedule,
+      });
+
+      shell.startPump();
+      pump.setClock(PUMP_INTERVAL_MS);
+      pump.runIntervals();
+      pump.setClock(PUMP_INTERVAL_MS);
+      pump.runRafAt(PUMP_INTERVAL_MS);
+
+      const presentationMs =
+        snapshot.mock.calls[snapshot.mock.calls.length - 1]![0]!;
+      const latestBatch = queuedBatches[queuedBatches.length - 1]!;
+      for (const event of latestBatch.events) {
+        expect(latestBatch.baseMs + event.atMs).toBeGreaterThanOrEqual(
+          presentationMs,
+        );
+      }
 
       shell.destroy();
     });
