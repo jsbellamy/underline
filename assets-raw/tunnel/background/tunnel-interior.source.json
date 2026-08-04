@@ -1,0 +1,16 @@
+{
+  "acquisition_tool": "cursor-agent/issue-418",
+  "asset_class": "background",
+  "prompt": "Ultra-wide panoramic underground mine tunnel interior, chunky storybook pixel art, side-on orthographic view with no perspective foreshortening. Designed to be cropped to a short 480x112 band.\n\nSCENE: the inside of a horizontal mining tunnel carved through warm dark plum-brown rock. A rough rock ceiling across the top with a few hanging chips and cracks, a deep shadowed hollow through the middle where the tunnel recedes, and a nearly flat packed-earth floor band across the bottom fifth for characters to stand on. Scattered timber support beams and a few small embedded dull mineral flecks in the walls give the rock texture.\n\nCOMPOSITION: keep the middle band open, dark and low-detail so bright character sprites and cyan crystal ore read clearly in front of it. Detail and silhouette belong in the ceiling and the upper walls. The floor band must be near-flat and unbusy so sprites sit on it without floating. Keep the whole image low contrast and dim.\n\nPALETTE: warm dark plum and brown rock, deep near-black shadow in the hollow, muted earth tones on the floor. Neutral upper-left local light and warm shadow. No bright cyan anywhere in the background - cyan is reserved for ore.\n\nNo characters, no dwarves, no creatures, no minecart, no tools, no text, no numbers, no UI, no borders, no vignette frame, no watermark, no anti-aliased blur, no gradients, no magenta.",
+  "provider": "cursor-image-gen",
+  "raw_sha256": "5ea8c626f530f048861424b12542b40f1fae9f9fc9c0c449c6cd338fcdc4a959",
+  "reduction": {
+    "crop_box": [0, 333, 1536, 691],
+    "crop_size": [1536, 358],
+    "resample": "NEAREST",
+    "runtime_size": [480, 112]
+  },
+  "runtime_destination": "src/assets/tunnel/background/tunnel-interior.png",
+  "schema": "tunnel-art-source/0",
+  "source_resolution": [1536, 1024]
+}
