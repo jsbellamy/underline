@@ -17,8 +17,6 @@ export const BLOCK_SIZE = 32;
 
 /** External dwarf pack frame width in source pixels. */
 export const DWARF_FRAME_W = 26;
-/** External dwarf pack frame height in source pixels. */
-export const DWARF_FRAME_H = 18;
 
 /** Cart placeholder at the Pane's west edge. */
 export const CART_X = 8;

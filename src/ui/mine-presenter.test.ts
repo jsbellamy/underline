@@ -8,7 +8,7 @@ import {
 import {
   persistSettings,
 } from "../core/settings-save";
-import { createMinePresenter } from "./mine-presenter";
+import { createMinePresenter, FACE_SLIDE_MS } from "./mine-presenter";
 import type { MiningAudio } from "./mining-audio";
 
 function memoryStore() {
@@ -301,10 +301,10 @@ describe("mine presenter", () => {
 
     presenter.advanceMs(1);
     expect(presenter.snapshot().advance).toBe(1);
-    expect(presenter.snapshot().faceSlide).toBeCloseTo(1 / 400, 5);
+    expect(presenter.snapshot().faceSlide).toBeCloseTo(1 / FACE_SLIDE_MS, 5);
 
     presenter.advanceMs(200);
-    expect(presenter.snapshot().faceSlide).toBeCloseTo(201 / 400, 5);
+    expect(presenter.snapshot().faceSlide).toBeCloseTo(201 / FACE_SLIDE_MS, 5);
 
     presenter.advanceMs(200);
     expect(presenter.snapshot().faceSlide).toBe(1);
