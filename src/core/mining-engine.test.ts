@@ -241,7 +241,10 @@ describe("mining engine Hardness curve", () => {
 describe("mining engine Smelter Upgrade", () => {
   it("derives throughput and next cost from smelterUpgradeCount", () => {
     expect(smelterThroughputFor(0)).toBe(0.06);
-    expect(smelterThroughputFor(1)).toBe(0.08);
+    expect(smelterThroughputFor(1)).toBe(0.09);
+    expect(smelterThroughputFor(2)).toBe(0.135);
+    expect(smelterThroughputFor(3)).toBeCloseTo(0.2025, 10);
+    expect(smelterThroughputFor(4)).toBeCloseTo(0.30375, 10);
     expect(nextSmelterUpgradeCost(0)).toBe(5);
     expect(nextSmelterUpgradeCost(1)).toBe(10);
   });
