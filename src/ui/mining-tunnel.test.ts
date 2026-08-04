@@ -247,7 +247,7 @@ describe("mountMiningTunnel", () => {
     tunnel.destroy();
   });
 
-  it("creates no pane-face-crack elements after any render", () => {
+  it("paints the Face from tiles without a crack overlay", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
 

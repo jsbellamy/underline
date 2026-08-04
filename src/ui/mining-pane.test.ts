@@ -13,7 +13,7 @@ import {
 } from "../data/external-sprite-pack";
 import { dwarfFrameUrl, dwarfFrameUrlsFor } from "./dwarf-frames";
 import { mountPaneShell } from "./pane-root";
-import { faceDamageState, mountMiningTunnel } from "./mining-tunnel";
+import { mountMiningTunnel } from "./mining-tunnel";
 import { tunnelArtPath } from "../data/tunnel-art-pack";
 import { TUNNEL_ART_PACK, tunnelArtUrl } from "./tunnel-art";
 import { createMinePresenter } from "./mine-presenter";
@@ -312,7 +312,6 @@ describe("mountPaneShell mining Pane", () => {
     expect(faceAt0.style.backgroundImage).toBe(
       `url("${tunnelArtUrl(crackedPath)}")`,
     );
-    expect(faceDamageState(0.5)).toBe("cracked");
 
     tunnel.render({ ...base, advance: 10 });
     const faceAt10 = host.querySelector<HTMLElement>("[data-face]")!;
