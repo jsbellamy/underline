@@ -1,0 +1,76 @@
+{
+  "schema": "tunnel-art-native-scale-read/0",
+  "asset_key": "tunnel-interior",
+  "issue": 418,
+  "reviewed_png": {
+    "path": "src/assets/tunnel/background/tunnel-interior.png",
+    "sha256": "3441e65b28ba5fdb7f666d29ee646ac627d694b725e791b354b5e44651ba36ec"
+  },
+  "inspection": {
+    "native_scale": true,
+    "nearest_neighbor_enlargement": "4x",
+    "compositing_target": "assets/characters/dwarf/idle/east/frame_000.png",
+    "dwarf_scale": 3,
+    "miner_stand_x": 354,
+    "dwarf_bottom_px": 10,
+    "composites": [
+      "src/assets/tunnel/reviews/tunnel-interior--composite-native.png",
+      "src/assets/tunnel/reviews/tunnel-interior--composite-4x.png"
+    ]
+  },
+  "style_cohort": [
+    "assets/characters/dwarf/swing/east/frame_000.png",
+    "assets/characters/hauler/idle/east/frame_000.png",
+    "assets/characters/dwarf/walk/east/frame_000.png",
+    "docs/first-room-art-direction.md"
+  ],
+  "style_alignment": {
+    "verdict": "pass",
+    "rationale": "Warm rugged chunky pixel vocabulary matches external character packs; side-on orthographic tunnel band with plum-brown rock and timber supports; palette-free game art outside first-room Master Palette."
+  },
+  "identity_continuity": {
+    "verdict": "pass",
+    "rationale": "First tunnel background in the family; establishes dim receding rock corridor identity for #419 wiring."
+  },
+  "questions": [
+    {
+      "id": "dwarf_silhouette",
+      "question": "The dwarf silhouette is unambiguous against the background at native scale.",
+      "verdict": "PASS",
+      "notes": "Green tunic, blue helmet, and beard read clearly against the dark mid-band hollow at native scale and 4x nearest-neighbor."
+    },
+    {
+      "id": "floor_band",
+      "question": "The floor band reads as a flat standing surface, not as texture the sprite sinks into.",
+      "verdict": "PASS",
+      "notes": "Bottom fifth is a near-flat packed-earth band; dwarf feet align on the floor line without sinking into wall texture."
+    },
+    {
+      "id": "lamp_contrast",
+      "question": "No background region is brighter or higher-contrast than the dwarf's amber lamp.",
+      "verdict": "PASS",
+      "notes": "Runtime background max channel luminance 120; dwarf amber lamp peaks at 255."
+    },
+    {
+      "id": "no_cyan",
+      "question": "No cyan appears in the background that could be mistaken for ore.",
+      "verdict": "PASS",
+      "notes": "Zero cyan-class pixels in the built 480x112 band."
+    },
+    {
+      "id": "dimensions_and_edges",
+      "question": "The image is 480x112 with no magenta and no anti-aliased edge pixels.",
+      "verdict": "PASS",
+      "notes": "Built PNG is 480x112 RGBA with binary alpha; no magenta (#FF00FF) and no semi-transparent pixels."
+    }
+  ],
+  "machine_checks": {
+    "assets_verify": "PASS",
+    "background_max_channel": 120,
+    "magenta_pixels": 0,
+    "semi_transparent_pixels": 0
+  },
+  "overall": "PASS",
+  "reviewed_at": "2026-08-04T06:45:00+00:00",
+  "reviewer_identity": "cursor-agent/issue-418"
+}

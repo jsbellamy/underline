@@ -1,0 +1,11 @@
+{
+  "entries": [
+    {
+      "relative_path": "src/assets/tunnel/background/tunnel-interior.png",
+      "sha256": "3441e65b28ba5fdb7f666d29ee646ac627d694b725e791b354b5e44651ba36ec",
+      "source_relative_path": "assets-raw/tunnel/background/tunnel-interior.png",
+      "source_sha256": "5ea8c626f530f048861424b12542b40f1fae9f9fc9c0c449c6cd338fcdc4a959"
+    }
+  ],
+  "schema": "tunnel-art-pack/0"
+}
