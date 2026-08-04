@@ -28,10 +28,6 @@ export const FACE_X = 432;
 
 /** Native Ore object size in Pane pixels — object-set art is never scaled (#442). */
 export const ORE_SIZE = 32;
-/** Horizontal spacing between Ore slots. */
-export const ORE_PITCH = ORE_SIZE + 4;
-/** Vertical spacing between Heap rows. */
-export const HEAP_ROW_HEIGHT = ORE_SIZE + 2;
 /** Heap floor band — rests on the 8px floor. */
 export const HEAP_BOTTOM = 8;
 /** Vertical cap for pile rendering — ~36% bin coverage at radii 6–14. */
@@ -65,10 +61,6 @@ export const HAULER_PICKUP_X = HAULER_MARK_X + 130;
 export const HEAP_BIN_WEST_X = HAULER_MARK_X;
 /** Hauler sprite centre at the far end of its fixed pickup excursion. */
 export const HAULER_GRAB_X = HAULER_PICKUP_X + (DWARF_FRAME_W * DWARF_SCALE) / 2;
-
-/** Westmost slot of a row never lands west of HAULER_MARK_X. */
-export const HEAP_SLOTS_PER_ROW =
-  Math.floor((HEAP_EAST_X - HAULER_MARK_X) / ORE_PITCH) + 1;
 
 /** Presentation Haul speed derived from the engine's one Haul duration. */
 export const HAUL_SPEED_PX_PER_MS =

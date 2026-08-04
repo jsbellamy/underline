@@ -2,9 +2,12 @@
 
 import { describe, expect, it } from "vitest";
 import { faceDamageState, mountMiningTunnel } from "./mining-tunnel";
-import { tunnelArtContentBottomGap, tunnelArtKeysUnder, tunnelArtPath } from "../data/tunnel-art-pack";
+import { tunnelArtContentBottomGap, tunnelArtPath } from "../data/tunnel-art-pack";
 import { TUNNEL_ART_PACK, tunnelArtUrl } from "./tunnel-art";
-import type { TunnelSnapshot } from "./mine-presenter";
+import type { HeapOreSnapshot, TunnelSnapshot } from "./mine-presenter";
+import { createMinePresenter } from "./mine-presenter";
+import { createMiningSession } from "../core/mining-session";
+import { initialSnapshot } from "../core/mining-engine";
 import { dwarfLayout } from "../data/external-sprite-pack";
 import { DWARF_PACK } from "./dwarf-frames";
 import { HAULER_PACK } from "./hauler-frames";
@@ -21,7 +24,8 @@ import {
   PANE_HEIGHT,
   PANE_WIDTH,
 } from "./pane-layout";
-import { fallingOrePosition, heapSlot } from "./heap-pile";
+import { fallingOrePosition } from "./heap-pile";
+import { heapOreArtKey } from "./heap-ore-variants";
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -42,6 +46,21 @@ const baseSnap: TunnelSnapshot = {
   heapOre: [],
   fallingOre: [],
 };
+
+function memoryStore() {
+  const data: Record<string, string> = {};
+  return {
+    getItem(key: string) {
+      return data[key] ?? null;
+    },
+    setItem(key: string, value: string) {
+      data[key] = value;
+    },
+    removeItem(key: string) {
+      delete data[key];
+    },
+  };
+}
 
 function twoDwarfSnap(
   overrides: Omit<Partial<TunnelSnapshot>, "hauler"> & {
@@ -102,20 +121,13 @@ function oreElements(host: HTMLElement): HTMLElement[] {
   return [...host.querySelectorAll<HTMLElement>("[data-ore]")];
 }
 
-function oreAtSlot(host: HTMLElement, slot: number): HTMLElement {
-  const ore = host.querySelector<HTMLElement>(`[data-ore-slot="${slot}"]`);
+function oreById(host: HTMLElement, id: number): HTMLElement {
+  const ore = host.querySelector<HTMLElement>(`[data-ore-id="${id}"]`);
   if (!ore) {
-    throw new Error(`Ore at slot ${slot} not found`);
+    throw new Error(`Ore with id ${id} not found`);
   }
   return ore;
 }
-
-function faceTileBackground(state: string): string {
-  const path = tunnelArtPath(TUNNEL_ART_PACK, `tiles/face/${state}`);
-  return `url("${tunnelArtUrl(path)}")`;
-}
-
-const HEAP_ORE_KEYS = tunnelArtKeysUnder(TUNNEL_ART_PACK, "objects/ore/gold-");
 
 function heapOreObjectBackground(artKey: string): string {
   const path = tunnelArtPath(TUNNEL_ART_PACK, artKey);
@@ -127,6 +139,20 @@ function adjustedHeapOreBottom(slotBottom: number, artKey: string): number {
     slotBottom -
     tunnelArtContentBottomGap(TUNNEL_ART_PACK, artKey, ORE_SIZE)
   );
+}
+
+function twoDwarfHeapOre(count: number): HeapOreSnapshot[] {
+  return Array.from({ length: count }, (_, i) => ({
+    id: i + 1,
+    left: 400 - i * 36,
+    bottom: 8 + (i % 3) * 12,
+    variantIndex: i % 6,
+  }));
+}
+
+function faceTileBackground(state: string): string {
+  const path = tunnelArtPath(TUNNEL_ART_PACK, `tiles/face/${state}`);
+  return `url("${tunnelArtUrl(path)}")`;
 }
 
 describe("faceDamageState", () => {
@@ -520,10 +546,13 @@ describe("mountMiningTunnel", () => {
   it("aligns carried Ore with the Hauler on the pickup return leg", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
+    const loads = heapCapacityFor(0);
 
     tunnel.render(
       twoDwarfSnap({
-        heapLoads: heapCapacityFor(0),
+        heapLoads: loads,
+        heapOre: twoDwarfHeapOre(loads),
+        carriedVariantIndex: 2,
         hauler: { phase: "pickup", pickupProgress: 0.75 },
       }),
     );
@@ -552,9 +581,11 @@ describe("mountMiningTunnel", () => {
   it("drops one Ore from the pile at the shuttle midpoint", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
+    const heap5 = twoDwarfHeapOre(5);
     tunnel.render(
       twoDwarfSnap({
         heapLoads: 5,
+        heapOre: heap5,
         hauler: { phase: "pickup", pickupProgress: 0.5 },
       }),
     );
@@ -562,6 +593,8 @@ describe("mountMiningTunnel", () => {
     tunnel.render(
       twoDwarfSnap({
         heapLoads: 5,
+        heapOre: heap5.slice(0, 4),
+        carriedVariantIndex: 4,
         hauler: { phase: "pickup", pickupProgress: 0.75 },
       }),
     );
@@ -572,10 +605,12 @@ describe("mountMiningTunnel", () => {
   it("renders carried Ore on the return leg of the shuttle only", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
+    const heap5 = twoDwarfHeapOre(5);
 
     tunnel.render(
       twoDwarfSnap({
         heapLoads: 5,
+        heapOre: heap5,
         hauler: { phase: "pickup", pickupProgress: 0.25 },
       }),
     );
@@ -584,6 +619,8 @@ describe("mountMiningTunnel", () => {
     tunnel.render(
       twoDwarfSnap({
         heapLoads: 5,
+        heapOre: heap5.slice(0, 4),
+        carriedVariantIndex: 4,
         hauler: { phase: "pickup", pickupProgress: 0.75 },
       }),
     );
@@ -592,6 +629,7 @@ describe("mountMiningTunnel", () => {
     tunnel.render(
       twoDwarfSnap({
         heapLoads: 0,
+        heapOre: [],
         hauler: { phase: "pickup", pickupProgress: 0 },
       }),
     );
@@ -600,6 +638,7 @@ describe("mountMiningTunnel", () => {
     tunnel.render(
       twoDwarfSnap({
         heapLoads: 3,
+        heapOre: twoDwarfHeapOre(3),
         hauler: { phase: "out", haulProgress: 0.25, pickupProgress: 0 },
       }),
     );
@@ -643,6 +682,7 @@ describe("mountMiningTunnel", () => {
       advance: 50,
       faceSlide: 0.5,
       heapLoads: 5,
+      heapOre: twoDwarfHeapOre(5),
       hauler: {
         phase: "pickup",
         pickupProgress: 0.35,
@@ -711,10 +751,11 @@ describe("mountMiningTunnel", () => {
     tunnel.destroy();
   });
 
-  it("renders one Ore per heapLoads behind both Dwarves for a two-Dwarf Crew", () => {
+  it("renders one element per heapOre entry behind both Dwarves for a two-Dwarf Crew", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
-    tunnel.render(twoDwarfSnap({ heapLoads: 3 }));
+    const heapOre = twoDwarfHeapOre(3);
+    tunnel.render(twoDwarfSnap({ heapLoads: 3, heapOre }));
 
     const heap = host.querySelector(".pane-heap");
     expect(heap).not.toBeNull();
@@ -722,18 +763,16 @@ describe("mountMiningTunnel", () => {
     const ores = oreElements(host);
     expect(ores.length).toBe(3);
 
-    for (let i = 0; i < 3; i += 1) {
-      const ore = oreAtSlot(host, i);
-      const artKey = HEAP_ORE_KEYS[i % HEAP_ORE_KEYS.length]!;
-      const { left, bottom } = heapSlot(i);
-      expect(ore.style.left).toBe(`${left}px`);
-      expect(ore.style.bottom).toBe(
-        `${adjustedHeapOreBottom(bottom, artKey)}px`,
-      );
+    for (const entry of heapOre) {
+      const ore = oreById(host, entry.id);
+      const artKey = heapOreArtKey(entry.variantIndex);
+      expect(ore.style.left).toBe(`${entry.left}px`);
+      expect(ore.style.bottom).toBe(`${entry.bottom}px`);
       expect(ore.style.width).toBe(`${ORE_SIZE}px`);
       expect(ore.style.height).toBe(`${ORE_SIZE}px`);
       expect(ore.style.backgroundImage).toBe(heapOreObjectBackground(artKey));
       expect(ore.style.imageRendering).toBe("pixelated");
+      expect(ore.dataset["oreId"]).toBe(String(entry.id));
     }
 
     const css = readFileSync(resolve("src/styles.css"), "utf8");
@@ -744,14 +783,50 @@ describe("mountMiningTunnel", () => {
     tunnel.destroy();
   });
 
-  it("paints settled Heap chunks from the art pack with stable variants", () => {
+  it("keys heap elements by body id and preserves surviving nodes when the middle id is removed", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
-    tunnel.render(twoDwarfSnap({ heapLoads: 3 }));
+    const three = [
+      { id: 10, left: 400, bottom: 8, variantIndex: 0 },
+      { id: 20, left: 364, bottom: 8, variantIndex: 1 },
+      { id: 30, left: 328, bottom: 8, variantIndex: 2 },
+    ];
+    tunnel.render(twoDwarfSnap({ heapLoads: 3, heapOre: three }));
 
-    const variants = HEAP_ORE_KEYS.slice(0, 3);
-    for (const [slot, artKey] of variants.entries()) {
-      const ore = oreAtSlot(host, slot);
+    const first = oreById(host, 10);
+    const third = oreById(host, 30);
+    const firstVariant = first.dataset["oreVariant"];
+    const thirdVariant = third.dataset["oreVariant"];
+
+    tunnel.render(
+      twoDwarfSnap({
+        heapLoads: 2,
+        heapOre: [three[0]!, three[2]!],
+      }),
+    );
+
+    expect(oreById(host, 10)).toBe(first);
+    expect(oreById(host, 30)).toBe(third);
+    expect(first.dataset["oreVariant"]).toBe(firstVariant);
+    expect(third.dataset["oreVariant"]).toBe(thirdVariant);
+    expect(host.querySelector("[data-ore-id=\"20\"]")).toBeNull();
+
+    tunnel.destroy();
+  });
+
+  it("paints settled Heap chunks from heapOreArtKey with stable variants", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    const heapOre = [
+      { id: 1, left: 400, bottom: 8, variantIndex: 0 },
+      { id: 2, left: 364, bottom: 8, variantIndex: 1 },
+      { id: 3, left: 328, bottom: 8, variantIndex: 2 },
+    ];
+    tunnel.render(twoDwarfSnap({ heapLoads: 3, heapOre }));
+
+    for (const entry of heapOre) {
+      const ore = oreById(host, entry.id);
+      const artKey = heapOreArtKey(entry.variantIndex);
       expect(ore.dataset["oreVariant"]).toBe(artKey);
       expect(ore.dataset["oreVariant"]!.startsWith("objects/ore/gold-")).toBe(
         true,
@@ -763,19 +838,22 @@ describe("mountMiningTunnel", () => {
     tunnel.destroy();
   });
 
-  it("paints the carried chunk with the variant of the westmost lifted slot", () => {
+  it("paints the carried chunk with carriedVariantIndex", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
+    const variantIndex = 3;
+    const artKey = heapOreArtKey(variantIndex);
 
     tunnel.render(
       twoDwarfSnap({
         heapLoads: 4,
+        heapOre: twoDwarfHeapOre(3),
+        carriedVariantIndex: variantIndex,
         hauler: { phase: "pickup", pickupProgress: 0.75 },
       }),
     );
 
     const carried = host.querySelector<HTMLElement>("[data-ore-carried]");
-    const artKey = HEAP_ORE_KEYS[3]!;
     expect(carried).not.toBeNull();
     expect(carried!.dataset["oreVariant"]).toBe(artKey);
     expect(carried!.style.backgroundImage).toBe(heapOreObjectBackground(artKey));
@@ -783,37 +861,28 @@ describe("mountMiningTunnel", () => {
     tunnel.destroy();
   });
 
-  it("bottom-aligns heap objects by content_box so contents rest on the floor", () => {
+  it("shows the carried element only when carriedVariantIndex is present", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
-    tunnel.render(twoDwarfSnap({ heapLoads: 6 }));
 
-    const largeBSlot = 1;
-    const smallSlot = 5;
-    const largeBKey = HEAP_ORE_KEYS[largeBSlot]!;
-    const smallKey = HEAP_ORE_KEYS[smallSlot]!;
-    expect(largeBKey).toBe("objects/ore/gold-large-b");
-    expect(smallKey).toBe("objects/ore/gold-small");
-
-    const largeB = oreAtSlot(host, largeBSlot);
-    const small = oreAtSlot(host, smallSlot);
-    const largeBSlotBottom = heapSlot(largeBSlot).bottom;
-    const smallSlotBottom = heapSlot(smallSlot).bottom;
-
-    expect(Number(largeB.style.bottom.replace("px", ""))).toBe(
-      largeBSlotBottom -
-        tunnelArtContentBottomGap(TUNNEL_ART_PACK, largeBKey, ORE_SIZE),
+    tunnel.render(
+      twoDwarfSnap({
+        heapLoads: 3,
+        heapOre: twoDwarfHeapOre(3),
+        hauler: { phase: "pickup", pickupProgress: 0.25 },
+      }),
     );
-    expect(Number(small.style.bottom.replace("px", ""))).toBe(
-      smallSlotBottom -
-        tunnelArtContentBottomGap(TUNNEL_ART_PACK, smallKey, ORE_SIZE),
+    expect(host.querySelector("[data-ore-carried]")).toBeNull();
+
+    tunnel.render(
+      twoDwarfSnap({
+        heapLoads: 3,
+        heapOre: twoDwarfHeapOre(2),
+        carriedVariantIndex: 1,
+        hauler: { phase: "pickup", pickupProgress: 0.75 },
+      }),
     );
-    expect(
-      tunnelArtContentBottomGap(TUNNEL_ART_PACK, smallKey, ORE_SIZE),
-    ).toBe(10);
-    expect(
-      tunnelArtContentBottomGap(TUNNEL_ART_PACK, largeBKey, ORE_SIZE),
-    ).toBe(1);
+    expect(host.querySelectorAll("[data-ore-carried]").length).toBe(1);
 
     tunnel.destroy();
   });
@@ -824,19 +893,19 @@ describe("mountMiningTunnel", () => {
     tunnel.render({
       ...baseSnap,
       advance: 3,
-      fallingOre: [{ destination: "bag", slot: 0, progress: 0.5 }],
+      fallingOre: [{ slot: 0, progress: 0.5 }],
     });
 
     expect(host.querySelector(".pane-heap")).toBeNull();
     const ores = oreElements(host);
     expect(ores.length).toBe(1);
-    const fallingPos = fallingOrePosition("bag", 0, 0.5);
-    const artKey = HEAP_ORE_KEYS[0]!;
+    const fallingPos = fallingOrePosition(0, 0.5);
+    const artKey = heapOreArtKey(0);
     expect(ores[0]!.style.left).toBe(`${fallingPos.left}px`);
     expect(ores[0]!.style.bottom).toBe(
       `${adjustedHeapOreBottom(fallingPos.bottom, artKey)}px`,
     );
-    expect(ores[0]!.dataset["oreSlot"]).toBeUndefined();
+    expect(ores[0]!.dataset["oreId"]).toBeUndefined();
 
     tunnel.render({
       ...baseSnap,
@@ -858,17 +927,18 @@ describe("mountMiningTunnel", () => {
     tunnel.destroy();
   });
 
-  it("removes highest-index Ore first when heapLoads shrinks", () => {
+  it("removes elements when heapOre entries disappear", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
-    tunnel.render(twoDwarfSnap({ heapLoads: 3 }));
-    tunnel.render(twoDwarfSnap({ heapLoads: 2 }));
+    const three = twoDwarfHeapOre(3);
+    tunnel.render(twoDwarfSnap({ heapLoads: 3, heapOre: three }));
+    tunnel.render(twoDwarfSnap({ heapLoads: 2, heapOre: three.slice(0, 2) }));
 
     const ores = oreElements(host);
     expect(ores.length).toBe(2);
-    expect(oreAtSlot(host, 0)).not.toBeNull();
-    expect(oreAtSlot(host, 1)).not.toBeNull();
-    expect(host.querySelector("[data-ore-slot=\"2\"]")).toBeNull();
+    expect(oreById(host, 1)).not.toBeNull();
+    expect(oreById(host, 2)).not.toBeNull();
+    expect(host.querySelector("[data-ore-id=\"3\"]")).toBeNull();
 
     tunnel.destroy();
   });
@@ -876,60 +946,10 @@ describe("mountMiningTunnel", () => {
   it("does not mutate the DOM when rendering the same two-Dwarf heap snapshot twice", async () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
-    const snap = twoDwarfSnap({ advance: 10, heapLoads: 4 });
-
-    tunnel.render(snap);
-
-    const observer = new MutationObserver(() => {});
-    observer.observe(host, {
-      childList: true,
-      subtree: true,
-      attributes: true,
-      characterData: true,
-    });
-
-    tunnel.render(snap);
-    await new Promise((r) => setTimeout(r, 0));
-
-    expect(observer.takeRecords()).toEqual([]);
-    observer.disconnect();
-    tunnel.destroy();
-  });
-
-  it("positions a falling Ore at fallingOrePosition and settled neighbours at heapSlot", () => {
-    const host = document.createElement("div");
-    const tunnel = mountMiningTunnel(host);
-    tunnel.render(
-      twoDwarfSnap({
-        heapLoads: 2,
-        fallingOre: [{ destination: "heap", slot: 1, progress: 0.5 }],
-      }),
-    );
-
-    const falling = oreAtSlot(host, 1);
-    const settled = oreAtSlot(host, 0);
-    const fallingPos = fallingOrePosition("heap", 1, 0.5);
-    const settledPos = heapSlot(0);
-    const fallingKey = HEAP_ORE_KEYS[1]!;
-    const settledKey = HEAP_ORE_KEYS[0]!;
-    expect(falling.style.left).toBe(`${fallingPos.left}px`);
-    expect(falling.style.bottom).toBe(
-      `${adjustedHeapOreBottom(fallingPos.bottom, fallingKey)}px`,
-    );
-    expect(settled.style.left).toBe(`${settledPos.left}px`);
-    expect(settled.style.bottom).toBe(
-      `${adjustedHeapOreBottom(settledPos.bottom, settledKey)}px`,
-    );
-
-    tunnel.destroy();
-  });
-
-  it("does not mutate the DOM when rendering the same fallingOre snapshot twice", async () => {
-    const host = document.createElement("div");
-    const tunnel = mountMiningTunnel(host);
     const snap = twoDwarfSnap({
-      heapLoads: 2,
-      fallingOre: [{ destination: "heap", slot: 1, progress: 0.25 }],
+      advance: 10,
+      heapLoads: 4,
+      heapOre: twoDwarfHeapOre(4),
     });
 
     tunnel.render(snap);
@@ -950,26 +970,74 @@ describe("mountMiningTunnel", () => {
     tunnel.destroy();
   });
 
-  it("re-renders when only a fallingOre progress value changes", () => {
+  it("re-renders when heapOre position changes but not when only heapLoads changes", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
-    tunnel.render(
-      twoDwarfSnap({
-        heapLoads: 1,
-        fallingOre: [{ destination: "heap", slot: 0, progress: 0.25 }],
-      }),
-    );
-    const before = oreAtSlot(host, 0).style.bottom;
+    const heapOre = twoDwarfHeapOre(3);
+    tunnel.render(twoDwarfSnap({ heapLoads: 3, heapOre }));
 
-    tunnel.render(
-      twoDwarfSnap({
-        heapLoads: 1,
-        fallingOre: [{ destination: "heap", slot: 0, progress: 0.75 }],
-      }),
+    const before = oreById(host, 1).style.left;
+    const moved = heapOre.map((entry) =>
+      entry.id === 1 ? { ...entry, left: entry.left - 5 } : entry,
     );
-    const after = oreAtSlot(host, 0).style.bottom;
+    tunnel.render(twoDwarfSnap({ heapLoads: 3, heapOre: moved }));
+    expect(oreById(host, 1).style.left).not.toBe(before);
 
-    expect(after).not.toBe(before);
+    const afterMove = oreById(host, 1).style.left;
+    tunnel.render(twoDwarfSnap({ heapLoads: 99, heapOre: moved }));
+    expect(oreById(host, 1).style.left).toBe(afterMove);
+
     tunnel.destroy();
+  });
+
+  it("positions pile elements at heapOre left and bottom without content-box adjustment", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+      snapshot: {
+        ...initialSnapshot(),
+        crewSize: 2,
+        heapLoads: 5,
+      },
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+    const snap = presenter.snapshot();
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    tunnel.render(snap);
+
+    for (const entry of snap.heapOre) {
+      const ore = oreById(host, entry.id);
+      expect(ore.style.left).toBe(`${entry.left}px`);
+      expect(ore.style.bottom).toBe(`${entry.bottom}px`);
+    }
+
+    tunnel.destroy();
+  });
+
+  it("renders the one-Dwarf bag fall at the same worked positions as before", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    tunnel.render({
+      ...baseSnap,
+      advance: 3,
+      fallingOre: [{ slot: 0, progress: 0.5 }],
+    });
+
+    const ores = oreElements(host);
+    const fallingPos = fallingOrePosition(0, 0.5);
+    const artKey = heapOreArtKey(0);
+    expect(ores[0]!.style.left).toBe(`${fallingPos.left}px`);
+    expect(ores[0]!.style.bottom).toBe(
+      `${adjustedHeapOreBottom(fallingPos.bottom, artKey)}px`,
+    );
+
+    tunnel.destroy();
+  });
+
+  it("does not define HEAP_ORE_KEYS in mining-tunnel.ts", () => {
+    const source = readFileSync(resolve("src/ui/mining-tunnel.ts"), "utf8");
+    expect(source).not.toMatch(/\bHEAP_ORE_KEYS\b/);
   });
 });

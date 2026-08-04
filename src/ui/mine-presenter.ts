@@ -40,7 +40,6 @@ import {
   ORE_FALL_MS,
   ORE_SPAWN_BOTTOM,
 } from "./pane-layout";
-import type { FallingOreDestination } from "./heap-pile";
 
 export type TunnelHaulPhase = "none" | HaulAnimPhase;
 export type HaulerPhase = "pickup" | HaulAnimPhase;
@@ -89,12 +88,8 @@ export interface TunnelSnapshot {
   heapOre: readonly HeapOreSnapshot[];
   /** Variant of the Load in the Hauler's hands; absent when nothing is carried. */
   carriedVariantIndex?: number;
-  /** Ore still falling toward the Bag or Heap; empty when nothing is in flight. */
-  fallingOre: readonly {
-    destination: FallingOreDestination;
-    slot: number;
-    progress: number;
-  }[];
+  /** Ore still falling toward the Bag; empty when nothing is in flight. */
+  fallingOre: readonly { slot: number; progress: number }[];
 }
 
 export const FACE_SLIDE_MS = 400;
@@ -313,32 +308,13 @@ export function createMinePresenter(
     pile.settle();
   }
 
-  function truncateFalls(): void {
-    if (!isTwoDwarf()) {
-      return;
-    }
-    const cap = session.snapshot.heapLoads;
-    while (activeFalls.length > cap) {
-      activeFalls.shift();
-    }
-  }
-
   function cleanFalls(nowMs: number): void {
-    if (!isTwoDwarf()) {
-      for (let i = activeFalls.length - 1; i >= 0; i -= 1) {
-        const progress = (nowMs - activeFalls[i]!) / ORE_FALL_MS;
-        if (progress >= 1) {
-          activeFalls.splice(i, 1);
-        }
-      }
+    if (isTwoDwarf()) {
       return;
     }
-    const heapLoads = session.snapshot.heapLoads;
     for (let i = activeFalls.length - 1; i >= 0; i -= 1) {
-      const spawnSimMs = activeFalls[i]!;
-      const progress = (nowMs - spawnSimMs) / ORE_FALL_MS;
-      const slot = heapLoads - 1 - i;
-      if (progress >= 1 || slot < 0 || i > heapLoads - 1) {
+      const progress = (nowMs - activeFalls[i]!) / ORE_FALL_MS;
+      if (progress >= 1) {
         activeFalls.splice(i, 1);
       }
     }
@@ -346,39 +322,21 @@ export function createMinePresenter(
 
   function projectFallingOre(
     nowMs: number,
-  ): readonly {
-    destination: FallingOreDestination;
-    slot: number;
-    progress: number;
-  }[] {
-    if (!isTwoDwarf()) {
-      const result: { destination: "bag"; slot: number; progress: number }[] = [];
-      for (let i = 0; i < activeFalls.length; i += 1) {
-        const spawnSimMs = activeFalls[i]!;
-        const progress = Math.min(
-          1,
-          Math.max(0, (nowMs - spawnSimMs) / ORE_FALL_MS),
-        );
-        if (progress >= 1) {
-          continue;
-        }
-        result.push({ destination: "bag", slot: i, progress });
-      }
-      return result;
+  ): readonly { slot: number; progress: number }[] {
+    if (isTwoDwarf()) {
+      return [];
     }
-    const heapLoads = session.snapshot.heapLoads;
-    const result: { destination: "heap"; slot: number; progress: number }[] = [];
+    const result: { slot: number; progress: number }[] = [];
     for (let i = 0; i < activeFalls.length; i += 1) {
       const spawnSimMs = activeFalls[i]!;
       const progress = Math.min(
         1,
         Math.max(0, (nowMs - spawnSimMs) / ORE_FALL_MS),
       );
-      const slot = heapLoads - 1 - i;
-      if (progress >= 1 || slot < 0 || i > heapLoads - 1) {
+      if (progress >= 1) {
         continue;
       }
-      result.push({ destination: "heap", slot, progress });
+      result.push({ slot: i, progress });
     }
     return result;
   }
@@ -546,11 +504,10 @@ export function createMinePresenter(
       }
 
       for (const event of events) {
-        if (event.type === "loadDropped") {
+        if (event.type === "loadDropped" && !isTwoDwarf()) {
           activeFalls.unshift(windowStartSimMs + event.atMs);
         }
       }
-      truncateFalls();
 
       faceSwingProgressAtTick = session.snapshot.faceSwingProgress;
 

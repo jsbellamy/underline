@@ -774,7 +774,7 @@ describe("mine presenter", () => {
     expect(backLeg.hauler!.haulProgress).toBeGreaterThan(0);
   });
 
-  it("seeds a fallingOre entry from loadDropped whose progress tracks nowMs", () => {
+  it("seeds no fallingOre for a two-Dwarf Crew — pile bodies spawn directly", () => {
     const session = createMiningSession({
       store: memoryStore(),
       now: () => 0,
@@ -787,13 +787,10 @@ describe("mine presenter", () => {
     presenter.start();
     presenter.advanceMs(10_000);
     expect(presenter.snapshot().heapLoads).toBe(1);
-    expect(presenter.snapshot(10_000).fallingOre).toEqual([
-      { destination: "heap", slot: 0, progress: 0 },
-    ]);
-    expect(presenter.snapshot(10_125).fallingOre).toEqual([
-      { destination: "heap", slot: 0, progress: 0.5 },
-    ]);
+    expect(presenter.snapshot(10_000).fallingOre).toEqual([]);
+    expect(presenter.snapshot(10_125).fallingOre).toEqual([]);
     expect(presenter.snapshot(10_000 + ORE_FALL_MS).fallingOre).toEqual([]);
+    expect(presenter.snapshot(10_125).heapOre.length).toBe(1);
   });
 
   it("seeds a bag-bound fallingOre entry for a one-Dwarf Crew", () => {
@@ -806,10 +803,10 @@ describe("mine presenter", () => {
     presenter.advanceMs(10_000);
     expect(session.snapshot.bagLoads).toBe(1);
     expect(presenter.snapshot(10_000).fallingOre).toEqual([
-      { destination: "bag", slot: 0, progress: 0 },
+      { slot: 0, progress: 0 },
     ]);
     expect(presenter.snapshot(10_125).fallingOre).toEqual([
-      { destination: "bag", slot: 0, progress: 0.5 },
+      { slot: 0, progress: 0.5 },
     ]);
     expect(presenter.snapshot(10_000 + ORE_FALL_MS).fallingOre).toEqual([]);
   });
@@ -826,7 +823,7 @@ describe("mine presenter", () => {
     const midFall = presenter.snapshot(10_125);
     expect(midFall.heapLoads).toBe(0);
     expect(midFall.fallingOre).toEqual([
-      { destination: "bag", slot: 0, progress: 0.5 },
+      { slot: 0, progress: 0.5 },
     ]);
     expect(session.snapshot).toEqual(engineBefore);
   });
@@ -846,7 +843,7 @@ describe("mine presenter", () => {
     expect(presenter.snapshot().fallingOre).toEqual([]);
   });
 
-  it("truncates newest falls when heapLoads drops below the active list", () => {
+  it("does not track fallingOre for a two-Dwarf Crew when heapLoads drops", () => {
     const cap = carryCapacityFor(0);
     const session = createMiningSession({
       store: memoryStore(),
@@ -862,13 +859,9 @@ describe("mine presenter", () => {
     presenter.advanceMs(10_000);
     presenter.advanceMs(10_000);
     expect(session.snapshot.heapLoads).toBe(2);
-    const twoInFlight = presenter.snapshot(10_001).fallingOre;
-    expect(twoInFlight).toHaveLength(2);
-    expect(twoInFlight.every((f) => f.slot >= 0)).toBe(true);
+    expect(presenter.snapshot(10_001).fallingOre).toEqual([]);
     presenter.advanceMs(pickupMsPerLoad(0));
-    const afterPickup = presenter.snapshot(10_001).fallingOre;
-    expect(afterPickup.length).toBeLessThanOrEqual(session.snapshot.heapLoads);
-    expect(afterPickup.every((f) => f.slot >= 0)).toBe(true);
+    expect(presenter.snapshot(10_001).fallingOre).toEqual([]);
   });
 
   it("reports no fallingOre after offline catch-up with a deep Heap", () => {
@@ -1116,7 +1109,7 @@ describe("mine presenter", () => {
       const snap = presenter.snapshot(10_125);
       expect(snap.heapOre).toEqual([]);
       expect(snap.fallingOre).toEqual([
-        { destination: "bag", slot: 0, progress: 0.5 },
+        { slot: 0, progress: 0.5 },
       ]);
     });
   });
