@@ -8,7 +8,7 @@ import { hardnessFor } from "../core/mining-engine";
 import { dwarfLayout, type ExternalSpritePack } from "../data/external-sprite-pack";
 import { DWARF_PACK, dwarfFrameUrlsFor } from "./dwarf-frames";
 import { HAULER_PACK, haulerFrameUrlsFor } from "./hauler-frames";
-import { heapSlot } from "./heap-pile";
+import { haulerPickupTargetX, heapSlot } from "./heap-pile";
 import {
   BLOCK_SIZE,
   CART_HEIGHT,
@@ -100,13 +100,34 @@ function dwarfLeft(snap: TunnelSnapshot): number {
   return Math.round(CART_MARK_X + ((t - 0.5) / 0.5) * span);
 }
 
+function visibleHeapLoads(snap: TunnelSnapshot): number {
+  if (
+    snap.crewSize === 2 &&
+    snap.hauler?.phase === "pickup" &&
+    snap.hauler.pickupProgress > 0.5
+  ) {
+    return snap.heapLoads - 1;
+  }
+  return snap.heapLoads;
+}
+
 function haulerLeft(snap: TunnelSnapshot): number {
   const hauler = snap.hauler;
   if (!hauler) {
     throw new Error("haulerLeft requires a Hauler snapshot");
   }
   if (hauler.phase === "pickup") {
-    return HAULER_MARK_X;
+    if (snap.heapLoads === 0) {
+      return HAULER_MARK_X;
+    }
+    const p = hauler.pickupProgress;
+    const target = haulerPickupTargetX(snap.heapLoads);
+    if (p <= 0.5) {
+      return Math.round(HAULER_MARK_X + (p / 0.5) * (target - HAULER_MARK_X));
+    }
+    return Math.round(
+      target - ((p - 0.5) / 0.5) * (target - HAULER_MARK_X),
+    );
   }
   const span = HAULER_MARK_X - CART_MARK_X;
   const t = hauler.haulProgress;
@@ -258,7 +279,37 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
   }
 
   let haulerMounted = false;
+  let carriedOre: HTMLElement | null = null;
   let lastSnap: TunnelSnapshot | null = null;
+
+  function reconcileCarriedOre(snap: TunnelSnapshot): void {
+    const show =
+      snap.crewSize === 2 &&
+      snap.hauler?.phase === "pickup" &&
+      snap.hauler.pickupProgress > 0.5 &&
+      snap.heapLoads >= 1;
+
+    if (!show) {
+      if (carriedOre) {
+        carriedOre.remove();
+        carriedOre = null;
+      }
+      return;
+    }
+
+    if (!carriedOre) {
+      carriedOre = document.createElement("div");
+      carriedOre.className = "pane-ore";
+      carriedOre.dataset["oreCarried"] = "";
+      carriedOre.style.width = `${ORE_SIZE}px`;
+      carriedOre.style.height = `${ORE_SIZE}px`;
+      carriedOre.style.background = FACE;
+      tunnel.append(carriedOre);
+    }
+
+    carriedOre.style.left = `${haulerLeft(snap)}px`;
+    carriedOre.style.bottom = `${dwarfBottom}px`;
+  }
 
   function mountHauler(): void {
     if (!haulerMounted) {
@@ -360,7 +411,8 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
       unmountHauler();
     }
 
-    reconcileHeap(snap.heapLoads, snap.crewSize);
+    reconcileHeap(visibleHeapLoads(snap), snap.crewSize);
+    reconcileCarriedOre(snap);
   }
 
   return {
