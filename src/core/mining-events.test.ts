@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { MiningEvent, MiningEventType } from "./mining-events";
 
 describe("mining events vocabulary", () => {
-  it("exports swing and faceBroken event types with atMs offset", () => {
+  it("a mining event carries an unscaled atMs offset from the advance window", () => {
     const swingTypes: MiningEventType[] = ["swing", "faceBroken"];
     expect(swingTypes).toHaveLength(2);
 

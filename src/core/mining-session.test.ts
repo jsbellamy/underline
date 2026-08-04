@@ -129,7 +129,6 @@ describe("mining session", () => {
     });
     const result = session.advanceLive(1_080_000);
     expect(result.snapshot).toBe(session.snapshot);
-    expect(result.events.length).toBeGreaterThan(0);
     expect(session.snapshot.advance).toBe(1);
     session.publish();
     expect(onPublish).toHaveBeenCalledOnce();

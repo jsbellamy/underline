@@ -234,7 +234,7 @@ describe("mining engine buyUpgrade default", () => {
 });
 
 describe("mining engine advanceWithEvents", () => {
-  it("advance matches advanceWithEvents snapshot", () => {
+  it("live advance snapshot is unchanged when events are collected", () => {
     const before = snap();
     const options = { rateScale: 0.5 };
     const dtMs = 3_000;
