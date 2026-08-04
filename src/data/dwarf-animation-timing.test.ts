@@ -14,9 +14,8 @@ describe("dwarfAnimationTiming", () => {
     expect(idle.durationsMs).toHaveLength(1);
   });
 
-  it("pins SWING_IMPACT_FRAME as the pick-contact frame index", () => {
+  it("declares the pick-contact frame as a valid swing index", () => {
     expect(SWING_IMPACT_FRAME).toBe(5);
-    expect(SWING_IMPACT_FRAME).toBeGreaterThanOrEqual(0);
     expect(SWING_IMPACT_FRAME).toBeLessThan(SWING_FRAME_COUNT);
   });
 

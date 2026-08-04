@@ -56,6 +56,11 @@ Interpolation is suppressed while `haulRemainingMs > 0`. Walk and idle clips use
 clock-absolute `frameIndexAt(nowMs)` on `DwarfAnimController`; the tick path no
 longer calls `anim.advanceMs`.
 
+**Swing impact alignment (#377):** `frameIndexForSwingFraction` phase-shifts the
+clip so `SWING_IMPACT_FRAME` (pick contact) is displayed when `swingFraction`
+is 0 — i.e. when `faceSwingProgress` crosses an integer. Walk and idle are
+unchanged.
+
 ## Consequences
 
 ### Positive
