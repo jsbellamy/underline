@@ -905,7 +905,7 @@ describe("mine presenter", () => {
       return { session, presenter };
     }
 
-    it("adds heapOre with id, left, bottom, variantIndex and keeps other fields", () => {
+    it("exposes settled Heap Ore on the Tunnel snapshot for a two-Dwarf Crew", () => {
       const { presenter } = twoDwarfPresenter({ heapLoads: 3 });
       const snap = presenter.snapshot();
       expect(snap.heapOre).toHaveLength(3);
@@ -927,7 +927,7 @@ describe("mine presenter", () => {
       expect(snap.fallingOre).toEqual([]);
     });
 
-    it("pre-settles pileTargetCount bodies on first snapshot when heapLoads is 17", () => {
+    it("rests a deep Heap on first snapshot without falling Ore", () => {
       const { presenter } = twoDwarfPresenter({ heapLoads: 17 });
       const snap = presenter.snapshot();
       expect(snap.heapOre).toHaveLength(17);
@@ -968,7 +968,7 @@ describe("mine presenter", () => {
       expect(snap.carriedVariantIndex).toBeDefined();
     });
 
-    it("caps simulated bodies at HEAP_RENDER_CEILING when heapLoads exceeds 24", () => {
+    it("caps visible Heap Ore at 24 Loads while heapLoads keeps counting", () => {
       const { presenter } = twoDwarfPresenter({ heapLoads: 40 });
       expect(presenter.snapshot().heapOre).toHaveLength(24);
     });
@@ -1007,7 +1007,7 @@ describe("mine presenter", () => {
       expect(new Set(bottoms).size).toBeGreaterThan(1);
     });
 
-    it("does not throw when snapshot() follows snapshot(presentationTime)", () => {
+    it("samples an interpolated snapshot after the presentation clock without rewinding the pile", () => {
       const { presenter } = twoDwarfPresenter({ heapLoads: 5 });
       presenter.advanceMs(250);
       const t = presenter.simNowMs;
@@ -1015,29 +1015,48 @@ describe("mine presenter", () => {
       expect(() => presenter.snapshot()).not.toThrow();
     });
 
-    it("cycles variant indices 0 through 5 then back to 0 across seven spawns", () => {
+    it("cycles six Ore variants in spawn order across seven Loads", () => {
       const { presenter } = twoDwarfPresenter({ heapLoads: 7 });
       const variants = presenter.snapshot().heapOre.map((o) => o.variantIndex);
       expect(variants).toEqual([0, 1, 2, 3, 4, 5, 0]);
     });
 
-    it("keeps a body's variant after other bodies are removed", () => {
-      const { presenter } = twoDwarfPresenter({
-        heapLoads: 3,
-        pickupProgressMs: 7_500,
+    it("keeps a Heap Ore variant when another Load is lifted off the pile", () => {
+      const session = createMiningSession({
+        store: memoryStore(),
+        now: () => 0,
+        snapshot: {
+          ...twoDwarfBase,
+          heapLoads: 3,
+          pickupProgressMs: 0,
+        },
       });
-      const before = presenter.snapshot();
-      const survivor = before.heapOre[0]!;
-      const { presenter: lifted } = twoDwarfPresenter({
-        heapLoads: 2,
-        pickupProgressMs: 7_500,
-      });
-      const after = lifted.snapshot();
-      const match = after.heapOre.find((o) => o.id === survivor.id);
-      expect(match?.variantIndex).toBe(survivor.variantIndex);
+      const presenter = createMinePresenter(session);
+      presenter.start();
+      const survivorId = presenter.snapshot().heapOre[0]!.id;
+      const variantBefore = presenter.snapshot().heapOre[0]!.variantIndex;
+
+      presenter.advanceMs(7_500);
+      const midPickup = presenter.snapshot();
+      expect(midPickup.heapOre).toHaveLength(2);
+      const survivor = midPickup.heapOre.find((o) => o.id === survivorId);
+      expect(survivor?.variantIndex).toBe(variantBefore);
     });
 
-    it("projects left and bottom from body centre and content offset", () => {
+    it("keeps the carried Ore variant stable across lifted pickup frames", () => {
+      const { presenter } = twoDwarfPresenter({
+        heapLoads: 5,
+        pickupProgressMs: 7_500,
+      });
+      const first = presenter.snapshot();
+      const second = presenter.snapshot();
+      const third = presenter.snapshot(1_000);
+      expect(first.carriedVariantIndex).toBeDefined();
+      expect(second.carriedVariantIndex).toBe(first.carriedVariantIndex);
+      expect(third.carriedVariantIndex).toBe(first.carriedVariantIndex);
+    });
+
+    it("places Heap Ore at pane coordinates from native art content centres", () => {
       const { presenter } = twoDwarfPresenter({ heapLoads: 6 });
       const snap = presenter.snapshot();
 

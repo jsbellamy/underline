@@ -152,6 +152,23 @@ function pickupProgressFraction(
   return Math.min(1, Math.max(0, pickupProgressMs / pickupMs));
 }
 
+function isPickupLifted(
+  haulRemainingMs: number,
+  heapLoads: number,
+  pickupProgressMs: number,
+  haulSpeedUpgradeCount: number,
+): boolean {
+  return (
+    haulRemainingMs === 0 &&
+    heapLoads >= 1 &&
+    pickupProgressFraction(
+      haulRemainingMs,
+      pickupProgressMs,
+      haulSpeedUpgradeCount,
+    ) > 0.5
+  );
+}
+
 function frameIndexFor(
   ctrl: DwarfAnimController,
   nowMs: number,
@@ -211,16 +228,14 @@ export function createMinePresenter(
     if (snap.crewSize !== 2) {
       return 0;
     }
-    const lifted =
-      snap.haulRemainingMs === 0 &&
-      snap.heapLoads >= 1 &&
-      pickupProgressFraction(
-        snap.haulRemainingMs,
-        snap.pickupProgressMs,
-        snap.haulSpeedUpgradeCount,
-      ) > 0.5
-        ? 1
-        : 0;
+    const lifted = isPickupLifted(
+      snap.haulRemainingMs,
+      snap.heapLoads,
+      snap.pickupProgressMs,
+      snap.haulSpeedUpgradeCount,
+    )
+      ? 1
+      : 0;
     return Math.min(
       Math.max(0, snap.heapLoads - lifted),
       HEAP_RENDER_CEILING,
@@ -239,9 +254,15 @@ export function createMinePresenter(
   }
 
   function reconcilePile(nowMs: number): void {
+    const snap = session.snapshot;
     const target = pileTargetCount();
     const count = pile.bodies.length;
-    carriedVariantIndex = undefined;
+    const lifted = isPickupLifted(
+      snap.haulRemainingMs,
+      snap.heapLoads,
+      snap.pickupProgressMs,
+      snap.haulSpeedUpgradeCount,
+    );
 
     if (target > count) {
       const toSpawn = target - count;
@@ -262,15 +283,6 @@ export function createMinePresenter(
       }
     }
 
-    const snap = session.snapshot;
-    const lifted =
-      snap.haulRemainingMs === 0 &&
-      snap.heapLoads >= 1 &&
-      pickupProgressFraction(
-        snap.haulRemainingMs,
-        snap.pickupProgressMs,
-        snap.haulSpeedUpgradeCount,
-      ) > 0.5;
     if (!lifted) {
       carriedVariantIndex = undefined;
     } else if (carriedVariantIndex === undefined) {
