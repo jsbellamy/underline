@@ -1,0 +1,18 @@
+{
+  "schema": "tunnel-art-source/0",
+  "provider": "pixellab",
+  "acquisition_tool": "pixellab/object-export/1.0",
+  "prompt": "onyx",
+  "raw_sha256": "2865b6aac61ad551660b984fadb91ae8ec609a3c10e74ef7261228c4be2d1d93",
+  "asset_class": "object-set",
+  "runtime_destination": "src/assets/tunnel/objects/ore/onyx-medium.png",
+  "source_resolution": [
+    32,
+    32
+  ],
+  "reduction": {
+    "width": 32,
+    "height": 32,
+    "resample": null
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "schema": "tunnel-art-source/0",
+  "provider": "pixellab",
+  "acquisition_tool": "pixellab/object-export/1.0",
+  "prompt": "sapphire",
+  "raw_sha256": "c186004d0904388b12ec3cfe2ed3f7b4663b1c2713d57d4ca84c1ebb5a86d6ff",
+  "asset_class": "object-set",
+  "runtime_destination": "src/assets/tunnel/objects/ore/sapphire-medium.png",
+  "source_resolution": [
+    32,
+    32
+  ],
+  "reduction": {
+    "width": 32,
+    "height": 32,
+    "resample": null
+  }
+}

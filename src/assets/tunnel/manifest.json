@@ -7,6 +7,258 @@
       "source_sha256": "5ea8c626f530f048861424b12542b40f1fae9f9fc9c0c449c6cd338fcdc4a959"
     },
     {
+      "content_box": [
+        3,
+        2,
+        28,
+        29
+      ],
+      "relative_path": "src/assets/tunnel/objects/ore/amber-medium.png",
+      "sha256": "2b05e0a2a4e2de7258e15ee18c0ea2406d2a36d8ee98a0bbea825f84e1da835e",
+      "source_relative_path": "assets-raw/tunnel/object-set/amber-medium.png",
+      "source_sha256": "1b7311b70ffc4719af18d393667b6f6a3495426c5718706a6ea8228c23e94528"
+    },
+    {
+      "content_box": [
+        4,
+        3,
+        27,
+        28
+      ],
+      "relative_path": "src/assets/tunnel/objects/ore/copper-medium.png",
+      "sha256": "dfb432d3d70dac7ab426b48540221999d7505fe0b12e9a5162ed0fe99cae851a",
+      "source_relative_path": "assets-raw/tunnel/object-set/copper-medium.png",
+      "source_sha256": "6bea28b19166371b632bf30f3cba4605325cbab9c6e99466c8ba2957a7eea8e8"
+    },
+    {
+      "content_box": [
+        3,
+        4,
+        28,
+        27
+      ],
+      "relative_path": "src/assets/tunnel/objects/ore/cyan-large-a.png",
+      "sha256": "ccbd9250c025bb7276e52aecf1b869fe0eb08270727664b79b2803ae13825b82",
+      "source_relative_path": "assets-raw/tunnel/object-set/cyan-large-a.png",
+      "source_sha256": "23f5563ef5294a19253a0914d34d168b031cf138a4364e8fdd897f25902f9ab1"
+    },
+    {
+      "content_box": [
+        1,
+        4,
+        30,
+        28
+      ],
+      "relative_path": "src/assets/tunnel/objects/ore/cyan-large-b.png",
+      "sha256": "43821f7a42bc626d5395b22a571714041edc36e4e80a739611be522784272af5",
+      "source_relative_path": "assets-raw/tunnel/object-set/cyan-large-b.png",
+      "source_sha256": "649e5920a8ab164c12e76bcaa386318697264b00f4f47ad371d0bb316595105b"
+    },
+    {
+      "content_box": [
+        1,
+        0,
+        30,
+        30
+      ],
+      "relative_path": "src/assets/tunnel/objects/ore/cyan-large-c.png",
+      "sha256": "19cb9260538a804db71505648b78962d941f48a18c56fb4958a3f4c0ead1f5f6",
+      "source_relative_path": "assets-raw/tunnel/object-set/cyan-large-c.png",
+      "source_sha256": "fd043addd6265b84f31711b4608f910d28471df823bb5179ddb4b8c6255b7197"
+    },
+    {
+      "content_box": [
+        7,
+        7,
+        24,
+        24
+      ],
+      "relative_path": "src/assets/tunnel/objects/ore/cyan-medium.png",
+      "sha256": "ed691b8c7343423d490f250ab5174ceef6546c53a5b0b8ccbb5685eb71d24950",
+      "source_relative_path": "assets-raw/tunnel/object-set/cyan-medium.png",
+      "source_sha256": "27618b87967926b058f60060f31c01d4302acea3ad289138a2d6d4073a325473"
+    },
+    {
+      "content_box": [
+        1,
+        3,
+        30,
+        28
+      ],
+      "relative_path": "src/assets/tunnel/objects/ore/diamond-large.png",
+      "sha256": "35c045417489152b016abb2d0bcc7cdec6c86dbe88d1ddd1bb18a68af5709abe",
+      "source_relative_path": "assets-raw/tunnel/object-set/diamond-large.png",
+      "source_sha256": "18dacf6d67cc55731642cb38388ee58ccb14c6dd48b5b9d162ff418ef6bdbef9"
+    },
+    {
+      "content_box": [
+        4,
+        6,
+        27,
+        25
+      ],
+      "relative_path": "src/assets/tunnel/objects/ore/diamond-medium.png",
+      "sha256": "e15f62e3cf3fb929f23e04453d461631b765d6693c7ec82734331b597c92b255",
+      "source_relative_path": "assets-raw/tunnel/object-set/diamond-medium.png",
+      "source_sha256": "b2c85c58b1e2aaf9dd33daf38d6f515ea8fdc9101bdc60c14791448bb07b1585"
+    },
+    {
+      "content_box": [
+        10,
+        11,
+        21,
+        21
+      ],
+      "relative_path": "src/assets/tunnel/objects/ore/diamond-small.png",
+      "sha256": "e18152f9fc35b7ce9dc41b851a82890a7ef29a4cd5aefc1430cac6e52c7d84ed",
+      "source_relative_path": "assets-raw/tunnel/object-set/diamond-small.png",
+      "source_sha256": "26ccb6b866175eba9e2a7fc6cf0c3963ec5d61624d6c61d0b6b595cab7213551"
+    },
+    {
+      "content_box": [
+        6,
+        4,
+        25,
+        27
+      ],
+      "relative_path": "src/assets/tunnel/objects/ore/emerald-medium.png",
+      "sha256": "7623b128b9c5ee7be2d74861cfa39ceb57c61656d65683c99a25e26300706e92",
+      "source_relative_path": "assets-raw/tunnel/object-set/emerald-medium.png",
+      "source_sha256": "9cde3c53a6cd4a005b4bedc3a352e7fea7508b9a485f4a2f59133cebdf3211e9"
+    },
+    {
+      "content_box": [
+        3,
+        1,
+        28,
+        30
+      ],
+      "relative_path": "src/assets/tunnel/objects/ore/geode-medium.png",
+      "sha256": "3409bc689b063db751f950ff8b352058694bf496ccd93fb8ac4f72923c973a3b",
+      "source_relative_path": "assets-raw/tunnel/object-set/geode-medium.png",
+      "source_sha256": "45a7034fa3e5b156659308b7024f7e9b896418f4deceb152ba69af20b3d9a40a"
+    },
+    {
+      "content_box": [
+        5,
+        3,
+        26,
+        28
+      ],
+      "relative_path": "src/assets/tunnel/objects/ore/gold-large-a.png",
+      "sha256": "648f13979fd6d14a3a02ede17652de4efeb2a76cce87cee445e03e470fc08525",
+      "source_relative_path": "assets-raw/tunnel/object-set/gold-large-a.png",
+      "source_sha256": "b0a8f768783f6e8e3b2b66de97da9a3773d20e644570282384dd6734ccd3cacf"
+    },
+    {
+      "content_box": [
+        3,
+        1,
+        27,
+        30
+      ],
+      "relative_path": "src/assets/tunnel/objects/ore/gold-large-b.png",
+      "sha256": "adc0a813b5357656c0ed5020dd5c581f9a1c497d1f1f83e4530dc14cf88c3696",
+      "source_relative_path": "assets-raw/tunnel/object-set/gold-large-b.png",
+      "source_sha256": "4464241fb8f0d81170673e023c196a168bca4bb739938cf0fc6c7367a192b269"
+    },
+    {
+      "content_box": [
+        2,
+        2,
+        29,
+        29
+      ],
+      "relative_path": "src/assets/tunnel/objects/ore/gold-large-c.png",
+      "sha256": "63918918f3b8efec2b102d7f796fca3e1eee9cdd065abc5981ac6dcf8c0c42d6",
+      "source_relative_path": "assets-raw/tunnel/object-set/gold-large-c.png",
+      "source_sha256": "035ba2a369cd41b67347563e6b23cca4296f1f01c73c85ef1c3817cac0f45afc"
+    },
+    {
+      "content_box": [
+        6,
+        7,
+        25,
+        24
+      ],
+      "relative_path": "src/assets/tunnel/objects/ore/gold-medium-a.png",
+      "sha256": "f5c36a9a8f5166b0e1ea64de13e088dfd7935fcc41460f946b4cc8ec0b0f843e",
+      "source_relative_path": "assets-raw/tunnel/object-set/gold-medium-a.png",
+      "source_sha256": "9b17e7697ec0b11eff827e1b414a1d573cf4e5c4151387a9d926f3e6b9b07fa4"
+    },
+    {
+      "content_box": [
+        6,
+        6,
+        25,
+        25
+      ],
+      "relative_path": "src/assets/tunnel/objects/ore/gold-medium-b.png",
+      "sha256": "a529408b9cb7a210f301128c6fe61ba74074664f932cd9a386624a1dedcfea66",
+      "source_relative_path": "assets-raw/tunnel/object-set/gold-medium-b.png",
+      "source_sha256": "fc58a0c2f680baf5559ea6b5f410513f99ebe80d7b4a113130eaa7a96777f80b"
+    },
+    {
+      "content_box": [
+        10,
+        10,
+        21,
+        21
+      ],
+      "relative_path": "src/assets/tunnel/objects/ore/gold-small.png",
+      "sha256": "344e94141e8c995ccee520af41cc0bdcdbe3a96136e21f7f28e058e7bcef5786",
+      "source_relative_path": "assets-raw/tunnel/object-set/gold-small.png",
+      "source_sha256": "cfa3e66578d376d17216c34b6c4b673fa2af3f142f31d83a594188dff9515418"
+    },
+    {
+      "content_box": [
+        5,
+        6,
+        26,
+        25
+      ],
+      "relative_path": "src/assets/tunnel/objects/ore/onyx-medium.png",
+      "sha256": "a3d8e8042ca4d6b379ceaaf7086f09de688dbb4f73c258bce3c95ea73c86dae7",
+      "source_relative_path": "assets-raw/tunnel/object-set/onyx-medium.png",
+      "source_sha256": "2865b6aac61ad551660b984fadb91ae8ec609a3c10e74ef7261228c4be2d1d93"
+    },
+    {
+      "content_box": [
+        4,
+        2,
+        27,
+        30
+      ],
+      "relative_path": "src/assets/tunnel/objects/ore/ruby-large.png",
+      "sha256": "574976eb01536e5b37dacb390b1af9aae19a49eafcba97c4d8373128a818cd78",
+      "source_relative_path": "assets-raw/tunnel/object-set/ruby-large.png",
+      "source_sha256": "97f301f5fcb5d49eea20e114ef9107d8912a1b0547201156271ae7caa1ee6208"
+    },
+    {
+      "content_box": [
+        6,
+        4,
+        25,
+        27
+      ],
+      "relative_path": "src/assets/tunnel/objects/ore/ruby-medium.png",
+      "sha256": "9a97f4439a11acb6e45a776b1775bcea587d6cf3a3dd929e037b8024ec14f257",
+      "source_relative_path": "assets-raw/tunnel/object-set/ruby-medium.png",
+      "source_sha256": "59542d0d64655030de503af7c80bc3d2a6d1761f34ddf750c2d6cc49c3939eba"
+    },
+    {
+      "content_box": [
+        6,
+        4,
+        25,
+        27
+      ],
+      "relative_path": "src/assets/tunnel/objects/ore/sapphire-medium.png",
+      "sha256": "d0a03fb21da51cd50f1cf0814ad6131c3c192e0df199a95d482cf8e81685ed3d",
+      "source_relative_path": "assets-raw/tunnel/object-set/sapphire-medium.png",
+      "source_sha256": "c186004d0904388b12ec3cfe2ed3f7b4663b1c2713d57d4ca84c1ebb5a86d6ff"
+    },
+    {
       "relative_path": "src/assets/tunnel/tiles/face/chipped.png",
       "sha256": "5a927d458325e96ed2854e9da0a72f8066f58d352572c570f9f11a6f604be1db",
       "source_relative_path": "assets-raw/tunnel/tile-sheet/face.png",
@@ -29,24 +281,6 @@
       "sha256": "bcfd41684fc0d9f1c483e6240a63a3b5a05bc8c95d3db4ac50775069518b3636",
       "source_relative_path": "assets-raw/tunnel/tile-sheet/face.png",
       "source_sha256": "b1d8d737659ecfe5a5d12273ec032aa4ab6fb7b84a938796e779ce92d05d160a"
-    },
-    {
-      "relative_path": "src/assets/tunnel/tiles/heap-ore/chunk-a.png",
-      "sha256": "b428eef388e5b0ac9dcb99dc23c337d175fe6c005b3c58757b2d73f83cc40461",
-      "source_relative_path": "assets-raw/tunnel/tile-sheet/heap-ore.png",
-      "source_sha256": "9cca4a1f7c07f8f78a72c04d1fd7e66b25843dad424af0ea6320c42617e03fde"
-    },
-    {
-      "relative_path": "src/assets/tunnel/tiles/heap-ore/chunk-b.png",
-      "sha256": "3874ad37cdf3dd017c7fd766df404b35c9ec94bbc2ac7b077ab224b114ad74f8",
-      "source_relative_path": "assets-raw/tunnel/tile-sheet/heap-ore.png",
-      "source_sha256": "9cca4a1f7c07f8f78a72c04d1fd7e66b25843dad424af0ea6320c42617e03fde"
-    },
-    {
-      "relative_path": "src/assets/tunnel/tiles/heap-ore/chunk-c.png",
-      "sha256": "49d1e8ccd02744e193a6aa05e0ea2e70511198aeb06b386471bcfe16ccd8d583",
-      "source_relative_path": "assets-raw/tunnel/tile-sheet/heap-ore.png",
-      "source_sha256": "9cca4a1f7c07f8f78a72c04d1fd7e66b25843dad424af0ea6320c42617e03fde"
     }
   ],
   "schema": "tunnel-art-pack/0"

@@ -1,30 +1,104 @@
 {
   "schema": "tunnel-art-native-scale-read/0",
   "asset_key": "heap-ore",
-  "issue": 433,
+  "issue": 441,
+  "source_directory": "/Users/jakebellamy/Downloads/selected_objects (1)",
+  "ingested_count": 21,
   "reviewed_pngs": {
-    "chunk-a": {
-      "path": "src/assets/tunnel/tiles/heap-ore/chunk-a.png",
-      "sha256": "b428eef388e5b0ac9dcb99dc23c337d175fe6c005b3c58757b2d73f83cc40461"
+    "amber-medium": {
+      "path": "src/assets/tunnel/objects/ore/amber-medium.png",
+      "sha256": "2b05e0a2a4e2de7258e15ee18c0ea2406d2a36d8ee98a0bbea825f84e1da835e"
     },
-    "chunk-b": {
-      "path": "src/assets/tunnel/tiles/heap-ore/chunk-b.png",
-      "sha256": "3874ad37cdf3dd017c7fd766df404b35c9ec94bbc2ac7b077ab224b114ad74f8"
+    "copper-medium": {
+      "path": "src/assets/tunnel/objects/ore/copper-medium.png",
+      "sha256": "dfb432d3d70dac7ab426b48540221999d7505fe0b12e9a5162ed0fe99cae851a"
     },
-    "chunk-c": {
-      "path": "src/assets/tunnel/tiles/heap-ore/chunk-c.png",
-      "sha256": "49d1e8ccd02744e193a6aa05e0ea2e70511198aeb06b386471bcfe16ccd8d583"
+    "cyan-large-a": {
+      "path": "src/assets/tunnel/objects/ore/cyan-large-a.png",
+      "sha256": "ccbd9250c025bb7276e52aecf1b869fe0eb08270727664b79b2803ae13825b82"
+    },
+    "cyan-large-b": {
+      "path": "src/assets/tunnel/objects/ore/cyan-large-b.png",
+      "sha256": "43821f7a42bc626d5395b22a571714041edc36e4e80a739611be522784272af5"
+    },
+    "cyan-large-c": {
+      "path": "src/assets/tunnel/objects/ore/cyan-large-c.png",
+      "sha256": "19cb9260538a804db71505648b78962d941f48a18c56fb4958a3f4c0ead1f5f6"
+    },
+    "cyan-medium": {
+      "path": "src/assets/tunnel/objects/ore/cyan-medium.png",
+      "sha256": "ed691b8c7343423d490f250ab5174ceef6546c53a5b0b8ccbb5685eb71d24950"
+    },
+    "diamond-large": {
+      "path": "src/assets/tunnel/objects/ore/diamond-large.png",
+      "sha256": "35c045417489152b016abb2d0bcc7cdec6c86dbe88d1ddd1bb18a68af5709abe"
+    },
+    "diamond-medium": {
+      "path": "src/assets/tunnel/objects/ore/diamond-medium.png",
+      "sha256": "e15f62e3cf3fb929f23e04453d461631b765d6693c7ec82734331b597c92b255"
+    },
+    "diamond-small": {
+      "path": "src/assets/tunnel/objects/ore/diamond-small.png",
+      "sha256": "e18152f9fc35b7ce9dc41b851a82890a7ef29a4cd5aefc1430cac6e52c7d84ed"
+    },
+    "emerald-medium": {
+      "path": "src/assets/tunnel/objects/ore/emerald-medium.png",
+      "sha256": "7623b128b9c5ee7be2d74861cfa39ceb57c61656d65683c99a25e26300706e92"
+    },
+    "geode-medium": {
+      "path": "src/assets/tunnel/objects/ore/geode-medium.png",
+      "sha256": "3409bc689b063db751f950ff8b352058694bf496ccd93fb8ac4f72923c973a3b"
+    },
+    "gold-large-a": {
+      "path": "src/assets/tunnel/objects/ore/gold-large-a.png",
+      "sha256": "648f13979fd6d14a3a02ede17652de4efeb2a76cce87cee445e03e470fc08525"
+    },
+    "gold-large-b": {
+      "path": "src/assets/tunnel/objects/ore/gold-large-b.png",
+      "sha256": "adc0a813b5357656c0ed5020dd5c581f9a1c497d1f1f83e4530dc14cf88c3696"
+    },
+    "gold-large-c": {
+      "path": "src/assets/tunnel/objects/ore/gold-large-c.png",
+      "sha256": "63918918f3b8efec2b102d7f796fca3e1eee9cdd065abc5981ac6dcf8c0c42d6"
+    },
+    "gold-medium-a": {
+      "path": "src/assets/tunnel/objects/ore/gold-medium-a.png",
+      "sha256": "f5c36a9a8f5166b0e1ea64de13e088dfd7935fcc41460f946b4cc8ec0b0f843e"
+    },
+    "gold-medium-b": {
+      "path": "src/assets/tunnel/objects/ore/gold-medium-b.png",
+      "sha256": "a529408b9cb7a210f301128c6fe61ba74074664f932cd9a386624a1dedcfea66"
+    },
+    "gold-small": {
+      "path": "src/assets/tunnel/objects/ore/gold-small.png",
+      "sha256": "344e94141e8c995ccee520af41cc0bdcdbe3a96136e21f7f28e058e7bcef5786"
+    },
+    "onyx-medium": {
+      "path": "src/assets/tunnel/objects/ore/onyx-medium.png",
+      "sha256": "a3d8e8042ca4d6b379ceaaf7086f09de688dbb4f73c258bce3c95ea73c86dae7"
+    },
+    "ruby-large": {
+      "path": "src/assets/tunnel/objects/ore/ruby-large.png",
+      "sha256": "574976eb01536e5b37dacb390b1af9aae19a49eafcba97c4d8373128a818cd78"
+    },
+    "ruby-medium": {
+      "path": "src/assets/tunnel/objects/ore/ruby-medium.png",
+      "sha256": "9a97f4439a11acb6e45a776b1775bcea587d6cf3a3dd929e037b8024ec14f257"
+    },
+    "sapphire-medium": {
+      "path": "src/assets/tunnel/objects/ore/sapphire-medium.png",
+      "sha256": "d0a03fb21da51cd50f1cf0814ad6131c3c192e0df199a95d482cf8e81685ed3d"
     }
   },
   "inspection": {
     "native_scale": true,
     "nearest_neighbor_enlargement": "4x",
     "compositing_background": "src/assets/tunnel/background/tunnel-interior.png",
-    "heap_chunk_scale": 2,
-    "heap_chunk_pitch": 20,
-    "heap_chunk_y": 96,
-    "face_tile_scale": 1,
-    "face_tile_y": 96,
+    "ore_size": 32,
+    "ore_pitch": 36,
+    "heap_bottom": 8,
+    "content_box_bottom_alignment": true,
+    "heap_geometry_issue": 442,
     "composites": [
       "src/assets/tunnel/reviews/heap-ore--composite-native.png",
       "src/assets/tunnel/reviews/heap-ore--composite-4x.png"
@@ -32,50 +106,47 @@
   },
   "style_cohort": [
     "src/assets/tunnel/background/tunnel-interior.png",
-    "src/assets/tunnel/tiles/face/intact.png",
-    "src/assets/tunnel/tiles/face/chipped.png",
-    "src/assets/tunnel/tiles/face/cracked.png",
-    "src/assets/tunnel/tiles/face/crumbling.png",
-    "assets-raw/tunnel/tile-sheet/face.source.json"
+    "assets-raw/tunnel/tile-sheet/face.source.json",
+    "src/assets/tunnel/tiles/face/intact.png"
   ],
   "style_alignment": {
     "verdict": "pass",
-    "rationale": "Cyan crystal and warm plum-brown rock ramp sampled from face intact tile; chunky 8x8 cells enlarged to 16px on tunnel-interior floor band match face material family."
+    "rationale": "Chunky low top-down ore lumps on tunnel-interior floor band match warm plum-brown tunnel vocabulary; gold family ochre ramp sits in background palette."
   },
   "identity_continuity": {
     "verdict": "pass",
-    "rationale": "First heap-ore chunk family; loose floor lumps read as ore chipped from the face seam for #434 wiring."
+    "rationale": "Replaces superseded 8x8 cyan heap-ore chunks with 32x32 material-keyed catalogue for typed-Ore wave; gold size tiers preserved for #442 wiring."
   },
   "questions": [
     {
-      "id": "discrete_lump",
-      "question": "Each chunk reads as a discrete lump of ore at 16px, not as a filled square or an indistinct blob.",
+      "id": "floor_alignment",
+      "question": "Every object rests on the floor line \u2014 no object floats or sinks (content_box bottom alignment).",
       "verdict": "PASS",
-      "notes": "Transparent margins on all four sides; angular shard silhouettes read as separate lumps at 2x on floor band."
+      "notes": "All 21 objects bottom-aligned via content_box offset on HEAP_BOTTOM=8 at 32px native; gold-small and diamond-small 10px gaps do not float."
     },
     {
-      "id": "silhouette_distinct",
-      "question": "The three are distinguishable from one another by silhouette alone when laid out in a row.",
+      "id": "size_tiers",
+      "question": "Within each material, the size tiers read as the same substance at different magnitudes.",
       "verdict": "PASS",
-      "notes": "chunk-a single peak, chunk-b twin peaks with top notch, chunk-c wider rock-heavy lump with chipped corner."
+      "notes": "Gold small\u2192large-a/b/c, diamond small/medium/large, and cyan medium/large-a/b/c each share hue ramp and silhouette family at increasing area."
     },
     {
-      "id": "face_material",
-      "question": "The chunks read as the same material as the Face tiles - same cyan crystal and plum-brown rock family.",
+      "id": "material_distinct",
+      "question": "Materials are distinguishable from one another at native scale by colour and silhouette.",
       "verdict": "PASS",
-      "notes": "Shared cyan ramp (#18-58-71 through #114-226-210) and plum-brown rock values beside intact face tile in composite."
+      "notes": "Ten hue families (gold ochre, cyan teal, diamond white, ruby red, emerald green, sapphire blue, onyx black, amber orange, copper brown, geode rainbow) read apart in composite grid."
     },
     {
-      "id": "transparent_margin",
-      "question": "Every Cell outside a chunk's silhouette is transparent, so the background shows through on all four sides.",
-      "verdict": "PASS",
-      "notes": "Binary alpha runtime PNGs; floor band visible around every opaque pixel at native and 4x enlargement."
+      "id": "emerald_cyan_similarity",
+      "question": "emerald-medium against cyan-medium and cyan-large-* \u2014 could a player tell them apart in a pile?",
+      "verdict": "UNCERTAIN",
+      "notes": "Measured lit colours #65D9C3 vs #55D3BA are near-identical teal; emerald reads as faceted gem vs cyan rock clusters but in a mixed pile hue alone may not separate them. Known constraint for typed-Ore wave."
     },
     {
       "id": "dimensions_and_edges",
-      "question": "Every tile is exactly 8x8, with no magenta inside a silhouette and no anti-aliased edge pixels.",
+      "question": "Every runtime PNG is exactly 32\u00d732 with strictly binary alpha, no magenta, transparency on all four sides.",
       "verdict": "PASS",
-      "notes": "All three PNGs 8x8 RGBA binary alpha; zero magenta and zero semi-transparent pixels."
+      "notes": "Machine check: 21/21 at 32x32, magenta_pixels=0, semi_transparent_pixels=0; transparent margins visible at native and 4x."
     }
   ],
   "machine_checks": {
@@ -84,6 +155,6 @@
     "assets_verify": "PASS"
   },
   "overall": "PASS",
-  "reviewed_at": "2026-08-04T17:30:00+00:00",
-  "reviewer_identity": "cursor-agent/issue-433"
+  "reviewed_at": "2026-08-04T20:30:00+00:00",
+  "reviewer_identity": "cursor-agent/issue-441"
 }

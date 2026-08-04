@@ -1,0 +1,18 @@
+{
+  "schema": "tunnel-art-source/0",
+  "provider": "pixellab",
+  "acquisition_tool": "pixellab/object-export/1.0",
+  "prompt": "large cyan ore",
+  "raw_sha256": "fd043addd6265b84f31711b4608f910d28471df823bb5179ddb4b8c6255b7197",
+  "asset_class": "object-set",
+  "runtime_destination": "src/assets/tunnel/objects/ore/cyan-large-c.png",
+  "source_resolution": [
+    32,
+    32
+  ],
+  "reduction": {
+    "width": 32,
+    "height": 32,
+    "resample": null
+  }
+}

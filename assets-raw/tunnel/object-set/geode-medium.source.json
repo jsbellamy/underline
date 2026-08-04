@@ -1,0 +1,18 @@
+{
+  "schema": "tunnel-art-source/0",
+  "provider": "pixellab",
+  "acquisition_tool": "pixellab/object-export/1.0",
+  "prompt": "distinguishable ore chunks \u2014 each with a unique silhouette and cluster geometry",
+  "raw_sha256": "45a7034fa3e5b156659308b7024f7e9b896418f4deceb152ba69af20b3d9a40a",
+  "asset_class": "object-set",
+  "runtime_destination": "src/assets/tunnel/objects/ore/geode-medium.png",
+  "source_resolution": [
+    32,
+    32
+  ],
+  "reduction": {
+    "width": 32,
+    "height": 32,
+    "resample": null
+  }
+}
