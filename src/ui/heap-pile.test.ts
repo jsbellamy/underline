@@ -3,6 +3,7 @@ import { fallingOrePosition, haulerPickupTargetX, heapSlot } from "./heap-pile";
 import {
   FACE_X,
   HAULER_MARK_X,
+  HAULER_PICKUP_X,
   HEAP_BOTTOM,
   HEAP_EAST_X,
   HEAP_ROW_HEIGHT,
@@ -118,29 +119,21 @@ describe("fallingOrePosition", () => {
 });
 
 describe("haulerPickupTargetX", () => {
-  const worked: Array<{ heapLoads: number; target: number }> = [
-    { heapLoads: 1, target: 322 },
-    { heapLoads: 3, target: 250 },
-    { heapLoads: 5, target: 192 },
-    { heapLoads: 6, target: 192 },
-    { heapLoads: 10, target: 214 },
-    { heapLoads: 20, target: 286 },
-  ];
+  it("defines a fixed pickup mark 130 px east of the Hauler stand", () => {
+    expect(HAULER_PICKUP_X).toBe(HAULER_MARK_X + 130);
+    expect(HAULER_PICKUP_X).toBe(322);
+  });
 
-  for (const { heapLoads, target } of worked) {
-    it(`targets x ${target} when heapLoads is ${heapLoads}`, () => {
-      expect(haulerPickupTargetX(heapLoads)).toBe(target);
+  const representativeDepths = [1, 3, 5, 6, 10, 20];
+
+  for (const heapLoads of representativeDepths) {
+    it(`returns the fixed pickup mark when heapLoads is ${heapLoads}`, () => {
+      expect(haulerPickupTargetX(heapLoads)).toBe(HAULER_PICKUP_X);
     });
   }
 
   it("throws when heapLoads is zero or negative", () => {
     expect(() => haulerPickupTargetX(0)).toThrow();
     expect(() => haulerPickupTargetX(-1)).toThrow();
-  });
-
-  it("never targets west of the Hauler stand", () => {
-    for (const n of [1, 3, 5, 6, 10, 20]) {
-      expect(haulerPickupTargetX(n)).toBeGreaterThanOrEqual(HAULER_MARK_X);
-    }
   });
 });

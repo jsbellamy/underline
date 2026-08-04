@@ -1,7 +1,7 @@
 import {
   DWARF_FRAME_W,
   DWARF_SCALE,
-  HAULER_MARK_X,
+  HAULER_PICKUP_X,
   HEAP_BOTTOM,
   HEAP_EAST_X,
   HEAP_ROW_HEIGHT,
@@ -64,7 +64,5 @@ export function haulerPickupTargetX(heapLoads: number): number {
   if (!Number.isInteger(heapLoads) || heapLoads <= 0) {
     throw new Error(`Invalid heapLoads for hauler pickup: ${heapLoads}`);
   }
-  const dwarfW = DWARF_FRAME_W * DWARF_SCALE;
-  const westMost = heapSlot(heapLoads - 1).left - dwarfW;
-  return Math.max(HAULER_MARK_X, westMost);
+  return HAULER_PICKUP_X;
 }
