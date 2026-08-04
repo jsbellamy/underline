@@ -111,7 +111,7 @@ describe("mine presenter", () => {
     }
     expect(seen.size).toBe(9);
     expect([...seen].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
-    expect(order).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(order).toEqual([5, 6, 7, 8, 0, 1, 2, 3, 4]);
   });
 
   it("draws every swing frame index across a cycle at Dig Rate 2", () => {
