@@ -1,0 +1,161 @@
+{
+  "schema": "external-sprite-pack/0",
+  "id": "hauler",
+  "layout": {
+    "crop_note": "Crop box adopted from assets/characters/dwarf/manifest.json per issue #396 C2 so Hauler frames are geometrically interchangeable with the Miner.",
+    "facings": [
+      "east",
+      "west"
+    ],
+    "frame_h": 18,
+    "frame_w": 26,
+    "source_canvas": [
+      36,
+      36
+    ],
+    "source_crop": [
+      5,
+      9,
+      31,
+      27
+    ]
+  },
+  "animations": {
+    "idle": {
+      "facings": {
+        "east": [
+          {
+            "relative_path": "idle/east/frame_000.png",
+            "sha256": "b09a90ab23554ced3f419a69912bcba33d13851a4022cca0fbca32ffeefc8712",
+            "source_relative_path": "rotations/east.png",
+            "source_sha256": "3de765bf12695dd7174807e9cf00da5c946361ab27133dd1e8fc8f8a0bb93df5"
+          }
+        ],
+        "west": [
+          {
+            "relative_path": "idle/west/frame_000.png",
+            "sha256": "43a8382991407648c9a49f398f98f6312643bac9cbbbb6683fc7e964298e9109",
+            "source_relative_path": "rotations/west.png",
+            "source_sha256": "a5fa764108cea2289d356b2ee355d0ddcd4fd10e1bc3b3a265357f0cb123dcce"
+          }
+        ]
+      },
+      "frame_count": 1,
+      "note": "Single-frame carry pose, imported from the pack's east/west rotations."
+    },
+    "walk": {
+      "facings": {
+        "east": [
+          {
+            "relative_path": "walk/east/frame_000.png",
+            "sha256": "d3e955d6db9e481bffeddf0abac1b943cf96936d2f2de1801bb97e16b619d55e",
+            "source_relative_path": "animations/Walking/east/frame_000.png",
+            "source_sha256": "f5e9a84d2ce019e8b61af92fcdc48bbc815214fd385444213688a050ade80b48"
+          },
+          {
+            "relative_path": "walk/east/frame_001.png",
+            "sha256": "e5cddc92464dcc18b446c52b3f460b4b09986133ff773af01c8cf6b64d8248fb",
+            "source_relative_path": "animations/Walking/east/frame_001.png",
+            "source_sha256": "50b5a944992819608a8770d5e7519767d96244ff20d313ff80acef1e989f556a"
+          },
+          {
+            "relative_path": "walk/east/frame_002.png",
+            "sha256": "cb67444c2d90e3d06162044528e37a53e23e454499e76dee1e33768f583ce0ea",
+            "source_relative_path": "animations/Walking/east/frame_002.png",
+            "source_sha256": "8ce5cd359d08856d6955b070cb22b371b56ad2a330a4f8e8ce5804bde1146fdd"
+          },
+          {
+            "relative_path": "walk/east/frame_003.png",
+            "sha256": "ec414e16cdc5f6dccd5dacbc98f6ed8faee4a996148c0860c1a8899f10079fc4",
+            "source_relative_path": "animations/Walking/east/frame_003.png",
+            "source_sha256": "0f0148228af8346f9e877ce6dd47ef0e81b81f56d3847304068d05f40c5eddb1"
+          },
+          {
+            "relative_path": "walk/east/frame_004.png",
+            "sha256": "ee71f02030fe24c2ac74f732e8710cfb19a4788407f1e90be830a92e34467e64",
+            "source_relative_path": "animations/Walking/east/frame_004.png",
+            "source_sha256": "5f8b71dadec02bfdc3c52ded8db69c1696f400394fec290d760f257754a3888f"
+          },
+          {
+            "relative_path": "walk/east/frame_005.png",
+            "sha256": "501bdf8ec7892496419c8c519d14675d76c7ba78027041e6f9bfe18508761d32",
+            "source_relative_path": "animations/Walking/east/frame_005.png",
+            "source_sha256": "a087f1a892db18a79fd541719078add52345c5f9054be7dfd496dfc05e7aa35a"
+          },
+          {
+            "relative_path": "walk/east/frame_006.png",
+            "sha256": "4eb31168d0d13367b0e966966ed18ca272dca8047bdc7ddba824ad1614c79949",
+            "source_relative_path": "animations/Walking/east/frame_006.png",
+            "source_sha256": "e8b17e5f1d3090a747b7f53ad60899657e6ad89dd44eae324a5272a4d4a36247"
+          },
+          {
+            "relative_path": "walk/east/frame_007.png",
+            "sha256": "6d4b6b7736e180ef1d02aab2e844106272738cbad9b67511f181e3a5574ca6b0",
+            "source_relative_path": "animations/Walking/east/frame_007.png",
+            "source_sha256": "a86f521b8470fc065f2689e9cfb6a093c04d4eff11718bd174a2beae1a758e7d"
+          }
+        ],
+        "west": [
+          {
+            "relative_path": "walk/west/frame_000.png",
+            "sha256": "51aba615c5b86d93e4bf76b87f069a42d0264cf4da48010c94cf55875fb3b557",
+            "source_relative_path": "animations/Walking/west/frame_000.png",
+            "source_sha256": "2f407ddf8d5d9aa8ef028679a8ccfa6b9fbfc942ccfa68852fa7e7a541112194"
+          },
+          {
+            "relative_path": "walk/west/frame_001.png",
+            "sha256": "b4a37dea4238d2249f54a456b2fc5ced7b5669fd85c14fada5b1ac256cd39448",
+            "source_relative_path": "animations/Walking/west/frame_001.png",
+            "source_sha256": "a1028df4f16932d60aec5ff036c44182b197e5312bceac8aace53612f9849a61"
+          },
+          {
+            "relative_path": "walk/west/frame_002.png",
+            "sha256": "be2ce0e49e2e48cbbba81482f6200d686fd82e813f32a049683f0b5d4a9ad333",
+            "source_relative_path": "animations/Walking/west/frame_002.png",
+            "source_sha256": "360d92881e406310083ebbd6c1c1cfdde30fe849c7c26d1f2c04963dddf9ab1e"
+          },
+          {
+            "relative_path": "walk/west/frame_003.png",
+            "sha256": "139567d8688d9ac564150c050fb6496f45c4efc63423271f877b4056be0241f0",
+            "source_relative_path": "animations/Walking/west/frame_003.png",
+            "source_sha256": "edf6ec05483dc14937af031c83b12c29d47d5e68c694a910f4757822ffc9b0ab"
+          },
+          {
+            "relative_path": "walk/west/frame_004.png",
+            "sha256": "c2211efb0d0baaa0d2cf1be68fa866075ad153e23fe8a4a22408c0581c73ed66",
+            "source_relative_path": "animations/Walking/west/frame_004.png",
+            "source_sha256": "8ce90343af16c6dfcbfc199730bd34224c6bc3a7bcab3d71a873f7cdcfa8d78a"
+          },
+          {
+            "relative_path": "walk/west/frame_005.png",
+            "sha256": "9c375005775a91595ab07ad7f03fde4b2e5c4eb73a0ebabb13853a321712eb0f",
+            "source_relative_path": "animations/Walking/west/frame_005.png",
+            "source_sha256": "2dfb4d8c05a5597d2f9b45742038be11f4d6f151c26826f14edd7fec1712cb65"
+          },
+          {
+            "relative_path": "walk/west/frame_006.png",
+            "sha256": "050bf058cadb421e6d3fb53fad75cc8161d3292d055675fe9acd6221ae855b99",
+            "source_relative_path": "animations/Walking/west/frame_006.png",
+            "source_sha256": "a16b7ee8cd4919da63725ddd191a1d478b39edf01d14de8ceb8965c9217b1549"
+          },
+          {
+            "relative_path": "walk/west/frame_007.png",
+            "sha256": "33ba0583db146819ac1052be540d0613a40ddea53a912329c6d9d453340916a0",
+            "source_relative_path": "animations/Walking/west/frame_007.png",
+            "source_sha256": "507c7353d712aa3c2ad56f4bc3f698cd052f649be776105031c319068e28bb1d"
+          }
+        ]
+      },
+      "frame_count": 8,
+      "note": "Pack animation 'Walking'."
+    }
+  },
+  "provenance": {
+    "export_date": "2026-08-04T02:53:25.119089",
+    "export_version": "3.1",
+    "kind": "external",
+    "note": "Generated outside this repo's strip-acquisition pipeline. No Gate score, no Identity Lock, no palette conformance to assets/palettes/first-room.json, no part map. Do not treat as a Release asset or feed to pipeline verification.",
+    "original_pack": "Stocky_dwarf_in_a_wide-Idle",
+    "prompt": "Stocky dwarf in a wide stance, thick rust-colored beard, green helmet with a glowing amber lamp, blue tunic, leather belt, sturdy brown boots. Carrying a massive, bulging burlap ore bag slung over the shoulder, filled with jagged cyan crystal chunks. Both hands gripping the strap, slight forward lean from the weight, side profile."
+  }
+}
