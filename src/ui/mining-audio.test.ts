@@ -452,4 +452,28 @@ describe("mining audio cue queue", () => {
     audio.releaseDueTo(2000);
     await vi.waitFor(() => expect(createBufferSource).not.toHaveBeenCalled());
   });
+
+  it("queues the same cues with loadDropped present as without", async () => {
+    const audibleEvents: MiningEvent[] = [
+      { type: "swing", atMs: 100 },
+      { type: "faceBroken", atMs: 200 },
+    ];
+    const withLoadDropped: MiningEvent[] = [
+      { type: "swing", atMs: 100 },
+      { type: "loadDropped", atMs: 150 },
+      { type: "faceBroken", atMs: 200 },
+    ];
+
+    async function scheduledCueCount(events: MiningEvent[]) {
+      const { audio, createBufferSource } = await enabledAudio();
+      audio.handleEvents(events, 0, 250);
+      audio.releaseDueTo(0);
+      await vi.waitFor(() => expect(createBufferSource).toHaveBeenCalledTimes(2));
+      return createBufferSource.mock.calls.length;
+    }
+
+    expect(await scheduledCueCount(withLoadDropped)).toBe(
+      await scheduledCueCount(audibleEvents),
+    );
+  });
 });

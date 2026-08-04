@@ -426,6 +426,7 @@ export function advanceWithEvents(
     if (atMiningBoundary) {
       const orePerDrop = oreForDrop(advanceCount);
       creditDrop(orePerDrop);
+      events.push({ type: "loadDropped", atMs: windowRealMs });
       const landedDrop = miningDropsSoFar + 1;
       faceSwingProgress = Math.min(
         landedDrop * miningDropDamage,

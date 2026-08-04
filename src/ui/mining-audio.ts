@@ -17,12 +17,14 @@ interface QueuedCue {
   clip: AudioClipId;
 }
 
-function clipForEvent(type: MiningEvent["type"]): AudioClipId {
+function clipForEvent(type: MiningEvent["type"]): AudioClipId | null {
   switch (type) {
     case "swing":
       return "swing";
     case "faceBroken":
       return "break";
+    case "loadDropped":
+      return null;
   }
 }
 
@@ -119,9 +121,13 @@ export function createMiningAudio(deps: MiningAudioDeps): MiningAudio {
       if (event.atMs < minEventAtMs) {
         continue;
       }
+      const clip = clipForEvent(event.type);
+      if (clip === null) {
+        continue;
+      }
       cueQueue.push({
         atMs: baseMs + event.atMs,
-        clip: clipForEvent(event.type),
+        clip,
       });
     }
   }

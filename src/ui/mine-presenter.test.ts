@@ -62,24 +62,16 @@ function spyMiningAudio(): MiningAudio & {
   };
 }
 
-function absoluteCueTimes(
-  audio: ReturnType<typeof spyMiningAudio>,
-): number[] {
+function swingCueTimes(audio: ReturnType<typeof spyMiningAudio>): number[] {
   const times: number[] = [];
   for (const batch of audio.queuedBatches) {
     for (const event of batch.events) {
-      times.push(batch.baseMs + event.atMs);
+      if (event.type === "swing") {
+        times.push(batch.baseMs + event.atMs);
+      }
     }
   }
   return times;
-}
-
-function swingCueTimes(audio: ReturnType<typeof spyMiningAudio>): number[] {
-  return absoluteCueTimes(audio).filter((t) =>
-    audio.queuedBatches.some((b) =>
-      b.events.some((e) => e.type === "swing" && b.baseMs + e.atMs === t),
-    ),
-  );
 }
 
 describe("mine presenter", () => {
