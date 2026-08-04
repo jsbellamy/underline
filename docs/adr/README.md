@@ -28,6 +28,7 @@ not delete history.
 | [0012](0012-event-jump-advance-and-haul-duty-cycle.md) | Event-jump advance and haul duty cycle |
 | [0013](0013-interpolated-presentation-clock.md) | Interpolated presentation clock (two clocks; swing phase from engine) |
 | [0014](0014-two-dwarf-crew-and-heap-backpressure.md) | Two-dwarf crew and Heap backpressure |
+| [0015](0015-presentational-heap-pile-physics.md) | Presentational Heap pile physics |
 
 Earlier decisions settled only in `docs/strip-acquisition-contract.md` or
 `prototype/strip-coherence/NOTES.md` should be promoted here when they start

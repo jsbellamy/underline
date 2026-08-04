@@ -7,6 +7,7 @@ import {
   type DwarfFacing,
   type HaulAnimPhase,
 } from "../core/dwarf-anim-state";
+import { createHeapPileSim, type HeapPileSim } from "../core/heap-pile-sim";
 import {
   digRateFor,
   HAUL_ROUND_TRIP_MS,
@@ -18,10 +19,27 @@ import type { MiningSession } from "../core/mining-session";
 import type { SaveStore } from "../core/mining-save";
 import { loadSettings } from "../core/settings-save";
 import {
+  HEAP_ORE_VARIANT_COUNT,
+  heapOreContentCenter,
+  heapOreRadius,
+} from "./heap-ore-variants";
+import {
   createMiningAudio,
   type MiningAudio,
 } from "./mining-audio";
-import { ORE_FALL_MS } from "./pane-layout";
+import {
+  HAULER_GRAB_X,
+  HEAP_BIN_CEILING_Y,
+  HEAP_BIN_EAST_X,
+  HEAP_BIN_FLOOR_Y,
+  HEAP_BIN_WEST_X,
+  HEAP_GRAB_REACH_PX,
+  HEAP_PILE_SEED,
+  HEAP_RENDER_CEILING,
+  HEAP_SPAWN_X,
+  ORE_FALL_MS,
+  ORE_SPAWN_BOTTOM,
+} from "./pane-layout";
 import type { FallingOreDestination } from "./heap-pile";
 
 export type TunnelHaulPhase = "none" | HaulAnimPhase;
@@ -37,6 +55,13 @@ export interface HaulerSnapshot {
   haulProgress: number;
   /** Fraction of the current Load's pickup, 0…1; 0 while travelling. */
   pickupProgress: number;
+}
+
+export interface HeapOreSnapshot {
+  id: number;
+  left: number;
+  bottom: number;
+  variantIndex: number;
 }
 
 export interface TunnelSnapshot {
@@ -60,6 +85,10 @@ export interface TunnelSnapshot {
   hauler?: HaulerSnapshot;
   crewSize: number;
   heapLoads: number;
+  /** Settled Heap Ore bodies, ascending by `id`; empty for a one-Dwarf Crew. */
+  heapOre: readonly HeapOreSnapshot[];
+  /** Variant of the Load in the Hauler's hands; absent when nothing is carried. */
+  carriedVariantIndex?: number;
   /** Ore still falling toward the Bag or Heap; empty when nothing is in flight. */
   fallingOre: readonly {
     destination: FallingOreDestination;
@@ -123,6 +152,23 @@ function pickupProgressFraction(
   return Math.min(1, Math.max(0, pickupProgressMs / pickupMs));
 }
 
+function isPickupLifted(
+  haulRemainingMs: number,
+  heapLoads: number,
+  pickupProgressMs: number,
+  haulSpeedUpgradeCount: number,
+): boolean {
+  return (
+    haulRemainingMs === 0 &&
+    heapLoads >= 1 &&
+    pickupProgressFraction(
+      haulRemainingMs,
+      pickupProgressMs,
+      haulSpeedUpgradeCount,
+    ) > 0.5
+  );
+}
+
 function frameIndexFor(
   ctrl: DwarfAnimController,
   nowMs: number,
@@ -163,6 +209,109 @@ export function createMinePresenter(
   let simNowMs = 0;
   let faceSwingProgressAtTick = session.snapshot.faceSwingProgress;
   const activeFalls: number[] = [];
+
+  const pile: HeapPileSim = createHeapPileSim({
+    bin: {
+      floorY: HEAP_BIN_FLOOR_Y,
+      westX: HEAP_BIN_WEST_X,
+      eastX: HEAP_BIN_EAST_X,
+      ceilingY: HEAP_BIN_CEILING_Y,
+    },
+    seed: HEAP_PILE_SEED,
+  });
+  let spawnCount = 0;
+  const variantByBodyId = new Map<number, number>();
+  let carriedVariantIndex: number | undefined;
+
+  function pileTargetCount(): number {
+    const snap = session.snapshot;
+    if (snap.crewSize !== 2) {
+      return 0;
+    }
+    const lifted = isPickupLifted(
+      snap.haulRemainingMs,
+      snap.heapLoads,
+      snap.pickupProgressMs,
+      snap.haulSpeedUpgradeCount,
+    )
+      ? 1
+      : 0;
+    return Math.min(
+      Math.max(0, snap.heapLoads - lifted),
+      HEAP_RENDER_CEILING,
+    );
+  }
+
+  function spawnPileBody(): void {
+    const v = spawnCount % HEAP_ORE_VARIANT_COUNT;
+    spawnCount += 1;
+    const id = pile.spawnJittered(
+      heapOreRadius(v),
+      HEAP_SPAWN_X,
+      ORE_SPAWN_BOTTOM,
+    );
+    variantByBodyId.set(id, v);
+  }
+
+  function reconcilePile(nowMs: number): void {
+    const snap = session.snapshot;
+    const target = pileTargetCount();
+    const count = pile.bodies.length;
+    const lifted = isPickupLifted(
+      snap.haulRemainingMs,
+      snap.heapLoads,
+      snap.pickupProgressMs,
+      snap.haulSpeedUpgradeCount,
+    );
+
+    if (target > count) {
+      const toSpawn = target - count;
+      for (let i = 0; i < toSpawn; i += 1) {
+        spawnPileBody();
+      }
+      if (toSpawn > 1) {
+        pile.settle();
+      }
+    } else if (target < count) {
+      const toRemove = count - target;
+      for (let i = 0; i < toRemove; i += 1) {
+        const removedId = pile.removeGrabbed(HAULER_GRAB_X, HEAP_GRAB_REACH_PX);
+        if (removedId !== null) {
+          carriedVariantIndex = variantByBodyId.get(removedId);
+          variantByBodyId.delete(removedId);
+        }
+      }
+    }
+
+    if (!lifted) {
+      carriedVariantIndex = undefined;
+    } else if (carriedVariantIndex === undefined) {
+      carriedVariantIndex = spawnCount % HEAP_ORE_VARIANT_COUNT;
+    }
+
+    pile.stepTo(Math.max(pile.nowMs, nowMs));
+  }
+
+  function projectHeapOre(): readonly HeapOreSnapshot[] {
+    return pile.bodies.map((body) => {
+      const v = variantByBodyId.get(body.id)!;
+      const { cx, cyFromBottom } = heapOreContentCenter(v);
+      return {
+        id: body.id,
+        left: Math.round(body.x - cx),
+        bottom: Math.round(body.y - cyFromBottom),
+        variantIndex: v,
+      };
+    });
+  }
+
+  const initialTarget = pileTargetCount();
+  for (let i = 0; i < initialTarget; i += 1) {
+    spawnPileBody();
+  }
+  if (initialTarget > 0) {
+    pile.settle();
+  }
 
   function truncateFalls(): void {
     if (!isTwoDwarf()) {
@@ -318,6 +467,7 @@ export function createMinePresenter(
   }
 
   function snapshot(nowMs: number = simNowMs): TunnelSnapshot {
+    reconcilePile(nowMs);
     cleanFalls(nowMs);
     const snap = session.snapshot;
     const pickDamage = pickDamageFor(snap.pickDamageUpgradeCount);
@@ -354,6 +504,10 @@ export function createMinePresenter(
       ...(haulerSnap !== undefined ? { hauler: haulerSnap } : {}),
       crewSize: snap.crewSize,
       heapLoads: snap.heapLoads,
+      heapOre: projectHeapOre(),
+      ...(carriedVariantIndex !== undefined
+        ? { carriedVariantIndex }
+        : {}),
       fallingOre: projectFallingOre(nowMs),
     };
   }

@@ -44,6 +44,7 @@ function stubPresenter(setSoundEnabled = vi.fn()) {
     faceSlide: 1,
     crewSize: 1,
     heapLoads: 0,
+    heapOre: [],
     fallingOre: [],
   });
   return {
@@ -305,6 +306,7 @@ describe("mountPaneShell mining Pane", () => {
       faceSlide: 1,
       crewSize: 1,
       heapLoads: 0,
+      heapOre: [],
       fallingOre: [],
     };
 
@@ -349,6 +351,7 @@ describe("mountPaneShell mining Pane", () => {
             faceSlide: 1,
             crewSize: 1,
             heapLoads: 0,
+            heapOre: [],
             fallingOre: [],
           };
         },
@@ -396,6 +399,7 @@ describe("mountPaneShell mining Pane", () => {
             faceSlide: 1,
             crewSize: 1,
             heapLoads: 0,
+            heapOre: [],
             fallingOre: [],
           };
         },
@@ -458,6 +462,7 @@ describe("mountPaneShell mining Pane", () => {
             faceSlide: 1,
             crewSize: 1,
             heapLoads: 0,
+            heapOre: [],
             fallingOre: [],
           };
         },
@@ -514,6 +519,7 @@ describe("mountPaneShell mining Pane", () => {
         faceSlide: 1,
         crewSize: 1,
         heapLoads: 0,
+        heapOre: [],
         fallingOre: [],
       }));
       const presenter = {
@@ -577,6 +583,7 @@ describe("mountPaneShell mining Pane", () => {
         faceSlide: 1,
         crewSize: 1,
         heapLoads: 0,
+        heapOre: [],
         fallingOre: [],
       }));
       let simNowMs = 0;
