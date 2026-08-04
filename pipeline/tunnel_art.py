@@ -22,7 +22,7 @@ SOURCE_SCHEMA = "tunnel-art-source/0"
 PACK_SCHEMA = "tunnel-art-pack/0"
 REPORT_SCHEMA = "tunnel-art-report/0"
 
-ASSET_CLASSES = ("background", "tile-sheet")
+ASSET_CLASSES = ("background", "tile-sheet", "object-set")
 BACKGROUND_RUNTIME_SIZE = (480, 112)
 
 _REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -52,7 +52,7 @@ class TunnelArtError(ValueError):
 
 @dataclass(frozen=True)
 class TunnelBundleRef:
-    asset_class: Literal["background", "tile-sheet"]
+    asset_class: Literal["background", "tile-sheet", "object-set"]
     key: str
     raw_path: Path
     sidecar_path: Path
@@ -77,15 +77,22 @@ class TileSheetReduction:
 
 
 @dataclass(frozen=True)
+class ObjectReduction:
+    width: int
+    height: int
+    resample: None
+
+
+@dataclass(frozen=True)
 class TunnelSource:
     provider: str
     acquisition_tool: str
     prompt: str
     raw_sha256: str
-    asset_class: Literal["background", "tile-sheet"]
+    asset_class: Literal["background", "tile-sheet", "object-set"]
     runtime_destination: str
     source_resolution: tuple[int, int]
-    reduction: BackgroundReduction | TileSheetReduction
+    reduction: BackgroundReduction | TileSheetReduction | ObjectReduction
     raw_path: Path
 
 
@@ -192,6 +199,21 @@ def _parse_tile_reduction(reduction: object) -> TileSheetReduction:
     )
 
 
+def _parse_object_reduction(reduction: object) -> ObjectReduction:
+    if not isinstance(reduction, dict):
+        raise TunnelArtError("missing or invalid reduction", reason_code="invalid_sidecar")
+    width = reduction.get("width")
+    height = reduction.get("height")
+    resample = reduction.get("resample")
+    if not isinstance(width, int) or isinstance(width, bool) or width <= 0:
+        raise TunnelArtError("missing or invalid reduction.width", reason_code="invalid_sidecar")
+    if not isinstance(height, int) or isinstance(height, bool) or height <= 0:
+        raise TunnelArtError("missing or invalid reduction.height", reason_code="invalid_sidecar")
+    if resample is not None:
+        raise TunnelArtError("missing or invalid reduction.resample", reason_code="invalid_sidecar")
+    return ObjectReduction(width=width, height=height, resample=None)
+
+
 def parse_tunnel_source(doc: dict[str, Any], raw_path: Path) -> TunnelSource:
     if doc.get("schema") != SOURCE_SCHEMA:
         raise TunnelArtError("missing or invalid schema", reason_code="invalid_sidecar")
@@ -219,8 +241,10 @@ def parse_tunnel_source(doc: dict[str, Any], raw_path: Path) -> TunnelSource:
     reduction_raw = doc["reduction"]
     if asset_class == "background":
         reduction = _parse_background_reduction(reduction_raw)
-    else:
+    elif asset_class == "tile-sheet":
         reduction = _parse_tile_reduction(reduction_raw)
+    else:
+        reduction = _parse_object_reduction(reduction_raw)
 
     return TunnelSource(
         provider=provider,
@@ -293,6 +317,79 @@ def build_background_png(raw_path: Path, source: TunnelSource) -> bytes:
     runtime = cropped.resize(BACKGROUND_RUNTIME_SIZE, Image.NEAREST)
     buf = io.BytesIO()
     runtime.save(buf, format="PNG")
+    return buf.getvalue()
+
+
+_MAGENTA_RGB = (255, 0, 255)
+
+
+def _validate_object_image(
+    image: Image.Image,
+    reduction: ObjectReduction,
+    raw_name: str,
+) -> None:
+    expected_size = (reduction.width, reduction.height)
+    if image.size != expected_size:
+        raise TunnelArtError(
+            f"size mismatch for {raw_name}: expected {expected_size}, got {image.size}",
+            reason_code="resolution_mismatch",
+        )
+    pixels = image.load()
+    assert pixels is not None
+    for y in range(image.height):
+        for x in range(image.width):
+            _, _, _, alpha = pixels[x, y]
+            if alpha not in (0, 255):
+                raise TunnelArtError(
+                    f"non-binary alpha for {raw_name} at ({x}, {y}): {alpha}",
+                    reason_code="alpha_not_binary",
+                )
+            if alpha == 255:
+                r, g, b, _ = pixels[x, y]
+                if (r, g, b) == _MAGENTA_RGB:
+                    raise TunnelArtError(
+                        f"magenta in runtime for {raw_name} at ({x}, {y})",
+                        reason_code="magenta_in_runtime",
+                    )
+
+
+def measure_opaque_content_box(image: Image.Image) -> tuple[int, int, int, int]:
+    pixels = image.load()
+    assert pixels is not None
+    x0 = image.width
+    y0 = image.height
+    x1 = -1
+    y1 = -1
+    for y in range(image.height):
+        for x in range(image.width):
+            if pixels[x, y][3] == 255:
+                if x < x0:
+                    x0 = x
+                if y < y0:
+                    y0 = y
+                if x > x1:
+                    x1 = x
+                if y > y1:
+                    y1 = y
+    if x1 < x0 or y1 < y0:
+        return (0, 0, -1, -1)
+    return (x0, y0, x1, y1)
+
+
+def build_object_png(raw_path: Path, source: TunnelSource) -> bytes:
+    if not isinstance(source.reduction, ObjectReduction):
+        raise TunnelArtError("object-set build requires object-set reduction", reason_code="invalid_sidecar")
+    with Image.open(raw_path) as opened:
+        image = opened.convert("RGBA")
+    if image.size != source.source_resolution:
+        raise TunnelArtError(
+            f"source_resolution mismatch for {raw_path.name}: "
+            f"expected {source.source_resolution}, got {image.size}",
+            reason_code="resolution_mismatch",
+        )
+    _validate_object_image(image, source.reduction, raw_path.name)
+    buf = io.BytesIO()
+    image.save(buf, format="PNG")
     return buf.getvalue()
 
 
@@ -468,6 +565,9 @@ def _build_bundle_outputs(source: TunnelSource, key: str) -> dict[Path, bytes]:
     if source.asset_class == "background":
         png_bytes = build_background_png(source.raw_path, source)
         return {Path(source.runtime_destination): png_bytes}
+    if source.asset_class == "object-set":
+        png_bytes = build_object_png(source.raw_path, source)
+        return {Path(source.runtime_destination): png_bytes}
     return {
         Path(source.runtime_destination) / f"{item_id}.png": png_bytes
         for item_id, png_bytes in build_tile_sheet_pngs(source.raw_path, source).items()
@@ -479,7 +579,7 @@ def build_tunnel_assets(repo_root: Path | None = None) -> TunnelArtReport:
     raw_root = root / _RAW_ROOT_REL
     complete, failures = discover_tunnel_bundles(raw_root)
     rows: list[BundleReportRow] = list(failures)
-    manifest_entries: list[dict[str, str]] = []
+    manifest_entries: list[dict[str, Any]] = []
 
     for ref in complete:
         bundle_key = _bundle_key(ref)
@@ -520,14 +620,17 @@ def build_tunnel_assets(repo_root: Path | None = None) -> TunnelArtReport:
             dest.parent.mkdir(parents=True, exist_ok=True)
             dest.write_bytes(png_bytes)
             runtime_sha = sha256_bytes(png_bytes)
-            manifest_entries.append(
-                {
-                    "relative_path": rel_path.as_posix(),
-                    "sha256": runtime_sha,
-                    "source_relative_path": source_rel,
-                    "source_sha256": source.raw_sha256,
-                }
-            )
+            entry: dict[str, Any] = {
+                "relative_path": rel_path.as_posix(),
+                "sha256": runtime_sha,
+                "source_relative_path": source_rel,
+                "source_sha256": source.raw_sha256,
+            }
+            if source.asset_class == "object-set":
+                with Image.open(io.BytesIO(png_bytes)) as built:
+                    box = measure_opaque_content_box(built)
+                entry["content_box"] = list(box)
+            manifest_entries.append(entry)
         rows.append(
             BundleReportRow(
                 key=bundle_key,
@@ -607,6 +710,22 @@ def verify_tunnel_assets(repo_root: Path | None = None) -> TunnelArtReport:
                         fail_reason = (
                             f"wrong runtime dimension for {rel_path.as_posix()}: "
                             f"expected {BACKGROUND_RUNTIME_SIZE}, got {image.size}"
+                        )
+                        break
+            elif source.asset_class == "object-set":
+                reduction = source.reduction
+                if not isinstance(reduction, ObjectReduction):
+                    bundle_failed = True
+                    fail_reason = "object-set verify requires object-set reduction"
+                    break
+                with Image.open(io.BytesIO(actual_bytes)) as image:
+                    rgba = image.convert("RGBA")
+                    try:
+                        _validate_object_image(rgba, reduction, rel_path.as_posix())
+                    except TunnelArtError as exc:
+                        bundle_failed = True
+                        fail_reason = (
+                            f"{exc.reason_code}: {exc}" if exc.reason_code else str(exc)
                         )
                         break
             else:
