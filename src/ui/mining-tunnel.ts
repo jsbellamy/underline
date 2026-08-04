@@ -30,7 +30,6 @@ export interface MiningTunnelView {
   destroy(): void;
 }
 
-const SOLID = "#4A3B48";
 const HOLLOW = "#1D1720";
 const FACE = "#27A6A3";
 const FACE_DEEP = "#176873";
@@ -403,11 +402,7 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
         }
       } else {
         col.style.left = `${gridLeft}px`;
-        if (gridLeft < FACE_X) {
-          col.style.background = HOLLOW;
-        } else {
-          col.style.background = SOLID;
-        }
+        col.style.background = HOLLOW;
       }
     }
 

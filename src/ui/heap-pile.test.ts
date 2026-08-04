@@ -19,18 +19,18 @@ describe("heapSlot", () => {
     expect(ORE_PITCH).toBe(12);
     expect(HEAP_ROW_HEIGHT).toBe(10);
     expect(HEAP_BOTTOM).toBe(8);
-    expect(HEAP_EAST_X).toBe(328);
+    expect(HEAP_EAST_X).toBe(424);
     expect(HEAP_SLOTS_PER_ROW).toBe(13);
     expect(HEAP_EAST_X).toBe(FACE_X - ORE_SIZE);
   });
 
   const worked: Array<{ index: number; left: number; bottom: number }> = [
-    { index: 0, left: 328, bottom: 8 },
-    { index: 1, left: 316, bottom: 8 },
-    { index: 12, left: 184, bottom: 8 },
-    { index: 13, left: 328, bottom: 18 },
-    { index: 25, left: 184, bottom: 18 },
-    { index: 26, left: 328, bottom: 28 },
+    { index: 0, left: 424, bottom: 8 },
+    { index: 1, left: 412, bottom: 8 },
+    { index: 12, left: 280, bottom: 8 },
+    { index: 13, left: 424, bottom: 18 },
+    { index: 25, left: 280, bottom: 18 },
+    { index: 26, left: 424, bottom: 28 },
   ];
 
   for (const { index, left, bottom } of worked) {
@@ -60,12 +60,12 @@ describe("fallingOrePosition", () => {
     left: number;
     bottom: number;
   }> = [
-    { slot: 0, progress: 0, left: 328, bottom: 56 },
-    { slot: 0, progress: 0.5, left: 328, bottom: 44 },
-    { slot: 0, progress: 1, left: 328, bottom: 8 },
-    { slot: 12, progress: 0, left: 328, bottom: 56 },
-    { slot: 12, progress: 0.5, left: 256, bottom: 44 },
-    { slot: 12, progress: 1, left: 184, bottom: 8 },
+    { slot: 0, progress: 0, left: 424, bottom: 56 },
+    { slot: 0, progress: 0.5, left: 424, bottom: 44 },
+    { slot: 0, progress: 1, left: 424, bottom: 8 },
+    { slot: 12, progress: 0, left: 424, bottom: 56 },
+    { slot: 12, progress: 0.5, left: 352, bottom: 44 },
+    { slot: 12, progress: 1, left: 280, bottom: 8 },
   ];
 
   for (const { slot, progress, left, bottom } of worked) {
@@ -88,11 +88,11 @@ describe("fallingOrePosition", () => {
 
 describe("haulerPickupTargetX", () => {
   const worked: Array<{ heapLoads: number; target: number }> = [
-    { heapLoads: 1, target: 250 },
-    { heapLoads: 5, target: 202 },
-    { heapLoads: 10, target: 142 },
-    { heapLoads: 13, target: 106 },
-    { heapLoads: 20, target: 178 },
+    { heapLoads: 1, target: 346 },
+    { heapLoads: 5, target: 298 },
+    { heapLoads: 10, target: 238 },
+    { heapLoads: 13, target: 202 },
+    { heapLoads: 20, target: 274 },
   ];
 
   for (const { heapLoads, target } of worked) {

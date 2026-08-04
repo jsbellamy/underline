@@ -152,7 +152,7 @@ describe("mountMiningTunnel", () => {
     tunnel.destroy();
   });
 
-  it("creates fifteen Mineable Block columns pinned on the block grid", () => {
+  it("creates ten Mineable Block columns pinned on the block grid", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
 
@@ -167,7 +167,7 @@ describe("mountMiningTunnel", () => {
     expect(columnsAfterRender.length).toBe(MINING_TUNNEL_VISIBLE_COLUMNS);
 
     for (let i = 0; i < MINING_TUNNEL_VISIBLE_COLUMNS; i += 1) {
-      if (i === 10) {
+      if (i === 9) {
         expect(Number(faceColumn(host).style.left.replace("px", ""))).toBe(
           FACE_X,
         );
@@ -264,15 +264,14 @@ describe("mountMiningTunnel", () => {
     tunnel.destroy();
   });
 
-  it("paints hollow west of FACE_X, Face at FACE_X, and solid east", () => {
+  it("paints hollow west of FACE_X and Face at FACE_X with no solid east", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
     tunnel.render({ ...baseSnap, advance: 10, faceSlide: 1 });
 
     expect(blockAtColumnIndex(host, 5).style.background).toBe("#1D1720");
     expect(faceColumn(host).style.background).toBe("#27A6A3");
-    expect(blockAtColumnIndex(host, 11).style.background).toBe("#4A3B48");
-    expect(blockAtColumnIndex(host, 14).style.background).toBe("#4A3B48");
+    expect(blockAtColumnIndex(host, 8).style.background).toBe("#1D1720");
 
     tunnel.destroy();
   });
@@ -336,11 +335,11 @@ describe("mountMiningTunnel", () => {
     const tunnel = mountMiningTunnel(host);
 
     const cases: Array<{ haulProgress: number; expected: number }> = [
-      { haulProgress: 0, expected: 258 },
-      { haulProgress: 0.25, expected: 157 },
-      { haulProgress: 0.5, expected: 56 },
-      { haulProgress: 0.75, expected: 157 },
-      { haulProgress: 1, expected: 258 },
+      { haulProgress: 0, expected: 354 },
+      { haulProgress: 0.25, expected: 253 },
+      { haulProgress: 0.5, expected: 152 },
+      { haulProgress: 0.75, expected: 253 },
+      { haulProgress: 1, expected: 354 },
     ];
 
     for (const { haulProgress, expected } of cases) {
@@ -354,8 +353,8 @@ describe("mountMiningTunnel", () => {
       expect(dwarfLeft(host)).toBe(expected);
     }
 
-    expect(CART_MARK_X).toBe(56);
-    expect(MINING_MARK_X).toBe(258);
+    expect(CART_MARK_X).toBe(152);
+    expect(MINING_MARK_X).toBe(354);
 
     tunnel.destroy();
   });
@@ -376,8 +375,8 @@ describe("mountMiningTunnel", () => {
     tunnel.destroy();
   });
 
-  it("defines HAULER_MARK_X at 96 east of the Cart", () => {
-    expect(HAULER_MARK_X).toBe(96);
+  it("defines HAULER_MARK_X east of the Cart mark", () => {
+    expect(HAULER_MARK_X).toBe(192);
     expect(HAULER_MARK_X).toBeGreaterThan(CART_X + CART_WIDTH);
     expect(dwarfLayout(HAULER_PACK)).toEqual(dwarfLayout(DWARF_PACK));
   });
@@ -418,11 +417,11 @@ describe("mountMiningTunnel", () => {
     const tunnel = mountMiningTunnel(host);
 
     const cases: Array<{ haulProgress: number; expected: number }> = [
-      { haulProgress: 0, expected: 96 },
-      { haulProgress: 0.25, expected: 76 },
-      { haulProgress: 0.5, expected: 56 },
-      { haulProgress: 0.75, expected: 76 },
-      { haulProgress: 1, expected: 96 },
+      { haulProgress: 0, expected: 192 },
+      { haulProgress: 0.25, expected: 172 },
+      { haulProgress: 0.5, expected: 152 },
+      { haulProgress: 0.75, expected: 172 },
+      { haulProgress: 1, expected: 192 },
     ];
 
     for (const { haulProgress, expected } of cases) {
@@ -453,21 +452,21 @@ describe("mountMiningTunnel", () => {
       {
         heapLoads: 1,
         cases: [
-          { pickupProgress: 0, expected: 96 },
-          { pickupProgress: 0.25, expected: 173 },
-          { pickupProgress: 0.5, expected: 250 },
-          { pickupProgress: 0.75, expected: 173 },
-          { pickupProgress: 1, expected: 96 },
+          { pickupProgress: 0, expected: 192 },
+          { pickupProgress: 0.25, expected: 269 },
+          { pickupProgress: 0.5, expected: 346 },
+          { pickupProgress: 0.75, expected: 269 },
+          { pickupProgress: 1, expected: 192 },
         ],
       },
       {
         heapLoads: 10,
         cases: [
-          { pickupProgress: 0, expected: 96 },
-          { pickupProgress: 0.25, expected: 119 },
-          { pickupProgress: 0.5, expected: 142 },
-          { pickupProgress: 0.75, expected: 119 },
-          { pickupProgress: 1, expected: 96 },
+          { pickupProgress: 0, expected: 192 },
+          { pickupProgress: 0.25, expected: 215 },
+          { pickupProgress: 0.5, expected: 238 },
+          { pickupProgress: 0.75, expected: 215 },
+          { pickupProgress: 1, expected: 192 },
         ],
       },
     ];
