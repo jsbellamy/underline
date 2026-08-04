@@ -1,4 +1,4 @@
-"""Behavioral proof for CONTEXT.md § Game language colony-growth vocabulary (#328)."""
+"""Behavioral proof for CONTEXT.md § Game language vocabulary (#328, #388)."""
 
 from __future__ import annotations
 
@@ -29,6 +29,10 @@ def _entry_body(section: str, term: str) -> str:
     )
     assert match is not None
     return match.group(1)
+
+
+def _normalized(body: str) -> str:
+    return re.sub(r"\s+", " ", body.strip())
 
 
 def test_game_language_upgrade_names_three_colony_purchases() -> None:
@@ -117,3 +121,57 @@ def test_game_language_pane_control_cluster_names_colony_sound_quit() -> None:
     assert "Quit" in body
     assert "corner group" in body
     assert "_Avoid_:" in body
+
+
+def test_game_language_crew_is_two_dwarf_cap() -> None:
+    section = _game_language_section()
+    body = _normalized(_entry_body(section, "Crew"))
+    assert "Dwarves the Colony has" in body
+    assert "one Miner, one Hauler" in body
+    assert "Two at most" in body
+    assert "_Avoid_: team, party, roster, squad" in body
+
+
+def test_game_language_miner_holds_face_and_swings() -> None:
+    section = _game_language_section()
+    body = _normalized(_entry_body(section, "Miner"))
+    assert "holding the Face and Swinging" in body
+    assert "never leaves the Face" in body
+    assert "drops Ore into the Heap" in body
+    assert "stalls when the Heap is full" in body
+    assert "_Avoid_: digger, driller" in body
+
+
+def test_game_language_hauler_moves_heap_to_cart() -> None:
+    section = _game_language_section()
+    body = _normalized(_entry_body(section, "Hauler"))
+    assert "moving Ore from the Heap to the Cart" in body
+    assert "fixed pickup cost" in body
+    assert "walks a Haul once its Bag is full" in body
+    assert "_Avoid_: carrier, porter, runner" in body
+
+
+def test_game_language_heap_is_face_backpressure() -> None:
+    section = _game_language_section()
+    body = _normalized(_entry_body(section, "Heap"))
+    assert "Ore accumulated at the Face" in body
+    assert "counted in Loads" in body
+    assert "Carry Capacity" in body
+    assert "full Heap stalls the Miner" in body
+    assert "second backpressure point" in body
+    assert "Smelter" in body
+    assert "_Avoid_: pile, stockpile, buffer, queue" in body
+
+
+def test_game_language_dwarf_entry_spends_miner_reservation() -> None:
+    section = _game_language_section()
+    body = _normalized(_entry_body(section, "Dwarf"))
+    assert "character species in the Crew" in body
+    assert "assigned one job — Miner or Hauler" in body
+    assert "assets/characters/dwarf/" in body
+    assert "east/west facing only" in body
+    assert "Miner" in body
+    assert "_Avoid_: worker, unit, character" in body
+    assert "miner (that is a job" not in body
+    assert "A being, not a job" not in body
+    assert "only one of them" not in body
