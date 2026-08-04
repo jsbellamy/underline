@@ -67,6 +67,8 @@ html.dock-window body {
   position: absolute;
   inset: 0;
   will-change: transform;
+  background-repeat: no-repeat;
+  background-position: 0 0;
 }
 
 .pane-block {
@@ -102,14 +104,6 @@ html.dock-window body {
     4px 8px 0 0 currentColor,
     -3px 20px 0 0 currentColor;
   color: #72e2d2;
-}
-
-.pane-tunnel-floor {
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  height: 8px;
-  opacity: 0.85;
 }
 
 .pane-dwarf {
