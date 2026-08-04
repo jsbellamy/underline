@@ -175,7 +175,41 @@ describe("mining audio cue queue", () => {
   });
 
   it("releases due cues in ascending atMs order and never replays them", async () => {
-    const { audio, createBufferSource } = await enabledAudio();
+    const swingBuffer = { clip: "swing" } as unknown as AudioBuffer;
+    const breakBuffer = { clip: "break" } as unknown as AudioBuffer;
+    let decodeIndex = 0;
+    const { context: ctx, createBufferSource } = stubAudioContext();
+    ctx.decodeAudioData = vi.fn(async () =>
+      decodeIndex++ === 0 ? swingBuffer : breakBuffer,
+    );
+    const createAudioContext = vi.fn(() => ctx);
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      arrayBuffer: async () => new ArrayBuffer(8),
+    }));
+    const audio = createMiningAudio({
+      createAudioContext,
+      fetch: fetchMock as unknown as typeof fetch,
+      pack: testPack,
+      clipUrlFor: (_pack, id) => `${id}.wav`,
+    });
+    audio.setEnabled(true);
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalled());
+
+    const playOrder: AudioBuffer[] = [];
+    createBufferSource.mockImplementation(() => {
+      const source = {
+        buffer: null as AudioBuffer | null,
+        connect: vi.fn(),
+        start: vi.fn(() => {
+          if (source.buffer) {
+            playOrder.push(source.buffer);
+          }
+        }),
+      };
+      return source;
+    });
+
     const events: MiningEvent[] = [
       { type: "faceBroken", atMs: 300 },
       { type: "swing", atMs: 100 },
@@ -184,7 +218,8 @@ describe("mining audio cue queue", () => {
 
     audio.handleEvents(events, 1000);
     audio.releaseDueTo(1300);
-    await vi.waitFor(() => expect(createBufferSource).toHaveBeenCalledTimes(3));
+    await vi.waitFor(() => expect(playOrder).toHaveLength(3));
+    expect(playOrder).toEqual([swingBuffer, swingBuffer, breakBuffer]);
 
     createBufferSource.mockClear();
     audio.releaseDueTo(1300);
