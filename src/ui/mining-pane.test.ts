@@ -20,13 +20,14 @@ import { DWARF_SCALE, PANE_HEIGHT, PANE_WIDTH, TUNNEL_HEIGHT } from "./pane-layo
 
 function stubPresenter(setSoundEnabled = vi.fn()) {
   const anim = createDwarfAnimController({ digRate: 1 });
-  const snapshot = (): TunnelSnapshot => ({
+  let simNowMs = 0;
+  const snapshot = (nowMs?: number): TunnelSnapshot => ({
       animation: "swing" as const,
       facing: "east" as const,
       frameIndex: 0,
       advance: 0,
       faceSwingProgress: 0,
-      swingFraction: 0,
+      swingFraction: nowMs !== undefined ? nowMs / 1000 : simNowMs / 1000,
       digRate: 1,
       haulPhase: "none" as const,
       haulProgress: 0,
@@ -34,9 +35,14 @@ function stubPresenter(setSoundEnabled = vi.fn()) {
   });
   return {
     anim,
+    get simNowMs() {
+      return simNowMs;
+    },
     snapshot,
     start: vi.fn(),
-    advanceMs: vi.fn(),
+    advanceMs: vi.fn((dt: number) => {
+      simNowMs += dt;
+    }),
     syncDigRate: vi.fn(),
     setSoundEnabled,
   };
@@ -300,6 +306,122 @@ describe("mountPaneShell mining Pane", () => {
     expect(opacityAt0).toBeGreaterThan(opacityAt10);
 
     tunnel.destroy();
+  });
+
+  describe("presentation clock", () => {
+    it("interpolates 100ms past a tick and clamps at PUMP_INTERVAL_MS", () => {
+      const pump = createPanePumpSchedule();
+      const root = document.createElement("main");
+      const captured: number[] = [];
+      const anim = createDwarfAnimController({ digRate: 1 });
+      const presenter = {
+        anim,
+        simNowMs: 0,
+        snapshot(nowMs?: number) {
+          captured.push(nowMs ?? this.simNowMs);
+          return {
+            animation: "swing" as const,
+            facing: "east" as const,
+            frameIndex: 0,
+            advance: 0,
+            faceSwingProgress: 0,
+            swingFraction: 0,
+            digRate: 1,
+            haulPhase: "none" as const,
+            haulProgress: 0,
+            faceSlide: 1,
+          };
+        },
+        start: vi.fn(),
+        advanceMs(dt: number) {
+          this.simNowMs += dt;
+        },
+        syncDigRate: vi.fn(),
+        setSoundEnabled: vi.fn(),
+      };
+
+      const shell = mountPaneShell(root, {
+        dockWindow: stubDockWindow(),
+        busFactory: stubBusFactory(),
+        deferPump: true,
+        presenter,
+        pumpSchedule: pump.pumpSchedule,
+      });
+
+      shell.startPump();
+      pump.setClock(PUMP_INTERVAL_MS);
+      pump.runIntervals();
+      expect(presenter.simNowMs).toBe(PUMP_INTERVAL_MS);
+
+      captured.length = 0;
+      pump.setClock(PUMP_INTERVAL_MS + 100);
+      pump.runRafAt(PUMP_INTERVAL_MS + 100);
+      expect(captured[captured.length - 1]).toBe(PUMP_INTERVAL_MS + 100);
+
+      captured.length = 0;
+      pump.setClock(PUMP_INTERVAL_MS + 400);
+      pump.runRafAt(PUMP_INTERVAL_MS + 400);
+      expect(captured[captured.length - 1]).toBe(PUMP_INTERVAL_MS + 250);
+
+      shell.destroy();
+    });
+
+    it("does not rewind the presentation clock when a tick lands after a late gap", () => {
+      const pump = createPanePumpSchedule();
+      const root = document.createElement("main");
+      const captured: number[] = [];
+      const anim = createDwarfAnimController({ digRate: 1 });
+      const presenter = {
+        anim,
+        simNowMs: 0,
+        snapshot(nowMs?: number) {
+          captured.push(nowMs ?? this.simNowMs);
+          return {
+            animation: "swing" as const,
+            facing: "east" as const,
+            frameIndex: 0,
+            advance: 0,
+            faceSwingProgress: 0,
+            swingFraction: 0,
+            digRate: 1,
+            haulPhase: "none" as const,
+            haulProgress: 0,
+            faceSlide: 1,
+          };
+        },
+        start: vi.fn(),
+        advanceMs(dt: number) {
+          this.simNowMs += dt;
+        },
+        syncDigRate: vi.fn(),
+        setSoundEnabled: vi.fn(),
+      };
+
+      const shell = mountPaneShell(root, {
+        dockWindow: stubDockWindow(),
+        busFactory: stubBusFactory(),
+        deferPump: true,
+        presenter,
+        pumpSchedule: pump.pumpSchedule,
+      });
+
+      shell.startPump();
+      pump.setClock(PUMP_INTERVAL_MS);
+      pump.runIntervals();
+
+      pump.setClock(PUMP_INTERVAL_MS + 400);
+      pump.runRafAt(PUMP_INTERVAL_MS + 400);
+      const beforeTick = captured[captured.length - 1]!;
+
+      pump.setClock(PUMP_INTERVAL_MS + 500);
+      pump.runIntervals();
+      pump.runRafAt(PUMP_INTERVAL_MS + 500);
+      const afterTick = captured[captured.length - 1]!;
+
+      expect(afterTick).toBeGreaterThanOrEqual(beforeTick);
+
+      shell.destroy();
+    });
   });
 
   describe("Sound toggle", () => {

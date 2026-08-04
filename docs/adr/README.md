@@ -26,6 +26,7 @@ not delete history.
 | [0010](0010-mining-engine-tick-and-save.md) | Mining engine tick, Snapshot, and Pane-owned save |
 | [0011](0011-audio-without-gates.md) | Audio without gates (CC0 clips under `src/audio/`) |
 | [0012](0012-event-jump-advance-and-haul-duty-cycle.md) | Event-jump advance and haul duty cycle |
+| [0013](0013-interpolated-presentation-clock.md) | Interpolated presentation clock (two clocks; swing phase from engine) |
 
 Earlier decisions settled only in `docs/strip-acquisition-contract.md` or
 `prototype/strip-coherence/NOTES.md` should be promoted here when they start
