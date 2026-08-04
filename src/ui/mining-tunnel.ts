@@ -5,8 +5,9 @@ Colony corner chip, cyan Face, no Dig Rate / Ore / Ingots on the Pane.
 */
 import type { TunnelSnapshot } from "./mine-presenter";
 import { hardnessFor } from "../core/mining-engine";
-import { dwarfLayout } from "../data/external-sprite-pack";
+import { dwarfLayout, type ExternalSpritePack } from "../data/external-sprite-pack";
 import { DWARF_PACK, dwarfFrameUrlsFor } from "./dwarf-frames";
+import { HAULER_PACK, haulerFrameUrlsFor } from "./hauler-frames";
 import {
   BLOCK_SIZE,
   CART_HEIGHT,
@@ -15,6 +16,7 @@ import {
   CART_X,
   DWARF_SCALE,
   FACE_X,
+  HAULER_MARK_X,
   MINING_MARK_X,
   PANE_HEIGHT,
   PANE_WIDTH,
@@ -39,6 +41,26 @@ const FACE_COLUMN_INDEX = Math.floor(FACE_X / BLOCK_SIZE);
 
 export const MINING_TUNNEL_VISIBLE_COLUMNS = VISIBLE_COLUMNS;
 
+function haulerFieldsEqual(
+  a: TunnelSnapshot["hauler"],
+  b: TunnelSnapshot["hauler"],
+): boolean {
+  if (a === undefined && b === undefined) {
+    return true;
+  }
+  if (a === undefined || b === undefined) {
+    return false;
+  }
+  return (
+    a.animation === b.animation &&
+    a.facing === b.facing &&
+    a.frameIndex === b.frameIndex &&
+    a.phase === b.phase &&
+    a.haulProgress === b.haulProgress &&
+    a.pickupProgress === b.pickupProgress
+  );
+}
+
 function snapEquals(a: TunnelSnapshot, b: TunnelSnapshot): boolean {
   return (
     a.animation === b.animation &&
@@ -50,7 +72,10 @@ function snapEquals(a: TunnelSnapshot, b: TunnelSnapshot): boolean {
     a.digRate === b.digRate &&
     a.haulPhase === b.haulPhase &&
     a.haulProgress === b.haulProgress &&
-    a.faceSlide === b.faceSlide
+    a.faceSlide === b.faceSlide &&
+    a.crewSize === b.crewSize &&
+    a.heapLoads === b.heapLoads &&
+    haulerFieldsEqual(a.hauler, b.hauler)
   );
 }
 
@@ -59,6 +84,9 @@ function faceLeft(faceSlide: number): number {
 }
 
 function dwarfLeft(snap: TunnelSnapshot): number {
+  if (snap.hauler !== undefined) {
+    return MINING_MARK_X;
+  }
   if (snap.faceSlide < 1) {
     return MINING_MARK_X;
   }
@@ -66,6 +94,22 @@ function dwarfLeft(snap: TunnelSnapshot): number {
   const t = snap.haulProgress;
   if (t <= 0.5) {
     return Math.round(MINING_MARK_X - (t / 0.5) * span);
+  }
+  return Math.round(CART_MARK_X + ((t - 0.5) / 0.5) * span);
+}
+
+function haulerLeft(snap: TunnelSnapshot): number {
+  const hauler = snap.hauler;
+  if (!hauler) {
+    throw new Error("haulerLeft requires a Hauler snapshot");
+  }
+  if (hauler.phase === "pickup") {
+    return HAULER_MARK_X;
+  }
+  const span = HAULER_MARK_X - CART_MARK_X;
+  const t = hauler.haulProgress;
+  if (t <= 0.5) {
+    return Math.round(HAULER_MARK_X - (t / 0.5) * span);
   }
   return Math.round(CART_MARK_X + ((t - 0.5) / 0.5) * span);
 }
@@ -120,15 +164,37 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
   dwarf.style.height = `${dwarfH}px`;
   dwarf.style.imageRendering = "pixelated";
 
+  const hauler = document.createElement("img");
+  hauler.className = "pane-dwarf pane-hauler";
+  hauler.alt = "Hauler";
+  hauler.dataset["hauler"] = "";
+  hauler.width = dwarfW;
+  hauler.height = dwarfH;
+  hauler.draggable = false;
+  hauler.style.width = `${dwarfW}px`;
+  hauler.style.height = `${dwarfH}px`;
+  hauler.style.imageRendering = "pixelated";
+
   const dwarfBottom = 10;
   dwarf.style.bottom = `${dwarfBottom}px`;
+  hauler.style.bottom = `${dwarfBottom}px`;
 
   const urlCache = new Map<string, string[]>();
-  function urlsFor(animation: string, facing: string): string[] {
-    const key = `${animation}:${facing}`;
+  function urlsFor(
+    pack: ExternalSpritePack,
+    animation: string,
+    facing: string,
+    resolve: (
+      pack: ExternalSpritePack,
+      animation: string,
+      facing: string,
+    ) => string[],
+    packId: string,
+  ): string[] {
+    const key = `${packId}:${animation}:${facing}`;
     let urls = urlCache.get(key);
     if (!urls) {
-      urls = dwarfFrameUrlsFor(DWARF_PACK, animation, facing);
+      urls = resolve(pack, animation, facing);
       urlCache.set(key, urls);
     }
     return urls;
@@ -137,13 +203,28 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
   tunnel.append(world, cart, dwarf);
   host.replaceChildren(tunnel);
 
+  let haulerMounted = false;
   let lastSnap: TunnelSnapshot | null = null;
+
+  function mountHauler(): void {
+    if (!haulerMounted) {
+      tunnel.append(hauler);
+      haulerMounted = true;
+    }
+  }
+
+  function unmountHauler(): void {
+    if (haulerMounted) {
+      hauler.remove();
+      haulerMounted = false;
+    }
+  }
 
   function render(snap: TunnelSnapshot): void {
     if (lastSnap !== null && snapEquals(lastSnap, snap)) {
       return;
     }
-    lastSnap = { ...snap };
+    lastSnap = { ...snap, ...(snap.hauler ? { hauler: { ...snap.hauler } } : {}) };
 
     world.style.transform = "";
 
@@ -187,14 +268,43 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
 
     dwarf.style.left = `${dwarfLeft(snap)}px`;
 
-    const urls = urlsFor(snap.animation, snap.facing);
-    const frame = urls[snap.frameIndex] ?? urls[0];
-    if (!frame) {
+    const dwarfUrls = urlsFor(
+      DWARF_PACK,
+      snap.animation,
+      snap.facing,
+      dwarfFrameUrlsFor,
+      "dwarf",
+    );
+    const dwarfFrame = dwarfUrls[snap.frameIndex] ?? dwarfUrls[0];
+    if (!dwarfFrame) {
       throw new Error(`Missing dwarf frame for ${snap.animation}/${snap.facing}`);
     }
-    dwarf.src = frame;
+    dwarf.src = dwarfFrame;
     dwarf.dataset["anim"] = snap.animation;
     dwarf.dataset["frame"] = String(snap.frameIndex);
+
+    if (snap.hauler) {
+      mountHauler();
+      hauler.style.left = `${haulerLeft(snap)}px`;
+      const haulerUrls = urlsFor(
+        HAULER_PACK,
+        snap.hauler.animation,
+        snap.hauler.facing,
+        haulerFrameUrlsFor,
+        "hauler",
+      );
+      const haulerFrame = haulerUrls[snap.hauler.frameIndex] ?? haulerUrls[0];
+      if (!haulerFrame) {
+        throw new Error(
+          `Missing hauler frame for ${snap.hauler.animation}/${snap.hauler.facing}`,
+        );
+      }
+      hauler.src = haulerFrame;
+      hauler.dataset["anim"] = snap.hauler.animation;
+      hauler.dataset["frame"] = String(snap.hauler.frameIndex);
+    } else {
+      unmountHauler();
+    }
   }
 
   return {

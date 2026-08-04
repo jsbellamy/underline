@@ -30,6 +30,9 @@ export const CART_MARK_X = CART_X + CART_WIDTH + 8;
 const dwarfW = DWARF_FRAME_W * DWARF_SCALE;
 export const MINING_MARK_X = FACE_X - dwarfW;
 
+/** The Hauler's stand while lifting Loads — immediately west of the Miner. */
+export const HAULER_MARK_X = MINING_MARK_X - dwarfW;
+
 /** Presentation Haul speed derived from the engine's one Haul duration. */
 export const HAUL_SPEED_PX_PER_MS =
   (MINING_MARK_X - CART_MARK_X) / (HAUL_ROUND_TRIP_MS / 2);
