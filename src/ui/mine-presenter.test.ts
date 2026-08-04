@@ -171,6 +171,35 @@ describe("mine presenter", () => {
     expect([...seen].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
   });
 
+  it("keeps impact frame cadence when Pick Damage exceeds 1", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+      snapshot: { ...initialSnapshot(), pickDamageUpgradeCount: 1 },
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+    presenter.advanceMs(1000);
+
+    const sessionBase = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+    });
+    const presenterBase = createMinePresenter(sessionBase);
+    presenterBase.start();
+    presenterBase.advanceMs(1000);
+
+    const upgradedAtBoundary = presenter.snapshot(presenter.simNowMs);
+    const baseAtBoundary = presenterBase.snapshot(presenterBase.simNowMs);
+
+    expect(upgradedAtBoundary.swingFraction).toBeCloseTo(0, 5);
+    expect(upgradedAtBoundary.frameIndex).toBe(baseAtBoundary.frameIndex);
+    expect(upgradedAtBoundary.swingFraction).toBeCloseTo(
+      baseAtBoundary.swingFraction,
+      5,
+    );
+  });
+
   it("freezes swing fraction during a Haul", () => {
     const session = createMiningSession({
       store: memoryStore(),

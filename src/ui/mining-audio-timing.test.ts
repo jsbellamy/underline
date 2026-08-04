@@ -3,7 +3,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { browserSaveStore } from "../core/mining-save";
 import { createMiningSession } from "../core/mining-session";
-import { initialSnapshot } from "../core/mining-engine";
+import { initialSnapshot, type MiningSnapshot } from "../core/mining-engine";
 import { persistSettings } from "../core/settings-save";
 import type { AudioClipId } from "../data/audio-pack";
 import { createMiningAudio, MIN_RETRIGGER_MS } from "./mining-audio";
@@ -23,6 +23,7 @@ interface RecordedStart {
 interface TimingRunResult {
   swingEvents: Array<{ cueAbsoluteMs: number }>;
   swingStarts: RecordedStart[];
+  breakStarts: RecordedStart[];
 }
 
 function stubDockWindow() {
@@ -44,7 +45,10 @@ function stubBusFactory() {
   });
 }
 
-function createTimingHarness(options?: { soundEnabled?: boolean }) {
+function createTimingHarness(options?: {
+  soundEnabled?: boolean;
+  snapshot?: MiningSnapshot;
+}) {
   let clock = 0;
   const rafCallbacks: FrameRequestCallback[] = [];
   const intervalCallbacks: Array<() => void> = [];
@@ -134,7 +138,7 @@ function createTimingHarness(options?: { soundEnabled?: boolean }) {
   const session = createMiningSession({
     store,
     now: () => clock,
-    snapshot: initialSnapshot(),
+    snapshot: options?.snapshot ?? initialSnapshot(),
   });
 
   const audio = createMiningAudio({ createAudioContext });
@@ -148,6 +152,7 @@ function createTimingHarness(options?: { soundEnabled?: boolean }) {
   const presenter = createMinePresenter(session, { audio });
 
   const swingEvents: Array<{ cueAbsoluteMs: number }> = [];
+  const faceBrokenEvents: Array<{ cueAbsoluteMs: number }> = [];
   let simTrackMs = 0;
   // Observation-only: record swing events with absolute cue ms for C3/C4.
   const advanceLive = session.advanceLive.bind(session);
@@ -158,6 +163,9 @@ function createTimingHarness(options?: { soundEnabled?: boolean }) {
     for (const event of result.events) {
       if (event.type === "swing") {
         swingEvents.push({ cueAbsoluteMs: baseMs + event.atMs });
+      }
+      if (event.type === "faceBroken") {
+        faceBrokenEvents.push({ cueAbsoluteMs: baseMs + event.atMs });
       }
     }
     return result;
@@ -253,8 +261,10 @@ function createTimingHarness(options?: { soundEnabled?: boolean }) {
     root,
     shell,
     doc,
+    presenter,
     recordedStarts,
     swingEvents,
+    faceBrokenEvents,
     get clock() {
       return clock;
     },
@@ -270,10 +280,14 @@ function createTimingHarness(options?: { soundEnabled?: boolean }) {
     swingStarts(): RecordedStart[] {
       return recordedStarts.filter((start) => start.clip === "swing");
     },
+    breakStarts(): RecordedStart[] {
+      return recordedStarts.filter((start) => start.clip === "break");
+    },
     result(): TimingRunResult {
       return {
         swingEvents: [...swingEvents],
         swingStarts: this.swingStarts(),
+        breakStarts: this.breakStarts(),
       };
     },
   };
@@ -454,6 +468,68 @@ describe("mining audio end-to-end timing", () => {
         expect(harness.swingEvents.length).toBeGreaterThan(0),
       );
       expect(harness.recordedStarts).toHaveLength(0);
+      harness.shell.destroy();
+    });
+  });
+
+  describe("upgraded Dig Rate and Pick Damage", () => {
+    const upgradedSnapshot = {
+      ...initialSnapshot(),
+      digRateUpgradeCount: 1,
+      pickDamageUpgradeCount: 1,
+    };
+
+    it("matches one swing onset per event on profile 1 with upgrades", async () => {
+      const harness = createTimingHarness({ snapshot: upgradedSnapshot });
+      const result = await runProfile(harness, tickDurationsExact());
+      assertSwingCorrespondence(result);
+      assertOnsetsWithinTolerance(result);
+      for (let i = 1; i < result.swingStarts.length; i += 1) {
+        const gapMs =
+          (result.swingStarts[i]!.whenSec - result.swingStarts[i - 1]!.whenSec) *
+          1000;
+        expect(gapMs).toBeGreaterThanOrEqual(MIN_RETRIGGER_MS);
+      }
+      harness.shell.destroy();
+    });
+
+    it("matches one swing onset per event on profile 2 with upgrades", async () => {
+      const harness = createTimingHarness({ snapshot: upgradedSnapshot });
+      const result = await runProfile(harness, tickDurationsDrift());
+      assertSwingCorrespondence(result);
+      assertOnsetsWithinTolerance(result);
+      harness.shell.destroy();
+    });
+
+    it("matches one swing onset per event on profile 3 with upgrades", async () => {
+      const harness = createTimingHarness({ snapshot: upgradedSnapshot });
+      const result = await runProfile(harness, tickDurationsJank());
+      assertSwingCorrespondence(result);
+      assertOnsetsWithinTolerance(result);
+      harness.shell.destroy();
+    });
+
+    it("plays one break cue and no layered swing at Face break", async () => {
+      const harness = createTimingHarness({
+        snapshot: { ...initialSnapshot(), faceSwingProgress: 999 },
+      });
+      harness.presenter.start();
+      harness.presenter.advanceMs(1000);
+      harness.presenter.releaseAudioDueTo(1000);
+      await vi.waitFor(
+        () => expect(harness.breakStarts().length).toBe(1),
+        { timeout: 5_000 },
+      );
+      const breakCueMs = harness.faceBrokenEvents[0]!.cueAbsoluteMs;
+      const swingEventsAtBreak = harness.swingEvents.filter(
+        (event) => Math.abs(event.cueAbsoluteMs - breakCueMs) <= ONSET_TOLERANCE_MS,
+      );
+      const swingAtBreak = harness.swingStarts().filter(
+        (start) => Math.abs(start.whenSec * 1000 - breakCueMs) <= ONSET_TOLERANCE_MS,
+      );
+      expect(harness.faceBrokenEvents).toHaveLength(1);
+      expect(swingEventsAtBreak).toHaveLength(0);
+      expect(swingAtBreak).toHaveLength(0);
       harness.shell.destroy();
     });
   });
