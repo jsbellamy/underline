@@ -353,7 +353,7 @@ def _validate_object_image(
                     )
 
 
-def measure_opaque_content_box(image: Image.Image) -> tuple[int, int, int, int]:
+def _measure_opaque_content_box(image: Image.Image) -> tuple[int, int, int, int]:
     pixels = image.load()
     assert pixels is not None
     x0 = image.width
@@ -628,7 +628,7 @@ def build_tunnel_assets(repo_root: Path | None = None) -> TunnelArtReport:
             }
             if source.asset_class == "object-set":
                 with Image.open(io.BytesIO(png_bytes)) as built:
-                    box = measure_opaque_content_box(built)
+                    box = _measure_opaque_content_box(built)
                 entry["content_box"] = list(box)
             manifest_entries.append(entry)
         rows.append(

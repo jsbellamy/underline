@@ -1,7 +1,7 @@
 # Tunnel art contract
 
-Normative authority for **game** tunnel scenery — backgrounds and tile sheets
-that ship under `src/assets/tunnel/`. This contract is deliberately outside the
+Normative authority for **game** tunnel scenery — backgrounds, tile sheets, and
+object-set assets that ship under `src/assets/tunnel/`. This contract is deliberately outside the
 first-room Art Cohort: no Master Palette membership, no Gate score, no Identity
 Lock, and no conformance to `assets/palettes/first-room.json`.
 
@@ -130,6 +130,7 @@ hash-binding every runtime PNG to its archived raw. Per entry:
 | `sha256` | SHA-256 of the runtime PNG |
 | `source_relative_path` | Repo-relative archived raw path |
 | `source_sha256` | SHA-256 of the archived raw |
+| `content_box` | Optional — `object-set` only: `[x0, y0, x1, y1]` inclusive fully-opaque bounding box |
 
 ## Prompt shells
 

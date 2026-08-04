@@ -17,6 +17,7 @@ from pipeline.tunnel_art import (
     PACK_SCHEMA,
     SOURCE_SCHEMA,
     TunnelArtError,
+    _measure_opaque_content_box,
     build_object_png,
     build_tunnel_assets,
     discover_tunnel_bundles,
@@ -596,6 +597,18 @@ def _make_object_fixture(
     )
     (obj_dir / f"{key}.source.json").write_text(json.dumps(sidecar), encoding="utf-8")
     return tmp_path, raw_sha, inset
+
+
+def test_measure_opaque_content_box_returns_inclusive_box_and_empty_sentinel() -> None:
+    empty = Image.new("RGBA", (16, 12), (0, 0, 0, 0))
+    assert _measure_opaque_content_box(empty) == (0, 0, -1, -1)
+
+    inset = (3, 2, 10, 7)
+    image = Image.new("RGBA", (16, 12), (0, 0, 0, 0))
+    for x in range(inset[0], inset[2] + 1):
+        for y in range(inset[1], inset[3] + 1):
+            image.putpixel((x, y), (40, 50, 60, 255))
+    assert _measure_opaque_content_box(image) == inset
 
 
 def test_parse_object_reduction_accepts_dims_and_rejects_invalid(tmp_path: Path) -> None:
