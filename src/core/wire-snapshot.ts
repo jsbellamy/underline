@@ -18,6 +18,10 @@ export interface WireSnapshot {
   digRateUpgradeCount: number;
   smelterUpgradeCount: number;
   carryCapacityUpgradeCount: number;
+  crewSize: number;
+  heapLoads: number;
+  heapOre: number;
+  haulSpeedUpgradeCount: number;
   faceSwingProgress: number;
   smelterProgress: number;
   bagOre: number;
@@ -38,6 +42,10 @@ export function toWireSnapshot(
     digRateUpgradeCount: snapshot.digRateUpgradeCount,
     smelterUpgradeCount: snapshot.smelterUpgradeCount,
     carryCapacityUpgradeCount: snapshot.carryCapacityUpgradeCount,
+    crewSize: snapshot.crewSize,
+    heapLoads: snapshot.heapLoads,
+    heapOre: snapshot.heapOre,
+    haulSpeedUpgradeCount: snapshot.haulSpeedUpgradeCount,
     faceSwingProgress: snapshot.faceSwingProgress,
     smelterProgress: snapshot.smelterProgress,
     bagOre: snapshot.bagOre,
@@ -61,6 +69,7 @@ export function buildOfflineSummary(args: {
     args.after.ore -
     args.before.ore +
     (args.after.bagOre - args.before.bagOre) +
+    (args.after.heapOre - args.before.heapOre) +
     oreSmelted;
   return {
     offlineMs: args.offlineMs,

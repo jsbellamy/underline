@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   OFFLINE_RATE_SCALE,
+  SCHEMA_VERSION,
   advance,
   initialSnapshot,
 } from "./mining-engine";
@@ -14,23 +15,34 @@ describe("wire Snapshot", () => {
       ore: 1.25,
       ingots: 3,
       digRateUpgradeCount: 1,
+      crewSize: 2,
+      heapLoads: 3,
+      heapOre: 7,
+      haulSpeedUpgradeCount: 2,
+      pickupProgressMs: 4_200,
       faceSwingProgress: 2,
       smelterProgress: 0.3,
     };
-    expect(toWireSnapshot(snap)).toEqual({
-      schemaVersion: 3,
+    const wire = toWireSnapshot(snap);
+    expect(wire).toEqual({
+      schemaVersion: SCHEMA_VERSION,
       advance: 2,
       ore: 1.25,
       ingots: 3,
       digRateUpgradeCount: 1,
       smelterUpgradeCount: 0,
       carryCapacityUpgradeCount: 0,
+      crewSize: 2,
+      heapLoads: 3,
+      heapOre: 7,
+      haulSpeedUpgradeCount: 2,
       faceSwingProgress: 2,
       smelterProgress: 0.3,
       bagOre: 0,
       bagLoads: 0,
       haulRemainingMs: 0,
     });
+    expect(wire).not.toHaveProperty("pickupProgressMs");
   });
 
   it("builds an offlineSummary from before/after catch-up", () => {
@@ -64,5 +76,16 @@ describe("wire Snapshot", () => {
     });
     expect(summary.advanceGained).toBe(0);
     expect(summary.oreProduced).toBeCloseTo(1, 10);
+  });
+
+  it("counts Heap Ore toward oreProduced in offline summary", () => {
+    const before = { ...initialSnapshot(), heapOre: 2 };
+    const after = { ...before, heapOre: 9 };
+    const summary = buildOfflineSummary({
+      before,
+      after,
+      offlineMs: 60_000,
+    });
+    expect(summary.oreProduced).toBe(7);
   });
 });

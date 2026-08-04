@@ -349,7 +349,7 @@ describe("mining engine advanceWithEvents", () => {
   });
 
   const ONE_DWARF_200S_SNAPSHOT = {
-    schemaVersion: 3 as const,
+    schemaVersion: 4 as const,
     advance: 0,
     ore: 4.240000000000003,
     ingots: 5,
@@ -692,9 +692,9 @@ describe("mining engine Crew and Heap", () => {
 });
 
 describe("mining engine Bag and Haul", () => {
-  it("initializes Bag fields and SCHEMA_VERSION 3 to zero", () => {
+  it("initializes Bag fields and SCHEMA_VERSION to zero", () => {
     const s = initialSnapshot();
-    expect(s.schemaVersion).toBe(3);
+    expect(s.schemaVersion).toBe(4);
     expect(s.bagOre).toBe(0);
     expect(s.bagLoads).toBe(0);
     expect(s.haulRemainingMs).toBe(0);

@@ -9,6 +9,7 @@ import {
   nextSmelterUpgradeCost,
   smelterThroughputFor,
 } from "./mining-engine";
+import { SAVE_KEY } from "./mining-save";
 import { createMiningSession } from "./mining-session";
 import { buildOfflineSummary } from "./wire-snapshot";
 import { MIN_OFFLINE_MS } from "./offline-clock";
@@ -118,6 +119,26 @@ describe("mining session", () => {
     expect(session.tryBuyUpgrade("digRate")).toBe(false);
     expect(session.snapshot.digRateUpgradeCount).toBe(0);
     expect(session.snapshot.ingots).toBe(4);
+  });
+
+  it("resets to a fresh Snapshot when the save schemaVersion is unknown", () => {
+    const store = memoryStore();
+    store.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        schemaVersion: 99,
+        savedAtMs: 123,
+        advance: 9,
+        ore: 9,
+        ingots: 9,
+        digRateUpgradeCount: 9,
+        smelterUpgradeCount: 0,
+        faceSwingProgress: 1,
+        smelterProgress: 0.5,
+      }),
+    );
+    const session = createMiningSession({ store, now: () => 0 });
+    expect(session.snapshot).toEqual(initialSnapshot());
   });
 
   it("advances live ticks and can publish after economy changes", () => {
