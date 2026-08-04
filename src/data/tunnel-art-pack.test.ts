@@ -10,7 +10,7 @@ describe("tunnel-art-pack", () => {
 
   it("reads the on-disk tunnel-art-pack/0 manifest", () => {
     expect(pack.schema).toBe("tunnel-art-pack/0");
-    expect(pack.entries).toHaveLength(1);
+    expect(pack.entries).toHaveLength(5);
   });
 
   it("resolves a known key to the manifest relative_path", () => {
