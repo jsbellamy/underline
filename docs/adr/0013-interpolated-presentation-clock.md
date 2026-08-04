@@ -64,11 +64,11 @@ unchanged.
 
 **Audio release (#378, Nightglass ADR-0003 departure):** `advanceMs` passes
 `MiningEvent`s from `advanceLive` to `MiningAudio.handleEvents(events,
-windowStartSimMs)` using the sim time *before* `dtMs` is applied, so each cue's
-absolute time is `windowStart + event.atMs`. Nothing plays on the tick path.
-`mountPaneShell`'s `render` calls `releaseAudioDueTo(presentationNowMs())`
-before `snapshot`, so impact sounds align with the interpolated swing frame
-rather than the 250 ms pump cadence.
+windowStartSimMs, dtMs)` using the sim time *before* `dtMs` is applied, so each
+cue's absolute time is `windowStart + event.atMs`. Nothing plays on the tick
+path. `mountPaneShell`'s `render` calls `releaseAudioDueTo(presentationNowMs())`
+before `snapshot`; `releaseDueTo` schedules due cues on the `AudioContext`
+timeline at `currentTime` plus offset rather than firing immediately.
 
 ## Consequences
 
