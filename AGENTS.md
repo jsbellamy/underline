@@ -123,18 +123,22 @@ standing seam agreement for the `/tdd` (red-green) workflow. Changes are
 test-first at its seams, and code review judges every diff against its rules — a
 breach is a documented-standard violation, not a judgement call.
 
-### Gate blind review
+### Cursor subagents
 
-Promotion-verification issues that write `gate-controls/reviews/*/review--*.json`
-need two **blinded** visual audits before `/code-review` — see
-`docs/agents/issue-implementer.md` step 7. On Cursor, delegate each audit to the
-`gate-blind-review` subagent (`.cursor/agents/gate-blind-review.md`).
+Spawn the subagent for each row — not `generalPurpose`. Definitions in
+`.cursor/agents/`:
 
-### Code review (Cursor)
+| Subagent | Definition | Role |
+| -------- | ---------- | ---- |
+| `issue-implementer-code` | `.cursor/agents/issue-implementer-code.md` | code slice (`## Slice type` `code`) |
+| `issue-implementer-asset` | `.cursor/agents/issue-implementer-asset.md` | asset slice (`## Slice type` `asset`) |
+| `gate-blind-review` | `.cursor/agents/gate-blind-review.md` | §10 blind promotion audit — one session per review |
+| `code-review-standards` | `.cursor/agents/code-review-standards.md` | Standards axis for `/code-review` |
+| `code-review-spec` | `.cursor/agents/code-review-spec.md` | Spec axis for `/code-review` |
 
-On Cursor, `/code-review` spawns `code-review-standards` and `code-review-spec`
-(`.cursor/agents/code-review-standards.md`, `.cursor/agents/code-review-spec.md`)
-for the Standards and Spec axes.
+Promotion-verification gate audits (`docs/agents/issue-implementer.md` step 7)
+spawn `gate-blind-review` twice in separate sessions before `/code-review`.
+`/code-review` spawns `code-review-standards` and `code-review-spec` in parallel.
 
 ### Evidence
 
@@ -187,14 +191,10 @@ citing the command output that satisfies its Proof mapping.
 ## Delegating work
 
 These instructions are model-neutral: do not require a particular provider,
-model, or effort setting to delegate work. Shared implementer process lives in `docs/agents/issue-implementer.md`. On
-Cursor, the orchestrator spawns `issue-implementer-code` or
-`issue-implementer-asset` (`.cursor/agents/issue-implementer-code.md`,
-`.cursor/agents/issue-implementer-asset.md`) by slice type — model and slice
-rules are preloaded there. The orchestrator independently owns the acceptance
+model, or effort setting to delegate work. Shared implementer process lives in
+`docs/agents/issue-implementer.md`. On Cursor, spawn from
+`.cursor/agents/issue-implementer-code.md` or
+`.cursor/agents/issue-implementer-asset.md` by `## Slice type` — see Cursor
+subagents above. The orchestrator independently owns the acceptance
 gate — green tests and a scope-matching file list are necessary but never
 sufficient.
-
-**Cursor orchestrators:** spawn pinned subagents by subagent name with no inline
-`model` — use `issue-implementer-code` or `issue-implementer-asset`, not
-`generalPurpose`.

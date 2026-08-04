@@ -6,6 +6,9 @@ runtime supports worktrees.
 
 ## Process
 
+On **Cursor**, spawn subagents from `.cursor/agents/` — see `AGENTS.md` § Cursor
+subagents.
+
 1. Read `AGENTS.md` and `CONTEXT.md`. Follow their pointers only where they apply
    to the issue; do not load every doc by default. Use the glossary's vocabulary
    in code, tests, commits, and the pull request.
@@ -123,18 +126,17 @@ runtime supports worktrees.
    `/code-review`:
    - Build `packet.png` and `packet.json` mechanically for each promotion review
      directory; do not write `review--*.json` yet.
-   - **Cursor:** invoke the `gate-blind-review` subagent once per promotion for
-     review 1 (pass only `packet.png` and the §10 question/panel/metric/Budget/C
-     from the issue or spec). Spawn by subagent name only — omit `model` on the
-     Task tool. Write
+   - **Cursor:** spawn `gate-blind-review` from `.cursor/agents/gate-blind-review.md`
+     once per promotion for review 1 (pass only `packet.png` and the §10
+     question/panel/metric/Budget/C from the issue or spec). Write
      `review--01.json` from its output via `write_audit_record`.
    - Build `review-input--02.json` mechanically with
      `blinded_packet_for_second_review` / `write_second_review_input` (not
      delegated to the review subagent).
-   - **Cursor:** invoke `gate-blind-review` again in a **fresh** session for
-     review 2 (only `review-input--02.json` and `packet.png`). Spawn by subagent
-     name only — omit `model` on the Task tool. Write `review--02.json` and run
-     `validate_review_dir` until `"ok": true`.
+   - **Cursor:** spawn `gate-blind-review` from `.cursor/agents/gate-blind-review.md`
+     again in a **fresh** session for review 2 (only `review-input--02.json` and
+     `packet.png`). Write `review--02.json` and run `validate_review_dir` until
+     `"ok": true`.
    - **Non-Cursor:** spawn an equivalent isolated visual reviewer per audit at
      the pin in `.claude/CLAUDE.md`; same blindness rules.
    Never author both audits in one subagent session.
@@ -145,8 +147,9 @@ runtime supports worktrees.
    `needs manual` verdict and evidence pointer satisfying the Proof mapping. The
    Standards reviewer never writes it. If the runtime does not expose `/code-review`,
    run the equivalent Standards and Spec reviews as parallel sub-agents. On
-   Cursor, use `code-review-standards` and `code-review-spec` (not
-   `generalPurpose`).
+   Cursor, spawn `code-review-standards` and `code-review-spec` from
+   `.cursor/agents/code-review-standards.md` and
+   `.cursor/agents/code-review-spec.md`.
    Have each reviewer **write its report to a file** under the worktree and
    return only that path and compact finding IDs; the Spec reviewer also returns
    the unchanged completion-matrix path. Read only the matrix rows and the report
@@ -216,5 +219,3 @@ runtime supports worktrees.
   and leave the replacement to the named later issue.
 - Do not modify another issue's scope, work directly on `main`, or merge the pull
   request yourself.
-- On **Cursor**, blind gate reviews use the `gate-blind-review` subagent.
-  On other runtimes, follow `.claude/CLAUDE.md` for the blind-review pin.
