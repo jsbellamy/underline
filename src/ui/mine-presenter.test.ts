@@ -550,6 +550,63 @@ describe("mine presenter", () => {
     expect(presenter.snapshot().animation).toBe("swing");
   });
 
+  it("with crewSize 2 drives Hauler walk clip during pickup shuttle legs", () => {
+    const outbound = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+      snapshot: {
+        ...initialSnapshot(),
+        crewSize: 2,
+        heapLoads: 3,
+        pickupProgressMs: 2_500,
+        haulSpeedUpgradeCount: 0,
+      },
+    });
+    const outboundPresenter = createMinePresenter(outbound);
+    outboundPresenter.start();
+    const eastLeg = outboundPresenter.snapshot();
+    expect(eastLeg.hauler!.phase).toBe("pickup");
+    expect(eastLeg.hauler!.animation).toBe("walk");
+    expect(eastLeg.hauler!.facing).toBe("east");
+    expect(eastLeg.hauler!.pickupProgress).toBeCloseTo(0.25, 5);
+
+    const returnLeg = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+      snapshot: {
+        ...initialSnapshot(),
+        crewSize: 2,
+        heapLoads: 3,
+        pickupProgressMs: 7_500,
+        haulSpeedUpgradeCount: 0,
+      },
+    });
+    const returnPresenter = createMinePresenter(returnLeg);
+    returnPresenter.start();
+    const westLeg = returnPresenter.snapshot();
+    expect(westLeg.hauler!.phase).toBe("pickup");
+    expect(westLeg.hauler!.animation).toBe("walk");
+    expect(westLeg.hauler!.facing).toBe("west");
+    expect(westLeg.hauler!.pickupProgress).toBeCloseTo(0.75, 5);
+
+    const emptyHeap = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+      snapshot: {
+        ...initialSnapshot(),
+        crewSize: 2,
+        heapLoads: 0,
+        pickupProgressMs: 0,
+      },
+    });
+    const emptyPresenter = createMinePresenter(emptyHeap);
+    emptyPresenter.start();
+    const idle = emptyPresenter.snapshot();
+    expect(idle.hauler!.phase).toBe("pickup");
+    expect(idle.hauler!.animation).toBe("idle");
+    expect(idle.hauler!.facing).toBe("east");
+  });
+
   it("with crewSize 2 exposes hauler clip state on the hauler sub-object", () => {
     const session = createMiningSession({
       store: memoryStore(),
@@ -567,7 +624,7 @@ describe("mine presenter", () => {
     const picking = presenter.snapshot();
     expect(picking.hauler).toBeDefined();
     expect(picking.hauler!.phase).toBe("pickup");
-    expect(picking.hauler!.animation).toBe("idle");
+    expect(picking.hauler!.animation).toBe("walk");
     expect(picking.hauler!.facing).toBe("east");
     expect(picking.hauler!.pickupProgress).toBeCloseTo(0.25, 5);
 

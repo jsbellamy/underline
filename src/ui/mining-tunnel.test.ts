@@ -15,8 +15,6 @@ import {
   CART_MARK_X,
   CART_WIDTH,
   CART_X,
-  DWARF_FRAME_W,
-  DWARF_SCALE,
   FACE_X,
   HAULER_MARK_X,
   MINING_MARK_X,
@@ -377,9 +375,9 @@ describe("mountMiningTunnel", () => {
     tunnel.destroy();
   });
 
-  it("defines HAULER_MARK_X west of the Miner at the worked value", () => {
-    expect(HAULER_MARK_X).toBe(180);
-    expect(HAULER_MARK_X + DWARF_FRAME_W * DWARF_SCALE).toBe(MINING_MARK_X);
+  it("defines HAULER_MARK_X at 96 east of the Cart", () => {
+    expect(HAULER_MARK_X).toBe(96);
+    expect(HAULER_MARK_X).toBeGreaterThan(CART_X + CART_WIDTH);
     expect(dwarfLayout(HAULER_PACK)).toEqual(dwarfLayout(DWARF_PACK));
   });
 
@@ -419,11 +417,11 @@ describe("mountMiningTunnel", () => {
     const tunnel = mountMiningTunnel(host);
 
     const cases: Array<{ haulProgress: number; expected: number }> = [
-      { haulProgress: 0, expected: 180 },
-      { haulProgress: 0.25, expected: 118 },
+      { haulProgress: 0, expected: 96 },
+      { haulProgress: 0.25, expected: 76 },
       { haulProgress: 0.5, expected: 56 },
-      { haulProgress: 0.75, expected: 118 },
-      { haulProgress: 1, expected: 180 },
+      { haulProgress: 0.75, expected: 76 },
+      { haulProgress: 1, expected: 96 },
     ];
 
     for (const { haulProgress, expected } of cases) {
@@ -432,18 +430,131 @@ describe("mountMiningTunnel", () => {
           advance: 1,
           faceSlide: 1,
           hauler: {
-            phase:
-              haulProgress === 0
-                ? "pickup"
-                : haulProgress < 0.5
-                  ? "out"
-                  : "back",
+            phase: haulProgress < 0.5 ? "out" : "back",
             haulProgress,
           },
         }),
       );
       expect(haulerLeft(host)).toBe(expected);
     }
+
+    tunnel.destroy();
+  });
+
+  it("shuttles the Hauler from stand to pile and back during pickup", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+
+    const casesForLoads: Array<{
+      heapLoads: number;
+      cases: Array<{ pickupProgress: number; expected: number }>;
+    }> = [
+      {
+        heapLoads: 1,
+        cases: [
+          { pickupProgress: 0, expected: 96 },
+          { pickupProgress: 0.25, expected: 173 },
+          { pickupProgress: 0.5, expected: 250 },
+          { pickupProgress: 0.75, expected: 173 },
+          { pickupProgress: 1, expected: 96 },
+        ],
+      },
+      {
+        heapLoads: 10,
+        cases: [
+          { pickupProgress: 0, expected: 96 },
+          { pickupProgress: 0.25, expected: 119 },
+          { pickupProgress: 0.5, expected: 142 },
+          { pickupProgress: 0.75, expected: 119 },
+          { pickupProgress: 1, expected: 96 },
+        ],
+      },
+    ];
+
+    for (const { heapLoads, cases } of casesForLoads) {
+      for (const { pickupProgress, expected } of cases) {
+        tunnel.render(
+          twoDwarfSnap({
+            advance: 1,
+            heapLoads,
+            hauler: { phase: "pickup", pickupProgress },
+          }),
+        );
+        expect(haulerLeft(host)).toBe(expected);
+      }
+    }
+
+    tunnel.destroy();
+  });
+
+  it("holds the Hauler at HAULER_MARK_X during pickup when the Heap is empty", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    tunnel.render(
+      twoDwarfSnap({
+        heapLoads: 0,
+        hauler: { phase: "pickup", pickupProgress: 0.5 },
+      }),
+    );
+    expect(haulerLeft(host)).toBe(HAULER_MARK_X);
+    tunnel.destroy();
+  });
+
+  it("drops one Ore from the pile at the shuttle midpoint", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    tunnel.render(
+      twoDwarfSnap({
+        heapLoads: 5,
+        hauler: { phase: "pickup", pickupProgress: 0.5 },
+      }),
+    );
+    expect(oreElements(host).length).toBe(5);
+    tunnel.render(
+      twoDwarfSnap({
+        heapLoads: 5,
+        hauler: { phase: "pickup", pickupProgress: 0.75 },
+      }),
+    );
+    expect(oreElements(host).length).toBe(4);
+    tunnel.destroy();
+  });
+
+  it("renders carried Ore on the return leg of the shuttle only", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+
+    tunnel.render(
+      twoDwarfSnap({
+        heapLoads: 5,
+        hauler: { phase: "pickup", pickupProgress: 0.25 },
+      }),
+    );
+    expect(host.querySelector("[data-ore-carried]")).toBeNull();
+
+    tunnel.render(
+      twoDwarfSnap({
+        heapLoads: 5,
+        hauler: { phase: "pickup", pickupProgress: 0.75 },
+      }),
+    );
+    expect(host.querySelectorAll("[data-ore-carried]").length).toBe(1);
+
+    tunnel.render(
+      twoDwarfSnap({
+        heapLoads: 0,
+        hauler: { phase: "pickup", pickupProgress: 0 },
+      }),
+    );
+    expect(host.querySelector("[data-ore-carried]")).toBeNull();
+
+    tunnel.render(
+      twoDwarfSnap({
+        heapLoads: 3,
+        hauler: { phase: "out", haulProgress: 0.25, pickupProgress: 0 },
+      }),
+    );
+    expect(host.querySelector("[data-ore-carried]")).toBeNull();
 
     tunnel.destroy();
   });
@@ -482,8 +593,12 @@ describe("mountMiningTunnel", () => {
     const snap = twoDwarfSnap({
       advance: 50,
       faceSlide: 0.5,
-      haulProgress: 0.25,
-      hauler: { phase: "out", haulProgress: 0.25, frameIndex: 1 },
+      heapLoads: 5,
+      hauler: {
+        phase: "pickup",
+        pickupProgress: 0.35,
+        frameIndex: 2,
+      },
     });
 
     tunnel.render(snap);

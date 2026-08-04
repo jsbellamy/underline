@@ -177,10 +177,21 @@ export function createMinePresenter(
     if (!isTwoDwarf()) {
       return;
     }
-    hauler.setHauling(
-      haulAnimPhase(session.snapshot.haulRemainingMs),
-      simNowMs,
+    const snap = session.snapshot;
+    if (snap.haulRemainingMs > 0) {
+      hauler.setHauling(haulAnimPhase(snap.haulRemainingMs), simNowMs);
+      return;
+    }
+    if (snap.heapLoads === 0) {
+      hauler.setHauling(null, simNowMs);
+      return;
+    }
+    const progress = pickupProgressFraction(
+      snap.haulRemainingMs,
+      snap.pickupProgressMs,
+      snap.haulSpeedUpgradeCount,
     );
+    hauler.setHauling(progress <= 0.5 ? "back" : "out", simNowMs);
   }
 
   function syncHaulAnim(): void {

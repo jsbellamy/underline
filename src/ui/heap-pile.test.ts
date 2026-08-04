@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { heapSlot } from "./heap-pile";
+import { haulerPickupTargetX, heapSlot } from "./heap-pile";
 import {
   FACE_X,
+  HAULER_MARK_X,
   HEAP_BOTTOM,
   HEAP_EAST_X,
   HEAP_ROW_HEIGHT,
@@ -42,5 +43,32 @@ describe("heapSlot", () => {
 
   it("throws for a fractional index", () => {
     expect(() => heapSlot(1.5)).toThrow();
+  });
+});
+
+describe("haulerPickupTargetX", () => {
+  const worked: Array<{ heapLoads: number; target: number }> = [
+    { heapLoads: 1, target: 250 },
+    { heapLoads: 5, target: 202 },
+    { heapLoads: 10, target: 142 },
+    { heapLoads: 13, target: 106 },
+    { heapLoads: 20, target: 178 },
+  ];
+
+  for (const { heapLoads, target } of worked) {
+    it(`targets x ${target} when heapLoads is ${heapLoads}`, () => {
+      expect(haulerPickupTargetX(heapLoads)).toBe(target);
+    });
+  }
+
+  it("throws when heapLoads is zero or negative", () => {
+    expect(() => haulerPickupTargetX(0)).toThrow();
+    expect(() => haulerPickupTargetX(-1)).toThrow();
+  });
+
+  it("never targets west of the Hauler stand", () => {
+    for (const n of [1, 5, 10, 13, 20]) {
+      expect(haulerPickupTargetX(n)).toBeGreaterThanOrEqual(HAULER_MARK_X);
+    }
   });
 });
