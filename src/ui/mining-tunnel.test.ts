@@ -5,30 +5,60 @@ import {
   MINING_TUNNEL_VISIBLE_COLUMNS,
   mountMiningTunnel,
 } from "./mining-tunnel";
+import type { TunnelSnapshot } from "./mine-presenter";
+import { dwarfLayout } from "../data/external-sprite-pack";
+import { DWARF_PACK } from "./dwarf-frames";
+import { HAULER_PACK } from "./hauler-frames";
 import {
   BLOCK_SIZE,
   CART_HEIGHT,
   CART_MARK_X,
   CART_WIDTH,
   CART_X,
+  DWARF_FRAME_W,
+  DWARF_SCALE,
   FACE_X,
+  HAULER_MARK_X,
   MINING_MARK_X,
   PANE_WIDTH,
 } from "./pane-layout";
 
-const baseSnap = {
-  animation: "idle" as const,
-  facing: "east" as const,
+const baseSnap: TunnelSnapshot = {
+  animation: "idle",
+  facing: "east",
   frameIndex: 0,
+  advance: 0,
   faceSwingProgress: 0,
   swingFraction: 0,
   digRate: 1,
-  haulPhase: "none" as const,
+  haulPhase: "none",
   haulProgress: 0,
   faceSlide: 1,
   crewSize: 1,
   heapLoads: 0,
 };
+
+function twoDwarfSnap(
+  overrides: Omit<Partial<TunnelSnapshot>, "hauler"> & {
+    hauler?: Partial<NonNullable<TunnelSnapshot["hauler"]>>;
+  } = {},
+): TunnelSnapshot {
+  const { hauler: haulerOverrides, ...snapOverrides } = overrides;
+  const defaultHauler = {
+    animation: "walk" as const,
+    facing: "east" as const,
+    frameIndex: 0,
+    phase: "out" as const,
+    haulProgress: 0,
+    pickupProgress: 0,
+  };
+  return {
+    ...baseSnap,
+    crewSize: 2,
+    ...snapOverrides,
+    hauler: { ...defaultHauler, ...haulerOverrides },
+  };
+}
 
 function countDescendants(element: HTMLElement): number {
   return element.querySelectorAll("*").length;
@@ -67,6 +97,14 @@ function dwarfLeft(host: HTMLElement): number {
     throw new Error("Dwarf not found");
   }
   return Number(dwarf.style.left.replace("px", ""));
+}
+
+function haulerLeft(host: HTMLElement): number {
+  const hauler = host.querySelector<HTMLElement>("[data-hauler]");
+  if (!hauler) {
+    throw new Error("Hauler not found");
+  }
+  return Number(hauler.style.left.replace("px", ""));
 }
 
 describe("mountMiningTunnel", () => {
@@ -320,6 +358,159 @@ describe("mountMiningTunnel", () => {
     });
 
     expect(dwarfLeft(host)).toBe(MINING_MARK_X);
+    tunnel.destroy();
+  });
+
+  it("defines HAULER_MARK_X west of the Miner at the worked value", () => {
+    expect(HAULER_MARK_X).toBe(180);
+    expect(HAULER_MARK_X + DWARF_FRAME_W * DWARF_SCALE).toBe(MINING_MARK_X);
+  });
+
+  it("matches HAULER_PACK layout to DWARF_PACK for mark arithmetic", () => {
+    expect(dwarfLayout(HAULER_PACK)).toEqual(dwarfLayout(DWARF_PACK));
+    expect(HAULER_MARK_X).toBe(180);
+  });
+
+  it("pins the Miner at MINING_MARK_X when a Hauler is present", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+
+    const cases = [
+      { faceSlide: 1, haulProgress: 0 },
+      { faceSlide: 1, haulProgress: 0.25 },
+      { faceSlide: 1, haulProgress: 0.5 },
+      { faceSlide: 1, haulProgress: 0.75 },
+      { faceSlide: 1, haulProgress: 1 },
+      { faceSlide: 0.2, haulProgress: 0.25 },
+      { faceSlide: 0.5, haulProgress: 0.75 },
+    ];
+
+    for (const { faceSlide, haulProgress } of cases) {
+      tunnel.render(
+        twoDwarfSnap({
+          advance: 1,
+          faceSlide,
+          hauler: {
+            phase: haulProgress < 0.5 ? "out" : "back",
+            haulProgress,
+          },
+        }),
+      );
+      expect(dwarfLeft(host)).toBe(MINING_MARK_X);
+    }
+
+    tunnel.destroy();
+  });
+
+  it("interpolates Hauler left across the lane at worked progress values", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+
+    const cases: Array<{ haulProgress: number; expected: number }> = [
+      { haulProgress: 0, expected: 180 },
+      { haulProgress: 0.25, expected: 118 },
+      { haulProgress: 0.5, expected: 56 },
+      { haulProgress: 0.75, expected: 118 },
+      { haulProgress: 1, expected: 180 },
+    ];
+
+    for (const { haulProgress, expected } of cases) {
+      tunnel.render(
+        twoDwarfSnap({
+          advance: 1,
+          faceSlide: 1,
+          hauler: {
+            phase:
+              haulProgress === 0
+                ? "pickup"
+                : haulProgress < 0.5
+                  ? "out"
+                  : "back",
+            haulProgress,
+          },
+        }),
+      );
+      expect(haulerLeft(host)).toBe(expected);
+    }
+
+    tunnel.destroy();
+  });
+
+  it("renders no Hauler sprite for a one-Dwarf Crew", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    tunnel.render({ ...baseSnap, advance: 3, crewSize: 1 });
+
+    expect(host.querySelector("[data-hauler]")).toBeNull();
+    tunnel.destroy();
+  });
+
+  it("styles the Hauler sprite like the Miner on the floor", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    tunnel.render(twoDwarfSnap({ advance: 1 }));
+
+    const dwarf = host.querySelector<HTMLImageElement>("[data-dwarf]")!;
+    const hauler = host.querySelector<HTMLImageElement>("[data-hauler]")!;
+
+    expect(hauler.style.bottom).toBe(dwarf.style.bottom);
+    expect(hauler.style.imageRendering).toBe(dwarf.style.imageRendering);
+    expect(hauler.draggable).toBe(dwarf.draggable);
+    expect(hauler.width).toBe(dwarf.width);
+    expect(hauler.height).toBe(dwarf.height);
+    expect(hauler.style.width).toBe(dwarf.style.width);
+    expect(hauler.style.height).toBe(dwarf.style.height);
+
+    tunnel.destroy();
+  });
+
+  it("does not mutate the DOM when rendering the same two-Dwarf snapshot twice", async () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    const snap = twoDwarfSnap({
+      advance: 50,
+      faceSlide: 0.5,
+      haulProgress: 0.25,
+      hauler: { phase: "out", haulProgress: 0.25, frameIndex: 1 },
+    });
+
+    tunnel.render(snap);
+
+    const observer = new MutationObserver(() => {});
+    observer.observe(host, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      characterData: true,
+    });
+
+    tunnel.render(snap);
+    await new Promise((r) => setTimeout(r, 0));
+
+    expect(observer.takeRecords()).toEqual([]);
+    observer.disconnect();
+    tunnel.destroy();
+  });
+
+  it("resolves Miner and Hauler walk frames from different packs", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    tunnel.render(
+      twoDwarfSnap({
+        advance: 1,
+        animation: "walk",
+        facing: "east",
+        hauler: { animation: "walk", facing: "east" },
+      }),
+    );
+
+    const dwarf = host.querySelector<HTMLImageElement>("[data-dwarf]")!;
+    const hauler = host.querySelector<HTMLImageElement>("[data-hauler]")!;
+
+    expect(dwarf.src).toMatch(/\/assets\/characters\/dwarf\//);
+    expect(hauler.src).toMatch(/\/assets\/characters\/hauler\//);
+    expect(dwarf.src).not.toBe(hauler.src);
+
     tunnel.destroy();
   });
 
