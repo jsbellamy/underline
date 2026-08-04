@@ -1,0 +1,18 @@
+{
+  "schema": "tunnel-art-source/0",
+  "provider": "pixellab",
+  "acquisition_tool": "pixellab/object-export/1.0",
+  "prompt": "medium gold nugget",
+  "raw_sha256": "9b17e7697ec0b11eff827e1b414a1d573cf4e5c4151387a9d926f3e6b9b07fa4",
+  "asset_class": "object-set",
+  "runtime_destination": "src/assets/tunnel/objects/ore/gold-medium-a.png",
+  "source_resolution": [
+    32,
+    32
+  ],
+  "reduction": {
+    "width": 32,
+    "height": 32,
+    "resample": null
+  }
+}

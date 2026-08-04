@@ -1,0 +1,18 @@
+{
+  "schema": "tunnel-art-source/0",
+  "provider": "pixellab",
+  "acquisition_tool": "pixellab/object-export/1.0",
+  "prompt": "ruby",
+  "raw_sha256": "59542d0d64655030de503af7c80bc3d2a6d1761f34ddf750c2d6cc49c3939eba",
+  "asset_class": "object-set",
+  "runtime_destination": "src/assets/tunnel/objects/ore/ruby-medium.png",
+  "source_resolution": [
+    32,
+    32
+  ],
+  "reduction": {
+    "width": 32,
+    "height": 32,
+    "resample": null
+  }
+}

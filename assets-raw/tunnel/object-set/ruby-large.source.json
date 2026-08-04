@@ -1,0 +1,18 @@
+{
+  "schema": "tunnel-art-source/0",
+  "provider": "pixellab",
+  "acquisition_tool": "pixellab/object-export/1.0",
+  "prompt": "distinguishable ore chunks \u2014 each with a unique silhouette and cluster geometry",
+  "raw_sha256": "97f301f5fcb5d49eea20e114ef9107d8912a1b0547201156271ae7caa1ee6208",
+  "asset_class": "object-set",
+  "runtime_destination": "src/assets/tunnel/objects/ore/ruby-large.png",
+  "source_resolution": [
+    32,
+    32
+  ],
+  "reduction": {
+    "width": 32,
+    "height": 32,
+    "resample": null
+  }
+}

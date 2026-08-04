@@ -1,0 +1,18 @@
+{
+  "schema": "tunnel-art-source/0",
+  "provider": "pixellab",
+  "acquisition_tool": "pixellab/object-export/1.0",
+  "prompt": "diamond",
+  "raw_sha256": "b2c85c58b1e2aaf9dd33daf38d6f515ea8fdc9101bdc60c14791448bb07b1585",
+  "asset_class": "object-set",
+  "runtime_destination": "src/assets/tunnel/objects/ore/diamond-medium.png",
+  "source_resolution": [
+    32,
+    32
+  ],
+  "reduction": {
+    "width": 32,
+    "height": 32,
+    "resample": null
+  }
+}
