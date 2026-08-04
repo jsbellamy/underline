@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createMiningSession } from "../core/mining-session";
 import {
   advance as advanceEngine,
+  advanceWithEvents,
   HAUL_ROUND_TRIP_MS,
   initialSnapshot,
 } from "../core/mining-engine";
@@ -249,18 +250,24 @@ describe("mine presenter", () => {
     const presenter = createMinePresenter(session, { audio });
     presenter.start();
 
-    presenter.advanceMs(1_080_000);
+    const dtMs = 1_080_000;
+    const { events: expectedEvents } = advanceWithEvents(initialSnapshot(), dtMs);
+    const expectedBreakAtMs = expectedEvents.find(
+      (e) => e.type === "faceBroken",
+    )!.atMs;
+
+    presenter.advanceMs(dtMs);
 
     const breakCues = audio.queuedBatches.flatMap((b) =>
       b.events
         .filter((e) => e.type === "faceBroken")
-        .map((e) => ({ atMs: b.baseMs + e.atMs })),
+        .map((e) => b.baseMs + e.atMs),
     );
-    expect(breakCues).toHaveLength(1);
+    expect(breakCues).toEqual([expectedBreakAtMs]);
     expect(audio.releasedAt).toEqual([]);
   });
 
-  it("releaseAudioDueTo delegates to mining audio", () => {
+  it("releases queued audio when the caller supplies a presentation time", () => {
     const session = createMiningSession({
       store: memoryStore(),
       now: () => 0,
