@@ -50,6 +50,102 @@ function spyMiningAudio(): MiningAudio & {
 }
 
 describe("mine presenter", () => {
+  it("starts simNowMs at 0 and sums advanceMs deltas", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+    });
+    const presenter = createMinePresenter(session);
+    expect(presenter.simNowMs).toBe(0);
+    presenter.start();
+    presenter.advanceMs(250);
+    expect(presenter.simNowMs).toBe(250);
+    presenter.advanceMs(100);
+    expect(presenter.simNowMs).toBe(350);
+    presenter.advanceMs(50);
+    expect(presenter.simNowMs).toBe(400);
+  });
+
+  it("defaults snapshot to simNowMs when nowMs is omitted", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+    presenter.advanceMs(250);
+    expect(presenter.snapshot()).toEqual(presenter.snapshot(presenter.simNowMs));
+  });
+
+  it("does not change frameIndex on tick when presentation clock is held", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+    const at500 = presenter.snapshot(500);
+    presenter.advanceMs(250);
+    const stillAt500 = presenter.snapshot(500);
+    expect(stillAt500.frameIndex).toBe(at500.frameIndex);
+  });
+
+  it("draws every swing frame index across a cycle at Dig Rate 1", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+
+    const seen = new Set<number>();
+    const order: number[] = [];
+    for (let t = 0; t <= 1000; t += 16) {
+      const frame = presenter.snapshot(t).frameIndex;
+      if (!seen.has(frame)) {
+        seen.add(frame);
+        order.push(frame);
+      }
+    }
+    expect(seen.size).toBe(9);
+    expect([...seen].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+    expect(order).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+  });
+
+  it("draws every swing frame index across a cycle at Dig Rate 2", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+      snapshot: { ...initialSnapshot(), digRateUpgradeCount: 4 },
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+    presenter.syncDigRate();
+
+    const seen = new Set<number>();
+    for (let t = 0; t <= 500; t += 16) {
+      seen.add(presenter.snapshot(t).frameIndex);
+    }
+    expect(seen.size).toBe(9);
+    expect([...seen].sort((a, b) => a - b)).toEqual([0, 1, 2, 3, 4, 5, 6, 7, 8]);
+  });
+
+  it("freezes swing fraction during a Haul", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+    presenter.advanceMs(100_000);
+    const atHaulStart = presenter.snapshot(presenter.simNowMs);
+    const midHaul = presenter.snapshot(presenter.simNowMs + 200);
+    presenter.advanceMs(4_000);
+    const laterHaul = presenter.snapshot(presenter.simNowMs + 500);
+    expect(midHaul.swingFraction).toBe(atHaulStart.swingFraction);
+    expect(laterHaul.swingFraction).toBe(atHaulStart.swingFraction);
+  });
+
   it("syncDigRate mirrors digRateUpgradeCount into the anim Dig Rate", () => {
     const session = createMiningSession({
       store: memoryStore(),

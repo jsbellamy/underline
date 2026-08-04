@@ -41,7 +41,7 @@ import {
 import { createMinePresenter, type MinePresenter } from "./mine-presenter";
 import { mountMiningTunnel, type MiningTunnelView } from "./mining-tunnel";
 import { mountPaneControls, type PaneControlsView } from "./pane-controls";
-import { startPump, type PumpController, type PumpDeps } from "./pump";
+import { PUMP_INTERVAL_MS, startPump, type PumpController, type PumpDeps } from "./pump";
 
 export interface PaneShell {
   startPump(): void;
@@ -98,9 +98,10 @@ export function mountPaneShell(
   const busFactory = options.busFactory ?? createBusEndpoint;
   const clockNow = options.now ?? Date.now;
   const schedule = options.pumpSchedule;
+  const now = schedule?.now ?? clockNow;
   const frameMetrics =
     options.frameMetrics ??
-    createFrameMetrics({ now: schedule?.now ?? clockNow });
+    createFrameMetrics({ now: now });
 
   let bus: BusEndpoint | null = null;
 
@@ -130,6 +131,16 @@ export function mountPaneShell(
       session,
       createAudioContext ? { store, createAudioContext } : {},
     );
+
+  let lastSimNowMs = presenter.simNowMs;
+  let lastTickAtMs = now();
+
+  function presentationNowMs(): number {
+    const elapsed = Math.max(0, now() - lastTickAtMs);
+    return Math.floor(
+      lastSimNowMs + Math.min(elapsed, PUMP_INTERVAL_MS),
+    );
+  }
 
   let tunnel: MiningTunnelView | null = null;
   let controls: PaneControlsView | null = null;
@@ -178,7 +189,7 @@ export function mountPaneShell(
 
   tunnel = mountMiningTunnel(tunnelHost);
   presenter.start();
-  tunnel.render(presenter.snapshot());
+  tunnel.render(presenter.snapshot(presentationNowMs()));
 
   function publishSnapshot(): void {
     const wire = session.wireSnapshot();
@@ -265,15 +276,17 @@ export function mountPaneShell(
     const pumpOptions: PumpDeps = {
       advanceBy: (ms) => {
         presenter.advanceMs(ms);
+        lastSimNowMs = presenter.simNowMs;
+        lastTickAtMs = now();
         maybePublishEconomy();
         return [];
       },
       onAdvance: () => {},
       render: () => {
-        tunnel?.render(presenter.snapshot());
+        tunnel?.render(presenter.snapshot(presentationNowMs()));
       },
       frameMetrics,
-      now: schedule?.now ?? clockNow,
+      now: now,
     };
     if (schedule?.setInterval) {
       pumpOptions.setInterval = schedule.setInterval;

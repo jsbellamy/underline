@@ -38,11 +38,12 @@ export interface TunnelSnapshot {
 export const FACE_SLIDE_MS = 400;
 
 export interface MinePresenter {
-  snapshot(): TunnelSnapshot;
+  snapshot(nowMs?: number): TunnelSnapshot;
   start(): void;
   advanceMs(dtMs: number): void;
   syncDigRate(): void;
   setSoundEnabled(enabled: boolean): void;
+  readonly simNowMs: number;
   readonly anim: DwarfAnimController;
 }
 
@@ -93,28 +94,50 @@ export function createMinePresenter(
   let faceSlide = 1;
   let faceSlideElapsedMs = 0;
   let lastAdvance = session.snapshot.advance;
+  let simNowMs = 0;
+  let faceSwingProgressAtTick = session.snapshot.faceSwingProgress;
 
   function swingCycleMs(): number {
     return 1000 / anim.digRate;
   }
 
   function syncHaulAnim(): void {
-    anim.setHauling(haulAnimPhase(session.snapshot.haulRemainingMs));
+    anim.setHauling(haulAnimPhase(session.snapshot.haulRemainingMs), simNowMs);
   }
 
-  function snapshot(): TunnelSnapshot {
+  function swingFractionAt(nowMs: number, hauling: boolean): number {
+    if (hauling) {
+      return faceSwingProgressAtTick - Math.floor(faceSwingProgressAtTick);
+    }
+    const progress =
+      faceSwingProgressAtTick + anim.digRate * (nowMs - simNowMs) / 1000;
+    return progress - Math.floor(progress);
+  }
+
+  function snapshot(nowMs: number = simNowMs): TunnelSnapshot {
     const snap = session.snapshot;
     const whole = Math.floor(snap.faceSwingProgress);
-    const frac = snap.faceSwingProgress - whole;
     const remaining = snap.haulRemainingMs;
     const phase = haulAnimPhase(remaining);
+    const hauling = remaining > 0;
+
+    let swingFraction = 0;
+    let frameIndex: number;
+
+    if (anim.animation === "swing") {
+      swingFraction = swingFractionAt(nowMs, hauling);
+      frameIndex = anim.frameIndexForSwingFraction(swingFraction);
+    } else {
+      frameIndex = anim.frameIndexAt(nowMs);
+    }
+
     return {
       animation: anim.animation,
       facing: anim.facing,
-      frameIndex: anim.frameIndex,
+      frameIndex,
       advance: snap.advance,
       faceSwingProgress: whole,
-      swingFraction: anim.animation === "swing" ? frac : 0,
+      swingFraction,
       digRate: anim.digRate,
       haulPhase: phase ?? "none",
       haulProgress: haulProgress(remaining),
@@ -124,9 +147,12 @@ export function createMinePresenter(
 
   return {
     anim,
+    get simNowMs() {
+      return simNowMs;
+    },
     snapshot,
     start() {
-      anim.startMining();
+      anim.startMining(simNowMs);
     },
     syncDigRate() {
       anim.setDigRate(digRateFor(session.snapshot.digRateUpgradeCount));
@@ -135,6 +161,7 @@ export function createMinePresenter(
       audio?.setEnabled(enabled);
     },
     advanceMs(dtMs: number) {
+      simNowMs += dtMs;
       const before = session.snapshot.advance;
       const haulingBefore = session.snapshot.haulRemainingMs > 0;
       session.advanceLive(dtMs);
@@ -142,6 +169,8 @@ export function createMinePresenter(
       if (audio && gained > 0) {
         audio.faceBroken(gained);
       }
+
+      faceSwingProgressAtTick = session.snapshot.faceSwingProgress;
 
       if (session.snapshot.advance > lastAdvance) {
         faceSlide = 0;
@@ -167,8 +196,6 @@ export function createMinePresenter(
       } else if (!haulingAfter) {
         swingCycleRemainderMs = 0;
       }
-
-      anim.advanceMs(dtMs);
     },
   };
 }

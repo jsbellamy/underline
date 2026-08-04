@@ -5,7 +5,7 @@ Rules (#314 / #321 / #364):
 - `swing` while mining at the Face (not hauling).
 - `walk` loops for a Haul leg — west on the out leg, east on the back leg.
 */
-import { frameAt } from "./animation-player";
+import { cycleDurationMs, frameAt } from "./animation-player";
 import {
   dwarfPlayback,
   type DwarfAnimationId,
@@ -18,15 +18,14 @@ export type HaulAnimPhase = "out" | "back";
 export interface DwarfAnimController {
   readonly animation: DwarfAnimId;
   readonly facing: DwarfFacing;
-  readonly frameIndex: number;
   readonly digRate: number;
-  /** Milliseconds into the current clip (resets on animation change). */
-  readonly clipElapsedMs: number;
-  startMining(): void;
-  stopMining(): void;
-  setHauling(phase: HaulAnimPhase | null): void;
-  advanceMs(dtMs: number): void;
+  startMining(nowMs: number): void;
+  stopMining(nowMs: number): void;
+  setHauling(phase: HaulAnimPhase | null, nowMs: number): void;
   setDigRate(digRate: number): void;
+  /** Frame for `nowMs`; for `swing`, callers pass phase via frameIndexForSwingFraction. */
+  frameIndexAt(nowMs: number): number;
+  frameIndexForSwingFraction(fraction: number): number;
 }
 
 export interface DwarfAnimControllerOptions {
@@ -40,7 +39,7 @@ export function createDwarfAnimController(
   let digRate = options.digRate ?? 1;
   let facing: DwarfFacing = options.facing ?? "east";
   let animation: DwarfAnimId = "idle";
-  let clipElapsedMs = 0;
+  let clipStartMs = 0;
   let mining = false;
   let haulingPhase: HaulAnimPhase | null = null;
 
@@ -48,27 +47,27 @@ export function createDwarfAnimController(
     return dwarfPlayback(animation, digRate);
   }
 
-  function enter(next: DwarfAnimId): void {
+  function enter(next: DwarfAnimId, nowMs: number): void {
     if (animation === next) {
       return;
     }
     animation = next;
-    clipElapsedMs = 0;
+    clipStartMs = nowMs;
   }
 
-  function applyHauling(phase: HaulAnimPhase | null): void {
+  function applyHauling(phase: HaulAnimPhase | null, nowMs: number): void {
     haulingPhase = phase;
     if (phase === "out") {
       facing = "west";
-      enter("walk");
+      enter("walk", nowMs);
       return;
     }
     if (phase === "back") {
       facing = "east";
-      enter("walk");
+      enter("walk", nowMs);
       return;
     }
-    enter(mining ? "swing" : "idle");
+    enter(mining ? "swing" : "idle", nowMs);
     facing = "east";
   }
 
@@ -79,52 +78,40 @@ export function createDwarfAnimController(
     get facing() {
       return facing;
     },
-    get frameIndex() {
-      return frameAt(playback(), clipElapsedMs);
-    },
     get digRate() {
       return digRate;
     },
-    get clipElapsedMs() {
-      return clipElapsedMs;
-    },
-    startMining() {
+    startMining(nowMs: number) {
       mining = true;
       if (haulingPhase === null) {
-        enter("swing");
+        enter("swing", nowMs);
       }
     },
-    stopMining() {
+    stopMining(nowMs: number) {
       mining = false;
       if (haulingPhase === null) {
-        enter("idle");
+        enter("idle", nowMs);
       }
     },
-    setHauling(phase) {
+    setHauling(phase, nowMs: number) {
       if (phase === haulingPhase) {
         return;
       }
-      applyHauling(phase);
-    },
-    advanceMs(dtMs: number) {
-      if (!(dtMs >= 0)) {
-        throw new Error(`dtMs must be non-negative, got ${dtMs}`);
-      }
-      clipElapsedMs += dtMs;
+      applyHauling(phase, nowMs);
     },
     setDigRate(next: number) {
       if (!(next > 0)) {
         throw new Error(`digRate must be positive, got ${next}`);
       }
       digRate = next;
-      // Keep visual continuity: rescale elapsed so frame index stays put.
-      const before = frameAt(playback(), clipElapsedMs);
-      const nextPlayback = dwarfPlayback(animation, digRate);
-      let cursor = 0;
-      for (let i = 0; i < before; i += 1) {
-        cursor += nextPlayback.durationsMs[i]!;
-      }
-      clipElapsedMs = cursor;
+    },
+    frameIndexAt(nowMs: number) {
+      return frameAt(playback(), nowMs - clipStartMs);
+    },
+    frameIndexForSwingFraction(fraction: number) {
+      const swingPlayback = dwarfPlayback("swing", digRate);
+      const elapsedMs = fraction * cycleDurationMs(swingPlayback);
+      return frameAt(swingPlayback, elapsedMs);
     },
   };
 
