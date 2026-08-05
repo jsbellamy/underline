@@ -171,17 +171,6 @@ export function tripLeftFor(
   );
 }
 
-function haulAnimPhase(
-  haulRemainingMs: number,
-  unloadSpeedUpgradeCount: number,
-): HaulAnimPhase | null {
-  const leg = tripLeg(haulRemainingMs, unloadSpeedUpgradeCount);
-  if (leg === "out" || leg === "back") {
-    return leg;
-  }
-  return null;
-}
-
 function haulProgress(
   haulRemainingMs: number,
   unloadSpeedUpgradeCount: number,
