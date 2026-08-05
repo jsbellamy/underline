@@ -1276,4 +1276,21 @@ describe("mining engine Bag and Haul", () => {
     expect(many.ingots).toBe(once.ingots);
     expect(many.smelterProgress).toBeCloseTo(once.smelterProgress, 10);
   });
+
+  it("is chunk-neutral across an upgraded Unload Speed Haul", () => {
+    const before = snap({ crewSize: 2, unloadSpeedUpgradeCount: 2 });
+    const once = advance(before, 1_080_000);
+    let many = before;
+    for (let i = 0; i < 1080; i += 1) {
+      many = advance(many, 1_000);
+    }
+    expect(many.advance).toBe(once.advance);
+    expect(many.faceSwingProgress).toBeCloseTo(once.faceSwingProgress, 10);
+    expect(many.bagOre).toBeCloseTo(once.bagOre, 10);
+    expect(many.bagLoads).toBe(once.bagLoads);
+    expect(many.haulRemainingMs).toBe(once.haulRemainingMs);
+    expect(many.ore).toBeCloseTo(once.ore, 10);
+    expect(many.ingots).toBe(once.ingots);
+    expect(many.smelterProgress).toBeCloseTo(once.smelterProgress, 10);
+  });
 });
