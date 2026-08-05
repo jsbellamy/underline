@@ -3,11 +3,11 @@
 from __future__ import annotations
 
 import argparse
-import json
 import pathlib
 import sys
 from typing import Any
 
+from pipeline.cli_support import emit_json
 from pipeline.asset_pack import (
     AssetPackCheckResult,
     AssetPackError,
@@ -75,10 +75,6 @@ def _format_preview_report(result: PackPreviewResult, manifest: pathlib.Path) ->
     )
 
 
-def _emit_json(payload: dict[str, Any]) -> None:
-    print(json.dumps(payload, separators=(",", ":")))
-
-
 def _handle_check(args: argparse.Namespace) -> int:
     try:
         result = check_asset_pack(args.manifest)
@@ -94,11 +90,11 @@ def _handle_check(args: argparse.Namespace) -> int:
             }
             if reason_code is not None:
                 payload["reason_code"] = reason_code
-            _emit_json(payload)
+            emit_json(payload)
         return 2
 
     if args.json:
-        _emit_json(_check_json_payload(result))
+        emit_json(_check_json_payload(result))
     else:
         print(_format_check_report(result))
     return 0 if result.valid else 2
@@ -119,11 +115,11 @@ def _handle_preview(args: argparse.Namespace) -> int:
             }
             if reason_code is not None:
                 payload["reason_code"] = reason_code
-            _emit_json(payload)
+            emit_json(payload)
         return 2
 
     if args.json:
-        _emit_json(_preview_json_payload(result, args.manifest))
+        emit_json(_preview_json_payload(result, args.manifest))
     else:
         print(_format_preview_report(result, args.manifest))
     return 0

@@ -8,6 +8,7 @@ import pathlib
 import sys
 from typing import Any
 
+from pipeline.cli_support import emit_json, exit_code
 from pipeline.static_asset import (
     BundleExistsError,
     InitializationRejectedError,
@@ -19,14 +20,6 @@ from pipeline.static_asset import (
     finalize_static_bundle,
     initialize_static_bundle,
 )
-
-
-def _exit_code(outcome: str) -> int:
-    if outcome == "PASS":
-        return 0
-    if outcome == "FAIL":
-        return 1
-    raise ValueError(f"unknown outcome {outcome!r}")
 
 
 def _structural_payload(result: StaticAssetCheckResult) -> dict[str, Any]:
@@ -127,10 +120,6 @@ def _format_check_report(
     return "\n".join(lines)
 
 
-def _emit_json(payload: dict[str, Any]) -> None:
-    print(json.dumps(payload, separators=(",", ":")))
-
-
 def _handle_init(args: argparse.Namespace) -> int:
     try:
         initialize_static_bundle(
@@ -156,10 +145,10 @@ def _handle_init(args: argparse.Namespace) -> int:
         return 2
 
     if args.json:
-        _emit_json(_check_json_payload(args.out, result))
+        emit_json(_check_json_payload(args.out, result))
     else:
         print(_format_check_report(args.out, result))
-    return _exit_code(result.outcome)
+    return exit_code(result.outcome)
 
 
 def _handle_check(args: argparse.Namespace) -> int:
@@ -170,10 +159,10 @@ def _handle_check(args: argparse.Namespace) -> int:
         return 2
 
     if args.json:
-        _emit_json(_check_json_payload(args.bundle, result))
+        emit_json(_check_json_payload(args.bundle, result))
     else:
         print(_format_check_report(args.bundle, result))
-    return _exit_code(result.outcome)
+    return exit_code(result.outcome)
 
 
 def _handle_finalize(args: argparse.Namespace) -> int:
@@ -185,7 +174,7 @@ def _handle_finalize(args: argparse.Namespace) -> int:
         return 2
 
     if args.json:
-        _emit_json(
+        emit_json(
             _check_json_payload(
                 args.bundle,
                 result,
@@ -202,7 +191,7 @@ def _handle_finalize(args: argparse.Namespace) -> int:
                 release_paths=release_paths or None,
             )
         )
-    return _exit_code(result.outcome)
+    return exit_code(result.outcome)
 
 
 def _configure_parser(parser: argparse.ArgumentParser) -> None:
