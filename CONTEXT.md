@@ -372,23 +372,42 @@ Ore, so a Load is worth more on a tougher Face.
 _Avoid_: stack, unit, batch
 
 **Bag**:
-What the Dwarf carries Ore in between the Face and the Cart; a full Bag stops
-mining until it is delivered.
+What a one-Dwarf Crew carries Ore in between the Face and the Cart; a full Bag
+stops mining until it is delivered. The two-Dwarf Hauler also uses a Bag, but
+departs on `HAULER_GRAB_SIZE` Loads per Trip rather than waiting for Carry
+Capacity.
 _Avoid_: inventory, pack, backpack
 
 **Carry Capacity**:
-The Bag's size in Loads. Carry Capacity Upgrade raises it.
+The one-Dwarf Bag's size in Loads. Carry Capacity Upgrade raises it.
 _Avoid_: bag size, storage, limit
 
+**Trip**:
+One Hauler cycle: Lift one Load from the Heap, Travel to the Cart, Unload
+(crediting Ore on arrival), and Travel back. The Hauler repeats Trips while
+the Miner keeps Swinging.
+_Avoid_: run, leg, shuttle
+
+**Lift**:
+The fixed-time pickup of one Load from the Heap into the Hauler's Bag before a
+Trip's Travel leg. Haul Speed Upgrade shortens Lift time.
+_Avoid_: grab, scoop, collect
+
+**Unload**:
+The fixed dwell at the Cart while the Hauler's Bag empties and Ore is credited
+to the Colony. Unload follows Travel-out and precedes the return leg.
+_Avoid_: dump, deposit, drop-off
+
 **Haul**:
-The round trip from the Face to the Cart and back that delivers a full Bag. Only
-delivered Ore reaches the Colony.
-_Avoid_: trip, delivery run, fetch
+The Travel and Unload legs of a Trip — out to the Cart, dwell, and back. Only
+delivered Ore reaches the Colony. The Pane sizes walk speed from
+`HAUL_TRAVEL_MS`.
+_Avoid_: trip (reserved for the full Lift+Travel+Unload cycle), delivery run, fetch
 
 **Hauler**:
-The job of moving Ore from the Heap to the Cart. The Hauler picks Loads out of
-the Heap one at a time at a fixed pickup cost, then walks a Haul once its Bag
-is full.
+The job of moving Ore from the Heap to the Cart. The Hauler completes Trips:
+each Trip Lifts `HAULER_GRAB_SIZE` Loads from the Heap, Hauls to the Cart, and
+returns for the next Load.
 _Avoid_: carrier, porter, runner
 
 **Haul Speed**:

@@ -35,6 +35,10 @@ import {
 } from "./pane-layout";
 import { PUMP_INTERVAL_MS } from "./pump";
 
+const OPENING_PICKUP_MS = pickupMsPerLoad(0);
+const PICKUP_QUARTER_MS = OPENING_PICKUP_MS * 0.25;
+const PICKUP_THREE_QUARTER_MS = OPENING_PICKUP_MS * 0.75;
+
 function memoryStore() {
   const data: Record<string, string> = {};
   return {
@@ -684,7 +688,7 @@ describe("mine presenter", () => {
         ...initialSnapshot(),
         crewSize: 2,
         heapLoads: 3,
-        pickupProgressMs: 2_500,
+        pickupProgressMs: PICKUP_QUARTER_MS,
         haulSpeedUpgradeCount: 0,
       },
     });
@@ -703,7 +707,7 @@ describe("mine presenter", () => {
         ...initialSnapshot(),
         crewSize: 2,
         heapLoads: 3,
-        pickupProgressMs: 7_500,
+        pickupProgressMs: PICKUP_THREE_QUARTER_MS,
         haulSpeedUpgradeCount: 0,
       },
     });
@@ -741,7 +745,7 @@ describe("mine presenter", () => {
         ...initialSnapshot(),
         crewSize: 2,
         heapLoads: 1,
-        pickupProgressMs: 2_500,
+        pickupProgressMs: PICKUP_QUARTER_MS,
         haulSpeedUpgradeCount: 0,
       },
     });
@@ -952,7 +956,7 @@ describe("mine presenter", () => {
     it("targets heapLoads mid-pickup below the midpoint", () => {
       const { presenter } = twoDwarfPresenter({
         heapLoads: 5,
-        pickupProgressMs: 2_500,
+        pickupProgressMs: PICKUP_QUARTER_MS,
       });
       expect(presenter.snapshot().heapOre).toHaveLength(5);
     });
@@ -960,7 +964,7 @@ describe("mine presenter", () => {
     it("targets heapLoads minus one past the pickup midpoint", () => {
       const { presenter } = twoDwarfPresenter({
         heapLoads: 5,
-        pickupProgressMs: 7_500,
+        pickupProgressMs: PICKUP_THREE_QUARTER_MS,
       });
       const snap = presenter.snapshot();
       expect(snap.heapOre).toHaveLength(4);
@@ -972,7 +976,7 @@ describe("mine presenter", () => {
         heapLoads: 5,
         pickupProgressMs: 0,
       });
-      presenter.advanceMs(7_500);
+      presenter.advanceMs(PICKUP_THREE_QUARTER_MS);
       const snap = presenter.snapshot();
 
       const oracle = createHeapPileSim({
@@ -1007,7 +1011,7 @@ describe("mine presenter", () => {
     it("keeps pile target unchanged when heapLoads decrements at return-leg end", () => {
       const beforeReturn = twoDwarfPresenter({
         heapLoads: 3,
-        pickupProgressMs: 7_500,
+        pickupProgressMs: PICKUP_THREE_QUARTER_MS,
       });
       const targetBefore = beforeReturn.presenter.snapshot().heapOre.length;
 
@@ -1067,7 +1071,7 @@ describe("mine presenter", () => {
       const survivorId = presenter.snapshot().heapOre[0]!.id;
       const variantBefore = presenter.snapshot().heapOre[0]!.variantIndex;
 
-      presenter.advanceMs(7_500);
+      presenter.advanceMs(PICKUP_THREE_QUARTER_MS);
       const midPickup = presenter.snapshot();
       expect(midPickup.heapOre).toHaveLength(2);
       const survivor = midPickup.heapOre.find((o) => o.id === survivorId);
@@ -1077,7 +1081,7 @@ describe("mine presenter", () => {
     it("keeps the carried Ore variant stable across lifted pickup frames", () => {
       const { presenter } = twoDwarfPresenter({
         heapLoads: 5,
-        pickupProgressMs: 7_500,
+        pickupProgressMs: PICKUP_THREE_QUARTER_MS,
       });
       const first = presenter.snapshot();
       const second = presenter.snapshot();
@@ -1299,7 +1303,7 @@ describe("mine presenter", () => {
           ...twoDwarfBase,
           heapLoads: cap,
           haulRemainingMs: 0,
-          pickupProgressMs: 7_500,
+          pickupProgressMs: PICKUP_THREE_QUARTER_MS,
         },
       });
       const presenter = createMinePresenter(session);

@@ -109,7 +109,7 @@ def test_game_language_ore_is_yield_not_face_material() -> None:
         ("Load", "stack, unit, batch"),
         ("Bag", "inventory, pack, backpack"),
         ("Carry Capacity", "bag size, storage, limit"),
-        ("Haul", "trip, delivery run, fetch"),
+        ("Haul", "delivery run, fetch"),
         ("Haul Speed", "walk speed, move speed"),
         ("Cart", "minecart (the game word is Cart), depot, dropoff"),
     ],
@@ -182,12 +182,25 @@ def test_game_language_spill_is_destroyed_load_on_full_heap() -> None:
     assert "_Avoid_: waste, overflow, drop (a Spill is not a Load that landed), loss" in body
 
 
+def test_game_language_trip_lift_unload_defined() -> None:
+    section = _game_language_section()
+    trip = _normalized(_entry_body(section, "Trip"))
+    lift = _normalized(_entry_body(section, "Lift"))
+    unload = _normalized(_entry_body(section, "Unload"))
+    assert "Lift one Load from the Heap" in trip
+    assert "Unload" in trip
+    assert "Haul Speed Upgrade shortens Lift time" in lift
+    assert "fixed dwell at the Cart" in unload
+    assert "Ore is credited" in unload
+
+
 def test_game_language_hauler_moves_heap_to_cart() -> None:
     section = _game_language_section()
     body = _normalized(_entry_body(section, "Hauler"))
     assert "moving Ore from the Heap to the Cart" in body
-    assert "fixed pickup cost" in body
-    assert "walks a Haul once its Bag is full" in body
+    assert "completes Trips" in body
+    assert "HAULER_GRAB_SIZE" in body
+    assert "Lifts" in body
     assert "_Avoid_: carrier, porter, runner" in body
 
 
