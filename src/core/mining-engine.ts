@@ -53,7 +53,7 @@ export const HAUL_ROUND_TRIP_MS = HAUL_TRAVEL_MS + UNLOAD_MS;
 /** Haul countdown at which the Bag is credited — arrival at the Cart (zero Unload Speed upgrades). */
 export const HAUL_DELIVERY_MS = UNLOAD_MS + HAUL_TRAVEL_MS / 2;
 
-/** Loads the Hauler carries per Trip at Advance 0 before Upgrades. */
+/** Maximum Loads the Hauler can take in one Lift before Upgrades. */
 export const OPENING_GRAB_SIZE = 1;
 
 /** First Upgrade cost in Ingots; doubles each buy. */
@@ -174,7 +174,7 @@ export function pickupMsPerLoad(haulSpeedUpgradeCount: number): number {
   return PICKUP_MS_PER_LOAD / haulSpeedFor(haulSpeedUpgradeCount);
 }
 
-/** Loads the Hauler carries per Trip. */
+/** Maximum Loads the Hauler can take in one Lift. */
 export function grabSizeFor(grabSizeUpgradeCount: number): number {
   return OPENING_GRAB_SIZE + grabSizeUpgradeCount;
 }
@@ -339,9 +339,8 @@ export function advanceWithEvents(
     windowRealMs += segmentGameMs / rateScale;
   };
 
-  const startHaulIfBagFull = (): void => {
-    const departureLoads = isTwoDwarf ? grabSize : capacity;
-    if (bagLoads >= departureLoads) {
+  const startOneDwarfHaulIfBagFull = (): void => {
+    if (bagLoads >= capacity) {
       haulRemainingMs = haulRoundTripMs;
     }
   };
@@ -350,7 +349,7 @@ export function advanceWithEvents(
     if (!isTwoDwarf) {
       bagOre += orePerDrop;
       bagLoads += 1;
-      startHaulIfBagFull();
+      startOneDwarfHaulIfBagFull();
       return false;
     }
     if (heapLoads >= heapCapacity) {
@@ -361,14 +360,15 @@ export function advanceWithEvents(
     return false;
   };
 
-  const transferHeapLoadToBag = (): void => {
+  const transferHeapGrabToBag = (): void => {
+    const grabbedLoads = Math.min(heapLoads, grabSize - bagLoads);
     const orePerLoad = heapOre / heapLoads;
-    heapOre -= orePerLoad;
-    heapLoads -= 1;
-    bagOre += orePerLoad;
-    bagLoads += 1;
+    heapOre -= orePerLoad * grabbedLoads;
+    heapLoads -= grabbedLoads;
+    bagOre += orePerLoad * grabbedLoads;
+    bagLoads += grabbedLoads;
     pickupProgressMs = 0;
-    startHaulIfBagFull();
+    haulRemainingMs = haulRoundTripMs;
   };
 
   const miningAllowed = (): boolean => {
@@ -392,9 +392,12 @@ export function advanceWithEvents(
   };
 
   while (gameMs > 0) {
-    // A Bag at departure size with no Trip running is otherwise a deadlock: the
-    // Hauler cannot Lift into a full Bag, and only a Lift starts the next Trip.
-    if (bagLoads >= (isTwoDwarf ? grabSize : capacity) && haulRemainingMs === 0) {
+    // A carried two-Dwarf Grab always departs; Grab Size is a maximum, not a
+    // fill threshold. A one-Dwarf Crew still waits for its Bag to fill.
+    const bagReadyToDepart = isTwoDwarf
+      ? bagLoads > 0
+      : bagLoads >= capacity;
+    if (bagReadyToDepart && haulRemainingMs === 0) {
       haulRemainingMs = haulRoundTripMs;
       continue;
     }
@@ -492,7 +495,7 @@ export function advanceWithEvents(
     gameMs -= segmentMs;
 
     if (atPickupBoundary) {
-      transferHeapLoadToBag();
+      transferHeapGrabToBag();
       if (!atMiningBoundary) {
         continue;
       }

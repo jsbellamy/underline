@@ -930,6 +930,51 @@ describe("mining engine advanceWithEvents", () => {
     expect(lifted.haulRemainingMs).toBe(HAUL_ROUND_TRIP_MS);
   });
 
+  it.each([
+    { heapLoads: 1, grabbed: 1, left: 0 },
+    { heapLoads: 2, grabbed: 2, left: 0 },
+    { heapLoads: 4, grabbed: 3, left: 1 },
+  ])(
+    "treats Grab Size 3 as a maximum when the Heap has $heapLoads Loads",
+    ({ heapLoads, grabbed, left }) => {
+      const lifted = advance(
+        snap({
+          crewSize: 2,
+          heapLoads,
+          heapOre: heapLoads,
+          grabSizeUpgradeCount: 2,
+        }),
+        pickupMsPerLoad(0),
+      );
+
+      expect(lifted.bagLoads).toBe(grabbed);
+      expect(lifted.bagOre).toBe(grabbed);
+      expect(lifted.heapLoads).toBe(left);
+      expect(lifted.heapOre).toBe(left);
+      expect(lifted.haulRemainingMs).toBe(HAUL_ROUND_TRIP_MS);
+    },
+  );
+
+  it("credits the grabbed batch and empties the Bag at Cart arrival", () => {
+    const lifted = advance(
+      snap({
+        crewSize: 2,
+        heapLoads: 2,
+        heapOre: 2,
+        grabSizeUpgradeCount: 2,
+      }),
+      pickupMsPerLoad(0),
+    );
+    const delivered = advance(
+      lifted,
+      HAUL_ROUND_TRIP_MS - HAUL_DELIVERY_MS,
+    );
+
+    expect(delivered.ore).toBe(2);
+    expect(delivered.bagLoads).toBe(0);
+    expect(delivered.bagOre).toBe(0);
+  });
+
   it("still departs only when the one-Dwarf Bag is full", () => {
     let state = snap({ crewSize: 1 });
     for (let i = 0; i < carryCapacityFor(0) - 1; i += 1) {

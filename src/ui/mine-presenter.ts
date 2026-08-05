@@ -10,6 +10,7 @@ import {
 import { createHeapPileSim, type HeapPileSim } from "../core/heap-pile-sim";
 import {
   digRateFor,
+  grabSizeFor,
   HAUL_TRAVEL_MS,
   haulRoundTripMsFor,
   pickDamageFor,
@@ -150,6 +151,7 @@ export function tripLeftFor(
   departureStation: number,
   unloadSpeedUpgradeCount: number,
   destinationMark: number = CART_MARK_X,
+  returnStation: number = departureStation,
 ): number {
   const unloadMs = unloadMsFor(unloadSpeedUpgradeCount);
   const halfTravel = HAUL_TRAVEL_MS / 2;
@@ -166,7 +168,7 @@ export function tripLeftFor(
     return destinationMark;
   }
   return Math.min(
-    departureStation,
+    returnStation,
     Math.round(destinationMark + (halfTravel - haulRemainingMs) * walkPxPerMs),
   );
 }
@@ -283,6 +285,7 @@ export function createMinePresenter(
   let heldWalkStationPx: number | null = null;
   let removedHeldBody = false;
   let haulDepartureStation: number | null = null;
+  let haulReturnStation: number | null = null;
   let prevHaulRemainingMs = session.snapshot.haulRemainingMs;
 
   function trackHaulDeparture(nowMs: number): void {
@@ -291,12 +294,15 @@ export function createMinePresenter(
       haulDepartureStation = isTwoDwarf()
         ? haulerLeftPx
         : MINING_MARK_X;
+      haulReturnStation = null;
     }
     if (prevHaulRemainingMs > 0 && remaining === 0) {
-      if (haulDepartureStation !== null && isTwoDwarf()) {
-        haulerLeftPx = haulDepartureStation;
+      if (isTwoDwarf()) {
+        haulerLeftPx =
+          haulReturnStation ?? haulDepartureStation ?? HAULER_MARK_X;
       }
       haulDepartureStation = null;
+      haulReturnStation = null;
       haulerSteppedToMs = nowMs;
     }
     prevHaulRemainingMs = remaining;
@@ -334,16 +340,16 @@ export function createMinePresenter(
     if (snap.crewSize !== 2) {
       return 0;
     }
-    const lifted = isPickupLifted(
+    const liftedLoads = isPickupLifted(
       snap.haulRemainingMs,
       snap.heapLoads,
       snap.pickupProgressMs,
       snap.haulSpeedUpgradeCount,
     )
-      ? 1
+      ? Math.min(snap.heapLoads, grabSizeFor(snap.grabSizeUpgradeCount))
       : 0;
     return Math.min(
-      Math.max(0, snap.heapLoads - lifted),
+      Math.max(0, snap.heapLoads - liftedLoads),
       HEAP_RENDER_CEILING,
     );
   }
@@ -385,29 +391,24 @@ export function createMinePresenter(
     left: number,
     excluded: ReadonlySet<number>,
   ): number | null {
-    const { x: handX, y: handY } = haulerHandPoint(left);
-    const candidates = pile.bodies.filter((b) => !excluded.has(b.id));
-    if (candidates.length === 0) {
-      return null;
-    }
+    return pickHeldBodies(left, excluded, 1)[0] ?? null;
+  }
 
-    let best = candidates[0]!;
-    let bestDistSq =
-      (best.x - handX) * (best.x - handX) +
-      (best.y - handY) * (best.y - handY);
-    for (const body of candidates) {
-      const distSq =
-        (body.x - handX) * (body.x - handX) +
-        (body.y - handY) * (body.y - handY);
-      if (
-        distSq < bestDistSq ||
-        (distSq === bestDistSq && body.id < best.id)
-      ) {
-        best = body;
-        bestDistSq = distSq;
-      }
-    }
-    return best.id;
+  function pickHeldBodies(
+    left: number,
+    excluded: ReadonlySet<number>,
+    count: number,
+  ): readonly number[] {
+    const { x: handX, y: handY } = haulerHandPoint(left);
+    return pile.bodies
+      .filter((body) => !excluded.has(body.id))
+      .sort((a, b) => {
+        const aDist = (a.x - handX) ** 2 + (a.y - handY) ** 2;
+        const bDist = (b.x - handX) ** 2 + (b.y - handY) ** 2;
+        return aDist - bDist || a.id - b.id;
+      })
+      .slice(0, count)
+      .map((body) => body.id);
   }
 
   function heldBodyStation(): number | null {
@@ -496,6 +497,15 @@ export function createMinePresenter(
       }
     }
 
+    const haulLeg =
+      snap.haulRemainingMs > 0
+        ? tripLeg(snap.haulRemainingMs, snap.unloadSpeedUpgradeCount)
+        : null;
+    if (haulLeg === "back" && haulReturnStation === null) {
+      assignHeldOre(pickHeldBody(HAULER_MARK_X, excluded) ?? undefined);
+      haulReturnStation = heldWalkStationPx ?? HAULER_MARK_X;
+    }
+
     const lifted = isPickupLifted(
       snap.haulRemainingMs,
       snap.heapLoads,
@@ -517,13 +527,20 @@ export function createMinePresenter(
 
     advanceHaulerLeft(nowMs);
 
+    const liftedLoads = lifted
+      ? Math.min(snap.heapLoads, grabSizeFor(snap.grabSizeUpgradeCount))
+      : 0;
     if (lifted && heldBodyId !== undefined) {
       if (count > target && !removedHeldBody) {
-        if (pile.remove(heldBodyId)) {
-          const variant = variantByBodyId.get(heldBodyId);
+        const bodyIds = pickHeldBodies(haulerLeftPx, excluded, liftedLoads);
+        for (const bodyId of bodyIds) {
+          if (!pile.remove(bodyId)) {
+            continue;
+          }
+          const variant = variantByBodyId.get(bodyId);
           if (variant !== undefined) {
             carriedVariantIndexes.push(variant);
-            variantByBodyId.delete(heldBodyId);
+            variantByBodyId.delete(bodyId);
           }
         }
         removedHeldBody = true;
@@ -535,17 +552,9 @@ export function createMinePresenter(
       }
     }
 
-    // Keep accumulated Ore between consecutive Lifts and through the out-leg
-    // and unload dwell; clear once the delivered Bag starts the back leg.
-    const haulLeg =
-      snap.haulRemainingMs > 0
-        ? tripLeg(snap.haulRemainingMs, snap.unloadSpeedUpgradeCount)
-        : null;
-    const showCarried =
-      lifted ||
-      snap.bagLoads > 0 ||
-      haulLeg === "out" ||
-      haulLeg === "unload";
+    // The grabbed batch stays visible until Cart arrival, where the engine
+    // credits it and the unload phase begins.
+    const showCarried = lifted || haulLeg === "out";
     if (!showCarried) {
       carriedVariantIndexes = [];
     }
@@ -651,7 +660,7 @@ export function createMinePresenter(
       const dest =
         leg === "out"
           ? HAULER_MARK_X
-          : (haulDepartureStation ?? haulerLeftPx);
+          : (haulReturnStation ?? haulDepartureStation ?? haulerLeftPx);
       const left =
         haulDepartureStation !== null
           ? tripLeftFor(
@@ -659,6 +668,7 @@ export function createMinePresenter(
               haulDepartureStation,
               snap.unloadSpeedUpgradeCount,
               HAULER_MARK_X,
+              haulReturnStation ?? haulDepartureStation,
             )
           : haulerLeftPx;
       // Arrived early for this leg — idle rather than walk-in-place stutter.
@@ -732,6 +742,7 @@ export function createMinePresenter(
           haulDepartureStation,
           snap.unloadSpeedUpgradeCount,
           HAULER_MARK_X,
+          haulReturnStation ?? haulDepartureStation,
         );
       }
       // Mirror syncHaulerAnim: early arrival on out/back is idle, not walk.
@@ -740,8 +751,7 @@ export function createMinePresenter(
         facing = "east";
       } else if (
         phase === "back" &&
-        haulDepartureStation !== null &&
-        left === haulDepartureStation
+        left === (haulReturnStation ?? haulDepartureStation)
       ) {
         animation = "idle";
         facing = "east";

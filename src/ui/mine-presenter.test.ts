@@ -863,7 +863,7 @@ describe("mine presenter", () => {
     walkPresenter.advanceMs(HAUL_TRAVEL_MS / 2 + unloadMsFor(0) + 1);
     const backLeg = walkPresenter.snapshot();
     expect(backLeg.hauler!.phase).toBe("back");
-    expect(backLeg.hauler!.animation).toBe("walk");
+    expect(backLeg.hauler!.animation).toBe("idle");
     expect(backLeg.hauler!.facing).toBe("east");
     expect(backLeg.hauler!.haulProgress).toBeGreaterThan(0);
   });
@@ -1216,10 +1216,10 @@ describe("mine presenter", () => {
       expect(b.hauler!.animation).toBe("idle");
     });
 
-    it("walks on both legs and idles through the unload window", () => {
+    it("walks out, dwells, then returns directly to the next Load", () => {
       const U = unloadMsFor(0);
       const halfTravel = HAUL_TRAVEL_MS / 2;
-      const { presenter, session } = twoDwarfPresenterForTrip({ heapLoads: 1 });
+      const { presenter, session } = twoDwarfPresenterForTrip({ heapLoads: 2 });
       presenter.advanceMs(2_000);
       expect(presenter.snapshot().hauler!.left).toBeGreaterThan(HAULER_MARK_X + 40);
       presenter.advanceMs(OPENING_PICKUP_MS - 2_000);
@@ -1259,7 +1259,7 @@ describe("mine presenter", () => {
     });
 
     it("interpolates the return leg between 250 ms simulation ticks", () => {
-      const { presenter, session } = twoDwarfPresenterForTrip({ heapLoads: 1 });
+      const { presenter, session } = twoDwarfPresenterForTrip({ heapLoads: 2 });
       presenter.advanceMs(2_000);
       expect(presenter.snapshot().hauler!.left).toBeGreaterThan(
         HAULER_MARK_X + 40,
@@ -1538,13 +1538,16 @@ describe("mine presenter", () => {
       expect(third.carriedVariantIndexes).toEqual(first.carriedVariantIndexes);
     });
 
-    it("keeps carried Ore visible for the whole out leg and unload dwell", () => {
+    it("hides carried Ore and credits the Colony at Cart arrival", () => {
       const { presenter, session } = twoDwarfPresenter({
-        heapLoads: 3,
-        pickupProgressMs: PICKUP_THREE_QUARTER_MS,
+        heapLoads: 2,
+        heapOre: 2,
+        grabSizeUpgradeCount: 2,
       });
+      presenter.snapshot();
+      presenter.advanceMs(PICKUP_THREE_QUARTER_MS);
       const lifting = presenter.snapshot();
-      expect(lifting.carriedVariantIndexes).toEqual([expect.any(Number)]);
+      expect(lifting.carriedVariantIndexes).toHaveLength(2);
       const carried = [...lifting.carriedVariantIndexes!];
 
       presenter.advanceMs(OPENING_PICKUP_MS - PICKUP_THREE_QUARTER_MS);
@@ -1562,9 +1565,12 @@ describe("mine presenter", () => {
       while (presenter.snapshot().hauler!.phase !== "unload") {
         presenter.advanceMs(100);
       }
-      expect(presenter.snapshot().carriedVariantIndexes).toEqual(carried);
+      expect(presenter.snapshot().carriedVariantIndexes).toBeUndefined();
+      expect(session.snapshot.ore).toBe(2);
+      expect(session.snapshot.bagLoads).toBe(0);
+      expect(session.snapshot.bagOre).toBe(0);
 
-      // Cleared once the back leg starts (bag delivered)
+      // Stays hidden for the return leg.
       while (presenter.snapshot().hauler!.phase === "unload") {
         presenter.advanceMs(100);
       }
@@ -1572,9 +1578,10 @@ describe("mine presenter", () => {
       expect(presenter.snapshot().carriedVariantIndexes).toBeUndefined();
     });
 
-    it("keeps accumulated Ore visible between consecutive Lifts", () => {
+    it("grabs up to capacity in one Lift before one Cart pass", () => {
       const { presenter, session } = twoDwarfPresenter({
         heapLoads: 3,
+        heapOre: 3,
         grabSizeUpgradeCount: 1,
       });
 
@@ -1586,21 +1593,43 @@ describe("mine presenter", () => {
         presenter.advanceMs(PUMP_INTERVAL_MS);
         presenter.snapshot();
       }
-      expect(session.snapshot.bagLoads).toBe(1);
-      expect(session.snapshot.haulRemainingMs).toBe(0);
-      expect(presenter.snapshot().carriedVariantIndexes).toHaveLength(1);
+      expect(session.snapshot.bagLoads).toBe(2);
+      expect(session.snapshot.heapLoads).toBe(1);
+      expect(session.snapshot.haulRemainingMs).toBeGreaterThan(0);
+      expect(presenter.snapshot().hauler!.phase).toBe("out");
+      expect(presenter.snapshot().carriedVariantIndexes).toHaveLength(2);
+    });
 
-      for (
-        let elapsed = 0;
-        elapsed < OPENING_PICKUP_MS;
-        elapsed += PUMP_INTERVAL_MS
-      ) {
-        presenter.advanceMs(PUMP_INTERVAL_MS);
+    it("returns directly to the next Grab station without a second approach", () => {
+      const { presenter, session } = twoDwarfPresenter({
+        heapLoads: 20,
+        grabSizeUpgradeCount: 1,
+      });
+
+      while (session.snapshot.haulRemainingMs === 0) {
+        presenter.advanceMs(100);
         presenter.snapshot();
       }
-      expect(session.snapshot.bagLoads).toBe(2);
-      expect(session.snapshot.haulRemainingMs).toBeGreaterThan(0);
+      while (session.snapshot.haulRemainingMs > 0) {
+        presenter.advanceMs(100);
+        presenter.snapshot();
+      }
+
+      const returned = presenter.snapshot();
+      const nextGrabStation = returned.hauler!.left;
+      expect(returned.hauler!.phase).toBe("pickup");
+
+      while (session.snapshot.haulRemainingMs === 0) {
+        presenter.advanceMs(100);
+        const snap = presenter.snapshot();
+        if (session.snapshot.haulRemainingMs === 0) {
+          expect(snap.hauler!.left).toBe(nextGrabStation);
+          expect(snap.hauler!.animation).toBe("idle");
+        }
+      }
+
       expect(presenter.snapshot().carriedVariantIndexes).toHaveLength(2);
+      expect(presenter.snapshot().hauler!.phase).toBe("out");
     });
 
     it("idles at the stand when the out-leg arrives before the unload window", () => {

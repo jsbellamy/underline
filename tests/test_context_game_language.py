@@ -187,8 +187,10 @@ def test_game_language_trip_lift_unload_defined() -> None:
     trip = _normalized(_entry_body(section, "Trip"))
     lift = _normalized(_entry_body(section, "Lift"))
     unload = _normalized(_entry_body(section, "Unload"))
-    assert "Lift one Load from the Heap" in trip
+    assert "Lift up to Grab Size available Loads from the Heap" in trip
     assert "Unload" in trip
+    assert "up to Grab Size available Loads" in lift
+    assert "non-empty Lift starts the Trip immediately" in lift
     assert "Haul Speed Upgrade shortens Lift time" in lift
     assert "fixed dwell at the Cart" in unload
     assert "Ore is credited" in unload
@@ -199,7 +201,7 @@ def test_game_language_hauler_moves_heap_to_cart() -> None:
     body = _normalized(_entry_body(section, "Hauler"))
     assert "moving Ore from the Heap to the Cart" in body
     assert "completes Trips" in body
-    assert "HAULER_GRAB_SIZE" in body
+    assert "up to Grab Size available Loads" in body
     assert "Lifts" in body
     assert "_Avoid_: carrier, porter, runner" in body
 

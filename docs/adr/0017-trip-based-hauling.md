@@ -2,7 +2,7 @@
 
 ## Status
 
-Accepted (2026-08-04)
+Accepted (2026-08-04; amended 2026-08-04)
 
 ## Context
 
@@ -12,15 +12,15 @@ the round-trip midpoint, and there was no unload step for the Pane or for Haul
 Speed Upgrades to attack.
 
 The two-dwarf crew wave needs a finer cadence: the **Trip** is the unit of
-hauling work. Each Trip lifts one Load, travels to the Cart, unloads (crediting
-Ore on arrival), and returns.
+hauling work. Each Trip lifts available Loads up to Grab Size, travels to the
+Cart, unloads (crediting Ore on arrival), and returns.
 
 ## Decision
 
-- **Supersedes ADR 0014 in part:** the Hauler departs after
-  `HAULER_GRAB_SIZE` (1) Load reaches its Bag, not when the Bag is full. The
-  one-Dwarf Crew is unchanged — it still departs on a full Bag at
-  `carryCapacityFor(...)`.
+- **Supersedes ADR 0014 in part:** one Lift takes
+  `min(Grab Size, available Heap Loads)` and the Hauler departs immediately.
+  Grab Size is a per-Trip maximum, not a fill threshold. The one-Dwarf Crew is
+  unchanged — it still departs on a full Bag at `carryCapacityFor(...)`.
 - **Trip cycle:** Lift (`PICKUP_MS_PER_LOAD = 3_000` at opening) + Travel +
   Unload. `HAUL_TRAVEL_MS = 4_000` (both legs combined), `UNLOAD_MS = 4_000`
   (fixed dwell at the Cart), `HAUL_ROUND_TRIP_MS = HAUL_TRAVEL_MS + UNLOAD_MS`.
@@ -47,6 +47,8 @@ Ore on arrival), and returns.
 ### Positive
 
 - Ore credits at Cart arrival, giving the Pane and upgrades a named unload phase.
+- Grab Size increases how many available Loads one Trip can carry without making
+  a partially filled Hauler wait at the Heap.
 - Trip cadence exposes Lift, Travel, and Unload as separate simulation beats.
 - Slower per-Trip pickup (3s vs 10s) with one-Load departure raises net Heap
   accumulation while keeping `HAUL_ROUND_TRIP_MS` at 8s.

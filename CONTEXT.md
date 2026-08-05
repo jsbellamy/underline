@@ -374,8 +374,8 @@ _Avoid_: stack, unit, batch
 **Bag**:
 What a one-Dwarf Crew carries Ore in between the Face and the Cart; a full Bag
 stops mining until it is delivered. The two-Dwarf Hauler also uses a Bag, but
-departs on `HAULER_GRAB_SIZE` Loads per Trip rather than waiting for Carry
-Capacity.
+one Lift takes up to Grab Size available Loads and departs immediately; Grab
+Size is a maximum, not a fill threshold.
 _Avoid_: inventory, pack, backpack
 
 **Carry Capacity**:
@@ -383,14 +383,15 @@ The one-Dwarf Bag's size in Loads. Carry Capacity Upgrade raises it.
 _Avoid_: bag size, storage, limit
 
 **Trip**:
-One Hauler cycle: Lift one Load from the Heap, Travel to the Cart, Unload
-(crediting Ore on arrival), and Travel back. The Hauler repeats Trips while
-the Miner keeps Swinging.
+One Hauler cycle: Lift up to Grab Size available Loads from the Heap, Travel to
+the Cart, Unload (crediting Ore and emptying the Bag on arrival), and Travel
+back. The Hauler repeats Trips while the Miner keeps Swinging.
 _Avoid_: run, leg, shuttle
 
 **Lift**:
-The fixed-time pickup of one Load from the Heap into the Hauler's Bag before a
-Trip's Travel leg. Haul Speed Upgrade shortens Lift time.
+The fixed-time pickup of up to Grab Size available Loads from the Heap into the
+Hauler's Bag before a Trip's Travel leg. A non-empty Lift starts the Trip
+immediately; Haul Speed Upgrade shortens Lift time.
 _Avoid_: grab, scoop, collect
 
 **Unload**:
@@ -406,8 +407,8 @@ _Avoid_: trip (reserved for the full Lift+Travel+Unload cycle), delivery run, fe
 
 **Hauler**:
 The job of moving Ore from the Heap to the Cart. The Hauler completes Trips:
-each Trip Lifts `HAULER_GRAB_SIZE` Loads from the Heap, Hauls to the Cart, and
-returns for the next Load.
+each Trip Lifts up to Grab Size available Loads from the Heap, Hauls them to the
+Cart, and returns for the next Lift.
 _Avoid_: carrier, porter, runner
 
 **Haul Speed**:
