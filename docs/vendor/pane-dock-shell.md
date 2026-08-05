@@ -20,7 +20,6 @@ from the listed Nightglass source before further edits.
 | `src/ui/pump.ts` | `src/ui/pump.ts` | adapt (`unknown[]` events) |
 | `src/ui/dock-window.ts` | `src/ui/dock-window.ts` | adapt (pane labels) |
 | `src/ui/bus.ts` | `src/ui/bus.ts` | adapt (transport only) |
-| `src/ui/offline-clock.ts` | `src/ui/boot.ts` (`computeOfflineMs` + caps) | adapt |
 | `src/ui/sprite-geometry.ts` | `src/ui/sprites.ts` (`geometryFromManifestEntry`) | adapt |
 | `src/main.ts` | `src/main.ts` | adapt (`#pane` / `#dock`) |
 | `index.html` | `index.html` | adapt |
