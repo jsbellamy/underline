@@ -9,8 +9,7 @@ import { createMinePresenter } from "./mine-presenter";
 import { createMiningSession } from "../core/mining-session";
 import { initialSnapshot } from "../core/mining-engine";
 import { dwarfLayout } from "../data/external-sprite-pack";
-import { DWARF_PACK } from "./dwarf-frames";
-import { HAULER_PACK } from "./hauler-frames";
+import { DWARF_PACK, HAULER_PACK } from "./sprite-packs";
 import { heapCapacityFor } from "../core/mining-engine";
 import {
   CART_HEIGHT,

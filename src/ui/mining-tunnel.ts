@@ -7,8 +7,7 @@ import type { HeapOreSnapshot, TunnelSnapshot } from "./mine-presenter";
 import { hardnessFor } from "../core/mining-engine";
 import { dwarfLayout, type ExternalSpritePack } from "../data/external-sprite-pack";
 import { tunnelArtContentBottomGap, tunnelArtPath } from "../data/tunnel-art-pack";
-import { DWARF_PACK, dwarfFrameUrlsFor } from "./dwarf-frames";
-import { HAULER_PACK, haulerFrameUrlsFor } from "./hauler-frames";
+import { DWARF_PACK, HAULER_PACK, frameUrlsFor } from "./sprite-packs";
 import { fallingOrePosition } from "./heap-pile";
 import {
   HEAP_ORE_VARIANT_COUNT,
@@ -452,7 +451,7 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
       DWARF_PACK,
       snap.animation,
       snap.facing,
-      dwarfFrameUrlsFor,
+      (pack, animation, facing) => frameUrlsFor("dwarf", pack, animation, facing),
       "dwarf",
     );
     const dwarfFrame = dwarfUrls[snap.frameIndex] ?? dwarfUrls[0];
@@ -470,7 +469,7 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
         HAULER_PACK,
         snap.hauler.animation,
         snap.hauler.facing,
-        haulerFrameUrlsFor,
+        (pack, animation, facing) => frameUrlsFor("hauler", pack, animation, facing),
         "hauler",
       );
       const haulerFrame = haulerUrls[snap.hauler.frameIndex] ?? haulerUrls[0];
