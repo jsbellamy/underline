@@ -5,9 +5,12 @@ import {
   advanceWithEvents,
   carryCapacityFor,
   HAUL_ROUND_TRIP_MS,
+  HAUL_TRAVEL_MS,
+  haulRoundTripMsFor,
   heapCapacityFor,
   initialSnapshot,
   pickupMsPerLoad,
+  unloadMsFor,
 } from "../core/mining-engine";
 import {
   persistSettings,
@@ -15,7 +18,7 @@ import {
 import type { MiningEvent } from "../core/mining-events";
 import { SWING_IMPACT_FRAME } from "../data/dwarf-animation-timing";
 import { createHeapPileSim } from "../core/heap-pile-sim";
-import { createMinePresenter, FACE_SLIDE_MS, SPILL_LIFETIME_MS } from "./mine-presenter";
+import { createMinePresenter, FACE_SLIDE_MS, SPILL_LIFETIME_MS, tripLeftFor } from "./mine-presenter";
 import type { MiningAudio } from "./mining-audio";
 import {
   heapOreContentCenter,
@@ -25,8 +28,11 @@ import {
   FLOOR_Y,
   HAULER_HAND_DX,
   HAULER_HAND_DY,
+  CART_MARK_X,
   HAULER_MARK_X,
+  HAULER_WALK_PX_PER_MS,
   HEAP_BIN_CEILING_Y,
+  MINING_MARK_X,
   HEAP_BIN_EAST_X,
   HEAP_BIN_FLOOR_Y,
   HEAP_BIN_WEST_X,
@@ -41,6 +47,23 @@ import { PUMP_INTERVAL_MS } from "./pump";
 const OPENING_PICKUP_MS = pickupMsPerLoad(0);
 const PICKUP_QUARTER_MS = OPENING_PICKUP_MS * 0.25;
 const PICKUP_THREE_QUARTER_MS = OPENING_PICKUP_MS * 0.75;
+
+function twoDwarfPresenterForTrip(
+  snapshotOverrides: Record<string, unknown> = {},
+) {
+  const session = createMiningSession({
+    store: memoryStore(),
+    now: () => 0,
+    snapshot: {
+      ...initialSnapshot(),
+      crewSize: 2,
+      ...snapshotOverrides,
+    },
+  });
+  const presenter = createMinePresenter(session);
+  presenter.start();
+  return { session, presenter };
+}
 
 function memoryStore() {
   const data: Record<string, string> = {};
@@ -779,7 +802,7 @@ describe("mine presenter", () => {
     expect(outLeg.hauler!.facing).toBe("west");
     expect(outLeg.hauler!.pickupProgress).toBe(0);
 
-    haulPresenter.advanceMs(HAUL_ROUND_TRIP_MS / 2 + 1);
+    haulPresenter.advanceMs(HAUL_TRAVEL_MS / 2 + unloadMsFor(0) + 1);
     const backLeg = haulPresenter.snapshot();
     expect(backLeg.hauler!.phase).toBe("back");
     expect(backLeg.hauler!.animation).toBe("walk");
@@ -981,7 +1004,6 @@ describe("mine presenter", () => {
     });
 
     it("advances hauler.left toward the station at HAULER_WALK_PX_PER_MS", async () => {
-      const { HAULER_WALK_PX_PER_MS } = await import("./pane-layout");
       const { presenter } = twoDwarfPresenter({ heapLoads: 1 });
       const start = presenter.snapshot().hauler!.left;
       presenter.advanceMs(500);
@@ -989,6 +1011,161 @@ describe("mine presenter", () => {
       const moved = snap.hauler!.left - start;
       expect(moved).toBe(Math.round(500 * HAULER_WALK_PX_PER_MS));
       expect(moved).toBeLessThanOrEqual(100);
+    });
+  });
+
+  describe("Trip Haul Speed and Cart dwell", () => {
+    const stepMs = 100;
+    const walkStepPx = Math.round(stepMs * HAULER_WALK_PX_PER_MS);
+
+    function startHaulFromStand(presenter: ReturnType<typeof createMinePresenter>) {
+      presenter.advanceMs(PICKUP_THREE_QUARTER_MS);
+      presenter.advanceMs(OPENING_PICKUP_MS - PICKUP_THREE_QUARTER_MS);
+    }
+
+    it("walks every leg at HAULER_WALK_PX_PER_MS and dwells at the Cart", () => {
+      const { presenter, session } = twoDwarfPresenterForTrip({ heapLoads: 3 });
+      startHaulFromStand(presenter);
+      expect(session.snapshot.haulRemainingMs).toBe(haulRoundTripMsFor(0));
+
+      const lefts: number[] = [];
+      const animations: string[] = [];
+      while (session.snapshot.haulRemainingMs > 0) {
+        const snap = presenter.snapshot();
+        lefts.push(snap.hauler!.left);
+        animations.push(snap.hauler!.animation);
+        presenter.advanceMs(stepMs);
+      }
+
+      const walkDeltas: number[] = [];
+      for (let i = 1; i < lefts.length; i += 1) {
+        const delta = lefts[i]! - lefts[i - 1]!;
+        if (delta === 0 || animations[i - 1] !== "walk") {
+          continue;
+        }
+        walkDeltas.push(Math.abs(delta));
+        expect(Math.abs(delta)).toBeGreaterThan(0);
+        expect(Math.abs(delta)).toBeLessThanOrEqual(walkStepPx);
+      }
+      expect(walkDeltas.filter((d) => d === walkStepPx).length).toBeGreaterThan(
+        0,
+      );
+      expect(walkDeltas.every((d) => d === walkStepPx || d === walkStepPx - 2)).toBe(
+        true,
+      );
+
+      const idleAtCart = lefts.filter(
+        (left, i) => left === CART_MARK_X && animations[i] === "idle",
+      );
+      expect(idleAtCart.length).toBeGreaterThanOrEqual(
+        Math.floor(unloadMsFor(0) / stepMs) - 1,
+      );
+      for (const left of idleAtCart) {
+        expect(left).toBe(CART_MARK_X);
+      }
+    });
+
+    it("returns to departure stations 345 and 220 after a Trip", () => {
+      const halfTravel = HAUL_TRAVEL_MS / 2;
+      for (const station of [345, 220]) {
+        expect(
+          Math.min(
+            station,
+            Math.round(CART_MARK_X + halfTravel * HAULER_WALK_PX_PER_MS),
+          ),
+        ).toBe(station);
+      }
+
+      const { presenter, session } = twoDwarfPresenterForTrip({ heapLoads: 3 });
+      startHaulFromStand(presenter);
+      const departure = presenter.snapshot().hauler!.left;
+      while (session.snapshot.haulRemainingMs > 0) {
+        presenter.advanceMs(stepMs);
+      }
+      const atReturn = presenter.snapshot();
+      expect(atReturn.hauler!.phase).toBe("pickup");
+      expect(atReturn.hauler!.left).toBe(departure);
+
+      expect(tripLeftFor(0, 345, 0)).toBe(345);
+      expect(tripLeftFor(0, 220, 0)).toBe(220);
+      expect(tripLeftFor(6_000, 345, 0)).toBe(CART_MARK_X);
+      expect(tripLeftFor(4_000, 345, 0)).toBe(CART_MARK_X);
+    });
+
+    it("idles the Hauler at its station when the Heap is empty", () => {
+      const { presenter } = twoDwarfPresenterForTrip({ heapLoads: 0 });
+      const a = presenter.snapshot();
+      presenter.advanceMs(500);
+      const b = presenter.snapshot();
+      expect(b.hauler!.left).toBe(a.hauler!.left);
+      expect(b.hauler!.animation).toBe("idle");
+    });
+
+    it("walks on both legs and idles through the unload window", () => {
+      const U = unloadMsFor(0);
+      const halfTravel = HAUL_TRAVEL_MS / 2;
+      const { presenter, session } = twoDwarfPresenterForTrip({ heapLoads: 2 });
+      startHaulFromStand(presenter);
+
+      const seen: Array<{ animation: string; phase: string; remaining: number }> =
+        [];
+      while (session.snapshot.haulRemainingMs > 0) {
+        const snap = presenter.snapshot();
+        seen.push({
+          animation: snap.hauler!.animation,
+          phase: snap.hauler!.phase,
+          remaining: session.snapshot.haulRemainingMs,
+        });
+        presenter.advanceMs(stepMs);
+      }
+
+      for (const row of seen) {
+        if (row.remaining > U + halfTravel) {
+          expect(row.animation).toBe("walk");
+          expect(row.phase).toBe("out");
+        } else if (row.remaining > halfTravel) {
+          expect(row.animation).toBe("idle");
+          expect(row.phase).toBe("unload");
+        } else {
+          expect(row.animation).toBe("walk");
+          expect(row.phase).toBe("back");
+        }
+      }
+    });
+
+    it("publishes minerLeft on the Trip timeline for a one-Dwarf Crew", () => {
+      const session = createMiningSession({
+        store: memoryStore(),
+        now: () => 0,
+      });
+      const presenter = createMinePresenter(session);
+      presenter.start();
+      presenter.advanceMs(100_000);
+      expect(session.snapshot.haulRemainingMs).toBeGreaterThan(0);
+
+      const lefts: number[] = [];
+      const animations: string[] = [];
+      while (session.snapshot.haulRemainingMs > 0) {
+        const snap = presenter.snapshot();
+        lefts.push(snap.minerLeft);
+        animations.push(snap.animation);
+        presenter.advanceMs(stepMs);
+      }
+
+      for (let i = 1; i < lefts.length; i += 1) {
+        const delta = lefts[i]! - lefts[i - 1]!;
+        if (delta === 0 || animations[i - 1] !== "walk") {
+          continue;
+        }
+        expect(Math.abs(delta)).toBeLessThanOrEqual(walkStepPx);
+        expect(Math.abs(delta)).toBeGreaterThan(0);
+      }
+      expect(lefts.filter((l) => l === CART_MARK_X).length).toBeGreaterThan(0);
+      expect(
+        lefts.filter((l, i) => l === CART_MARK_X && animations[i] === "idle")
+          .length,
+      ).toBeGreaterThanOrEqual(Math.floor(unloadMsFor(0) / stepMs) - 1);
+      expect(tripLeftFor(0, MINING_MARK_X, 0)).toBe(MINING_MARK_X);
     });
   });
 

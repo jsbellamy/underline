@@ -10,10 +10,12 @@ import {
 import { createHeapPileSim, type HeapPileSim } from "../core/heap-pile-sim";
 import {
   digRateFor,
-  HAUL_ROUND_TRIP_MS,
+  HAUL_TRAVEL_MS,
+  haulRoundTripMsFor,
   heapCapacityFor,
   pickDamageFor,
   pickupMsPerLoad,
+  unloadMsFor,
 } from "../core/mining-engine";
 import type { MiningSession } from "../core/mining-session";
 import type { SaveStore } from "../core/mining-save";
@@ -28,6 +30,7 @@ import {
   type MiningAudio,
 } from "./mining-audio";
 import {
+  CART_MARK_X,
   FLOOR_Y,
   HAULER_HAND_DX,
   HAULER_HAND_DY,
@@ -41,13 +44,15 @@ import {
   HEAP_PILE_SEED,
   HEAP_RENDER_CEILING,
   HEAP_SPAWN_X,
+  MINING_MARK_X,
   ORE_FALL_MS,
   ORE_SIZE,
   ORE_SPAWN_BOTTOM,
 } from "./pane-layout";
 
-export type TunnelHaulPhase = "none" | HaulAnimPhase;
-export type HaulerPhase = "pickup" | HaulAnimPhase;
+export type TunnelHaulPhase = "none" | HaulAnimPhase | "unload";
+export type HaulerPhase = "pickup" | "unload" | HaulAnimPhase;
+type TripLeg = "out" | "unload" | "back";
 
 export interface HaulerSnapshot {
   animation: DwarfAnimId;
@@ -97,6 +102,10 @@ export interface TunnelSnapshot {
   carriedVariantIndexes?: readonly number[];
   /** Ore still falling toward the Bag; empty when nothing is in flight. */
   fallingOre: readonly { slot: number; progress: number }[];
+  /** Miner sprite left in Pane px — presenter-owned horizontal position. */
+  minerLeft: number;
+  /** Remaining Haul countdown mirrored from the engine snapshot. */
+  haulRemainingMs: number;
 }
 
 export const FACE_SLIDE_MS = 400;
@@ -119,26 +128,66 @@ export interface MinePresenterOptions {
   createAudioContext?: () => AudioContext;
 }
 
-function haulAnimPhase(haulRemainingMs: number): HaulAnimPhase | null {
+function tripLeg(
+  haulRemainingMs: number,
+  unloadSpeedUpgradeCount: number,
+): TripLeg | null {
   if (haulRemainingMs === 0) {
     return null;
   }
-  if (haulRemainingMs > HAUL_ROUND_TRIP_MS / 2) {
+  const unloadMs = unloadMsFor(unloadSpeedUpgradeCount);
+  const halfTravel = HAUL_TRAVEL_MS / 2;
+  if (haulRemainingMs > unloadMs + halfTravel) {
     return "out";
+  }
+  if (haulRemainingMs > halfTravel) {
+    return "unload";
   }
   return "back";
 }
 
-function haulProgress(haulRemainingMs: number): number {
+export function tripLeftFor(
+  haulRemainingMs: number,
+  departureStation: number,
+  unloadSpeedUpgradeCount: number,
+): number {
+  const unloadMs = unloadMsFor(unloadSpeedUpgradeCount);
+  const halfTravel = HAUL_TRAVEL_MS / 2;
+  const walkPxPerMs = HAULER_WALK_PX_PER_MS;
+  const tripMs = HAUL_TRAVEL_MS + unloadMs;
+
+  if (haulRemainingMs > unloadMs + halfTravel) {
+    return Math.max(
+      CART_MARK_X,
+      Math.round(departureStation - (tripMs - haulRemainingMs) * walkPxPerMs),
+    );
+  }
+  if (haulRemainingMs > halfTravel) {
+    return CART_MARK_X;
+  }
+  return Math.min(
+    departureStation,
+    Math.round(CART_MARK_X + (halfTravel - haulRemainingMs) * walkPxPerMs),
+  );
+}
+
+function haulProgress(
+  haulRemainingMs: number,
+  unloadSpeedUpgradeCount: number,
+): number {
   if (haulRemainingMs === 0) {
     return 0;
   }
-  return 1 - haulRemainingMs / HAUL_ROUND_TRIP_MS;
+  const roundTripMs = haulRoundTripMsFor(unloadSpeedUpgradeCount);
+  return 1 - haulRemainingMs / roundTripMs;
 }
 
-function haulerPhase(haulRemainingMs: number): HaulerPhase {
+function haulerPhase(
+  haulRemainingMs: number,
+  unloadSpeedUpgradeCount: number,
+): HaulerPhase {
   if (haulRemainingMs > 0) {
-    return haulAnimPhase(haulRemainingMs) ?? "pickup";
+    return tripLeg(haulRemainingMs, unloadSpeedUpgradeCount) ?? "pickup";
   }
   return "pickup";
 }
@@ -230,6 +279,52 @@ export function createMinePresenter(
   let haulerSteppedToMs = 0;
   let heldBodyId: number | undefined;
   let removedHeldBody = false;
+  let haulDepartureStation: number | null = null;
+  let prevHaulRemainingMs = session.snapshot.haulRemainingMs;
+
+  function trackHaulDeparture(nowMs: number): void {
+    const remaining = session.snapshot.haulRemainingMs;
+    if (prevHaulRemainingMs === 0 && remaining > 0) {
+      haulDepartureStation = isTwoDwarf()
+        ? haulerLeftPx
+        : MINING_MARK_X;
+    }
+    if (prevHaulRemainingMs > 0 && remaining === 0) {
+      if (haulDepartureStation !== null && isTwoDwarf()) {
+        haulerLeftPx = haulDepartureStation;
+      }
+      haulDepartureStation = null;
+      haulerSteppedToMs = nowMs;
+    }
+    prevHaulRemainingMs = remaining;
+  }
+
+  function ensureHaulDepartureStation(): void {
+    if (
+      haulDepartureStation === null &&
+      session.snapshot.haulRemainingMs > 0
+    ) {
+      haulDepartureStation = isTwoDwarf()
+        ? haulerLeftPx
+        : MINING_MARK_X;
+    }
+  }
+
+  function minerLeftFor(_nowMs: number): number {
+    const snap = session.snapshot;
+    if (faceSlide < 1 || isTwoDwarf()) {
+      return MINING_MARK_X;
+    }
+    if (snap.haulRemainingMs > 0) {
+      ensureHaulDepartureStation();
+      return tripLeftFor(
+        snap.haulRemainingMs,
+        MINING_MARK_X,
+        snap.unloadSpeedUpgradeCount,
+      );
+    }
+    return MINING_MARK_X;
+  }
 
   function pileTargetCount(): number {
     const snap = session.snapshot;
@@ -358,12 +453,15 @@ export function createMinePresenter(
     const excluded = spillBodyIds();
     const inPickup = snap.haulRemainingMs === 0 && snap.heapLoads > 0;
 
-    if (!inPickup) {
+    if (snap.heapLoads === 0 && snap.haulRemainingMs === 0) {
       heldBodyId = undefined;
       removedHeldBody = false;
       haulerLeftPx = HAULER_MARK_X;
       haulerSteppedToMs = nowMs;
     }
+
+    trackHaulDeparture(nowMs);
+    ensureHaulDepartureStation();
 
     const target = pileTargetCount();
     const count = pile.bodies.filter((b) => !excluded.has(b.id)).length;
@@ -490,10 +588,21 @@ export function createMinePresenter(
       }
       return;
     }
-    miner.setHauling(
-      haulAnimPhase(session.snapshot.haulRemainingMs),
-      simNowMs,
+    const leg = tripLeg(
+      session.snapshot.haulRemainingMs,
+      session.snapshot.unloadSpeedUpgradeCount,
     );
+    if (leg === "unload") {
+      miner.stopMining(simNowMs);
+      miner.setHauling(null, simNowMs);
+      return;
+    }
+    if (leg === "out" || leg === "back") {
+      miner.setHauling(leg, simNowMs);
+      return;
+    }
+    miner.startMining(simNowMs);
+    miner.setHauling(null, simNowMs);
   }
 
   function syncHaulerAnim(): void {
@@ -502,7 +611,12 @@ export function createMinePresenter(
     }
     const snap = session.snapshot;
     if (snap.haulRemainingMs > 0) {
-      hauler.setHauling(haulAnimPhase(snap.haulRemainingMs), simNowMs);
+      const leg = tripLeg(snap.haulRemainingMs, snap.unloadSpeedUpgradeCount);
+      if (leg === "unload") {
+        hauler.setHauling(null, simNowMs);
+        return;
+      }
+      hauler.setHauling(leg, simNowMs);
       return;
     }
     if (snap.heapLoads === 0) {
@@ -540,7 +654,7 @@ export function createMinePresenter(
     }
     const snap = session.snapshot;
     const remaining = snap.haulRemainingMs;
-    const phase = haulerPhase(remaining);
+    const phase = haulerPhase(remaining, snap.unloadSpeedUpgradeCount);
     const travelling = remaining > 0;
     const swingFrac = swingFractionAt(nowMs, travelling);
 
@@ -557,13 +671,27 @@ export function createMinePresenter(
       }
     }
 
+    let left = haulerLeftPx;
+    if (travelling) {
+      ensureHaulDepartureStation();
+      if (haulDepartureStation !== null) {
+        left = tripLeftFor(
+          remaining,
+          haulDepartureStation,
+          snap.unloadSpeedUpgradeCount,
+        );
+      }
+    }
+
     return {
       animation,
       facing,
       frameIndex: frameIndexFor(hauler, nowMs, swingFrac),
-      left: haulerLeftPx,
+      left,
       phase,
-      haulProgress: travelling ? haulProgress(remaining) : 0,
+      haulProgress: travelling
+        ? haulProgress(remaining, snap.unloadSpeedUpgradeCount)
+        : 0,
       pickupProgress: pickupProgressFraction(
         remaining,
         snap.pickupProgressMs,
@@ -580,7 +708,9 @@ export function createMinePresenter(
     const whole = Math.floor(snap.faceSwingProgress / pickDamage);
     const remaining = snap.haulRemainingMs;
     const twoDwarf = isTwoDwarf();
-    const phase = twoDwarf ? null : haulAnimPhase(remaining);
+    const phase = twoDwarf
+      ? null
+      : tripLeg(remaining, snap.unloadSpeedUpgradeCount);
     const hauling = twoDwarf ? false : remaining > 0;
 
     let swingFraction = 0;
@@ -604,8 +734,15 @@ export function createMinePresenter(
       swingFraction,
       pickDamage,
       digRate: miner.digRate,
-      haulPhase: phase ?? "none",
-      haulProgress: twoDwarf ? 0 : haulProgress(remaining),
+      haulPhase:
+        phase === null
+          ? "none"
+          : phase === "unload"
+            ? "unload"
+            : phase,
+      haulProgress: twoDwarf
+        ? 0
+        : haulProgress(remaining, snap.unloadSpeedUpgradeCount),
       faceSlide,
       ...(haulerSnap !== undefined ? { hauler: haulerSnap } : {}),
       crewSize: snap.crewSize,
@@ -615,6 +752,8 @@ export function createMinePresenter(
         ? { carriedVariantIndexes: [...carriedVariantIndexes] }
         : {}),
       fallingOre: projectFallingOre(nowMs),
+      minerLeft: minerLeftFor(nowMs),
+      haulRemainingMs: remaining,
     };
   }
 
@@ -679,6 +818,7 @@ export function createMinePresenter(
       }
 
       syncHaulAnim();
+      trackHaulDeparture(simNowMs);
     },
   };
 }

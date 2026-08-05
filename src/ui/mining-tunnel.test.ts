@@ -49,6 +49,8 @@ const baseSnap: TunnelSnapshot = {
   heapLoads: 0,
   heapOre: [],
   fallingOre: [],
+  minerLeft: MINING_MARK_X,
+  haulRemainingMs: 0,
 };
 
 function memoryStore() {
@@ -84,6 +86,8 @@ function twoDwarfSnap(
   return {
     ...baseSnap,
     crewSize: 2,
+    minerLeft: MINING_MARK_X,
+    haulRemainingMs: 0,
     ...snapOverrides,
     hauler: { ...defaultHauler, ...haulerOverrides },
   };
@@ -401,36 +405,88 @@ describe("mountMiningTunnel", () => {
     tunnel.destroy();
   });
 
+  it("renders each sprite left from the published snapshot fields", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+
+    const minerCases = [
+      { minerLeft: MINING_MARK_X, haulRemainingMs: 0 },
+      { minerLeft: 300, haulRemainingMs: 7_000 },
+      { minerLeft: CART_MARK_X, haulRemainingMs: 5_000 },
+      { minerLeft: 280, haulRemainingMs: 1_000 },
+    ];
+    for (const { minerLeft, haulRemainingMs } of minerCases) {
+      tunnel.render({
+        ...baseSnap,
+        advance: 1,
+        faceSlide: 1,
+        minerLeft,
+        haulRemainingMs,
+        haulPhase: "out",
+        haulProgress: 0.25,
+      });
+      expect(dwarfLeft(host)).toBe(minerLeft);
+    }
+
+    const haulerCases = [
+      { left: HAULER_MARK_X, phase: "pickup" as const },
+      { left: 301, phase: "pickup" as const },
+      { left: CART_MARK_X, phase: "unload" as const },
+      { left: 220, phase: "back" as const },
+    ];
+    for (const { left, phase } of haulerCases) {
+      tunnel.render(
+        twoDwarfSnap({
+          advance: 1,
+          minerLeft: MINING_MARK_X,
+          haulRemainingMs: phase === "pickup" ? 0 : 4_000,
+          hauler: { left, phase, haulProgress: 0.5 },
+        }),
+      );
+      expect(haulerLeft(host)).toBe(left);
+    }
+
+    tunnel.destroy();
+  });
+
   it("places the Dwarf at MINING_MARK_X when not hauling", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
-    tunnel.render({ ...baseSnap, advance: 3, haulPhase: "none", haulProgress: 0 });
+    tunnel.render({
+      ...baseSnap,
+      advance: 3,
+      haulPhase: "none",
+      haulProgress: 0,
+      minerLeft: MINING_MARK_X,
+    });
 
     expect(dwarfLeft(host)).toBe(MINING_MARK_X);
     tunnel.destroy();
   });
 
-  it("interpolates Dwarf left across the Haul path at worked progress values", () => {
+  it("reads minerLeft from the snapshot across a Haul", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
 
-    const cases: Array<{ haulProgress: number; expected: number }> = [
-      { haulProgress: 0, expected: 354 },
-      { haulProgress: 0.25, expected: 253 },
-      { haulProgress: 0.5, expected: 152 },
-      { haulProgress: 0.75, expected: 253 },
-      { haulProgress: 1, expected: 354 },
+    const cases: Array<{ minerLeft: number }> = [
+      { minerLeft: 354 },
+      { minerLeft: 253 },
+      { minerLeft: 152 },
+      { minerLeft: 253 },
+      { minerLeft: 354 },
     ];
 
-    for (const { haulProgress, expected } of cases) {
+    for (const { minerLeft } of cases) {
       tunnel.render({
         ...baseSnap,
         advance: 1,
-        haulPhase: haulProgress < 0.5 ? "out" : "back",
-        haulProgress,
+        haulPhase: "out",
+        haulProgress: 0.25,
         faceSlide: 1,
+        minerLeft,
+        haulRemainingMs: 7_000,
       });
-      expect(dwarfLeft(host)).toBe(expected);
+      expect(dwarfLeft(host)).toBe(minerLeft);
     }
 
     expect(CART_MARK_X).toBe(152);
@@ -492,30 +548,33 @@ describe("mountMiningTunnel", () => {
     tunnel.destroy();
   });
 
-  it("interpolates Hauler left across the lane at worked progress values", () => {
+  it("reads hauler.left from the snapshot across a Trip", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
 
-    const cases: Array<{ haulProgress: number; expected: number }> = [
-      { haulProgress: 0, expected: 192 },
-      { haulProgress: 0.25, expected: 172 },
-      { haulProgress: 0.5, expected: 152 },
-      { haulProgress: 0.75, expected: 172 },
-      { haulProgress: 1, expected: 192 },
+    const cases: Array<{ left: number; phase: "out" | "unload" | "back" }> = [
+      { left: 192, phase: "out" },
+      { left: 172, phase: "out" },
+      { left: CART_MARK_X, phase: "unload" },
+      { left: 172, phase: "back" },
+      { left: 192, phase: "back" },
     ];
 
-    for (const { haulProgress, expected } of cases) {
+    for (const { left, phase } of cases) {
       tunnel.render(
         twoDwarfSnap({
           advance: 1,
           faceSlide: 1,
+          minerLeft: MINING_MARK_X,
+          haulRemainingMs: 4_000,
           hauler: {
-            phase: haulProgress < 0.5 ? "out" : "back",
-            haulProgress,
+            left,
+            phase,
+            haulProgress: 0.5,
           },
         }),
       );
-      expect(haulerLeft(host)).toBe(expected);
+      expect(haulerLeft(host)).toBe(left);
     }
 
     tunnel.destroy();
