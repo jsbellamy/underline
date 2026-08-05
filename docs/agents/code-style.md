@@ -25,8 +25,8 @@ below applies to whichever of the two it names.
   cover.
 
 The production gate library lives in `pipeline/strip.py`; grid-recovery primitives
-are vendored in `pipeline/recovery.py`. Prototype runners under
-`prototype/strip-coherence/` score the corpus and derive budgets against those modules.
+are vendored in `pipeline/recovery.py`. Runners under
+`corpus/strip-coherence/` score the corpus and derive budgets against those modules.
 
 ## Seams
 
@@ -114,7 +114,9 @@ Test at these public boundaries, nowhere internal.
   failed.
 - One-off probe scripts are deleted once they have answered their question, and
   the answer is written into the pipeline's notes or the contract. Do not leave a
-  probe behind as pseudo-infrastructure.
+  probe behind as pseudo-infrastructure. The standing corpus runners under
+  `corpus/strip-coherence/` are permanent evidence tooling named by
+  `docs/strip-acquisition-contract.md` and are exempt from this rule.
 
 ### Both
 

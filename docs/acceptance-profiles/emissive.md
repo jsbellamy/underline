@@ -34,7 +34,7 @@ Under [Choose bounded numeric quantization for isolation verdicts](https://githu
 Rescored Measurement run (schema `gate-control-measurement/1`):
 
 ```bash
-PYTHONPATH=. python3 prototype/strip-coherence/rescore_measurement.py \
+PYTHONPATH=. python3 corpus/strip-coherence/rescore_measurement.py \
   gate-controls/reports/emissive--min_pair_cohort_pass--002/2026-07-26T17-59-19+00-00.json
 ```
 

@@ -108,7 +108,7 @@ def _ingest_latest_inbox() -> tuple[IngestResult | None, str]:
     INBOX.mkdir(parents=True, exist_ok=True)
     pngs = sorted(INBOX.glob("*.png"))
     if not pngs:
-        return None, "inbox (empty — drop a .png in prototype/strip-coherence/inbox/)"
+        return None, "inbox (empty — drop a .png in corpus/strip-coherence/inbox/)"
     path = pngs[-1]
     provider_layout = StripLayout(
         frame_w=LAYOUT.frame_w,

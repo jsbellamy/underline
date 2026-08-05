@@ -31,7 +31,8 @@ not delete history.
 | [0015](0015-presentational-heap-pile-physics.md) | Presentational Heap pile physics |
 | [0016](0016-heap-spill-and-the-unstalled-miner.md) | Heap Spill and the unstalled Miner |
 | [0017](0017-trip-based-hauling.md) | Trip-based hauling |
+| [0018](0018-corpus-path-and-legacy-prefix.md) | Corpus path and legacy prefix |
 
 Earlier decisions settled only in `docs/strip-acquisition-contract.md` or
-`prototype/strip-coherence/NOTES.md` should be promoted here when they start
+`corpus/strip-coherence/NOTES.md` should be promoted here when they start
 being re-argued.

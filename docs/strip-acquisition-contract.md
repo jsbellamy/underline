@@ -1,7 +1,7 @@
 # Strip acquisition contract
 
 Authority for Underline strip coherence gates. `pipeline/strip.py` implements
-this contract and `prototype/strip-coherence/` holds the corpus and proof runners
+this contract and `corpus/strip-coherence/` holds the corpus and proof runners
 over it (see **Implementation** below); Nightglass's frozen animation contract
 does not govern here.
 

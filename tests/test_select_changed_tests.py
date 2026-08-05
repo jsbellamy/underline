@@ -91,10 +91,8 @@ def test_mapped_module_name_follows_corpus_root(monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setattr(cp, "CORPUS_ROOT", pathlib.Path("corpus/live"))
 
     assert _mapped_module_name(pathlib.PurePosixPath("corpus/live/corpus.py")) == "corpus"
-    assert (
-        _mapped_module_name(pathlib.PurePosixPath("prototype/strip-coherence/corpus.py"))
-        is None
-    )
+    legacy_prefix = cp.LEGACY_CORPUS_PREFIXES[0]
+    assert _mapped_module_name(pathlib.PurePosixPath(f"{legacy_prefix}/corpus.py")) is None
 
 
 def test_a_changed_prototype_module_selects_its_test_and_split_variants() -> None:
