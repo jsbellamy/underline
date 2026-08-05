@@ -830,14 +830,38 @@ describe("mine presenter", () => {
     });
     const haulPresenter = createMinePresenter(hauling);
     haulPresenter.start();
-    const outLeg = haulPresenter.snapshot();
+    // Departure defaults to the stand — out-leg has zero length, so idle.
+    const outAtStand = haulPresenter.snapshot();
+    expect(outAtStand.hauler!.phase).toBe("out");
+    expect(outAtStand.hauler!.left).toBe(HAULER_MARK_X);
+    expect(outAtStand.hauler!.animation).toBe("idle");
+    expect(outAtStand.hauler!.pickupProgress).toBe(0);
+
+    // A live pickup walk leaves departure east of the stand → walk west.
+    const walking = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+      snapshot: {
+        ...initialSnapshot(),
+        crewSize: 2,
+        heapLoads: 1,
+        pickupProgressMs: 0,
+      },
+    });
+    const walkPresenter = createMinePresenter(walking);
+    walkPresenter.start();
+    // Walk toward the single east Ore, then finish Lift into a Trip.
+    walkPresenter.advanceMs(2_000);
+    expect(walkPresenter.snapshot().hauler!.left).toBeGreaterThan(HAULER_MARK_X + 40);
+    walkPresenter.advanceMs(OPENING_PICKUP_MS - 2_000);
+    const outLeg = walkPresenter.snapshot();
     expect(outLeg.hauler!.phase).toBe("out");
+    expect(outLeg.hauler!.left).toBeGreaterThan(HAULER_MARK_X);
     expect(outLeg.hauler!.animation).toBe("walk");
     expect(outLeg.hauler!.facing).toBe("west");
-    expect(outLeg.hauler!.pickupProgress).toBe(0);
 
-    haulPresenter.advanceMs(HAUL_TRAVEL_MS / 2 + unloadMsFor(0) + 1);
-    const backLeg = haulPresenter.snapshot();
+    walkPresenter.advanceMs(HAUL_TRAVEL_MS / 2 + unloadMsFor(0) + 1);
+    const backLeg = walkPresenter.snapshot();
     expect(backLeg.hauler!.phase).toBe("back");
     expect(backLeg.hauler!.animation).toBe("walk");
     expect(backLeg.hauler!.facing).toBe("east");
@@ -1047,6 +1071,53 @@ describe("mine presenter", () => {
       expect(moved).toBe(Math.round(500 * HAULER_WALK_PX_PER_MS));
       expect(moved).toBeLessThanOrEqual(100);
     });
+
+    it("does not thrash idle/walk chasing a settling Ore station", () => {
+      const { presenter, session } = twoDwarfPresenter({ heapLoads: 8 });
+      const stepMs = 16;
+      const rows: Array<{
+        left: number;
+        animation: string;
+        phase: string;
+        haul: number;
+      }> = [];
+      for (let i = 0; i < 500; i += 1) {
+        const snap = presenter.snapshot();
+        rows.push({
+          left: snap.hauler!.left,
+          animation: snap.hauler!.animation,
+          phase: snap.hauler!.phase,
+          haul: session.snapshot.haulRemainingMs,
+        });
+        if (session.snapshot.haulRemainingMs > 0) {
+          break;
+        }
+        presenter.advanceMs(stepMs);
+      }
+
+      // While still in pickup (before the Trip), after the first arrival the
+      // Hauler must stay idle — pile settle must not restart a 1px walk.
+      const pickup = rows.filter(
+        (r) => r.haul === 0 && r.phase === "pickup",
+      );
+      let arrived = false;
+      let idleToWalkAfterArrival = 0;
+      for (let i = 1; i < pickup.length; i += 1) {
+        const prev = pickup[i - 1]!;
+        const cur = pickup[i]!;
+        if (prev.animation === "walk" && cur.animation === "idle") {
+          arrived = true;
+        }
+        if (
+          arrived &&
+          prev.animation === "idle" &&
+          cur.animation === "walk"
+        ) {
+          idleToWalkAfterArrival += 1;
+        }
+      }
+      expect(idleToWalkAfterArrival).toBe(0);
+    });
   });
 
   describe("Trip Haul Speed and Cart dwell", () => {
@@ -1058,10 +1129,15 @@ describe("mine presenter", () => {
       presenter.advanceMs(OPENING_PICKUP_MS - PICKUP_THREE_QUARTER_MS);
     }
 
-    it("walks every leg at HAULER_WALK_PX_PER_MS and dwells at the Cart", () => {
-      const { presenter, session } = twoDwarfPresenterForTrip({ heapLoads: 3 });
-      startHaulFromStand(presenter);
+    it("walks every leg at HAULER_WALK_PX_PER_MS and dwells at the Hauler stand", () => {
+      // Single east Ore so departure is east of HAULER_MARK_X (out-leg has length).
+      const { presenter, session } = twoDwarfPresenterForTrip({ heapLoads: 1 });
+      presenter.advanceMs(2_000);
+      expect(presenter.snapshot().hauler!.left).toBeGreaterThan(HAULER_MARK_X + 40);
+      presenter.advanceMs(OPENING_PICKUP_MS - 2_000);
       expect(session.snapshot.haulRemainingMs).toBe(haulRoundTripMsFor(0));
+      const departure = presenter.snapshot().hauler!.left;
+      expect(departure).toBeGreaterThan(HAULER_MARK_X);
 
       const lefts: number[] = [];
       const animations: string[] = [];
@@ -1085,19 +1161,21 @@ describe("mine presenter", () => {
       expect(walkDeltas.filter((d) => d === walkStepPx).length).toBeGreaterThan(
         0,
       );
-      expect(walkDeltas.every((d) => d === walkStepPx || d === walkStepPx - 2)).toBe(
-        true,
-      );
+      // Final approach to the stand may be a short remainder step.
+      expect(walkDeltas.every((d) => d > 0 && d <= walkStepPx)).toBe(true);
 
-      const idleAtCart = lefts.filter(
-        (left, i) => left === CART_MARK_X && animations[i] === "idle",
+      // Two-dwarf Hauler unloads at his stand (HAULER_MARK_X), not on the Cart
+      // sprite — CART_MARK_X is the one-Dwarf Miner's unload mark.
+      const idleAtStand = lefts.filter(
+        (left, i) => left === HAULER_MARK_X && animations[i] === "idle",
       );
-      expect(idleAtCart.length).toBeGreaterThanOrEqual(
+      expect(idleAtStand.length).toBeGreaterThanOrEqual(
         Math.floor(unloadMsFor(0) / stepMs) - 1,
       );
-      for (const left of idleAtCart) {
-        expect(left).toBe(CART_MARK_X);
+      for (const left of idleAtStand) {
+        expect(left).toBe(HAULER_MARK_X);
       }
+      expect(Math.min(...lefts)).toBe(HAULER_MARK_X);
     });
 
     it("returns to departure stations 345 and 220 after a Trip", () => {
@@ -1125,6 +1203,8 @@ describe("mine presenter", () => {
       expect(tripLeftFor(0, 220, 0)).toBe(220);
       expect(tripLeftFor(6_000, 345, 0)).toBe(CART_MARK_X);
       expect(tripLeftFor(4_000, 345, 0)).toBe(CART_MARK_X);
+      expect(tripLeftFor(6_000, 345, 0, HAULER_MARK_X)).toBe(HAULER_MARK_X);
+      expect(tripLeftFor(4_000, 345, 0, HAULER_MARK_X)).toBe(HAULER_MARK_X);
     });
 
     it("idles the Hauler at its station when the Heap is empty", () => {
@@ -1139,8 +1219,11 @@ describe("mine presenter", () => {
     it("walks on both legs and idles through the unload window", () => {
       const U = unloadMsFor(0);
       const halfTravel = HAUL_TRAVEL_MS / 2;
-      const { presenter, session } = twoDwarfPresenterForTrip({ heapLoads: 2 });
-      startHaulFromStand(presenter);
+      const { presenter, session } = twoDwarfPresenterForTrip({ heapLoads: 1 });
+      presenter.advanceMs(2_000);
+      expect(presenter.snapshot().hauler!.left).toBeGreaterThan(HAULER_MARK_X + 40);
+      presenter.advanceMs(OPENING_PICKUP_MS - 2_000);
+      expect(presenter.snapshot().hauler!.phase).toBe("out");
 
       const seen: Array<{ animation: string; phase: string; remaining: number }> =
         [];
@@ -1156,16 +1239,23 @@ describe("mine presenter", () => {
 
       for (const row of seen) {
         if (row.remaining > U + halfTravel) {
-          expect(row.animation).toBe("walk");
           expect(row.phase).toBe("out");
+          // Early arrival at the stand idles for the rest of the out window.
+          expect(["walk", "idle"]).toContain(row.animation);
         } else if (row.remaining > halfTravel) {
           expect(row.animation).toBe("idle");
           expect(row.phase).toBe("unload");
         } else {
-          expect(row.animation).toBe("walk");
           expect(row.phase).toBe("back");
+          expect(["walk", "idle"]).toContain(row.animation);
         }
       }
+      expect(seen.some((r) => r.phase === "out" && r.animation === "walk")).toBe(
+        true,
+      );
+      expect(seen.some((r) => r.phase === "back" && r.animation === "walk")).toBe(
+        true,
+      );
     });
 
     it("publishes minerLeft on the Trip timeline for a one-Dwarf Crew", () => {
@@ -1421,6 +1511,66 @@ describe("mine presenter", () => {
       expect(first.carriedVariantIndexes).toBeDefined();
       expect(second.carriedVariantIndexes).toEqual(first.carriedVariantIndexes);
       expect(third.carriedVariantIndexes).toEqual(first.carriedVariantIndexes);
+    });
+
+    it("keeps carried Ore visible for the whole out leg and unload dwell", () => {
+      const { presenter, session } = twoDwarfPresenter({
+        heapLoads: 3,
+        pickupProgressMs: PICKUP_THREE_QUARTER_MS,
+      });
+      const lifting = presenter.snapshot();
+      expect(lifting.carriedVariantIndexes).toEqual([expect.any(Number)]);
+      const carried = [...lifting.carriedVariantIndexes!];
+
+      presenter.advanceMs(OPENING_PICKUP_MS - PICKUP_THREE_QUARTER_MS);
+      expect(session.snapshot.haulRemainingMs).toBeGreaterThan(0);
+
+      const out = presenter.snapshot();
+      expect(out.hauler!.phase).toBe("out");
+      expect(out.carriedVariantIndexes).toEqual(carried);
+
+      // Mid out-leg
+      presenter.advanceMs(500);
+      expect(presenter.snapshot().carriedVariantIndexes).toEqual(carried);
+
+      // Unload dwell
+      while (presenter.snapshot().hauler!.phase !== "unload") {
+        presenter.advanceMs(100);
+      }
+      expect(presenter.snapshot().carriedVariantIndexes).toEqual(carried);
+
+      // Cleared once the back leg starts (bag delivered)
+      while (presenter.snapshot().hauler!.phase === "unload") {
+        presenter.advanceMs(100);
+      }
+      expect(presenter.snapshot().hauler!.phase).toBe("back");
+      expect(presenter.snapshot().carriedVariantIndexes).toBeUndefined();
+    });
+
+    it("idles at the stand when the out-leg arrives before the unload window", () => {
+      const { presenter, session } = twoDwarfPresenter({ heapLoads: 1 });
+      presenter.advanceMs(2_000);
+      expect(presenter.snapshot().hauler!.left).toBeGreaterThan(HAULER_MARK_X + 40);
+      presenter.advanceMs(OPENING_PICKUP_MS - 2_000);
+      expect(session.snapshot.haulRemainingMs).toBeGreaterThan(0);
+
+      let sawWalk = false;
+      let idleWhileOut = false;
+      while (session.snapshot.haulRemainingMs > unloadMsFor(0) + HAUL_TRAVEL_MS / 2) {
+        const snap = presenter.snapshot();
+        expect(snap.hauler!.phase).toBe("out");
+        if (snap.hauler!.animation === "walk") {
+          sawWalk = true;
+        }
+        if (snap.hauler!.left === HAULER_MARK_X) {
+          expect(snap.hauler!.animation).toBe("idle");
+          idleWhileOut = true;
+          break;
+        }
+        presenter.advanceMs(100);
+      }
+      expect(sawWalk).toBe(true);
+      expect(idleWhileOut).toBe(true);
     });
 
     it("places Heap Ore at pane coordinates from native art content centres", () => {

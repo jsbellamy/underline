@@ -149,6 +149,7 @@ export function tripLeftFor(
   haulRemainingMs: number,
   departureStation: number,
   unloadSpeedUpgradeCount: number,
+  destinationMark: number = CART_MARK_X,
 ): number {
   const unloadMs = unloadMsFor(unloadSpeedUpgradeCount);
   const halfTravel = HAUL_TRAVEL_MS / 2;
@@ -157,16 +158,16 @@ export function tripLeftFor(
 
   if (haulRemainingMs > unloadMs + halfTravel) {
     return Math.max(
-      CART_MARK_X,
+      destinationMark,
       Math.round(departureStation - (tripMs - haulRemainingMs) * walkPxPerMs),
     );
   }
   if (haulRemainingMs > halfTravel) {
-    return CART_MARK_X;
+    return destinationMark;
   }
   return Math.min(
     departureStation,
-    Math.round(CART_MARK_X + (halfTravel - haulRemainingMs) * walkPxPerMs),
+    Math.round(destinationMark + (halfTravel - haulRemainingMs) * walkPxPerMs),
   );
 }
 
@@ -277,6 +278,9 @@ export function createMinePresenter(
   let haulerLeftPx = HAULER_MARK_X;
   let haulerSteppedToMs = 0;
   let heldBodyId: number | undefined;
+  /** Walk target locked when the held Ore is chosen — pile settle must not
+      retarget the Hauler mid-approach (idle↔walk thrash). */
+  let heldWalkStationPx: number | null = null;
   let removedHeldBody = false;
   let haulDepartureStation: number | null = null;
   let prevHaulRemainingMs = session.snapshot.haulRemainingMs;
@@ -420,7 +424,22 @@ export function createMinePresenter(
   /** Where the Hauler is headed between Trips: the Ore he Lifts next, or his
       stand by the Cart when the Heap has nothing for him. */
   function haulerWalkTarget(): number {
-    return heldBodyStation() ?? HAULER_MARK_X;
+    return heldWalkStationPx ?? HAULER_MARK_X;
+  }
+
+  function clearHeldOre(): void {
+    heldBodyId = undefined;
+    heldWalkStationPx = null;
+  }
+
+  function assignHeldOre(bodyId: number | undefined): void {
+    heldBodyId = bodyId;
+    if (bodyId === undefined) {
+      heldWalkStationPx = null;
+      return;
+    }
+    heldWalkStationPx = heldBodyStation();
+    removedHeldBody = false;
   }
 
   function advanceHaulerLeft(nowMs: number): void {
@@ -457,7 +476,7 @@ export function createMinePresenter(
 
     if (snap.heapLoads === 0 && snap.haulRemainingMs === 0) {
       // No snap home: advanceHaulerLeft walks him back at the one walk speed.
-      heldBodyId = undefined;
+      clearHeldOre();
       removedHeldBody = false;
     }
 
@@ -477,23 +496,26 @@ export function createMinePresenter(
       }
     }
 
-    if (inPickup) {
-      const heldMissing =
-        heldBodyId !== undefined &&
-        !pile.bodies.some((b) => b.id === heldBodyId);
-      if (heldBodyId === undefined || heldMissing) {
-        heldBodyId = pickHeldBody(haulerLeftPx, excluded) ?? undefined;
-      }
-    }
-
-    advanceHaulerLeft(nowMs);
-
     const lifted = isPickupLifted(
       snap.haulRemainingMs,
       snap.heapLoads,
       snap.pickupProgressMs,
       snap.haulSpeedUpgradeCount,
     );
+
+    if (inPickup) {
+      const heldMissing =
+        heldBodyId !== undefined &&
+        !pile.bodies.some((b) => b.id === heldBodyId);
+      // Acquire a target anytime we have none. Retarget only between Lifts —
+      // during the Lift window the held body is removed and must not be
+      // replaced by a neighbour (that caused idle↔walk thrash at the Ore).
+      if (heldBodyId === undefined || (!lifted && heldMissing)) {
+        assignHeldOre(pickHeldBody(haulerLeftPx, excluded) ?? undefined);
+      }
+    }
+
+    advanceHaulerLeft(nowMs);
 
     if (lifted && heldBodyId !== undefined) {
       if (count > target && !removedHeldBody) {
@@ -513,7 +535,15 @@ export function createMinePresenter(
       }
     }
 
-    if (!lifted) {
+    // Keep carried Ore through the out-leg and unload dwell; clear on the back
+    // leg (bag already delivered) or once pickup is idle again.
+    const haulLeg =
+      snap.haulRemainingMs > 0
+        ? tripLeg(snap.haulRemainingMs, snap.unloadSpeedUpgradeCount)
+        : null;
+    const showCarried =
+      lifted || haulLeg === "out" || haulLeg === "unload";
+    if (!showCarried) {
       carriedVariantIndexes = [];
     }
 
@@ -614,6 +644,25 @@ export function createMinePresenter(
         hauler.setHauling(null, simNowMs);
         return;
       }
+      ensureHaulDepartureStation();
+      const dest =
+        leg === "out"
+          ? HAULER_MARK_X
+          : (haulDepartureStation ?? haulerLeftPx);
+      const left =
+        haulDepartureStation !== null
+          ? tripLeftFor(
+              snap.haulRemainingMs,
+              haulDepartureStation,
+              snap.unloadSpeedUpgradeCount,
+              HAULER_MARK_X,
+            )
+          : haulerLeftPx;
+      // Arrived early for this leg — idle rather than walk-in-place stutter.
+      if (left === dest) {
+        hauler.setHauling(null, simNowMs);
+        return;
+      }
       hauler.setHauling(leg, simNowMs);
       return;
     }
@@ -673,7 +722,26 @@ export function createMinePresenter(
           remaining,
           haulDepartureStation,
           snap.unloadSpeedUpgradeCount,
+          HAULER_MARK_X,
         );
+      }
+      // Mirror syncHaulerAnim: early arrival on out/back is idle, not walk.
+      if (phase === "out" && left === HAULER_MARK_X) {
+        animation = "idle";
+        facing = "east";
+      } else if (
+        phase === "back" &&
+        haulDepartureStation !== null &&
+        left === haulDepartureStation
+      ) {
+        animation = "idle";
+        facing = "east";
+      } else if (phase === "out") {
+        animation = "walk";
+        facing = "west";
+      } else if (phase === "back") {
+        animation = "walk";
+        facing = "east";
       }
     }
 
