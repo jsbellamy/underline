@@ -43,415 +43,78 @@ interface PersistedSaveV6 {
   haulRemainingMs: number;
 }
 
-interface PersistedSaveV5 {
-  schemaVersion: 5;
-  savedAtMs: number;
-  advance: number;
-  ore: number;
-  ingots: number;
-  digRateUpgradeCount: number;
-  pickDamageUpgradeCount: number;
-  smelterUpgradeCount: number;
-  carryCapacityUpgradeCount: number;
-  crewSize: number;
-  heapLoads: number;
-  heapOre: number;
-  haulSpeedUpgradeCount: number;
-  pickupProgressMs: number;
-  faceSwingProgress: number;
-  smelterProgress: number;
-  bagOre: number;
-  bagLoads: number;
-  haulRemainingMs: number;
+type SnapshotField = keyof Omit<MiningSnapshot, "schemaVersion">;
+
+type PersistedFieldSpec =
+  | { kind: "required"; key: string }
+  | { kind: "optional"; key: string; default: number }
+  | { kind: "alias"; from: string; to: SnapshotField };
+
+interface VersionSpec {
+  schemaVersion: number;
+  fields: readonly PersistedFieldSpec[];
+  defaults: Readonly<Partial<Record<SnapshotField, number>>>;
 }
 
-interface PersistedSaveV4 {
-  schemaVersion: 4;
-  savedAtMs: number;
-  advance: number;
-  ore: number;
-  ingots: number;
-  digRateUpgradeCount: number;
-  smelterUpgradeCount: number;
-  carryCapacityUpgradeCount: number;
-  crewSize: number;
-  heapLoads: number;
-  heapOre: number;
-  haulSpeedUpgradeCount: number;
-  pickupProgressMs: number;
-  faceSwingProgress: number;
-  smelterProgress: number;
-  bagOre: number;
-  bagLoads: number;
-  haulRemainingMs: number;
-}
+const ZERO_DEFAULTS: Readonly<Partial<Record<SnapshotField, number>>> = {
+  pickDamageUpgradeCount: 0,
+  smelterUpgradeCount: 0,
+  carryCapacityUpgradeCount: 0,
+  crewSize: 1,
+  heapLoads: 0,
+  heapOre: 0,
+  haulSpeedUpgradeCount: 0,
+  grabSizeUpgradeCount: 0,
+  unloadSpeedUpgradeCount: 0,
+  pickupProgressMs: 0,
+  bagOre: 0,
+  bagLoads: 0,
+  haulRemainingMs: 0,
+};
 
-interface PersistedSaveV3 {
-  schemaVersion: 3;
-  savedAtMs: number;
-  advance: number;
-  ore: number;
-  ingots: number;
-  digRateUpgradeCount: number;
-  smelterUpgradeCount: number;
-  carryCapacityUpgradeCount: number;
-  faceSwingProgress: number;
-  smelterProgress: number;
-  bagOre: number;
-  bagLoads: number;
-  haulRemainingMs: number;
-}
-
-interface PersistedSaveV2 {
-  schemaVersion: 2;
-  savedAtMs: number;
-  advance: number;
-  ore: number;
-  ingots: number;
-  digRateUpgradeCount: number;
-  smelterUpgradeCount: number;
-  faceSwingProgress: number;
-  smelterProgress: number;
-}
-
-interface PersistedSaveV1 {
-  schemaVersion: 1;
-  savedAtMs: number;
-  advance: number;
-  ore: number;
-  ingots: number;
-  upgradeCount: number;
-  faceSwingProgress: number;
-  smelterProgress: number;
-}
-
-type PersistedSave =
-  | PersistedSaveV6
-  | PersistedSaveV5
-  | PersistedSaveV4
-  | PersistedSaveV3
-  | PersistedSaveV2
-  | PersistedSaveV1;
-
-function isFiniteNumber(value: unknown): value is number {
-  return typeof value === "number" && Number.isFinite(value);
-}
-
-function parseV6Fields(raw: {
-  advance: unknown;
-  ore: unknown;
-  ingots: unknown;
-  digRateUpgradeCount: unknown;
-  pickDamageUpgradeCount: unknown;
-  smelterUpgradeCount: unknown;
-  carryCapacityUpgradeCount: unknown;
-  crewSize: unknown;
-  heapLoads: unknown;
-  heapOre: unknown;
-  haulSpeedUpgradeCount: unknown;
-  grabSizeUpgradeCount: unknown;
-  unloadSpeedUpgradeCount: unknown;
-  pickupProgressMs: unknown;
-  faceSwingProgress: unknown;
-  smelterProgress: unknown;
-  bagOre: unknown;
-  bagLoads: unknown;
-  haulRemainingMs: unknown;
-}): MiningSnapshot | null {
-  if (
-    !isFiniteNumber(raw.advance) ||
-    !isFiniteNumber(raw.ore) ||
-    !isFiniteNumber(raw.ingots) ||
-    !isFiniteNumber(raw.digRateUpgradeCount) ||
-    !isFiniteNumber(raw.pickDamageUpgradeCount) ||
-    !isFiniteNumber(raw.smelterUpgradeCount) ||
-    !isFiniteNumber(raw.carryCapacityUpgradeCount) ||
-    !isFiniteNumber(raw.crewSize) ||
-    !isFiniteNumber(raw.heapLoads) ||
-    !isFiniteNumber(raw.heapOre) ||
-    !isFiniteNumber(raw.haulSpeedUpgradeCount) ||
-    !isFiniteNumber(raw.pickupProgressMs) ||
-    !isFiniteNumber(raw.faceSwingProgress) ||
-    !isFiniteNumber(raw.smelterProgress) ||
-    !isFiniteNumber(raw.bagOre) ||
-    !isFiniteNumber(raw.bagLoads) ||
-    !isFiniteNumber(raw.haulRemainingMs)
-  ) {
-    return null;
-  }
-  const grabSizeUpgradeCount = isFiniteNumber(raw.grabSizeUpgradeCount)
-    ? raw.grabSizeUpgradeCount
-    : 0;
-  const unloadSpeedUpgradeCount = isFiniteNumber(raw.unloadSpeedUpgradeCount)
-    ? raw.unloadSpeedUpgradeCount
-    : 0;
-  return {
-    schemaVersion: SCHEMA_VERSION,
-    advance: raw.advance,
-    ore: raw.ore,
-    ingots: raw.ingots,
-    digRateUpgradeCount: raw.digRateUpgradeCount,
-    pickDamageUpgradeCount: raw.pickDamageUpgradeCount,
-    smelterUpgradeCount: raw.smelterUpgradeCount,
-    carryCapacityUpgradeCount: raw.carryCapacityUpgradeCount,
-    crewSize: raw.crewSize,
-    heapLoads: raw.heapLoads,
-    heapOre: raw.heapOre,
-    haulSpeedUpgradeCount: raw.haulSpeedUpgradeCount,
-    grabSizeUpgradeCount,
-    unloadSpeedUpgradeCount,
-    pickupProgressMs: raw.pickupProgressMs,
-    faceSwingProgress: raw.faceSwingProgress,
-    smelterProgress: raw.smelterProgress,
-    bagOre: raw.bagOre,
-    bagLoads: raw.bagLoads,
-    haulRemainingMs: raw.haulRemainingMs,
-  };
-}
-
-function parseV5Fields(raw: {
-  advance: unknown;
-  ore: unknown;
-  ingots: unknown;
-  digRateUpgradeCount: unknown;
-  pickDamageUpgradeCount: unknown;
-  smelterUpgradeCount: unknown;
-  carryCapacityUpgradeCount: unknown;
-  crewSize: unknown;
-  heapLoads: unknown;
-  heapOre: unknown;
-  haulSpeedUpgradeCount: unknown;
-  pickupProgressMs: unknown;
-  faceSwingProgress: unknown;
-  smelterProgress: unknown;
-  bagOre: unknown;
-  bagLoads: unknown;
-  haulRemainingMs: unknown;
-}): MiningSnapshot | null {
-  if (
-    !isFiniteNumber(raw.advance) ||
-    !isFiniteNumber(raw.ore) ||
-    !isFiniteNumber(raw.ingots) ||
-    !isFiniteNumber(raw.digRateUpgradeCount) ||
-    !isFiniteNumber(raw.pickDamageUpgradeCount) ||
-    !isFiniteNumber(raw.smelterUpgradeCount) ||
-    !isFiniteNumber(raw.carryCapacityUpgradeCount) ||
-    !isFiniteNumber(raw.crewSize) ||
-    !isFiniteNumber(raw.heapLoads) ||
-    !isFiniteNumber(raw.heapOre) ||
-    !isFiniteNumber(raw.haulSpeedUpgradeCount) ||
-    !isFiniteNumber(raw.pickupProgressMs) ||
-    !isFiniteNumber(raw.faceSwingProgress) ||
-    !isFiniteNumber(raw.smelterProgress) ||
-    !isFiniteNumber(raw.bagOre) ||
-    !isFiniteNumber(raw.bagLoads) ||
-    !isFiniteNumber(raw.haulRemainingMs)
-  ) {
-    return null;
-  }
-  return {
-    schemaVersion: SCHEMA_VERSION,
-    advance: raw.advance,
-    ore: raw.ore,
-    ingots: raw.ingots,
-    digRateUpgradeCount: raw.digRateUpgradeCount,
-    pickDamageUpgradeCount: raw.pickDamageUpgradeCount,
-    smelterUpgradeCount: raw.smelterUpgradeCount,
-    carryCapacityUpgradeCount: raw.carryCapacityUpgradeCount,
-    crewSize: raw.crewSize,
-    heapLoads: raw.heapLoads,
-    heapOre: raw.heapOre,
-    haulSpeedUpgradeCount: raw.haulSpeedUpgradeCount,
-    grabSizeUpgradeCount: 0,
-    unloadSpeedUpgradeCount: 0,
-    pickupProgressMs: raw.pickupProgressMs,
-    faceSwingProgress: raw.faceSwingProgress,
-    smelterProgress: raw.smelterProgress,
-    bagOre: raw.bagOre,
-    bagLoads: raw.bagLoads,
-    haulRemainingMs: raw.haulRemainingMs,
-  };
-}
-
-function parseV4Fields(raw: {
-  advance: unknown;
-  ore: unknown;
-  ingots: unknown;
-  digRateUpgradeCount: unknown;
-  smelterUpgradeCount: unknown;
-  carryCapacityUpgradeCount: unknown;
-  crewSize: unknown;
-  heapLoads: unknown;
-  heapOre: unknown;
-  haulSpeedUpgradeCount: unknown;
-  pickupProgressMs: unknown;
-  faceSwingProgress: unknown;
-  smelterProgress: unknown;
-  bagOre: unknown;
-  bagLoads: unknown;
-  haulRemainingMs: unknown;
-}): MiningSnapshot | null {
-  if (
-    !isFiniteNumber(raw.advance) ||
-    !isFiniteNumber(raw.ore) ||
-    !isFiniteNumber(raw.ingots) ||
-    !isFiniteNumber(raw.digRateUpgradeCount) ||
-    !isFiniteNumber(raw.smelterUpgradeCount) ||
-    !isFiniteNumber(raw.carryCapacityUpgradeCount) ||
-    !isFiniteNumber(raw.crewSize) ||
-    !isFiniteNumber(raw.heapLoads) ||
-    !isFiniteNumber(raw.heapOre) ||
-    !isFiniteNumber(raw.haulSpeedUpgradeCount) ||
-    !isFiniteNumber(raw.pickupProgressMs) ||
-    !isFiniteNumber(raw.faceSwingProgress) ||
-    !isFiniteNumber(raw.smelterProgress) ||
-    !isFiniteNumber(raw.bagOre) ||
-    !isFiniteNumber(raw.bagLoads) ||
-    !isFiniteNumber(raw.haulRemainingMs)
-  ) {
-    return null;
-  }
-  return {
-    schemaVersion: SCHEMA_VERSION,
-    advance: raw.advance,
-    ore: raw.ore,
-    ingots: raw.ingots,
-    digRateUpgradeCount: raw.digRateUpgradeCount,
-    pickDamageUpgradeCount: 0,
-    smelterUpgradeCount: raw.smelterUpgradeCount,
-    carryCapacityUpgradeCount: raw.carryCapacityUpgradeCount,
-    crewSize: raw.crewSize,
-    heapLoads: raw.heapLoads,
-    heapOre: raw.heapOre,
-    haulSpeedUpgradeCount: raw.haulSpeedUpgradeCount,
-    grabSizeUpgradeCount: 0,
-    unloadSpeedUpgradeCount: 0,
-    pickupProgressMs: raw.pickupProgressMs,
-    faceSwingProgress: raw.faceSwingProgress,
-    smelterProgress: raw.smelterProgress,
-    bagOre: raw.bagOre,
-    bagLoads: raw.bagLoads,
-    haulRemainingMs: raw.haulRemainingMs,
-  };
-}
-
-function parseV3Fields(raw: {
-  advance: unknown;
-  ore: unknown;
-  ingots: unknown;
-  digRateUpgradeCount: unknown;
-  smelterUpgradeCount: unknown;
-  carryCapacityUpgradeCount: unknown;
-  faceSwingProgress: unknown;
-  smelterProgress: unknown;
-  bagOre: unknown;
-  bagLoads: unknown;
-  haulRemainingMs: unknown;
-}): MiningSnapshot | null {
-  if (
-    !isFiniteNumber(raw.advance) ||
-    !isFiniteNumber(raw.ore) ||
-    !isFiniteNumber(raw.ingots) ||
-    !isFiniteNumber(raw.digRateUpgradeCount) ||
-    !isFiniteNumber(raw.smelterUpgradeCount) ||
-    !isFiniteNumber(raw.carryCapacityUpgradeCount) ||
-    !isFiniteNumber(raw.faceSwingProgress) ||
-    !isFiniteNumber(raw.smelterProgress) ||
-    !isFiniteNumber(raw.bagOre) ||
-    !isFiniteNumber(raw.bagLoads) ||
-    !isFiniteNumber(raw.haulRemainingMs)
-  ) {
-    return null;
-  }
-  return {
-    schemaVersion: SCHEMA_VERSION,
-    advance: raw.advance,
-    ore: raw.ore,
-    ingots: raw.ingots,
-    digRateUpgradeCount: raw.digRateUpgradeCount,
-    pickDamageUpgradeCount: 0,
-    smelterUpgradeCount: raw.smelterUpgradeCount,
-    carryCapacityUpgradeCount: raw.carryCapacityUpgradeCount,
-    crewSize: 1,
-    heapLoads: 0,
-    heapOre: 0,
-    haulSpeedUpgradeCount: 0,
-    grabSizeUpgradeCount: 0,
-    unloadSpeedUpgradeCount: 0,
-    pickupProgressMs: 0,
-    faceSwingProgress: raw.faceSwingProgress,
-    smelterProgress: raw.smelterProgress,
-    bagOre: raw.bagOre,
-    bagLoads: raw.bagLoads,
-    haulRemainingMs: raw.haulRemainingMs,
-  };
-}
-
-function parseV2Fields(raw: {
-  advance: unknown;
-  ore: unknown;
-  ingots: unknown;
-  digRateUpgradeCount: unknown;
-  smelterUpgradeCount: unknown;
-  faceSwingProgress: unknown;
-  smelterProgress: unknown;
-}): MiningSnapshot | null {
-  if (
-    !isFiniteNumber(raw.advance) ||
-    !isFiniteNumber(raw.ore) ||
-    !isFiniteNumber(raw.ingots) ||
-    !isFiniteNumber(raw.digRateUpgradeCount) ||
-    !isFiniteNumber(raw.smelterUpgradeCount) ||
-    !isFiniteNumber(raw.faceSwingProgress) ||
-    !isFiniteNumber(raw.smelterProgress)
-  ) {
-    return null;
-  }
-  return {
-    schemaVersion: SCHEMA_VERSION,
-    advance: raw.advance,
-    ore: raw.ore,
-    ingots: raw.ingots,
-    digRateUpgradeCount: raw.digRateUpgradeCount,
-    pickDamageUpgradeCount: 0,
-    smelterUpgradeCount: raw.smelterUpgradeCount,
-    carryCapacityUpgradeCount: 0,
-    crewSize: 1,
-    heapLoads: 0,
-    heapOre: 0,
-    haulSpeedUpgradeCount: 0,
-    grabSizeUpgradeCount: 0,
-    unloadSpeedUpgradeCount: 0,
-    pickupProgressMs: 0,
-    faceSwingProgress: raw.faceSwingProgress,
-    smelterProgress: raw.smelterProgress,
-    bagOre: 0,
-    bagLoads: 0,
-    haulRemainingMs: 0,
-  };
-}
-
-function parseSnapshot(raw: PersistedSave): MiningSnapshot | null {
-  if (raw.schemaVersion === 1) {
-    if (
-      !isFiniteNumber(raw.advance) ||
-      !isFiniteNumber(raw.ore) ||
-      !isFiniteNumber(raw.ingots) ||
-      !isFiniteNumber(raw.upgradeCount) ||
-      !isFiniteNumber(raw.faceSwingProgress) ||
-      !isFiniteNumber(raw.smelterProgress)
-    ) {
-      return null;
-    }
-    return {
-      schemaVersion: SCHEMA_VERSION,
-      advance: raw.advance,
-      ore: raw.ore,
-      ingots: raw.ingots,
-      digRateUpgradeCount: raw.upgradeCount,
+const VERSION_TABLE: readonly VersionSpec[] = [
+  {
+    schemaVersion: 1,
+    fields: [
+      { kind: "required", key: "advance" },
+      { kind: "required", key: "ore" },
+      { kind: "required", key: "ingots" },
+      { kind: "alias", from: "upgradeCount", to: "digRateUpgradeCount" },
+      { kind: "required", key: "faceSwingProgress" },
+      { kind: "required", key: "smelterProgress" },
+    ],
+    defaults: ZERO_DEFAULTS,
+  },
+  {
+    schemaVersion: 2,
+    fields: [
+      { kind: "required", key: "advance" },
+      { kind: "required", key: "ore" },
+      { kind: "required", key: "ingots" },
+      { kind: "required", key: "digRateUpgradeCount" },
+      { kind: "required", key: "smelterUpgradeCount" },
+      { kind: "required", key: "faceSwingProgress" },
+      { kind: "required", key: "smelterProgress" },
+    ],
+    defaults: ZERO_DEFAULTS,
+  },
+  {
+    schemaVersion: 3,
+    fields: [
+      { kind: "required", key: "advance" },
+      { kind: "required", key: "ore" },
+      { kind: "required", key: "ingots" },
+      { kind: "required", key: "digRateUpgradeCount" },
+      { kind: "required", key: "smelterUpgradeCount" },
+      { kind: "required", key: "carryCapacityUpgradeCount" },
+      { kind: "required", key: "faceSwingProgress" },
+      { kind: "required", key: "smelterProgress" },
+      { kind: "required", key: "bagOre" },
+      { kind: "required", key: "bagLoads" },
+      { kind: "required", key: "haulRemainingMs" },
+    ],
+    defaults: {
       pickDamageUpgradeCount: 0,
-      smelterUpgradeCount: 0,
-      carryCapacityUpgradeCount: 0,
       crewSize: 1,
       heapLoads: 0,
       heapOre: 0,
@@ -459,29 +122,170 @@ function parseSnapshot(raw: PersistedSave): MiningSnapshot | null {
       grabSizeUpgradeCount: 0,
       unloadSpeedUpgradeCount: 0,
       pickupProgressMs: 0,
-      faceSwingProgress: raw.faceSwingProgress,
-      smelterProgress: raw.smelterProgress,
-      bagOre: 0,
-      bagLoads: 0,
-      haulRemainingMs: 0,
-    };
+    },
+  },
+  {
+    schemaVersion: 4,
+    fields: [
+      { kind: "required", key: "advance" },
+      { kind: "required", key: "ore" },
+      { kind: "required", key: "ingots" },
+      { kind: "required", key: "digRateUpgradeCount" },
+      { kind: "required", key: "smelterUpgradeCount" },
+      { kind: "required", key: "carryCapacityUpgradeCount" },
+      { kind: "required", key: "crewSize" },
+      { kind: "required", key: "heapLoads" },
+      { kind: "required", key: "heapOre" },
+      { kind: "required", key: "haulSpeedUpgradeCount" },
+      { kind: "required", key: "pickupProgressMs" },
+      { kind: "required", key: "faceSwingProgress" },
+      { kind: "required", key: "smelterProgress" },
+      { kind: "required", key: "bagOre" },
+      { kind: "required", key: "bagLoads" },
+      { kind: "required", key: "haulRemainingMs" },
+    ],
+    defaults: {
+      pickDamageUpgradeCount: 0,
+      grabSizeUpgradeCount: 0,
+      unloadSpeedUpgradeCount: 0,
+    },
+  },
+  {
+    schemaVersion: 5,
+    fields: [
+      { kind: "required", key: "advance" },
+      { kind: "required", key: "ore" },
+      { kind: "required", key: "ingots" },
+      { kind: "required", key: "digRateUpgradeCount" },
+      { kind: "required", key: "pickDamageUpgradeCount" },
+      { kind: "required", key: "smelterUpgradeCount" },
+      { kind: "required", key: "carryCapacityUpgradeCount" },
+      { kind: "required", key: "crewSize" },
+      { kind: "required", key: "heapLoads" },
+      { kind: "required", key: "heapOre" },
+      { kind: "required", key: "haulSpeedUpgradeCount" },
+      { kind: "required", key: "pickupProgressMs" },
+      { kind: "required", key: "faceSwingProgress" },
+      { kind: "required", key: "smelterProgress" },
+      { kind: "required", key: "bagOre" },
+      { kind: "required", key: "bagLoads" },
+      { kind: "required", key: "haulRemainingMs" },
+    ],
+    defaults: {
+      grabSizeUpgradeCount: 0,
+      unloadSpeedUpgradeCount: 0,
+    },
+  },
+  {
+    schemaVersion: 6,
+    fields: [
+      { kind: "required", key: "advance" },
+      { kind: "required", key: "ore" },
+      { kind: "required", key: "ingots" },
+      { kind: "required", key: "digRateUpgradeCount" },
+      { kind: "required", key: "pickDamageUpgradeCount" },
+      { kind: "required", key: "smelterUpgradeCount" },
+      { kind: "required", key: "carryCapacityUpgradeCount" },
+      { kind: "required", key: "crewSize" },
+      { kind: "required", key: "heapLoads" },
+      { kind: "required", key: "heapOre" },
+      { kind: "required", key: "haulSpeedUpgradeCount" },
+      { kind: "optional", key: "grabSizeUpgradeCount", default: 0 },
+      { kind: "optional", key: "unloadSpeedUpgradeCount", default: 0 },
+      { kind: "required", key: "pickupProgressMs" },
+      { kind: "required", key: "faceSwingProgress" },
+      { kind: "required", key: "smelterProgress" },
+      { kind: "required", key: "bagOre" },
+      { kind: "required", key: "bagLoads" },
+      { kind: "required", key: "haulRemainingMs" },
+    ],
+    defaults: {},
+  },
+];
+
+function isFiniteNumber(value: unknown): value is number {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+function readPersistedFields(
+  raw: Record<string, unknown>,
+  fields: readonly PersistedFieldSpec[],
+): Partial<Record<SnapshotField, number>> | null {
+  const values: Partial<Record<SnapshotField, number>> = {};
+  for (const field of fields) {
+    if (field.kind === "required") {
+      if (!isFiniteNumber(raw[field.key])) {
+        return null;
+      }
+      values[field.key as SnapshotField] = raw[field.key] as number;
+    } else if (field.kind === "optional") {
+      values[field.key as SnapshotField] = isFiniteNumber(raw[field.key])
+        ? (raw[field.key] as number)
+        : field.default;
+    } else {
+      if (!isFiniteNumber(raw[field.from])) {
+        return null;
+      }
+      values[field.to] = raw[field.from] as number;
+    }
   }
-  if (raw.schemaVersion === 2) {
-    return parseV2Fields(raw);
-  }
-  if (raw.schemaVersion === 3) {
-    return parseV3Fields(raw);
-  }
-  if (raw.schemaVersion === 4) {
-    return parseV4Fields(raw);
-  }
-  if (raw.schemaVersion === 5) {
-    return parseV5Fields(raw);
-  }
-  if (raw.schemaVersion !== SCHEMA_VERSION) {
+  return values;
+}
+
+function snapshotFromVersionSpec(
+  spec: VersionSpec,
+  raw: Record<string, unknown>,
+): MiningSnapshot | null {
+  const values = readPersistedFields(raw, spec.fields);
+  if (!values) {
     return null;
   }
-  return parseV6Fields(raw);
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    advance: values.advance!,
+    ore: values.ore!,
+    ingots: values.ingots!,
+    digRateUpgradeCount: values.digRateUpgradeCount!,
+    pickDamageUpgradeCount:
+      values.pickDamageUpgradeCount ?? spec.defaults.pickDamageUpgradeCount ?? 0,
+    smelterUpgradeCount:
+      values.smelterUpgradeCount ?? spec.defaults.smelterUpgradeCount ?? 0,
+    carryCapacityUpgradeCount:
+      values.carryCapacityUpgradeCount ??
+      spec.defaults.carryCapacityUpgradeCount ??
+      0,
+    crewSize: values.crewSize ?? spec.defaults.crewSize ?? 1,
+    heapLoads: values.heapLoads ?? spec.defaults.heapLoads ?? 0,
+    heapOre: values.heapOre ?? spec.defaults.heapOre ?? 0,
+    haulSpeedUpgradeCount:
+      values.haulSpeedUpgradeCount ?? spec.defaults.haulSpeedUpgradeCount ?? 0,
+    grabSizeUpgradeCount:
+      values.grabSizeUpgradeCount ?? spec.defaults.grabSizeUpgradeCount ?? 0,
+    unloadSpeedUpgradeCount:
+      values.unloadSpeedUpgradeCount ??
+      spec.defaults.unloadSpeedUpgradeCount ??
+      0,
+    pickupProgressMs:
+      values.pickupProgressMs ?? spec.defaults.pickupProgressMs ?? 0,
+    faceSwingProgress: values.faceSwingProgress!,
+    smelterProgress: values.smelterProgress!,
+    bagOre: values.bagOre ?? spec.defaults.bagOre ?? 0,
+    bagLoads: values.bagLoads ?? spec.defaults.bagLoads ?? 0,
+    haulRemainingMs:
+      values.haulRemainingMs ?? spec.defaults.haulRemainingMs ?? 0,
+  };
+}
+
+function parseSnapshot(raw: Record<string, unknown>): MiningSnapshot | null {
+  const schemaVersion = raw["schemaVersion"];
+  if (!isFiniteNumber(schemaVersion)) {
+    return null;
+  }
+  const spec = VERSION_TABLE.find((entry) => entry.schemaVersion === schemaVersion);
+  if (!spec) {
+    return null;
+  }
+  return snapshotFromVersionSpec(spec, raw);
 }
 
 export function loadSave(store: SaveStore): LoadedSave {
@@ -490,12 +294,12 @@ export function loadSave(store: SaveStore): LoadedSave {
     return { snapshot: initialSnapshot(), savedAtMs: undefined };
   }
   try {
-    const raw = JSON.parse(text) as PersistedSave;
+    const raw = JSON.parse(text) as Record<string, unknown>;
     const snapshot = parseSnapshot(raw);
-    if (!snapshot || !isFiniteNumber(raw.savedAtMs)) {
+    if (!snapshot || !isFiniteNumber(raw["savedAtMs"])) {
       return { snapshot: initialSnapshot(), savedAtMs: undefined };
     }
-    return { snapshot, savedAtMs: raw.savedAtMs };
+    return { snapshot, savedAtMs: raw["savedAtMs"] };
   } catch {
     return { snapshot: initialSnapshot(), savedAtMs: undefined };
   }
