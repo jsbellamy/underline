@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import { fallingOrePosition } from "./heap-pile";
 import {
+  CART_MARK_X,
   FACE_X,
   HAULER_MARK_X,
+  HAULER_WALK_PX_PER_MS,
+  haulerStationFor,
   HEAP_BIN_CEILING_Y,
   HEAP_BIN_EAST_X,
   HEAP_BIN_FLOOR_Y,
@@ -19,6 +22,21 @@ import {
   ORE_SPAWN_BOTTOM,
   PANE_HEIGHT,
 } from "./pane-layout";
+import { HAUL_TRAVEL_MS } from "../core/mining-engine";
+
+describe("pane-layout hauler walk", () => {
+  it("walks the widest tunnel lane in one travel leg", () => {
+    expect(HAULER_WALK_PX_PER_MS).toBe(
+      (HEAP_BIN_EAST_X - CART_MARK_X) / (HAUL_TRAVEL_MS / 2),
+    );
+  });
+
+  it("maps a body x to the Hauler sprite left with tunnel clamps", () => {
+    expect(haulerStationFor(401)).toBe(345);
+    expect(haulerStationFor(1000)).toBe(354);
+    expect(haulerStationFor(0)).toBe(152);
+  });
+});
 
 describe("pane-layout heap exports", () => {
   it("exports surviving layout constants with worked values", () => {

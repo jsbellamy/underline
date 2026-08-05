@@ -892,24 +892,6 @@ describe("mine presenter", () => {
     expect(presenter.snapshot().fallingOre).toEqual([]);
   });
 
-  describe("hauler station and walk speed", () => {
-    it("exports HAULER_WALK_PX_PER_MS from the widest tunnel lane", async () => {
-      const { HAULER_WALK_PX_PER_MS } = await import("./pane-layout");
-      const { HAUL_TRAVEL_MS } = await import("../core/mining-engine");
-      const { CART_MARK_X, HEAP_BIN_EAST_X } = await import("./pane-layout");
-      expect(HAULER_WALK_PX_PER_MS).toBe(
-        (HEAP_BIN_EAST_X - CART_MARK_X) / (HAUL_TRAVEL_MS / 2),
-      );
-    });
-
-    it("maps a body x to the Hauler sprite left with tunnel clamps", async () => {
-      const { haulerStationFor } = await import("./pane-layout");
-      expect(haulerStationFor(401)).toBe(345);
-      expect(haulerStationFor(1000)).toBe(354);
-      expect(haulerStationFor(0)).toBe(152);
-    });
-  });
-
   describe("hauler pickup walk", () => {
     const twoDwarfBase = {
       ...initialSnapshot(),
@@ -989,6 +971,13 @@ describe("mine presenter", () => {
         (o) => !snap.heapOre.some((s) => s.id === o.id),
       )!.id;
       expect(removedId).toBe(nearestId);
+    });
+
+    it("faces west while walking to Ore west of the stand", () => {
+      const { presenter } = twoDwarfPresenter({ heapLoads: 15 });
+      const snap = presenter.snapshot();
+      expect(snap.hauler!.animation).toBe("walk");
+      expect(snap.hauler!.facing).toBe("west");
     });
 
     it("advances hauler.left toward the station at HAULER_WALK_PX_PER_MS", async () => {
