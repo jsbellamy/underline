@@ -258,7 +258,7 @@ describe("heap pile sim grab selection", () => {
   const grabX = 104;
   const grabY = 24;
 
-  it("chooses a low near body over a higher body the old reach-and-topmost rule would pick", () => {
+  it("chooses the nearest body at the grab point over a higher body farther away", () => {
     const sim = createHeapPileSim({ bin: wideBin(), seed: 1, startMs: 0 });
     sim.spawn(6, 100, 20, 0, 0);
     sim.spawn(6, 105, 40, 0, 0);
@@ -266,7 +266,7 @@ describe("heap pile sim grab selection", () => {
     expect(sim.removeGrabbed(grabX, grabY)).toBe(1);
   });
 
-  it("chooses a body just outside the old 48 px reach when it is nearest", () => {
+  it("chooses the nearest body regardless of horizontal distance from the grab point", () => {
     const sim = createHeapPileSim({ bin: wideBin(), seed: 1, startMs: 0 });
     sim.spawn(6, 312, 24, 0, 0);
     sim.spawn(6, 350, 80, 0, 0);

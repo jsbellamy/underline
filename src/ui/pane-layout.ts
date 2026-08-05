@@ -30,7 +30,7 @@ export const FACE_X = 432;
 export const ORE_SIZE = 32;
 /** Heap floor band — rests on the 8px floor. */
 export const HEAP_BOTTOM = 8;
-/** Vertical cap for pile rendering — ~36% bin coverage at radii 6–14. */
+/** Vertical cap for pile rendering — largest count that settles in the bin. */
 export const HEAP_RENDER_CEILING = 20;
 /** Heap bin floor and ceiling in Pane coordinates. */
 export const HEAP_BIN_FLOOR_Y = HEAP_BOTTOM;
