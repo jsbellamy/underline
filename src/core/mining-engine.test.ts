@@ -422,6 +422,51 @@ describe("mining engine buyUpgrade default", () => {
   });
 });
 
+describe("mining engine buyUpgrade catalogue path", () => {
+  it("throws the exact Ingot shortfall message", () => {
+    const poor = snap({ ingots: 4 });
+    expect(() => buyUpgrade(poor)).toThrow(
+      "Upgrade costs 5 Ingots; have 4",
+    );
+  });
+
+  it("rejects a second Hire Hauler before checking Ingots", () => {
+    const alreadyHired = snap({ crewSize: 2, ingots: 0 });
+    expect(() => buyUpgrade(alreadyHired, "hireHauler")).toThrow(
+      "Hauler already hired; crewSize is already 2",
+    );
+  });
+
+  it("applies raiseCount through the catalogue for every counted Upgrade", () => {
+    const cases: Array<{
+      id: Parameters<typeof buyUpgrade>[1];
+      field:
+        | "digRateUpgradeCount"
+        | "pickDamageUpgradeCount"
+        | "smelterUpgradeCount"
+        | "carryCapacityUpgradeCount"
+        | "haulSpeedUpgradeCount"
+        | "grabSizeUpgradeCount"
+        | "unloadSpeedUpgradeCount";
+    }> = [
+      { id: "digRate", field: "digRateUpgradeCount" },
+      { id: "pickDamage", field: "pickDamageUpgradeCount" },
+      { id: "smelter", field: "smelterUpgradeCount" },
+      { id: "carryCapacity", field: "carryCapacityUpgradeCount" },
+      { id: "haulSpeed", field: "haulSpeedUpgradeCount" },
+      { id: "grabSize", field: "grabSizeUpgradeCount" },
+      { id: "unloadSpeed", field: "unloadSpeedUpgradeCount" },
+    ];
+
+    for (const { id, field } of cases) {
+      const rich = snap({ ingots: 5 });
+      const bought = buyUpgrade(rich, id);
+      expect(bought.ingots).toBe(0);
+      expect(bought[field]).toBe(1);
+    }
+  });
+});
+
 describe("mining engine advanceWithEvents", () => {
   it("live advance snapshot is unchanged when events are collected", () => {
     const before = snap();

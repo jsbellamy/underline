@@ -5,6 +5,17 @@ Authority: `docs/research/tick-snapshot-save-model.md`,
 */
 
 import type { MiningEvent } from "./mining-events";
+import {
+  upgradeCostFor,
+  upgradeSpec,
+  type UpgradeId,
+} from "../data/upgrade-catalogue";
+
+export type { UpgradeId } from "../data/upgrade-catalogue";
+export {
+  FIRST_UPGRADE_COST,
+  HIRE_HAULER_COST,
+} from "../data/upgrade-catalogue";
 
 export const SCHEMA_VERSION = 6 as const;
 
@@ -56,27 +67,11 @@ export const HAUL_DELIVERY_MS = UNLOAD_MS + HAUL_TRAVEL_MS / 2;
 /** Maximum Loads the Hauler can take in one Lift before Upgrades. */
 export const OPENING_GRAB_SIZE = 1;
 
-/** First Upgrade cost in Ingots; doubles each buy. */
-export const FIRST_UPGRADE_COST = 5;
-
 /** Ms to lift one Load from the Heap before Haul Speed upgrades. */
 export const PICKUP_MS_PER_LOAD = 3_000;
 
-/** Ingots to hire the second Dwarf (Hauler). */
-export const HIRE_HAULER_COST = 160;
-
 /** Offline catch-up rate vs live. */
 export const OFFLINE_RATE_SCALE = 0.5;
-
-export type UpgradeId =
-  | "digRate"
-  | "smelter"
-  | "carryCapacity"
-  | "haulSpeed"
-  | "hireHauler"
-  | "pickDamage"
-  | "grabSize"
-  | "unloadSpeed";
 
 export interface MiningSnapshot {
   schemaVersion: typeof SCHEMA_VERSION;
@@ -180,7 +175,7 @@ export function grabSizeFor(grabSizeUpgradeCount: number): number {
 }
 
 export function nextGrabSizeUpgradeCost(grabSizeUpgradeCount: number): number {
-  return FIRST_UPGRADE_COST * 2 ** grabSizeUpgradeCount;
+  return upgradeCostFor("grabSize", grabSizeUpgradeCount);
 }
 
 export function unloadSpeedFor(unloadSpeedUpgradeCount: number): number {
@@ -192,7 +187,7 @@ export function unloadMsFor(unloadSpeedUpgradeCount: number): number {
 }
 
 export function nextUnloadSpeedUpgradeCost(unloadSpeedUpgradeCount: number): number {
-  return FIRST_UPGRADE_COST * 2 ** unloadSpeedUpgradeCount;
+  return upgradeCostFor("unloadSpeed", unloadSpeedUpgradeCount);
 }
 
 export function haulRoundTripMsFor(unloadSpeedUpgradeCount: number): number {
@@ -204,7 +199,7 @@ export function haulDeliveryMsFor(unloadSpeedUpgradeCount: number): number {
 }
 
 export function nextHaulSpeedUpgradeCost(haulSpeedUpgradeCount: number): number {
-  return FIRST_UPGRADE_COST * 2 ** haulSpeedUpgradeCount;
+  return upgradeCostFor("haulSpeed", haulSpeedUpgradeCount);
 }
 
 /** The Heap's cap in Loads — decoupled from the Bag's Carry Capacity base. */
@@ -213,11 +208,11 @@ export function heapCapacityFor(carryCapacityUpgradeCount: number): number {
 }
 
 export function nextDigRateUpgradeCost(digRateUpgradeCount: number): number {
-  return FIRST_UPGRADE_COST * 2 ** digRateUpgradeCount;
+  return upgradeCostFor("digRate", digRateUpgradeCount);
 }
 
 export function nextSmelterUpgradeCost(smelterUpgradeCount: number): number {
-  return FIRST_UPGRADE_COST * 2 ** smelterUpgradeCount;
+  return upgradeCostFor("smelter", smelterUpgradeCount);
 }
 
 export function pickDamageFor(pickDamageUpgradeCount: number): number {
@@ -225,13 +220,13 @@ export function pickDamageFor(pickDamageUpgradeCount: number): number {
 }
 
 export function nextPickDamageUpgradeCost(pickDamageUpgradeCount: number): number {
-  return FIRST_UPGRADE_COST * 2 ** pickDamageUpgradeCount;
+  return upgradeCostFor("pickDamage", pickDamageUpgradeCount);
 }
 
 export function nextCarryCapacityUpgradeCost(
   carryCapacityUpgradeCount: number,
 ): number {
-  return FIRST_UPGRADE_COST * 2 ** carryCapacityUpgradeCount;
+  return upgradeCostFor("carryCapacity", carryCapacityUpgradeCount);
 }
 
 function collectMiningEvents(
@@ -570,108 +565,32 @@ export function buyUpgrade(
   snapshot: MiningSnapshot,
   upgrade: UpgradeId = "digRate",
 ): MiningSnapshot {
-  if (upgrade === "hireHauler") {
+  const spec = upgradeSpec(upgrade);
+
+  if (spec.effect.kind === "hireHauler") {
     if (snapshot.crewSize >= 2) {
       throw new Error("Hauler already hired; crewSize is already 2");
     }
-    const cost = HIRE_HAULER_COST;
-    if (snapshot.ingots < cost) {
-      throw new Error(`Upgrade costs ${cost} Ingots; have ${snapshot.ingots}`);
-    }
-    return {
-      ...snapshot,
-      schemaVersion: SCHEMA_VERSION,
-      ingots: snapshot.ingots - cost,
-      crewSize: 2,
-    };
   }
 
-  if (upgrade === "grabSize") {
-    const cost = nextGrabSizeUpgradeCost(snapshot.grabSizeUpgradeCount);
-    if (snapshot.ingots < cost) {
-      throw new Error(`Upgrade costs ${cost} Ingots; have ${snapshot.ingots}`);
-    }
-    return {
-      ...snapshot,
-      schemaVersion: SCHEMA_VERSION,
-      ingots: snapshot.ingots - cost,
-      grabSizeUpgradeCount: snapshot.grabSizeUpgradeCount + 1,
-    };
-  }
+  const owned =
+    spec.effect.kind === "raiseCount" ? snapshot[spec.effect.field] : 0;
+  const cost = spec.cost(owned);
 
-  if (upgrade === "unloadSpeed") {
-    const cost = nextUnloadSpeedUpgradeCost(snapshot.unloadSpeedUpgradeCount);
-    if (snapshot.ingots < cost) {
-      throw new Error(`Upgrade costs ${cost} Ingots; have ${snapshot.ingots}`);
-    }
-    return {
-      ...snapshot,
-      schemaVersion: SCHEMA_VERSION,
-      ingots: snapshot.ingots - cost,
-      unloadSpeedUpgradeCount: snapshot.unloadSpeedUpgradeCount + 1,
-    };
-  }
-
-  if (upgrade === "haulSpeed") {
-    const cost = nextHaulSpeedUpgradeCost(snapshot.haulSpeedUpgradeCount);
-    if (snapshot.ingots < cost) {
-      throw new Error(`Upgrade costs ${cost} Ingots; have ${snapshot.ingots}`);
-    }
-    return {
-      ...snapshot,
-      schemaVersion: SCHEMA_VERSION,
-      ingots: snapshot.ingots - cost,
-      haulSpeedUpgradeCount: snapshot.haulSpeedUpgradeCount + 1,
-    };
-  }
-
-  if (upgrade === "smelter") {
-    const cost = nextSmelterUpgradeCost(snapshot.smelterUpgradeCount);
-    if (snapshot.ingots < cost) {
-      throw new Error(`Upgrade costs ${cost} Ingots; have ${snapshot.ingots}`);
-    }
-    return {
-      ...snapshot,
-      schemaVersion: SCHEMA_VERSION,
-      ingots: snapshot.ingots - cost,
-      smelterUpgradeCount: snapshot.smelterUpgradeCount + 1,
-    };
-  }
-
-  if (upgrade === "carryCapacity") {
-    const cost = nextCarryCapacityUpgradeCost(snapshot.carryCapacityUpgradeCount);
-    if (snapshot.ingots < cost) {
-      throw new Error(`Upgrade costs ${cost} Ingots; have ${snapshot.ingots}`);
-    }
-    return {
-      ...snapshot,
-      schemaVersion: SCHEMA_VERSION,
-      ingots: snapshot.ingots - cost,
-      carryCapacityUpgradeCount: snapshot.carryCapacityUpgradeCount + 1,
-    };
-  }
-
-  if (upgrade === "pickDamage") {
-    const cost = nextPickDamageUpgradeCost(snapshot.pickDamageUpgradeCount);
-    if (snapshot.ingots < cost) {
-      throw new Error(`Upgrade costs ${cost} Ingots; have ${snapshot.ingots}`);
-    }
-    return {
-      ...snapshot,
-      schemaVersion: SCHEMA_VERSION,
-      ingots: snapshot.ingots - cost,
-      pickDamageUpgradeCount: snapshot.pickDamageUpgradeCount + 1,
-    };
-  }
-
-  const cost = nextDigRateUpgradeCost(snapshot.digRateUpgradeCount);
   if (snapshot.ingots < cost) {
     throw new Error(`Upgrade costs ${cost} Ingots; have ${snapshot.ingots}`);
   }
-  return {
+
+  const base = {
     ...snapshot,
     schemaVersion: SCHEMA_VERSION,
     ingots: snapshot.ingots - cost,
-    digRateUpgradeCount: snapshot.digRateUpgradeCount + 1,
   };
+
+  if (spec.effect.kind === "hireHauler") {
+    return { ...base, crewSize: 2 };
+  }
+
+  const field = spec.effect.field;
+  return { ...base, [field]: snapshot[field] + 1 };
 }
