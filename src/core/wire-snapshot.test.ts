@@ -96,24 +96,24 @@ describe("wire Snapshot", () => {
     expect(summary.oreProduced).toBe(7);
   });
 
-  describe("wireSnapshotChanged", () => {
+  describe("wire Snapshot change detection", () => {
     const base = toWireSnapshot(initialSnapshot());
 
-    it("returns true when previous is null", () => {
+    it("treats a missing prior Snapshot as changed", () => {
       expect(wireSnapshotChanged(null, base)).toBe(true);
     });
 
-    it("returns false when snapshots are equal", () => {
+    it("ignores identical wire Snapshots", () => {
       expect(wireSnapshotChanged(base, { ...base })).toBe(false);
     });
 
-    it("returns true when a single field changes", () => {
+    it("detects Face swing progress drift between wire Snapshots", () => {
       expect(
         wireSnapshotChanged(base, { ...base, faceSwingProgress: base.faceSwingProgress + 1 }),
       ).toBe(true);
     });
 
-    it("returns true when offlineSummary appears", () => {
+    it("detects offlineSummary arriving on the wire", () => {
       const summary = buildOfflineSummary({
         before: initialSnapshot(),
         after: advance(initialSnapshot(), 10_000),
@@ -124,7 +124,7 @@ describe("wire Snapshot", () => {
       ).toBe(true);
     });
 
-    it("returns true when offlineSummary clears", () => {
+    it("detects offlineSummary clearing from the wire", () => {
       const summary = buildOfflineSummary({
         before: initialSnapshot(),
         after: advance(initialSnapshot(), 10_000),
