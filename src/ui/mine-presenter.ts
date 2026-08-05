@@ -53,7 +53,13 @@ import {
 } from "./pane-layout";
 
 export type TunnelHaulPhase = "none" | HaulAnimPhase | "unload";
-export type HaulerPhase = "pickup" | "unload" | HaulAnimPhase;
+export type { HaulerPhase };
+
+import {
+  createHaulerChoreography,
+  type HaulerChoreography,
+  type HaulerPhase,
+} from "./hauler-choreography";
 
 export interface HaulerSnapshot {
   animation: DwarfAnimId;
@@ -193,17 +199,6 @@ function isPickupLifted(
   );
 }
 
-function frameIndexFor(
-  ctrl: DwarfAnimController,
-  nowMs: number,
-  swingFraction: number,
-): number {
-  if (ctrl.animation === "swing") {
-    return ctrl.frameIndexForSwingFraction(swingFraction);
-  }
-  return ctrl.frameIndexAt(nowMs);
-}
-
 export function createMinePresenter(
   session: MiningSession,
   options: MinePresenterOptions = {},
@@ -211,7 +206,7 @@ export function createMinePresenter(
   const miner = createDwarfAnimController({
     digRate: digRateFor(session.snapshot.digRateUpgradeCount),
   });
-  const hauler = createDwarfAnimController({
+  const haulerChoreography: HaulerChoreography = createHaulerChoreography({
     digRate: digRateFor(session.snapshot.digRateUpgradeCount),
   });
 
@@ -247,47 +242,12 @@ export function createMinePresenter(
   const variantByBodyId = new Map<number, number>();
   const spillExpiryByBodyId = new Map<number, number>();
   let carriedVariantIndexes: number[] = [];
-  let haulerLeftPx = HAULER_MARK_X;
-  let haulerSteppedToMs = 0;
   let heldBodyId: number | undefined;
   /** Walk target locked when the held Ore is chosen — pile settle must not
       retarget the Hauler mid-approach (idle↔walk thrash). */
   let heldWalkStationPx: number | null = null;
   let removedHeldBody = false;
-  let haulDepartureStation: number | null = null;
-  let haulReturnStation: number | null = null;
   let prevHaulRemainingMs = session.snapshot.haulRemainingMs;
-
-  function trackHaulDeparture(nowMs: number): void {
-    const remaining = session.snapshot.haulRemainingMs;
-    if (prevHaulRemainingMs === 0 && remaining > 0) {
-      haulDepartureStation = isTwoDwarf()
-        ? haulerLeftPx
-        : MINING_MARK_X;
-      haulReturnStation = null;
-    }
-    if (prevHaulRemainingMs > 0 && remaining === 0) {
-      if (isTwoDwarf()) {
-        haulerLeftPx =
-          haulReturnStation ?? haulDepartureStation ?? HAULER_MARK_X;
-      }
-      haulDepartureStation = null;
-      haulReturnStation = null;
-      haulerSteppedToMs = nowMs;
-    }
-    prevHaulRemainingMs = remaining;
-  }
-
-  function ensureHaulDepartureStation(): void {
-    if (
-      haulDepartureStation === null &&
-      session.snapshot.haulRemainingMs > 0
-    ) {
-      haulDepartureStation = isTwoDwarf()
-        ? haulerLeftPx
-        : MINING_MARK_X;
-    }
-  }
 
   function minerLeftFor(_nowMs: number): number {
     const snap = session.snapshot;
@@ -295,7 +255,6 @@ export function createMinePresenter(
       return MINING_MARK_X;
     }
     if (snap.haulRemainingMs > 0) {
-      ensureHaulDepartureStation();
       return tripLeftFor(
         snap.haulRemainingMs,
         MINING_MARK_X,
@@ -307,7 +266,8 @@ export function createMinePresenter(
 
   function atGrabStation(): boolean {
     return (
-      heldWalkStationPx !== null && haulerLeftPx === heldWalkStationPx
+      heldWalkStationPx !== null &&
+      haulerChoreography.leftPx === heldWalkStationPx
     );
   }
 
@@ -399,31 +359,30 @@ export function createMinePresenter(
     return haulerStationFor(body.x);
   }
 
-  /** Where the Hauler is headed between Trips: the Ore he Lifts next, or his
-      stand by the Cart when the Heap has nothing for him. */
-  function haulerWalkTarget(): number {
-    return heldWalkStationPx ?? HAULER_MARK_X;
-  }
-
+  /** Interim seam: the follow-up slice moves Ore choice inside the module and
+      deletes `setWalkTarget`. */
   function clearHeldOre(): void {
     heldBodyId = undefined;
     heldWalkStationPx = null;
+    haulerChoreography.setWalkTarget(null);
   }
 
   function assignHeldOre(bodyId: number | undefined): void {
     heldBodyId = bodyId;
     if (bodyId === undefined) {
-      heldWalkStationPx = null;
+      haulerChoreography.setWalkTarget(null);
       return;
     }
     heldWalkStationPx = heldBodyStation();
+    // Interim seam — follow-up slice moves this choice into hauler-choreography.
+    haulerChoreography.setWalkTarget(heldWalkStationPx);
     removedHeldBody = false;
     // Seeded / restored mid-Lift: stand at the Ore rather than walking from the
     // Cart after the progress midpoint has already elapsed.
     const snap = session.snapshot;
     if (
       heldWalkStationPx !== null &&
-      haulerLeftPx === HAULER_MARK_X &&
+      haulerChoreography.leftPx === HAULER_MARK_X &&
       snap.haulRemainingMs === 0 &&
       pickupProgressFraction(
         0,
@@ -431,7 +390,7 @@ export function createMinePresenter(
         snap.haulSpeedUpgradeCount,
       ) > 0.5
     ) {
-      haulerLeftPx = heldWalkStationPx;
+      haulerChoreography.snapToWalkTarget();
     }
   }
 
@@ -463,7 +422,7 @@ export function createMinePresenter(
     if (bodyIds.length < liftedLoads) {
       bodyIds.push(
         ...pickHeldBodies(
-          haulerLeftPx,
+          haulerChoreography.leftPx,
           new Set([...excluded, ...grabbed]),
           liftedLoads - bodyIds.length,
         ),
@@ -482,31 +441,6 @@ export function createMinePresenter(
     removedHeldBody = true;
   }
 
-  function advanceHaulerLeft(nowMs: number): void {
-    if (!isTwoDwarf()) {
-      return;
-    }
-    if (session.snapshot.haulRemainingMs > 0) {
-      haulerSteppedToMs = nowMs;
-      return;
-    }
-
-    const dt = nowMs - haulerSteppedToMs;
-    if (dt <= 0) {
-      return;
-    }
-
-    const target = haulerWalkTarget();
-    const maxMove = HAULER_WALK_PX_PER_MS * dt;
-    const delta = target - haulerLeftPx;
-    if (Math.abs(delta) <= maxMove) {
-      haulerLeftPx = target;
-    } else {
-      haulerLeftPx += Math.sign(delta) * maxMove;
-    }
-    haulerSteppedToMs = nowMs;
-  }
-
   function reconcilePile(nowMs: number): void {
     expireSpillBodies(nowMs);
 
@@ -515,18 +449,18 @@ export function createMinePresenter(
     const inPickup = snap.haulRemainingMs === 0 && snap.heapLoads > 0;
 
     if (snap.heapLoads === 0 && snap.haulRemainingMs === 0) {
-      // No snap home: advanceHaulerLeft walks him back at the one walk speed.
       clearHeldOre();
       removedHeldBody = false;
     }
 
-    trackHaulDeparture(nowMs);
-    ensureHaulDepartureStation();
-
     const haulLeg = tripPhaseFor(snap)?.leg ?? null;
-    if (haulLeg === "back" && haulReturnStation === null) {
+    const halfTravel = HAUL_TRAVEL_MS / 2;
+    if (
+      haulLeg === "back" &&
+      snap.haulRemainingMs <= halfTravel &&
+      prevHaulRemainingMs > halfTravel
+    ) {
       assignHeldOre(pickHeldBody(HAULER_MARK_X, excluded) ?? undefined);
-      haulReturnStation = heldWalkStationPx ?? HAULER_MARK_X;
     }
 
     if (inPickup) {
@@ -544,11 +478,16 @@ export function createMinePresenter(
       // during the Lift window the held body is removed and must not be
       // replaced by a neighbour (that caused idle↔walk thrash at the Ore).
       if (heldBodyId === undefined || (!progressLifted && heldMissing)) {
-        assignHeldOre(pickHeldBody(haulerLeftPx, excluded) ?? undefined);
+        assignHeldOre(
+          pickHeldBody(haulerChoreography.leftPx, excluded) ?? undefined,
+        );
       }
     }
 
-    advanceHaulerLeft(nowMs);
+    if (isTwoDwarf()) {
+      haulerChoreography.advanceTo(snap, nowMs);
+    }
+    prevHaulRemainingMs = snap.haulRemainingMs;
 
     const lifted = isPickupLifted(
       snap.haulRemainingMs,
@@ -600,15 +539,9 @@ export function createMinePresenter(
     // Deposit at the Cart stand during out (incl. early arrival), while still
     // facing west — avoids the east-facing hand jump that read as a shake.
     let atCartStand = false;
-    if (haulLeg === "out" && haulDepartureStation !== null) {
-      const outLeft = tripLeftFor(
-        snap.haulRemainingMs,
-        haulDepartureStation,
-        snap.unloadSpeedUpgradeCount,
-        HAULER_MARK_X,
-        haulReturnStation ?? haulDepartureStation,
-      );
-      atCartStand = outLeft === HAULER_MARK_X;
+    if (haulLeg === "out" && isTwoDwarf()) {
+      const outStance = haulerChoreography.stanceAt(snap, nowMs);
+      atCartStand = outStance.left === HAULER_MARK_X;
     }
     const showCarried = lifted || (haulLeg === "out" && !atCartStand);
     if (!showCarried) {
@@ -698,56 +631,8 @@ export function createMinePresenter(
     miner.setHauling(null, simNowMs);
   }
 
-  function syncHaulerAnim(): void {
-    if (!isTwoDwarf()) {
-      return;
-    }
-    const snap = session.snapshot;
-    if (snap.haulRemainingMs > 0) {
-      const leg = tripPhaseFor(snap)!.leg;
-      if (leg === "unload") {
-        hauler.setHauling(null, simNowMs);
-        return;
-      }
-      ensureHaulDepartureStation();
-      const dest =
-        leg === "out"
-          ? HAULER_MARK_X
-          : (haulReturnStation ?? haulDepartureStation ?? haulerLeftPx);
-      const left =
-        haulDepartureStation !== null
-          ? tripLeftFor(
-              snap.haulRemainingMs,
-              haulDepartureStation,
-              snap.unloadSpeedUpgradeCount,
-              HAULER_MARK_X,
-              haulReturnStation ?? haulDepartureStation,
-            )
-          : haulerLeftPx;
-      // Arrived early for this leg — idle rather than walk-in-place stutter.
-      // Keep west-facing on out arrival so carried Ore does not jump east.
-      if (left === dest) {
-        if (leg === "out") {
-          hauler.setHauling("out", simNowMs);
-          return;
-        }
-        hauler.setHauling(null, simNowMs);
-        return;
-      }
-      hauler.setHauling(leg, simNowMs);
-      return;
-    }
-    const target = haulerWalkTarget();
-    if (haulerLeftPx !== target) {
-      hauler.setHauling(haulerLeftPx < target ? "out" : "back", simNowMs);
-      return;
-    }
-    hauler.setHauling(null, simNowMs);
-  }
-
   function syncHaulAnim(): void {
     syncMinerAnim();
-    syncHaulerAnim();
   }
 
   function swingFractionAt(nowMs: number, hauling: boolean): number {
@@ -775,69 +660,24 @@ export function createMinePresenter(
           )
         : 0;
     const tripPhase = tripPhaseFor({ ...snap, haulRemainingMs: remaining });
-    const phase: HaulerPhase = tripPhase?.leg ?? "pickup";
     const travelling = remaining > 0;
     const swingFrac = swingFractionAt(nowMs, travelling);
-
-    let animation = hauler.animation;
-    let facing = hauler.facing;
-    if (phase === "pickup" && !travelling) {
-      const target = haulerWalkTarget();
-      if (haulerLeftPx !== target) {
-        animation = "walk";
-        facing = haulerLeftPx < target ? "east" : "west";
-      } else {
-        animation = "idle";
-        facing = "east";
-      }
-    }
-
-    let left = haulerLeftPx;
-    if (travelling) {
-      ensureHaulDepartureStation();
-      if (haulDepartureStation !== null) {
-        left = tripLeftFor(
-          remaining,
-          haulDepartureStation,
-          snap.unloadSpeedUpgradeCount,
-          HAULER_MARK_X,
-          haulReturnStation ?? haulDepartureStation,
-        );
-      }
-      // Mirror syncHaulerAnim: early arrival on out/back is idle, not walk.
-      // Out/unload idle faces the Cart (west) until after deposit.
-      if (phase === "out" && left === HAULER_MARK_X) {
-        animation = "idle";
-        facing = "west";
-      } else if (phase === "unload") {
-        animation = "idle";
-        facing = "west";
-      } else if (
-        phase === "back" &&
-        left === (haulReturnStation ?? haulDepartureStation)
-      ) {
-        animation = "idle";
-        facing = "east";
-      } else if (phase === "out") {
-        animation = "walk";
-        facing = "west";
-      } else if (phase === "back") {
-        animation = "walk";
-        facing = "east";
-      }
-    }
-
+    const stance = haulerChoreography.stanceAt(
+      { ...snap, haulRemainingMs: remaining },
+      nowMs,
+    );
     const frameIndex =
-      animation === "idle" && (phase === "out" || phase === "unload")
+      stance.animation === "idle" &&
+      (stance.phase === "out" || stance.phase === "unload")
         ? 0
-        : frameIndexFor(hauler, nowMs, swingFrac);
+        : haulerChoreography.frameIndexAt(nowMs, swingFrac);
 
     return {
-      animation,
-      facing,
+      animation: stance.animation,
+      facing: stance.facing,
       frameIndex,
-      left,
-      phase,
+      left: stance.left,
+      phase: stance.phase,
       haulProgress: travelling ? (tripPhase?.tripProgress ?? 0) : 0,
       pickupProgress: pickupProgressFraction(
         remaining,
@@ -912,7 +752,7 @@ export function createMinePresenter(
     start() {
       if (isTwoDwarf()) {
         syncMinerAnim();
-        syncHaulerAnim();
+        haulerChoreography.advanceTo(session.snapshot, simNowMs);
       } else {
         miner.startMining(simNowMs);
       }
@@ -920,7 +760,7 @@ export function createMinePresenter(
     syncDigRate() {
       const rate = digRateFor(session.snapshot.digRateUpgradeCount);
       miner.setDigRate(rate);
-      hauler.setDigRate(rate);
+      haulerChoreography.setDigRate(rate);
     },
     setSoundEnabled(enabled: boolean) {
       audio?.setEnabled(enabled);
@@ -964,7 +804,6 @@ export function createMinePresenter(
       }
 
       syncHaulAnim();
-      trackHaulDeparture(simNowMs);
     },
   };
 }
