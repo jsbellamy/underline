@@ -280,7 +280,6 @@ export function mountColonyView(
     haulSpeedUpgradeBtn.textContent =
       `Buy Haul Speed Upgrade (+0.25 Haul Speed) — ${haulSpeedCost} Ingots`;
     haulSpeedUpgradeBtn.disabled = snapshot.ingots < haulSpeedCost;
-    haulSpeedUpgradeBtn.hidden = snapshot.crewSize !== 2;
     grabSizeUpgradeBtn.textContent =
       `Buy Grab Size Upgrade (+1 Grab Size) — ${grabSizeCost} Ingots`;
     grabSizeUpgradeBtn.disabled = snapshot.ingots < grabSizeCost;

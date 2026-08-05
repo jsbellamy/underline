@@ -336,12 +336,7 @@ describe("mountColonyView", () => {
     const host = document.createElement("div");
     const view = mountColonyView(host);
     view.render(
-      toWireSnapshot({
-        ...initialSnapshot(),
-        crewSize: 2,
-        haulSpeedUpgradeCount: 0,
-        ingots: 4,
-      }),
+      toWireSnapshot({ ...initialSnapshot(), haulSpeedUpgradeCount: 0, ingots: 4 }),
     );
     const btn = host.querySelector<HTMLButtonElement>("[data-buy-haul-speed-upgrade]");
     expect(btn?.textContent).toBe(
@@ -349,12 +344,7 @@ describe("mountColonyView", () => {
     );
     expect(btn?.disabled).toBe(true);
     view.render(
-      toWireSnapshot({
-        ...initialSnapshot(),
-        crewSize: 2,
-        haulSpeedUpgradeCount: 0,
-        ingots: 5,
-      }),
+      toWireSnapshot({ ...initialSnapshot(), haulSpeedUpgradeCount: 0, ingots: 5 }),
     );
     expect(btn?.disabled).toBe(false);
     view.destroy();
@@ -517,7 +507,7 @@ describe("mountColonyView", () => {
     const onBuy = vi.fn();
     const host = document.createElement("div");
     const view = mountColonyView(host, { onBuyUpgrade: onBuy });
-    view.render(toWireSnapshot({ ...initialSnapshot(), crewSize: 2, ingots: 5 }));
+    view.render(toWireSnapshot({ ...initialSnapshot(), ingots: 5 }));
     host.querySelector<HTMLButtonElement>("[data-buy-haul-speed-upgrade]")?.click();
     expect(onBuy).toHaveBeenCalledOnce();
     expect(onBuy).toHaveBeenCalledWith("haulSpeed");
