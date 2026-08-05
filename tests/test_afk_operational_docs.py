@@ -13,7 +13,7 @@ PACKAGE_JSON = ROOT / "package.json"
 README = ROOT / "README.md"
 AFK_SPEC = ROOT / "docs" / "afk-acceptance-implementation-spec.md"
 ALPHA_TABLES = ROOT / "docs" / "alpha-budget-tables.md"
-STRIP_README = ROOT / "prototype" / "strip-coherence" / "README.md"
+STRIP_README = ROOT / "corpus" / "strip-coherence" / "README.md"
 ACCEPTANCE_PROFILES = (
     ROOT / "docs" / "acceptance-profiles" / "idle.md",
     ROOT / "docs" / "acceptance-profiles" / "emissive.md",
