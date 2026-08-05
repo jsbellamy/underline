@@ -15,10 +15,11 @@ from pipeline import gate_control as gc
 from pipeline import gate_evidence as ge
 from pipeline import gate_review as gr
 from pipeline import gate_verification as gv
+from tests.support.corpus_paths import INBOX
 
 ROOT = Path(__file__).resolve().parents[1]
 IDLE_CONTROL = ROOT / "gate-controls/raw/idle--silhouette_budget--001.png"
-BINDING_GOOD = ROOT / "prototype/strip-coherence/inbox/07-NEG-palette-drift.png"
+BINDING_GOOD = INBOX / "07-NEG-palette-drift.png"
 
 
 def _issue_59_records_present() -> bool:
@@ -654,7 +655,7 @@ def test_verify_promotion_resolves_legacy_packet_corpus_path(
     live_good.parent.mkdir(parents=True, exist_ok=True)
     live_good.write_bytes(BINDING_GOOD.read_bytes())
     packet_doc = json.loads((review_dir / "packet.json").read_text())
-    recorded_good = "prototype/strip-coherence/inbox/07-NEG-palette-drift.png"
+    recorded_good = f"{cp.LEGACY_CORPUS_PREFIXES[0]}/inbox/07-NEG-palette-drift.png"
     packet_doc["budget_binding_good"]["path"] = recorded_good
     packet_doc["packet_sha256"] = canonical.self_excluding_digest(
         packet_doc, field="packet_sha256"

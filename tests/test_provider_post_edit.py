@@ -16,11 +16,12 @@ from pipeline.identity_lock import (
     load_canonical_cells,
 )
 from pipeline.strip import DEFAULT_LAYOUT, StripLayout, canonicalize_frame, load_provider_frames
+from tests.support.corpus_paths import INBOX
 
 ROOT = Path(__file__).resolve().parents[1]
 IDLE_PROVIDER = ROOT / "assets" / "first-room" / "dwarf" / "idle" / "provider" / "source.png"
 IDENTITY_PNG = ROOT / "assets" / "first-room" / "dwarf" / "identity.png"
-WALK_STRIP = ROOT / "prototype" / "strip-coherence" / "inbox" / "05-miner-walk.png"
+WALK_STRIP = INBOX / "05-miner-walk.png"
 
 
 def _layout() -> StripLayout:

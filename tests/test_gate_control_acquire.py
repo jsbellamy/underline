@@ -19,10 +19,11 @@ from pipeline import gate_control_acquire as gca
 from pipeline import gate_evidence as ge
 from pipeline import gate_review as gr
 from pipeline import gate_verification as gv
+from tests.support.corpus_paths import INBOX
 
 ROOT = Path(__file__).resolve().parents[1]
 IDLE_CONTROL = ROOT / "gate-controls/raw/idle--silhouette_budget--001.png"
-BINDING_GOOD = ROOT / "prototype/strip-coherence/inbox/07-NEG-palette-drift.png"
+BINDING_GOOD = INBOX / "07-NEG-palette-drift.png"
 
 
 def _sha(data: bytes) -> str:

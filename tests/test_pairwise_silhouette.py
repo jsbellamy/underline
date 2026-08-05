@@ -2,11 +2,8 @@
 
 from __future__ import annotations
 
-import pathlib
-
 from pipeline import strip as S
-
-INBOX = pathlib.Path(__file__).resolve().parents[1] / "prototype" / "strip-coherence" / "inbox"
+from tests.support.corpus_paths import INBOX
 
 
 def _corpus_layout() -> S.StripLayout:

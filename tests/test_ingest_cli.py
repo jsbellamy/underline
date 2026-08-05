@@ -13,9 +13,9 @@ from PIL import Image
 
 from pipeline.ingest_strip import main
 from pipeline.strip import DEFAULT_LAYOUT, IngestResult, StripLayout, ingest_strip_provider
+from tests.support.corpus_paths import INBOX
 
 ROOT = Path(__file__).resolve().parents[1]
-INBOX = ROOT / "prototype" / "strip-coherence" / "inbox"
 LOGICAL_SIZE = (DEFAULT_LAYOUT.frame_w, DEFAULT_LAYOUT.frame_h)
 
 
