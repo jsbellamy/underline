@@ -654,7 +654,7 @@ describe("mine presenter", () => {
     }
   });
 
-  it("with crewSize 2 idles the Miner on a full Heap and resumes swing when a Load drains", () => {
+  it("with crewSize 2 idles the Miner on a full Heap while the Heap stays full", () => {
     const cap = heapCapacityFor(0);
     const session = createMiningSession({
       store: memoryStore(),
@@ -663,13 +663,17 @@ describe("mine presenter", () => {
         ...initialSnapshot(),
         crewSize: 2,
         heapLoads: cap,
+        heapOre: cap,
+        bagLoads: carryCapacityFor(0),
+        bagOre: carryCapacityFor(0),
+        haulRemainingMs: 100_000,
       },
     });
     const presenter = createMinePresenter(session);
     presenter.start();
     expect(presenter.snapshot().animation).toBe("idle");
     presenter.advanceMs(pickupMsPerLoad(0));
-    expect(presenter.snapshot().animation).toBe("swing");
+    expect(presenter.snapshot().animation).toBe("idle");
   });
 
   it("with crewSize 2 drives Hauler walk clip during pickup shuttle legs", () => {

@@ -3,6 +3,7 @@ import {
   BASE_ORE_PER_DROP,
   DROPS_PER_FACE,
   FACE_BASE_HARDNESS,
+  HEAP_BASE_LOADS,
   HAUL_ROUND_TRIP_MS,
   HARDNESS_GROWTH,
   OPENING_CARRY_CAPACITY,
@@ -398,6 +399,38 @@ describe("mining engine advanceWithEvents", () => {
     }
   });
 
+  it("is chunk-neutral for loadSpilled events live and offline", () => {
+    for (const rateScale of [1, OFFLINE_RATE_SCALE] as const) {
+      const dtMs = 25_000;
+      const stepMs = 250;
+      const cap = heapCapacityFor(0);
+      const bagCap = carryCapacityFor(0);
+      const start = snap({
+        crewSize: 2,
+        heapLoads: cap,
+        heapOre: cap,
+        bagLoads: bagCap,
+        bagOre: bagCap,
+        haulRemainingMs: 100_000,
+      });
+      const once = advanceWithEvents(start, dtMs, { rateScale });
+      const loadSpilledOnce = once.events.filter((e) => e.type === "loadSpilled");
+
+      let loadSpilledMany: MiningEvent[] = [];
+      let cursor = start;
+      for (let i = 0; i < dtMs / stepMs; i += 1) {
+        const step = advanceWithEvents(cursor, stepMs, { rateScale });
+        loadSpilledMany = loadSpilledMany.concat(
+          step.events
+            .filter((e) => e.type === "loadSpilled")
+            .map((e) => ({ ...e, atMs: e.atMs + i * stepMs })),
+        );
+        cursor = step.snapshot;
+      }
+      expect(loadSpilledMany).toEqual(loadSpilledOnce);
+    }
+  });
+
   it("emits swing at 800 and 1600 ms for Dig Rate 1.25 over 2000 ms", () => {
     const { events } = advanceWithEvents(
       snap({ digRateUpgradeCount: 1 }),
@@ -756,19 +789,19 @@ describe("mining engine advanceWithEvents", () => {
     expect(after.heapOre).toBe(1);
   });
 
-  it("stalls the Miner when the Heap is full", () => {
+  it("keeps the Miner swinging when the Heap is full", () => {
     const before = snap({
       crewSize: 2,
-      heapLoads: 10,
-      heapOre: 10,
+      heapLoads: 20,
+      heapOre: 20,
       bagLoads: 10,
       bagOre: 10,
       haulRemainingMs: 100_000,
     });
-    const { snapshot, events } = advanceWithEvents(before, 100_000);
-    expect(snapshot.heapLoads).toBe(10);
-    expect(snapshot.faceSwingProgress).toBe(before.faceSwingProgress);
-    expect(events.filter((e) => e.type === "swing")).toHaveLength(0);
+    const { snapshot, events } = advanceWithEvents(before, 1_000_000);
+    expect(snapshot.advance).toBeGreaterThan(before.advance);
+    expect(events.some((e) => e.type === "swing")).toBe(true);
+    expect(events.some((e) => e.type === "faceBroken")).toBe(true);
   });
 
   it("picks up one Load from the Heap at pickupMsPerLoad", () => {
@@ -810,7 +843,7 @@ describe("mining engine advanceWithEvents", () => {
       heapOre: 0,
       bagLoads: 10,
       bagOre: 10,
-      haulRemainingMs: HAUL_ROUND_TRIP_MS,
+      haulRemainingMs: 100_000,
     });
     const { snapshot, events } = advanceWithEvents(midHaul, 5_000);
     expect(snapshot.haulRemainingMs).toBeGreaterThan(0);
@@ -847,6 +880,113 @@ describe("mining engine advanceWithEvents", () => {
   });
 });
 
+describe("mining engine Heap spill", () => {
+  function fullHeapSnapshot(): MiningSnapshot {
+    const cap = heapCapacityFor(0);
+    const bagCap = carryCapacityFor(0);
+    return snap({
+      crewSize: 2,
+      heapLoads: cap,
+      heapOre: cap,
+      bagLoads: bagCap,
+      bagOre: bagCap,
+      haulRemainingMs: 100_000,
+    });
+  }
+
+  it("leaves heapOre and heapLoads unchanged when the Heap is full", () => {
+    const before = fullHeapSnapshot();
+    const after = advance(before, 60_000);
+    expect(after.heapLoads).toBe(before.heapLoads);
+    expect(after.heapOre).toBe(before.heapOre);
+  });
+
+  it("delivers less Ore against a full Heap than an empty one", () => {
+    const fullHeap = fullHeapSnapshot();
+    const empty = snap({ crewSize: 2 });
+    const dtMs = 120_000;
+    const fromFull = advance(fullHeap, dtMs);
+    const fromEmpty = advance(empty, dtMs);
+    const oreFromFull =
+      fromFull.heapOre +
+      fromFull.bagOre +
+      fromFull.ore -
+      (fullHeap.heapOre + fullHeap.bagOre + fullHeap.ore);
+    const oreFromEmpty =
+      fromEmpty.heapOre +
+      fromEmpty.bagOre +
+      fromEmpty.ore -
+      (empty.heapOre + empty.bagOre + empty.ore);
+    expect(oreFromFull).toBeLessThan(oreFromEmpty);
+  });
+
+  it("never lets heapLoads exceed heapCapacityFor", () => {
+    let state = snap({ crewSize: 2 });
+    const cap = heapCapacityFor(state.carryCapacityUpgradeCount);
+    for (let i = 0; i < 400; i += 1) {
+      state = advance(state, 5_000);
+      expect(state.heapLoads).toBeLessThanOrEqual(cap);
+    }
+  });
+
+  it("emits loadSpilled instead of loadDropped against a full Heap", () => {
+    const { events } = advanceWithEvents(fullHeapSnapshot(), 60_000);
+    const spilled = events.filter((e) => e.type === "loadSpilled");
+    const dropped = events.filter((e) => e.type === "loadDropped");
+    expect(spilled.length).toBeGreaterThan(0);
+    expect(dropped).toHaveLength(0);
+  });
+
+  it("emits loadDropped instead of loadSpilled against an empty Heap", () => {
+    const { events } = advanceWithEvents(snap({ crewSize: 2 }), 60_000);
+    const spilled = events.filter((e) => e.type === "loadSpilled");
+    const dropped = events.filter((e) => e.type === "loadDropped");
+    expect(dropped.length).toBeGreaterThan(0);
+    expect(spilled).toHaveLength(0);
+  });
+
+  it("emits exactly one load event per credited drop", () => {
+    const { events } = advanceWithEvents(fullHeapSnapshot(), 30_000);
+    const loadEvents = events.filter(
+      (e) => e.type === "loadSpilled" || e.type === "loadDropped",
+    );
+    const spilled = events.filter((e) => e.type === "loadSpilled");
+    const dropped = events.filter((e) => e.type === "loadDropped");
+    expect(loadEvents).toHaveLength(spilled.length + dropped.length);
+    expect(spilled.length + dropped.length).toBe(3);
+  });
+
+  it("spills offline the same Ore as live play against a full Heap", () => {
+    const before = fullHeapSnapshot();
+    const dtMs = 8 * 60 * 60 * 1000;
+    const live = advance(before, dtMs * OFFLINE_RATE_SCALE);
+    const offline = advance(before, dtMs, { rateScale: OFFLINE_RATE_SCALE });
+    expect(offline.ore).toBe(live.ore);
+    expect(offline.heapOre).toBe(live.heapOre);
+    expect(offline.heapLoads).toBe(live.heapLoads);
+    expect(offline.bagOre).toBe(live.bagOre);
+  });
+
+  it("terminates an 8-hour full-Heap advance at high Dig Rate", () => {
+    const cap = heapCapacityFor(0);
+    const start = snap({
+      crewSize: 2,
+      digRateUpgradeCount: 20,
+      heapLoads: cap,
+      heapOre: cap,
+      bagLoads: carryCapacityFor(0),
+      bagOre: carryCapacityFor(0),
+      haulRemainingMs: 100_000,
+    });
+    const dtMs = 8 * 60 * 60 * 1000;
+    const { events } = advanceWithEvents(start, dtMs);
+    const loadEvents = events.filter(
+      (e) => e.type === "loadSpilled" || e.type === "loadDropped",
+    );
+    expect(loadEvents.length).toBeGreaterThan(0);
+  });
+});
+
 describe("mining engine Crew and Heap", () => {
   it("initializes Crew, Heap, and pickup fields on a fresh Snapshot", () => {
     const s = initialSnapshot();
@@ -867,7 +1007,15 @@ describe("mining engine Crew and Heap", () => {
     expect(pickupMsPerLoad(1)).toBe(8_000);
     expect(nextHaulSpeedUpgradeCost(0)).toBe(5);
     expect(nextHaulSpeedUpgradeCost(3)).toBe(40);
-    expect(heapCapacityFor(0)).toBe(10);
+    expect(HEAP_BASE_LOADS).toBe(20);
+    expect(heapCapacityFor(0)).toBe(20);
+    expect(heapCapacityFor(1)).toBe(25);
+    expect(heapCapacityFor(2)).toBe(30);
+    expect(heapCapacityFor(3)).toBe(35);
+    expect(carryCapacityFor(0)).toBe(10);
+    expect(carryCapacityFor(1)).toBe(15);
+    expect(carryCapacityFor(2)).toBe(20);
+    expect(carryCapacityFor(3)).toBe(25);
   });
 });
 

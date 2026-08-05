@@ -25,6 +25,8 @@ function clipForEvent(type: MiningEvent["type"]): AudioClipId | null {
       return "break";
     case "loadDropped":
       return null;
+    case "loadSpilled":
+      return null;
   }
 }
 

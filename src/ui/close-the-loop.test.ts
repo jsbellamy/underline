@@ -382,7 +382,7 @@ describe("Pane↔Dock close-the-loop bus", () => {
     });
 
     await flushBus();
-    expect(dockRoot.querySelector("[data-heap]")?.textContent).toBe("0 / 10 loads");
+    expect(dockRoot.querySelector("[data-heap]")?.textContent).toBe("0 / 20 loads");
 
     pane.startPump();
     for (let tick = 1; tick <= 40; tick += 1) {
@@ -398,7 +398,7 @@ describe("Pane↔Dock close-the-loop bus", () => {
     await flushBus();
 
     expect(session.snapshot.heapLoads).toBeGreaterThan(0);
-    expect(dockRoot.querySelector("[data-heap]")?.textContent).toBe("1 / 10 loads");
+    expect(dockRoot.querySelector("[data-heap]")?.textContent).toBe("1 / 20 loads");
 
     pane.destroy();
     dock.destroy();

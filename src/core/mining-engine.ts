@@ -41,6 +41,9 @@ export const OPENING_CARRY_CAPACITY = 10;
 /** Carry Capacity gained per Upgrade (Loads). */
 export const UPGRADE_CARRY_CAPACITY = 5;
 
+/** Opening Heap capacity in Loads before Upgrades. */
+export const HEAP_BASE_LOADS = 20;
+
 /** Haul round trip in ms (`2 × leg distance / Haul Speed`; distance and speed owned by the Pane). */
 export const HAUL_ROUND_TRIP_MS = 8000;
 
@@ -162,9 +165,9 @@ export function nextHaulSpeedUpgradeCost(haulSpeedUpgradeCount: number): number 
   return FIRST_UPGRADE_COST * 2 ** haulSpeedUpgradeCount;
 }
 
-/** The Heap's cap in Loads — the same number as the Bag's. */
+/** The Heap's cap in Loads — decoupled from the Bag's Carry Capacity base. */
 export function heapCapacityFor(carryCapacityUpgradeCount: number): number {
-  return carryCapacityFor(carryCapacityUpgradeCount);
+  return HEAP_BASE_LOADS + UPGRADE_CARRY_CAPACITY * carryCapacityUpgradeCount;
 }
 
 export function nextDigRateUpgradeCost(digRateUpgradeCount: number): number {
@@ -295,15 +298,19 @@ export function advanceWithEvents(
     }
   };
 
-  const creditDrop = (orePerDrop: number): void => {
-    if (isTwoDwarf) {
-      heapOre += orePerDrop;
-      heapLoads += 1;
-    } else {
+  const creditDrop = (orePerDrop: number): boolean => {
+    if (!isTwoDwarf) {
       bagOre += orePerDrop;
       bagLoads += 1;
       startHaulIfBagFull();
+      return false;
     }
+    if (heapLoads >= heapCapacity) {
+      return true;
+    }
+    heapOre += orePerDrop;
+    heapLoads += 1;
+    return false;
   };
 
   const transferHeapLoadToBag = (): void => {
@@ -321,7 +328,7 @@ export function advanceWithEvents(
       return false;
     }
     if (isTwoDwarf) {
-      return heapLoads < heapCapacity;
+      return true;
     }
     return haulRemainingMs === 0 && bagLoads < capacity;
   };
@@ -442,8 +449,11 @@ export function advanceWithEvents(
 
     if (atMiningBoundary) {
       const orePerDrop = oreForDrop(advanceCount);
-      creditDrop(orePerDrop);
-      events.push({ type: "loadDropped", atMs: windowRealMs });
+      const spilled = creditDrop(orePerDrop);
+      events.push({
+        type: spilled ? "loadSpilled" : "loadDropped",
+        atMs: windowRealMs,
+      });
       const landedDrop = miningDropsSoFar + 1;
       faceSwingProgress = Math.min(
         landedDrop * miningDropDamage,
