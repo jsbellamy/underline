@@ -20,6 +20,7 @@ from dataclasses import dataclass
 from typing import Iterable, Mapping
 
 from scripts.ci_surfaces import is_game_surface
+from pipeline import corpus_paths as cp
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 TESTS_DIR = ROOT / "tests"
@@ -69,7 +70,12 @@ def _mapped_module_name(path: pathlib.PurePosixPath) -> str | None:
     parts = path.parts
     if len(parts) == 2 and parts[0] in {"pipeline", "scripts"} and path.suffix == ".py":
         return path.stem
-    if len(parts) == 3 and parts[0] == "prototype" and path.suffix == ".py":
+    corpus_parts = cp.CORPUS_ROOT.parts
+    if (
+        len(parts) == len(corpus_parts) + 1
+        and parts[: len(corpus_parts)] == corpus_parts
+        and path.suffix == ".py"
+    ):
         return path.stem
     return None
 
