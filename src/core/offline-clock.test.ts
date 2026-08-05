@@ -1,3 +1,6 @@
+import { existsSync, readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   computeOfflineMs,
@@ -25,5 +28,23 @@ describe("computeOfflineMs", () => {
 
   it("floors negative elapsed at 0", () => {
     expect(computeOfflineMs(5_000, 1_000)).toBe(0);
+  });
+});
+
+describe("offline-clock module layout", () => {
+  it("has no ui re-export shim", () => {
+    expect(
+      existsSync(join(dirname(fileURLToPath(import.meta.url)), "../ui/offline-clock.ts")),
+    ).toBe(false);
+  });
+
+  it("cites Nightglass provenance per ADR 0009", () => {
+    const source = readFileSync(
+      join(dirname(fileURLToPath(import.meta.url)), "offline-clock.ts"),
+      "utf8",
+    );
+    expect(source).toMatch(/Source: nightglass\/src\/ui\/boot\.ts/);
+    expect(source).toMatch(/7047b2a28565d28598a4420b8762c7f49b1898f5/);
+    expect(source).toMatch(/Vendored: 2026-08-03/);
   });
 });
