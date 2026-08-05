@@ -290,7 +290,7 @@ describe("mountColonyView", () => {
         carryCapacityUpgradeCount: 0,
       }),
     );
-    expect(host.querySelector("[data-heap]")?.textContent).toBe("3 / 10 loads");
+    expect(host.querySelector("[data-heap]")?.textContent).toBe("3 / 20 loads");
     view.render(toWireSnapshot({ ...initialSnapshot(), crewSize: 1 }));
     expect(host.querySelector("[data-heap]")?.textContent).toBe("—");
     view.destroy();
@@ -303,7 +303,7 @@ describe("mountColonyView", () => {
       toWireSnapshot({
         ...initialSnapshot(),
         crewSize: 2,
-        heapLoads: 10,
+        heapLoads: 20,
         carryCapacityUpgradeCount: 0,
       }),
     );
@@ -312,7 +312,7 @@ describe("mountColonyView", () => {
       toWireSnapshot({
         ...initialSnapshot(),
         crewSize: 2,
-        heapLoads: 9,
+        heapLoads: 19,
         carryCapacityUpgradeCount: 0,
       }),
     );
