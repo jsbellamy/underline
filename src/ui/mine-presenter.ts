@@ -93,6 +93,7 @@ export interface TunnelSnapshot {
 }
 
 export const FACE_SLIDE_MS = 400;
+export const SPILL_LIFETIME_MS = 900;
 
 export interface MinePresenter {
   snapshot(nowMs?: number): TunnelSnapshot;
@@ -216,6 +217,7 @@ export function createMinePresenter(
   });
   let spawnCount = 0;
   const variantByBodyId = new Map<number, number>();
+  const spillExpiryByBodyId = new Map<number, number>();
   let carriedVariantIndex: number | undefined;
 
   function pileTargetCount(): number {
@@ -237,7 +239,7 @@ export function createMinePresenter(
     );
   }
 
-  function spawnPileBody(): void {
+  function spawnPileBody(): number {
     const v = spawnCount % HEAP_ORE_VARIANT_COUNT;
     spawnCount += 1;
     const id = pile.spawnJittered(
@@ -246,12 +248,30 @@ export function createMinePresenter(
       ORE_SPAWN_BOTTOM,
     );
     variantByBodyId.set(id, v);
+    return id;
+  }
+
+  function spillBodyIds(): ReadonlySet<number> {
+    return new Set(spillExpiryByBodyId.keys());
+  }
+
+  function expireSpillBodies(nowMs: number): void {
+    for (const [id, expiryMs] of [...spillExpiryByBodyId.entries()]) {
+      if (expiryMs <= nowMs) {
+        pile.remove(id);
+        spillExpiryByBodyId.delete(id);
+        variantByBodyId.delete(id);
+      }
+    }
   }
 
   function reconcilePile(nowMs: number): void {
+    expireSpillBodies(nowMs);
+
     const snap = session.snapshot;
     const target = pileTargetCount();
-    const count = pile.bodies.length;
+    const excluded = spillBodyIds();
+    const count = pile.bodies.filter((b) => !excluded.has(b.id)).length;
     const lifted = isPickupLifted(
       snap.haulRemainingMs,
       snap.heapLoads,
@@ -270,7 +290,11 @@ export function createMinePresenter(
     } else if (target < count) {
       const toRemove = count - target;
       for (let i = 0; i < toRemove; i += 1) {
-        const removedId = pile.removeGrabbed(HAULER_GRAB_X, HEAP_GRAB_Y);
+        const removedId = pile.removeGrabbed(
+          HAULER_GRAB_X,
+          HEAP_GRAB_Y,
+          excluded,
+        );
         if (removedId !== null) {
           carriedVariantIndex = variantByBodyId.get(removedId);
           variantByBodyId.delete(removedId);
@@ -506,6 +530,15 @@ export function createMinePresenter(
       for (const event of events) {
         if (event.type === "loadDropped" && !isTwoDwarf()) {
           activeFalls.unshift(windowStartSimMs + event.atMs);
+        }
+        if (
+          event.type === "loadSpilled" &&
+          isTwoDwarf() &&
+          spillExpiryByBodyId.size === 0
+        ) {
+          const spawnNowMs = windowStartSimMs + event.atMs;
+          const id = spawnPileBody();
+          spillExpiryByBodyId.set(id, spawnNowMs + SPILL_LIFETIME_MS);
         }
       }
 

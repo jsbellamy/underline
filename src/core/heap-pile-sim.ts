@@ -39,7 +39,12 @@ export interface HeapPileSim {
   readonly nowMs: number;
   spawn(radius: number, x: number, y: number, vx: number, vy: number): number;
   spawnJittered(radius: number, x: number, y: number): number;
-  removeGrabbed(grabX: number, grabY: number): number | null;
+  remove(id: number): boolean;
+  removeGrabbed(
+    grabX: number,
+    grabY: number,
+    excludeIds?: ReadonlySet<number>,
+  ): number | null;
   stepTo(nowMs: number): void;
   settle(): void;
   clear(): void;
@@ -238,16 +243,31 @@ export function createHeapPileSim(options: HeapPileSimOptions): HeapPileSim {
         rng() * (HEAP_SPAWN_VX_MAX - HEAP_SPAWN_VX_MIN);
       return spawnInternal(radius, x + jitter, y, vx, 0);
     },
-    removeGrabbed(grabX, grabY) {
+    remove(id) {
+      const index = bodies.findIndex((b) => b.id === id);
+      if (index === -1) {
+        return false;
+      }
+      bodies.splice(index, 1);
+      return true;
+    },
+    removeGrabbed(grabX, grabY, excludeIds) {
       if (bodies.length === 0) {
         return null;
       }
 
-      let best = bodies[0]!;
+      const candidates = excludeIds
+        ? bodies.filter((b) => !excludeIds.has(b.id))
+        : bodies;
+      if (candidates.length === 0) {
+        return null;
+      }
+
+      let best = candidates[0]!;
       let bestDistSq =
         (best.x - grabX) * (best.x - grabX) +
         (best.y - grabY) * (best.y - grabY);
-      for (const body of bodies) {
+      for (const body of candidates) {
         const distSq =
           (body.x - grabX) * (body.x - grabX) +
           (body.y - grabY) * (body.y - grabY);

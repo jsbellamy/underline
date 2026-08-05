@@ -254,6 +254,29 @@ describe("heap pile sim seeded jitter", () => {
   });
 });
 
+describe("heap pile sim grab exclusion", () => {
+  const grabX = 104;
+  const grabY = 24;
+
+  it("skips excluded bodies and returns null when every body is excluded", () => {
+    const sim = createHeapPileSim({ bin: wideBin(), seed: 1, startMs: 0 });
+    const id1 = sim.spawn(6, 100, 20, 0, 0);
+    sim.spawn(6, 105, 40, 0, 0);
+    sim.spawn(6, 200, 50, 0, 0);
+
+    expect(sim.removeGrabbed(grabX, grabY, new Set([id1]))).toBe(2);
+    expect(sim.removeGrabbed(grabX, grabY, new Set([id1, 3]))).toBeNull();
+  });
+
+  it("preserves #463 selection when excludeIds is omitted", () => {
+    const sim = createHeapPileSim({ bin: wideBin(), seed: 1, startMs: 0 });
+    sim.spawn(6, 100, 20, 0, 0);
+    sim.spawn(6, 105, 40, 0, 0);
+    sim.spawn(6, 200, 50, 0, 0);
+    expect(sim.removeGrabbed(grabX, grabY)).toBe(1);
+  });
+});
+
 describe("heap pile sim grab selection", () => {
   const grabX = 104;
   const grabY = 24;
@@ -311,6 +334,26 @@ describe("heap pile sim settling", () => {
       expect(Math.abs(body.vy)).toBeLessThan(HEAP_REST_SPEED);
       expect(body.y + body.radius).toBeLessThanOrEqual(bin.ceilingY);
     }
+  });
+});
+
+describe("heap pile sim remove by id", () => {
+  it("removes a live body and never reissues its id", () => {
+    const sim = createHeapPileSim({ bin: wideBin(), seed: 1, startMs: 0 });
+    const id1 = sim.spawn(6, 50, 50, 0, 0);
+    const id2 = sim.spawn(6, 80, 50, 0, 0);
+    expect(sim.bodies.length).toBe(2);
+
+    expect(sim.remove(id1)).toBe(true);
+    expect(sim.bodies.length).toBe(1);
+    expect(sim.bodies[0]!.id).toBe(id2);
+
+    expect(sim.remove(999)).toBe(false);
+    expect(sim.bodies.length).toBe(1);
+
+    const id3 = sim.spawn(6, 60, 50, 0, 0);
+    expect(id3).toBeGreaterThan(id2);
+    expect(id3).not.toBe(id1);
   });
 });
 

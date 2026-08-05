@@ -15,7 +15,7 @@ import {
 import type { MiningEvent } from "../core/mining-events";
 import { SWING_IMPACT_FRAME } from "../data/dwarf-animation-timing";
 import { createHeapPileSim } from "../core/heap-pile-sim";
-import { createMinePresenter, FACE_SLIDE_MS } from "./mine-presenter";
+import { createMinePresenter, FACE_SLIDE_MS, SPILL_LIFETIME_MS } from "./mine-presenter";
 import type { MiningAudio } from "./mining-audio";
 import {
   heapOreContentCenter,
@@ -1149,6 +1149,201 @@ describe("mine presenter", () => {
       expect(snap.fallingOre).toEqual([
         { slot: 0, progress: 0.5 },
       ]);
+    });
+  });
+
+  describe("heap spill bodies", () => {
+    const twoDwarfBase = {
+      ...initialSnapshot(),
+      crewSize: 2,
+    };
+
+    function fullHeapPresenter() {
+      const cap = heapCapacityFor(0);
+      const session = createMiningSession({
+        store: memoryStore(),
+        now: () => 0,
+        snapshot: {
+          ...twoDwarfBase,
+          heapLoads: cap,
+          heapOre: cap,
+          bagLoads: carryCapacityFor(0),
+          bagOre: carryCapacityFor(0),
+          haulRemainingMs: 100_000,
+        },
+      });
+      const presenter = createMinePresenter(session);
+      presenter.start();
+      return { session, presenter, cap };
+    }
+
+    it("uses a 900 ms spill lifetime from spawn", () => {
+      expect(SPILL_LIFETIME_MS).toBe(900);
+    });
+
+    function trackSpillSpawnMs(
+      session: ReturnType<typeof createMiningSession>,
+      presenter: ReturnType<typeof createMinePresenter>,
+    ) {
+      const spillSpawnMs: number[] = [];
+      const realAdvance = session.advanceLive.bind(session);
+      vi.spyOn(session, "advanceLive").mockImplementation((dtMs) => {
+        const windowStart = presenter.simNowMs - dtMs;
+        const result = realAdvance(dtMs);
+        for (const event of result.events) {
+          if (event.type === "loadSpilled") {
+            spillSpawnMs.push(windowStart + event.atMs);
+          }
+        }
+        return result;
+      });
+      return spillSpawnMs;
+    }
+
+    it("spawns one falling body on loadSpilled with the next variant", () => {
+      const { session, presenter, cap } = fullHeapPresenter();
+      const spillSpawnMs = trackSpillSpawnMs(session, presenter);
+      const before = presenter.snapshot();
+      expect(before.heapOre).toHaveLength(cap);
+
+      presenter.advanceMs(60_000);
+      expect(spillSpawnMs.length).toBeGreaterThan(0);
+      const spawnNowMs = spillSpawnMs[0]!;
+      const withSpill = presenter.snapshot(spawnNowMs + 50);
+      expect(withSpill.heapOre).toHaveLength(cap + 1);
+
+      const spill = withSpill.heapOre.find(
+        (o) => !before.heapOre.some((b) => b.id === o.id),
+      )!;
+      expect(spill.variantIndex).toBe(cap % 6);
+      const settledMaxBottom = Math.max(...before.heapOre.map((o) => o.bottom));
+      expect(spill.bottom).toBeGreaterThan(settledMaxBottom);
+      const atSpawn = presenter
+        .snapshot(spawnNowMs)
+        .heapOre.find((o) => o.id === spill.id)!.bottom;
+      const laterBottom = presenter
+        .snapshot(spawnNowMs + 265)
+        .heapOre.find((o) => o.id === spill.id)!.bottom;
+      expect(atSpawn).toBeGreaterThan(settledMaxBottom);
+      expect(laterBottom).toBeLessThanOrEqual(atSpawn);
+    });
+
+    it("ignores extra loadSpilled events while a spill body is live", () => {
+      const { session, presenter } = fullHeapPresenter();
+      const before = presenter.snapshot().heapOre.length;
+      vi.spyOn(session, "advanceLive").mockReturnValue({
+        snapshot: session.snapshot,
+        events: [
+          { type: "loadSpilled", atMs: 0 },
+          { type: "loadSpilled", atMs: 100 },
+          { type: "loadSpilled", atMs: 200 },
+        ],
+      });
+      presenter.advanceMs(250);
+      expect(presenter.snapshot().heapOre).toHaveLength(before + 1);
+    });
+
+    it("removes the spill body at spawn time plus SPILL_LIFETIME_MS", () => {
+      const { session, presenter, cap } = fullHeapPresenter();
+      const spillSpawnMs = trackSpillSpawnMs(session, presenter);
+      presenter.advanceMs(60_000);
+      const spawnNowMs = spillSpawnMs[0]!;
+      const withSpill = presenter.snapshot(spawnNowMs + 50);
+      expect(withSpill.heapOre).toHaveLength(cap + 1);
+      const spillId = withSpill.heapOre[withSpill.heapOre.length - 1]!.id;
+      expect(
+        presenter.snapshot(spawnNowMs + SPILL_LIFETIME_MS).heapOre.some(
+          (o) => o.id === spillId,
+        ),
+      ).toBe(false);
+      expect(presenter.snapshot(spawnNowMs + SPILL_LIFETIME_MS).heapOre).toHaveLength(
+        cap,
+      );
+    });
+
+    it("still spawns a Load body while a spill is live", () => {
+      const cap = heapCapacityFor(0);
+      const session = createMiningSession({
+        store: memoryStore(),
+        now: () => 0,
+        snapshot: {
+          ...twoDwarfBase,
+          heapLoads: cap - 1,
+          bagLoads: carryCapacityFor(0),
+          bagOre: carryCapacityFor(0),
+          haulRemainingMs: 100_000,
+        },
+      });
+      const presenter = createMinePresenter(session);
+      presenter.start();
+      expect(presenter.snapshot().heapOre).toHaveLength(cap - 1);
+
+      vi.spyOn(session, "advanceLive").mockReturnValueOnce({
+        snapshot: session.snapshot,
+        events: [{ type: "loadSpilled", atMs: 0 }],
+      });
+      presenter.advanceMs(1);
+      expect(presenter.snapshot(1).heapOre).toHaveLength(cap);
+
+      presenter.advanceMs(60_000);
+      expect(session.snapshot.heapLoads).toBe(cap);
+      expect(presenter.snapshot(500).heapOre).toHaveLength(cap + 1);
+    });
+
+    it("lets the Hauler grab a non-spill body during a live spill", () => {
+      const cap = heapCapacityFor(0);
+      const session = createMiningSession({
+        store: memoryStore(),
+        now: () => 0,
+        snapshot: {
+          ...twoDwarfBase,
+          heapLoads: cap,
+          haulRemainingMs: 0,
+          pickupProgressMs: 7_500,
+        },
+      });
+      const presenter = createMinePresenter(session);
+      presenter.start();
+      vi.spyOn(session, "advanceLive").mockReturnValueOnce({
+        snapshot: session.snapshot,
+        events: [{ type: "loadSpilled", atMs: 0 }],
+      });
+      presenter.advanceMs(1);
+      const snap = presenter.snapshot();
+      const spillId = snap.heapOre.find((o) => o.bottom > 40)!.id;
+      expect(snap.heapOre.some((o) => o.id === spillId)).toBe(true);
+      expect(snap.carriedVariantIndex).toBeDefined();
+      expect(
+        snap.heapOre.find((o) => o.id !== spillId)?.variantIndex,
+      ).not.toBe(snap.carriedVariantIndex);
+    });
+
+    it("returns deeply equal snapshots when snapshot(t) is called twice with a live spill", () => {
+      const { presenter } = fullHeapPresenter();
+      presenter.advanceMs(60_000);
+      const t = presenter.simNowMs + 50;
+      const a = presenter.snapshot(t);
+      const b = presenter.snapshot(t);
+      expect(a).toEqual(b);
+    });
+
+    it("ignores loadSpilled for a one-Dwarf Crew", () => {
+      const session = createMiningSession({
+        store: memoryStore(),
+        now: () => 0,
+      });
+      const presenter = createMinePresenter(session);
+      presenter.start();
+      presenter.advanceMs(10_000);
+      const before = presenter.snapshot(10_125);
+      vi.spyOn(session, "advanceLive").mockReturnValue({
+        snapshot: session.snapshot,
+        events: [{ type: "loadSpilled", atMs: 0 }],
+      });
+      presenter.advanceMs(250);
+      const after = presenter.snapshot(10_125);
+      expect(after.heapOre).toEqual([]);
+      expect(after.fallingOre).toEqual(before.fallingOre);
     });
   });
 });
