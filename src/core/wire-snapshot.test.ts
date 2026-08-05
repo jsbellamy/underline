@@ -37,6 +37,8 @@ describe("wire Snapshot", () => {
       heapLoads: 3,
       heapOre: 7,
       haulSpeedUpgradeCount: 2,
+      grabSizeUpgradeCount: 0,
+      unloadSpeedUpgradeCount: 0,
       faceSwingProgress: 2,
       smelterProgress: 0.3,
       bagOre: 0,

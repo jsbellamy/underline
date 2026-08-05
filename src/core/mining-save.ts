@@ -19,6 +19,30 @@ export interface LoadedSave {
   savedAtMs: number | undefined;
 }
 
+interface PersistedSaveV6 {
+  schemaVersion: 6;
+  savedAtMs: number;
+  advance: number;
+  ore: number;
+  ingots: number;
+  digRateUpgradeCount: number;
+  pickDamageUpgradeCount: number;
+  smelterUpgradeCount: number;
+  carryCapacityUpgradeCount: number;
+  crewSize: number;
+  heapLoads: number;
+  heapOre: number;
+  haulSpeedUpgradeCount: number;
+  grabSizeUpgradeCount: number;
+  unloadSpeedUpgradeCount: number;
+  pickupProgressMs: number;
+  faceSwingProgress: number;
+  smelterProgress: number;
+  bagOre: number;
+  bagLoads: number;
+  haulRemainingMs: number;
+}
+
 interface PersistedSaveV5 {
   schemaVersion: 5;
   savedAtMs: number;
@@ -102,6 +126,7 @@ interface PersistedSaveV1 {
 }
 
 type PersistedSave =
+  | PersistedSaveV6
   | PersistedSaveV5
   | PersistedSaveV4
   | PersistedSaveV3
@@ -110,6 +135,78 @@ type PersistedSave =
 
 function isFiniteNumber(value: unknown): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function parseV6Fields(raw: {
+  advance: unknown;
+  ore: unknown;
+  ingots: unknown;
+  digRateUpgradeCount: unknown;
+  pickDamageUpgradeCount: unknown;
+  smelterUpgradeCount: unknown;
+  carryCapacityUpgradeCount: unknown;
+  crewSize: unknown;
+  heapLoads: unknown;
+  heapOre: unknown;
+  haulSpeedUpgradeCount: unknown;
+  grabSizeUpgradeCount: unknown;
+  unloadSpeedUpgradeCount: unknown;
+  pickupProgressMs: unknown;
+  faceSwingProgress: unknown;
+  smelterProgress: unknown;
+  bagOre: unknown;
+  bagLoads: unknown;
+  haulRemainingMs: unknown;
+}): MiningSnapshot | null {
+  if (
+    !isFiniteNumber(raw.advance) ||
+    !isFiniteNumber(raw.ore) ||
+    !isFiniteNumber(raw.ingots) ||
+    !isFiniteNumber(raw.digRateUpgradeCount) ||
+    !isFiniteNumber(raw.pickDamageUpgradeCount) ||
+    !isFiniteNumber(raw.smelterUpgradeCount) ||
+    !isFiniteNumber(raw.carryCapacityUpgradeCount) ||
+    !isFiniteNumber(raw.crewSize) ||
+    !isFiniteNumber(raw.heapLoads) ||
+    !isFiniteNumber(raw.heapOre) ||
+    !isFiniteNumber(raw.haulSpeedUpgradeCount) ||
+    !isFiniteNumber(raw.pickupProgressMs) ||
+    !isFiniteNumber(raw.faceSwingProgress) ||
+    !isFiniteNumber(raw.smelterProgress) ||
+    !isFiniteNumber(raw.bagOre) ||
+    !isFiniteNumber(raw.bagLoads) ||
+    !isFiniteNumber(raw.haulRemainingMs)
+  ) {
+    return null;
+  }
+  const grabSizeUpgradeCount = isFiniteNumber(raw.grabSizeUpgradeCount)
+    ? raw.grabSizeUpgradeCount
+    : 0;
+  const unloadSpeedUpgradeCount = isFiniteNumber(raw.unloadSpeedUpgradeCount)
+    ? raw.unloadSpeedUpgradeCount
+    : 0;
+  return {
+    schemaVersion: SCHEMA_VERSION,
+    advance: raw.advance,
+    ore: raw.ore,
+    ingots: raw.ingots,
+    digRateUpgradeCount: raw.digRateUpgradeCount,
+    pickDamageUpgradeCount: raw.pickDamageUpgradeCount,
+    smelterUpgradeCount: raw.smelterUpgradeCount,
+    carryCapacityUpgradeCount: raw.carryCapacityUpgradeCount,
+    crewSize: raw.crewSize,
+    heapLoads: raw.heapLoads,
+    heapOre: raw.heapOre,
+    haulSpeedUpgradeCount: raw.haulSpeedUpgradeCount,
+    grabSizeUpgradeCount,
+    unloadSpeedUpgradeCount,
+    pickupProgressMs: raw.pickupProgressMs,
+    faceSwingProgress: raw.faceSwingProgress,
+    smelterProgress: raw.smelterProgress,
+    bagOre: raw.bagOre,
+    bagLoads: raw.bagLoads,
+    haulRemainingMs: raw.haulRemainingMs,
+  };
 }
 
 function parseV5Fields(raw: {
@@ -165,6 +262,8 @@ function parseV5Fields(raw: {
     heapLoads: raw.heapLoads,
     heapOre: raw.heapOre,
     haulSpeedUpgradeCount: raw.haulSpeedUpgradeCount,
+    grabSizeUpgradeCount: 0,
+    unloadSpeedUpgradeCount: 0,
     pickupProgressMs: raw.pickupProgressMs,
     faceSwingProgress: raw.faceSwingProgress,
     smelterProgress: raw.smelterProgress,
@@ -225,6 +324,8 @@ function parseV4Fields(raw: {
     heapLoads: raw.heapLoads,
     heapOre: raw.heapOre,
     haulSpeedUpgradeCount: raw.haulSpeedUpgradeCount,
+    grabSizeUpgradeCount: 0,
+    unloadSpeedUpgradeCount: 0,
     pickupProgressMs: raw.pickupProgressMs,
     faceSwingProgress: raw.faceSwingProgress,
     smelterProgress: raw.smelterProgress,
@@ -275,6 +376,8 @@ function parseV3Fields(raw: {
     heapLoads: 0,
     heapOre: 0,
     haulSpeedUpgradeCount: 0,
+    grabSizeUpgradeCount: 0,
+    unloadSpeedUpgradeCount: 0,
     pickupProgressMs: 0,
     faceSwingProgress: raw.faceSwingProgress,
     smelterProgress: raw.smelterProgress,
@@ -317,6 +420,8 @@ function parseV2Fields(raw: {
     heapLoads: 0,
     heapOre: 0,
     haulSpeedUpgradeCount: 0,
+    grabSizeUpgradeCount: 0,
+    unloadSpeedUpgradeCount: 0,
     pickupProgressMs: 0,
     faceSwingProgress: raw.faceSwingProgress,
     smelterProgress: raw.smelterProgress,
@@ -351,6 +456,8 @@ function parseSnapshot(raw: PersistedSave): MiningSnapshot | null {
       heapLoads: 0,
       heapOre: 0,
       haulSpeedUpgradeCount: 0,
+      grabSizeUpgradeCount: 0,
+      unloadSpeedUpgradeCount: 0,
       pickupProgressMs: 0,
       faceSwingProgress: raw.faceSwingProgress,
       smelterProgress: raw.smelterProgress,
@@ -368,10 +475,13 @@ function parseSnapshot(raw: PersistedSave): MiningSnapshot | null {
   if (raw.schemaVersion === 4) {
     return parseV4Fields(raw);
   }
+  if (raw.schemaVersion === 5) {
+    return parseV5Fields(raw);
+  }
   if (raw.schemaVersion !== SCHEMA_VERSION) {
     return null;
   }
-  return parseV5Fields(raw);
+  return parseV6Fields(raw);
 }
 
 export function loadSave(store: SaveStore): LoadedSave {
@@ -396,7 +506,7 @@ export function persistSave(
   savedAtMs: number,
   store: SaveStore,
 ): void {
-  const payload: PersistedSaveV5 = {
+  const payload: PersistedSaveV6 = {
     schemaVersion: SCHEMA_VERSION,
     savedAtMs,
     advance: snapshot.advance,
@@ -410,6 +520,8 @@ export function persistSave(
     heapLoads: snapshot.heapLoads,
     heapOre: snapshot.heapOre,
     haulSpeedUpgradeCount: snapshot.haulSpeedUpgradeCount,
+    grabSizeUpgradeCount: snapshot.grabSizeUpgradeCount,
+    unloadSpeedUpgradeCount: snapshot.unloadSpeedUpgradeCount,
     pickupProgressMs: snapshot.pickupProgressMs,
     faceSwingProgress: snapshot.faceSwingProgress,
     smelterProgress: snapshot.smelterProgress,

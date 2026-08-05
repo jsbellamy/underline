@@ -23,6 +23,8 @@ export interface WireSnapshot {
   heapLoads: number;
   heapOre: number;
   haulSpeedUpgradeCount: number;
+  grabSizeUpgradeCount: number;
+  unloadSpeedUpgradeCount: number;
   faceSwingProgress: number;
   smelterProgress: number;
   bagOre: number;
@@ -48,6 +50,8 @@ export function toWireSnapshot(
     heapLoads: snapshot.heapLoads,
     heapOre: snapshot.heapOre,
     haulSpeedUpgradeCount: snapshot.haulSpeedUpgradeCount,
+    grabSizeUpgradeCount: snapshot.grabSizeUpgradeCount,
+    unloadSpeedUpgradeCount: snapshot.unloadSpeedUpgradeCount,
     faceSwingProgress: snapshot.faceSwingProgress,
     smelterProgress: snapshot.smelterProgress,
     bagOre: snapshot.bagOre,
