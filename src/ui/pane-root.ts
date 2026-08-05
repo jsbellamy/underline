@@ -34,6 +34,10 @@ import {
 } from "./frame-metrics";
 import { browserSaveStore } from "../core/mining-save";
 import {
+  wireSnapshotChanged,
+  type WireSnapshot,
+} from "../core/wire-snapshot";
+import {
   loadSettings,
   persistSettings,
   type PlayerSettings,
@@ -149,20 +153,7 @@ export function mountPaneShell(
   let tunnel: MiningTunnelView | null = null;
   let controls: PaneControlsView | null = null;
   let autosaveTimer: ReturnType<typeof setInterval> | null = null;
-  let lastPublishedAdvance = session.snapshot.advance;
-  let lastPublishedOre = session.snapshot.ore;
-  let lastPublishedIngots = session.snapshot.ingots;
-  let lastPublishedUpgrades = session.snapshot.digRateUpgradeCount;
-  let lastPublishedSmelterUpgrades = session.snapshot.smelterUpgradeCount;
-  let lastPublishedBagLoads = session.snapshot.bagLoads;
-  let lastPublishedBagOre = session.snapshot.bagOre;
-  let lastPublishedCarryCapacityUpgrades =
-    session.snapshot.carryCapacityUpgradeCount;
-  let lastPublishedCrewSize = session.snapshot.crewSize;
-  let lastPublishedHeapLoads = session.snapshot.heapLoads;
-  let lastPublishedHaulSpeedUpgrades = session.snapshot.haulSpeedUpgradeCount;
-  let lastPublishedGrabSizeUpgrades = session.snapshot.grabSizeUpgradeCount;
-  let lastPublishedUnloadSpeedUpgrades = session.snapshot.unloadSpeedUpgradeCount;
+  let lastPublished: WireSnapshot | null = null;
 
   const pane = document.createElement("div");
   pane.className = "pane";
@@ -203,20 +194,7 @@ export function mountPaneShell(
   function publishSnapshot(): void {
     const wire = session.wireSnapshot();
     bus?.publish({ type: "snapshot", snapshot: wire });
-    lastPublishedAdvance = session.snapshot.advance;
-    lastPublishedOre = session.snapshot.ore;
-    lastPublishedIngots = session.snapshot.ingots;
-    lastPublishedUpgrades = session.snapshot.digRateUpgradeCount;
-    lastPublishedSmelterUpgrades = session.snapshot.smelterUpgradeCount;
-    lastPublishedBagLoads = session.snapshot.bagLoads;
-    lastPublishedBagOre = session.snapshot.bagOre;
-    lastPublishedCarryCapacityUpgrades =
-      session.snapshot.carryCapacityUpgradeCount;
-    lastPublishedCrewSize = session.snapshot.crewSize;
-    lastPublishedHeapLoads = session.snapshot.heapLoads;
-    lastPublishedHaulSpeedUpgrades = session.snapshot.haulSpeedUpgradeCount;
-    lastPublishedGrabSizeUpgrades = session.snapshot.grabSizeUpgradeCount;
-    lastPublishedUnloadSpeedUpgrades = session.snapshot.unloadSpeedUpgradeCount;
+    lastPublished = wire;
   }
 
   function handleCommand(
@@ -268,22 +246,8 @@ export function mountPaneShell(
   let pump: PumpController | null = null;
 
   function maybePublishEconomy(): void {
-    const snap = session.snapshot;
-    if (
-      snap.advance !== lastPublishedAdvance ||
-      snap.ore !== lastPublishedOre ||
-      snap.ingots !== lastPublishedIngots ||
-      snap.digRateUpgradeCount !== lastPublishedUpgrades ||
-      snap.smelterUpgradeCount !== lastPublishedSmelterUpgrades ||
-      snap.bagLoads !== lastPublishedBagLoads ||
-      snap.bagOre !== lastPublishedBagOre ||
-      snap.carryCapacityUpgradeCount !== lastPublishedCarryCapacityUpgrades ||
-      snap.crewSize !== lastPublishedCrewSize ||
-      snap.heapLoads !== lastPublishedHeapLoads ||
-      snap.haulSpeedUpgradeCount !== lastPublishedHaulSpeedUpgrades ||
-      snap.grabSizeUpgradeCount !== lastPublishedGrabSizeUpgrades ||
-      snap.unloadSpeedUpgradeCount !== lastPublishedUnloadSpeedUpgrades
-    ) {
+    const wire = session.wireSnapshot();
+    if (wireSnapshotChanged(lastPublished, wire)) {
       publishSnapshot();
     }
   }
