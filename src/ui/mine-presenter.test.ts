@@ -684,7 +684,7 @@ describe("mine presenter", () => {
     }
   });
 
-  it("with crewSize 2 idles the Miner on a full Heap while the Heap stays full", () => {
+  it("with crewSize 2 keeps the Miner swinging on a full Heap (ADR 0016)", () => {
     const cap = heapCapacityFor(0);
     const session = createMiningSession({
       store: memoryStore(),
@@ -701,9 +701,10 @@ describe("mine presenter", () => {
     });
     const presenter = createMinePresenter(session);
     presenter.start();
-    expect(presenter.snapshot().animation).toBe("idle");
+    expect(presenter.snapshot().animation).toBe("swing");
     presenter.advanceMs(pickupMsPerLoad(0));
-    expect(presenter.snapshot().animation).toBe("idle");
+    expect(session.snapshot.heapLoads).toBe(cap);
+    expect(presenter.snapshot().animation).toBe("swing");
   });
 
   it("with crewSize 2 drives Hauler walk clip while walking to Ore", () => {
@@ -761,6 +762,39 @@ describe("mine presenter", () => {
     expect(idle.hauler!.phase).toBe("pickup");
     expect(idle.hauler!.animation).toBe("idle");
     expect(idle.hauler!.facing).toBe("east");
+  });
+
+  it("with crewSize 2 never moves the Hauler faster than one walk speed", () => {
+    const session = createMiningSession({
+      store: memoryStore(),
+      now: () => 0,
+      snapshot: {
+        ...initialSnapshot(),
+        crewSize: 2,
+        grabSizeUpgradeCount: 1,
+      },
+    });
+    const presenter = createMinePresenter(session);
+    presenter.start();
+
+    const stepMs = 16;
+    let previous = presenter.snapshot().hauler!.left;
+    let sawEast = false;
+    let sawStand = false;
+    for (let elapsed = 0; elapsed < 300_000; elapsed += stepMs) {
+      presenter.advanceMs(stepMs);
+      const { left } = presenter.snapshot().hauler!;
+      // +1 absorbs the Math.round on rendered Trip positions.
+      expect(Math.abs(left - previous)).toBeLessThanOrEqual(
+        HAULER_WALK_PX_PER_MS * stepMs + 1,
+      );
+      sawEast ||= left > HAULER_MARK_X;
+      sawStand ||= left === HAULER_MARK_X;
+      previous = left;
+    }
+    // He really does leave the stand and come back to it, on foot both ways.
+    expect(sawEast).toBe(true);
+    expect(sawStand).toBe(true);
   });
 
   it("with crewSize 2 exposes hauler clip state on the hauler sub-object", () => {
@@ -894,7 +928,8 @@ describe("mine presenter", () => {
     presenter.start();
     presenter.advanceMs(10_000);
     presenter.advanceMs(10_000);
-    expect(session.snapshot.heapLoads).toBe(2);
+    // Two drops land; the carried-over Bag departs at once and the Hauler Lifts one.
+    expect(session.snapshot.heapLoads).toBe(1);
     expect(presenter.snapshot(10_001).fallingOre).toEqual([]);
     presenter.advanceMs(pickupMsPerLoad(0));
     expect(presenter.snapshot(10_001).fallingOre).toEqual([]);

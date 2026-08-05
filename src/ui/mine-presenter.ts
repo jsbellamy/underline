@@ -12,7 +12,6 @@ import {
   digRateFor,
   HAUL_TRAVEL_MS,
   haulRoundTripMsFor,
-  heapCapacityFor,
   pickDamageFor,
   pickupMsPerLoad,
   unloadMsFor,
@@ -418,12 +417,17 @@ export function createMinePresenter(
     return haulerStationFor(body.x);
   }
 
+  /** Where the Hauler is headed between Trips: the Ore he Lifts next, or his
+      stand by the Cart when the Heap has nothing for him. */
+  function haulerWalkTarget(): number {
+    return heldBodyStation() ?? HAULER_MARK_X;
+  }
+
   function advanceHaulerLeft(nowMs: number): void {
     if (!isTwoDwarf()) {
       return;
     }
-    const snap = session.snapshot;
-    if (snap.haulRemainingMs > 0 || snap.heapLoads === 0) {
+    if (session.snapshot.haulRemainingMs > 0) {
       haulerSteppedToMs = nowMs;
       return;
     }
@@ -433,15 +437,13 @@ export function createMinePresenter(
       return;
     }
 
-    const target = heldBodyStation();
-    if (target !== null) {
-      const maxMove = HAULER_WALK_PX_PER_MS * dt;
-      const delta = target - haulerLeftPx;
-      if (Math.abs(delta) <= maxMove) {
-        haulerLeftPx = target;
-      } else {
-        haulerLeftPx += Math.sign(delta) * maxMove;
-      }
+    const target = haulerWalkTarget();
+    const maxMove = HAULER_WALK_PX_PER_MS * dt;
+    const delta = target - haulerLeftPx;
+    if (Math.abs(delta) <= maxMove) {
+      haulerLeftPx = target;
+    } else {
+      haulerLeftPx += Math.sign(delta) * maxMove;
     }
     haulerSteppedToMs = nowMs;
   }
@@ -454,10 +456,9 @@ export function createMinePresenter(
     const inPickup = snap.haulRemainingMs === 0 && snap.heapLoads > 0;
 
     if (snap.heapLoads === 0 && snap.haulRemainingMs === 0) {
+      // No snap home: advanceHaulerLeft walks him back at the one walk speed.
       heldBodyId = undefined;
       removedHeldBody = false;
-      haulerLeftPx = HAULER_MARK_X;
-      haulerSteppedToMs = nowMs;
     }
 
     trackHaulDeparture(nowMs);
@@ -579,13 +580,10 @@ export function createMinePresenter(
 
   function syncMinerAnim(): void {
     if (isTwoDwarf()) {
+      // ADR 0016: a full Heap Spills rather than stalling the Miner, so he keeps
+      // Swinging — the engine keeps emitting `swing`, and the sprite must agree.
       miner.setHauling(null, simNowMs);
-      const cap = heapCapacityFor(session.snapshot.carryCapacityUpgradeCount);
-      if (session.snapshot.heapLoads >= cap) {
-        miner.stopMining(simNowMs);
-      } else {
-        miner.startMining(simNowMs);
-      }
+      miner.startMining(simNowMs);
       return;
     }
     const leg = tripLeg(
@@ -619,12 +617,8 @@ export function createMinePresenter(
       hauler.setHauling(leg, simNowMs);
       return;
     }
-    if (snap.heapLoads === 0) {
-      hauler.setHauling(null, simNowMs);
-      return;
-    }
-    const target = heldBodyStation();
-    if (target !== null && haulerLeftPx !== target) {
+    const target = haulerWalkTarget();
+    if (haulerLeftPx !== target) {
       hauler.setHauling(haulerLeftPx < target ? "out" : "back", simNowMs);
       return;
     }
@@ -660,9 +654,9 @@ export function createMinePresenter(
 
     let animation = hauler.animation;
     let facing = hauler.facing;
-    if (phase === "pickup" && !travelling && snap.heapLoads > 0) {
-      const target = heldBodyStation();
-      if (target !== null && haulerLeftPx !== target) {
+    if (phase === "pickup" && !travelling) {
+      const target = haulerWalkTarget();
+      if (haulerLeftPx !== target) {
         animation = "walk";
         facing = haulerLeftPx < target ? "east" : "west";
       } else {

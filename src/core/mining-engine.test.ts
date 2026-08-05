@@ -962,6 +962,26 @@ describe("mining engine advanceWithEvents", () => {
     expect(creditSteps).toBe(1);
   });
 
+  it("departs with a Bag already at Grab Size when no Trip is running", () => {
+    const carriedOver = snap({
+      crewSize: 2,
+      bagLoads: 2,
+      bagOre: 2,
+      haulRemainingMs: 0,
+    });
+    expect(advance(carriedOver, 1).haulRemainingMs).toBe(HAUL_ROUND_TRIP_MS - 1);
+  });
+
+  it("keeps hauling after the Hauler is hired onto a part-full Bag", () => {
+    const hired = buyUpgrade(
+      snap({ crewSize: 1, bagLoads: 2, bagOre: 2, ingots: HIRE_HAULER_COST }),
+      "hireHauler",
+    );
+    const after = advance(hired, 600_000);
+    expect(after.heapLoads).toBeLessThan(heapCapacityFor(0));
+    expect(after.ore + after.ingots).toBeGreaterThan(0);
+  });
+
   it("fills the Heap to capacity in about 2200s at opening rates", () => {
     const cap = heapCapacityFor(0);
     const haulerRate =

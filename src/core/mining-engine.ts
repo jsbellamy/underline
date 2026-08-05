@@ -392,7 +392,9 @@ export function advanceWithEvents(
   };
 
   while (gameMs > 0) {
-    if (!isTwoDwarf && bagLoads >= capacity && haulRemainingMs === 0) {
+    // A Bag at departure size with no Trip running is otherwise a deadlock: the
+    // Hauler cannot Lift into a full Bag, and only a Lift starts the next Trip.
+    if (bagLoads >= (isTwoDwarf ? grabSize : capacity) && haulRemainingMs === 0) {
       haulRemainingMs = haulRoundTripMs;
       continue;
     }
