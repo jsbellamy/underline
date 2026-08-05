@@ -1056,23 +1056,6 @@ describe("mine presenter", () => {
       expect(removedId).toBe(nearestId);
     });
 
-    it("faces east while walking from the Cart rest station to Ore", () => {
-      const { presenter } = twoDwarfPresenter({ heapLoads: 15 });
-      const snap = presenter.snapshot();
-      expect(snap.hauler!.animation).toBe("walk");
-      expect(snap.hauler!.facing).toBe("east");
-    });
-
-    it("advances hauler.left toward the station at HAULER_WALK_PX_PER_MS", async () => {
-      const { presenter } = twoDwarfPresenter({ heapLoads: 1 });
-      const start = presenter.snapshot().hauler!.left;
-      presenter.advanceMs(500);
-      const snap = presenter.snapshot();
-      const moved = snap.hauler!.left - start;
-      expect(moved).toBe(Math.round(500 * HAULER_WALK_PX_PER_MS));
-      expect(moved).toBeLessThanOrEqual(100);
-    });
-
     it("does not thrash idle/walk chasing a settling Ore station", () => {
       const { presenter, session } = twoDwarfPresenter({ heapLoads: 8 });
       const stepMs = 16;

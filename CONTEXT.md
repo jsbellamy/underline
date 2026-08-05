@@ -411,6 +411,11 @@ each Trip Lifts up to Grab Size available Loads from the Heap, Hauls them to the
 Cart, and returns for the next Lift.
 _Avoid_: carrier, porter, runner
 
+**Hauler choreography**:
+The presentational staging of a Trip in Pane pixels — where the Hauler stands,
+which way he faces, and which clip he plays.
+_Avoid_: hauler controller, trip animator
+
 **Haul Speed**:
 How fast the Dwarf travels a Haul leg; one number shared by the simulation's
 downtime and the Pane's travel animation.
