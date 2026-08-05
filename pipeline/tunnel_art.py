@@ -14,6 +14,7 @@ from typing import Any, Literal
 from PIL import Image
 
 from pipeline.cell_raster import RasterError, read_cells
+from pipeline.cli_support import exit_code
 from pipeline.gate_evidence import sha256_bytes, sha256_file
 from pipeline.recovery import MIN_GRID_SCORE, detect_pitch, key, raw_clipping, raw_gates, sample_cells
 from pipeline.strip import Cell
@@ -766,10 +767,6 @@ def verify_tunnel_assets(repo_root: Path | None = None) -> TunnelArtReport:
     return TunnelArtReport(outcome=outcome, bundles=tuple(rows))
 
 
-def _exit_code(outcome: str) -> int:
-    return 0 if outcome == "PASS" else 1
-
-
 def _format_report(report: TunnelArtReport) -> str:
     lines = [f"outcome: {report.outcome}"]
     for row in report.bundles:
@@ -798,7 +795,7 @@ def main(argv: list[str] | None = None) -> int:
     sys.stdout.write("\n")
     if not args.json:
         print(_format_report(report), file=sys.stderr)
-    return _exit_code(report.outcome)
+    return exit_code(report.outcome)
 
 
 if __name__ == "__main__":

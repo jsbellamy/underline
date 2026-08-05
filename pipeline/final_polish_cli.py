@@ -9,6 +9,7 @@ import sys
 from typing import Any
 
 from pipeline.asset_acquire import AssetAcquisitionError, record_asset_attempt
+from pipeline.cli_support import emit_json, exit_code
 from pipeline.final_polish import (
     BundleExistsError,
     CELL_AUTHOR_GENERATION_MODE,
@@ -33,7 +34,6 @@ from pipeline.polish_review import (
 from pipeline.strip import (
     DEFAULT_LAYOUT,
     IngestResult,
-    Outcome,
     StripLayout,
     coherence_split_json_gates,
     format_coherence_split_report,
@@ -50,16 +50,6 @@ def _corpus_layout() -> StripLayout:
         pitch_px=24,
         margin_cells=0,
     )
-
-
-def _exit_code(outcome: Outcome) -> int:
-    if outcome == "PASS":
-        return 0
-    if outcome == "FAIL":
-        return 1
-    if outcome == "REVIEW":
-        return 3
-    raise ValueError(f"unknown outcome {outcome!r}")
 
 
 def _structural_payload(result: FinalPolishCheckResult) -> dict[str, Any]:
@@ -316,10 +306,6 @@ def _release_paths(bundle_root: pathlib.Path, result: FinalPolishCheckResult) ->
     return sorted(release_dir.glob("frame-*.png"))
 
 
-def _emit_json(payload: dict[str, Any]) -> None:
-    print(json.dumps(payload, separators=(",", ":")))
-
-
 def _format_brief(brief: dict[str, Any]) -> str:
     lines = [
         f"Profile   {brief['profile']['id']} ({brief['profile']['sha256']})",
@@ -360,7 +346,7 @@ def _handle_init_cell(args: argparse.Namespace) -> int:
         )
     except BundleExistsError as exc:
         if args.json:
-            _emit_json(
+            emit_json(
                 _init_cell_rejection_json_payload(
                     args.motion_class,
                     exc.reason_code or "bundle_exists",
@@ -370,7 +356,7 @@ def _handle_init_cell(args: argparse.Namespace) -> int:
         return 2
     except InitializationRejectedError as exc:
         if args.json:
-            _emit_json(
+            emit_json(
                 _init_cell_rejection_json_payload(
                     args.motion_class,
                     exc.reason_code or "unknown",
@@ -380,7 +366,7 @@ def _handle_init_cell(args: argparse.Namespace) -> int:
         return 2
     except ValueError as exc:
         if args.json:
-            _emit_json(
+            emit_json(
                 _init_cell_rejection_json_payload(args.motion_class, "invalid_arguments")
             )
         print(str(exc), file=sys.stderr)
@@ -390,7 +376,7 @@ def _handle_init_cell(args: argparse.Namespace) -> int:
         result = check_bundle(args.out)
     except (InvalidBundleError, FinalPolishError) as exc:
         if args.json:
-            _emit_json(
+            emit_json(
                 _init_cell_rejection_json_payload(
                     args.motion_class,
                     exc.reason_code or "invalid_bundle",
@@ -400,10 +386,10 @@ def _handle_init_cell(args: argparse.Namespace) -> int:
         return 2
 
     if args.json:
-        _emit_json(_check_json_payload(args.out, result))
+        emit_json(_check_json_payload(args.out, result))
     else:
         print(_format_check_report(args.out, result))
-    return _exit_code(result.outcome)
+    return exit_code(result.outcome)
 
 
 def _handle_init(args: argparse.Namespace) -> int:
@@ -423,7 +409,7 @@ def _handle_init(args: argparse.Namespace) -> int:
     except InitializationRejectedError as exc:
         if exc.reason_code != "ingest_not_pass":
             if args.json:
-                _emit_json(
+                emit_json(
                     _init_provenance_rejection_json_payload(
                         args.provider,
                         args.motion_class,
@@ -438,10 +424,10 @@ def _handle_init(args: argparse.Namespace) -> int:
             print(str(exc), file=sys.stderr)
             return 2
         if args.json:
-            _emit_json(_init_rejection_json_payload(args.provider, args.motion_class, ingest))
+            emit_json(_init_rejection_json_payload(args.provider, args.motion_class, ingest))
         else:
             print(_format_init_rejection_report(args.provider, args.motion_class, ingest))
-        return _exit_code(ingest.outcome)
+        return exit_code(ingest.outcome)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 2
@@ -453,10 +439,10 @@ def _handle_init(args: argparse.Namespace) -> int:
         return 2
 
     if args.json:
-        _emit_json(_check_json_payload(args.out, result))
+        emit_json(_check_json_payload(args.out, result))
     else:
         print(_format_check_report(args.out, result))
-    return _exit_code(result.outcome)
+    return exit_code(result.outcome)
 
 
 def _handle_check(args: argparse.Namespace) -> int:
@@ -467,12 +453,12 @@ def _handle_check(args: argparse.Namespace) -> int:
         return 2
 
     if args.summary_json:
-        _emit_json(_check_summary_json_payload(result))
+        emit_json(_check_summary_json_payload(result))
     elif args.json:
-        _emit_json(_check_json_payload(args.bundle, result))
+        emit_json(_check_json_payload(args.bundle, result))
     else:
         print(_format_check_report(args.bundle, result))
-    return _exit_code(result.outcome)
+    return exit_code(result.outcome)
 
 
 def _handle_brief(args: argparse.Namespace) -> int:
@@ -482,7 +468,7 @@ def _handle_brief(args: argparse.Namespace) -> int:
         print(str(exc), file=sys.stderr)
         return 2
     if args.json:
-        _emit_json(brief)
+        emit_json(brief)
     else:
         print(_format_brief(brief))
     return 0
@@ -498,7 +484,7 @@ def _handle_finalize(args: argparse.Namespace) -> int:
 
     release_paths = _release_paths(args.bundle, result)
     if args.json:
-        _emit_json(
+        emit_json(
             _check_json_payload(
                 args.bundle,
                 result,
@@ -515,7 +501,7 @@ def _handle_finalize(args: argparse.Namespace) -> int:
                 release_paths=release_paths or None,
             )
         )
-    return _exit_code(result.outcome)
+    return exit_code(result.outcome)
 
 
 def _handle_review_packet(args: argparse.Namespace) -> int:
@@ -524,7 +510,7 @@ def _handle_review_packet(args: argparse.Namespace) -> int:
     except (InvalidBundleError, FinalPolishError, PolishReviewError) as exc:
         reason_code = getattr(exc, "reason_code", None)
         if args.json:
-            _emit_json(
+            emit_json(
                 {
                     "ok": False,
                     "error": str(exc),
@@ -541,7 +527,7 @@ def _handle_review_packet(args: argparse.Namespace) -> int:
         "packet_png": str((review_dir / "packet.png").resolve()),
     }
     if args.json:
-        _emit_json(payload)
+        emit_json(payload)
     else:
         print(f"Packet    {payload['packet_json']}")
         print(f"PNG       {payload['packet_png']}")
@@ -560,7 +546,7 @@ def _handle_validate_reviews(args: argparse.Namespace) -> int:
             "review_dir": str(review_dir.resolve()),
         }
     if args.json:
-        _emit_json(report)
+        emit_json(report)
     else:
         print(f"Reviews   {report.get('review_dir', review_dir)}")
         print(f"OK        {report.get('ok')}")
@@ -587,7 +573,7 @@ def _handle_seed(args: argparse.Namespace) -> int:
         print(str(exc), file=sys.stderr)
         return 2
     if args.json:
-        _emit_json(meta)
+        emit_json(meta)
     else:
         print(f"Seed      {meta['out_path']}")
         print(f"Size      {meta['dimensions'][0]}x{meta['dimensions'][1]}")
@@ -644,7 +630,7 @@ def _handle_acquire(args: argparse.Namespace) -> int:
         )
     except AssetAcquisitionError as exc:
         if args.json:
-            _emit_json(
+            emit_json(
                 {
                     "pass": False,
                     "outcome": "FAIL",
@@ -655,7 +641,7 @@ def _handle_acquire(args: argparse.Namespace) -> int:
         return 2
 
     if args.json:
-        _emit_json(_acquire_json_payload(row))
+        emit_json(_acquire_json_payload(row))
     else:
         print(_format_acquire_report(row))
     return 0

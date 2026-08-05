@@ -8,10 +8,10 @@ import pathlib
 import sys
 from typing import Any
 
+from pipeline.cli_support import exit_code
 from pipeline.strip import (
     DEFAULT_LAYOUT,
     IngestResult,
-    Outcome,
     StripLayout,
     coherence_split_json_gates,
     export_frames,
@@ -53,16 +53,6 @@ def _json_payload(result: IngestResult, exported: list[pathlib.Path] | None = No
     if exported is not None:
         payload["exported_frames"] = [str(path) for path in exported]
     return payload
-
-
-def _exit_code(outcome: Outcome) -> int:
-    if outcome == "PASS":
-        return 0
-    if outcome == "FAIL":
-        return 1
-    if outcome == "REVIEW":
-        return 3
-    raise ValueError(f"unknown outcome {outcome!r}")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -107,7 +97,7 @@ def main(argv: list[str] | None = None) -> int:
     else:
         print(format_ingest_report(result))
 
-    return _exit_code(result.outcome)
+    return exit_code(result.outcome)
 
 
 if __name__ == "__main__":
