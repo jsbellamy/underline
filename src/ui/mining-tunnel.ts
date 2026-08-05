@@ -21,8 +21,6 @@ import {
   DWARF_SCALE,
   FACE_X,
   FLOOR_Y,
-  HAULER_HAND_DX,
-  HAULER_HAND_DY,
   ORE_SIZE,
   PANE_HEIGHT,
   PANE_WIDTH,
@@ -140,17 +138,21 @@ function heapOreEqual(
   return true;
 }
 
-function carriedIndexesEqual(
-  a: TunnelSnapshot["carriedVariantIndexes"],
-  b: TunnelSnapshot["carriedVariantIndexes"],
+function carriedOreEqual(
+  a: TunnelSnapshot["carriedOre"],
+  b: TunnelSnapshot["carriedOre"],
 ): boolean {
-  const left = a ?? [];
-  const right = b ?? [];
-  if (left.length !== right.length) {
+  if (a.length !== b.length) {
     return false;
   }
-  for (let i = 0; i < left.length; i += 1) {
-    if (left[i] !== right[i]) {
+  for (let i = 0; i < a.length; i += 1) {
+    const ao = a[i]!;
+    const bo = b[i]!;
+    if (
+      ao.left !== bo.left ||
+      ao.bottom !== bo.bottom ||
+      ao.variantIndex !== bo.variantIndex
+    ) {
       return false;
     }
   }
@@ -173,7 +175,7 @@ function snapEquals(a: TunnelSnapshot, b: TunnelSnapshot): boolean {
     a.crewSize === b.crewSize &&
     a.minerLeft === b.minerLeft &&
     a.haulRemainingMs === b.haulRemainingMs &&
-    carriedIndexesEqual(a.carriedVariantIndexes, b.carriedVariantIndexes) &&
+    carriedOreEqual(a.carriedOre, b.carriedOre) &&
     heapOreEqual(a.heapOre, b.heapOre) &&
     fallingOreEqual(a.fallingOre, b.fallingOre) &&
     haulerFieldsEqual(a.hauler, b.hauler)
@@ -366,11 +368,11 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
   let lastSnap: TunnelSnapshot | null = null;
 
   function reconcileCarriedOre(snap: TunnelSnapshot): void {
-    const indexes = snap.carriedVariantIndexes ?? [];
-    while (carriedOreBySlot.length > indexes.length) {
+    const entries = snap.carriedOre;
+    while (carriedOreBySlot.length > entries.length) {
       carriedOreBySlot.pop()!.remove();
     }
-    while (carriedOreBySlot.length < indexes.length) {
+    while (carriedOreBySlot.length < entries.length) {
       const ore = document.createElement("div");
       ore.className = "pane-ore pane-ore-carried";
       ore.dataset["oreCarried"] = "";
@@ -380,22 +382,13 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
       carriedOreBySlot.push(ore);
     }
 
-    if (indexes.length === 0) {
-      return;
-    }
-
-    const left = haulerLeft(snap);
-    const facing = snap.hauler?.facing ?? "east";
-    const handDx =
-      facing === "west"
-        ? dwarfW - ORE_SIZE - HAULER_HAND_DX
-        : HAULER_HAND_DX;
-
-    for (let i = 0; i < indexes.length; i += 1) {
+    for (let i = 0; i < entries.length; i += 1) {
+      const entry = entries[i]!;
       const ore = carriedOreBySlot[i]!;
-      const artKey = heapOreArtKey(indexes[i]!);
-      paintHeapOre(ore, artKey, FLOOR_Y + HAULER_HAND_DY);
-      ore.style.left = `${left + handDx}px`;
+      const artKey = heapOreArtKey(entry.variantIndex);
+      paintOreArt(ore, artKey);
+      ore.style.left = `${entry.left}px`;
+      ore.style.bottom = `${entry.bottom}px`;
     }
   }
 
