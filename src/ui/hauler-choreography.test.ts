@@ -7,7 +7,7 @@ import {
   HAULER_MARK_X,
   HAULER_WALK_PX_PER_MS,
 } from "./pane-layout";
-import { tripLeftFor } from "./mine-presenter";
+import { tripLeftFor } from "./trip-position";
 import {
   createHaulerChoreography,
   type HaulerChoreography,

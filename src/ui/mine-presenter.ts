@@ -11,12 +11,9 @@ import { createHeapPileSim, type HeapPileSim } from "../core/heap-pile-sim";
 import {
   digRateFor,
   grabSizeFor,
-  HAUL_TRAVEL_MS,
   haulRoundTripMsFor,
-  initialSnapshot,
   pickDamageFor,
   pickupMsPerLoad,
-  unloadMsFor,
 } from "../core/mining-engine";
 import { tripPhaseFor } from "../core/trip-phase";
 import type { MiningSession } from "../core/mining-session";
@@ -32,12 +29,10 @@ import {
   type MiningAudio,
 } from "./mining-audio";
 import {
-  CART_MARK_X,
   FLOOR_Y,
   HAULER_HAND_DX,
   HAULER_HAND_DY,
   HAULER_MARK_X,
-  HAULER_WALK_PX_PER_MS,
   haulerStationFor,
   HEAP_BIN_CEILING_Y,
   HEAP_BIN_EAST_X,
@@ -51,15 +46,17 @@ import {
   ORE_SIZE,
   ORE_SPAWN_BOTTOM,
 } from "./pane-layout";
-
-export type TunnelHaulPhase = "none" | HaulAnimPhase | "unload";
-export type { HaulerPhase };
-
 import {
   createHaulerChoreography,
   type HaulerChoreography,
+  type HaulerChoreographyPresenterSeam,
   type HaulerPhase,
 } from "./hauler-choreography";
+import { tripLeftFor } from "./trip-position";
+
+export type TunnelHaulPhase = "none" | HaulAnimPhase | "unload";
+export type { HaulerPhase };
+export { tripLeftFor };
 
 export interface HaulerSnapshot {
   animation: DwarfAnimId;
@@ -135,39 +132,6 @@ export interface MinePresenterOptions {
   createAudioContext?: () => AudioContext;
 }
 
-export function tripLeftFor(
-  haulRemainingMs: number,
-  departureStation: number,
-  unloadSpeedUpgradeCount: number,
-  destinationMark: number = CART_MARK_X,
-  returnStation: number = departureStation,
-): number {
-  const leg =
-    tripPhaseFor({
-      ...initialSnapshot(),
-      haulRemainingMs,
-      unloadSpeedUpgradeCount,
-    })?.leg ?? "back";
-  const unloadMs = unloadMsFor(unloadSpeedUpgradeCount);
-  const halfTravel = HAUL_TRAVEL_MS / 2;
-  const walkPxPerMs = HAULER_WALK_PX_PER_MS;
-  const tripMs = HAUL_TRAVEL_MS + unloadMs;
-
-  if (leg === "out") {
-    return Math.max(
-      destinationMark,
-      Math.round(departureStation - (tripMs - haulRemainingMs) * walkPxPerMs),
-    );
-  }
-  if (leg === "unload") {
-    return destinationMark;
-  }
-  return Math.min(
-    returnStation,
-    Math.round(destinationMark + (halfTravel - haulRemainingMs) * walkPxPerMs),
-  );
-}
-
 function pickupProgressFraction(
   haulRemainingMs: number,
   pickupProgressMs: number,
@@ -206,7 +170,8 @@ export function createMinePresenter(
   const miner = createDwarfAnimController({
     digRate: digRateFor(session.snapshot.digRateUpgradeCount),
   });
-  const haulerChoreography: HaulerChoreography = createHaulerChoreography({
+  const haulerChoreography: HaulerChoreography & HaulerChoreographyPresenterSeam =
+    createHaulerChoreography({
     digRate: digRateFor(session.snapshot.digRateUpgradeCount),
   });
 
@@ -247,7 +212,6 @@ export function createMinePresenter(
       retarget the Hauler mid-approach (idle↔walk thrash). */
   let heldWalkStationPx: number | null = null;
   let removedHeldBody = false;
-  let prevHaulRemainingMs = session.snapshot.haulRemainingMs;
 
   function minerLeftFor(_nowMs: number): number {
     const snap = session.snapshot;
@@ -454,12 +418,7 @@ export function createMinePresenter(
     }
 
     const haulLeg = tripPhaseFor(snap)?.leg ?? null;
-    const halfTravel = HAUL_TRAVEL_MS / 2;
-    if (
-      haulLeg === "back" &&
-      snap.haulRemainingMs <= halfTravel &&
-      prevHaulRemainingMs > halfTravel
-    ) {
+    if (isTwoDwarf() && haulerChoreography.willEnterBackLeg(snap)) {
       assignHeldOre(pickHeldBody(HAULER_MARK_X, excluded) ?? undefined);
     }
 
@@ -487,7 +446,6 @@ export function createMinePresenter(
     if (isTwoDwarf()) {
       haulerChoreography.advanceTo(snap, nowMs);
     }
-    prevHaulRemainingMs = snap.haulRemainingMs;
 
     const lifted = isPickupLifted(
       snap.haulRemainingMs,

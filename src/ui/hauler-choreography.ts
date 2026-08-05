@@ -7,6 +7,7 @@ import {
 } from "../core/dwarf-anim-state";
 import {
   digRateFor,
+  HAUL_TRAVEL_MS,
   type MiningSnapshot,
 } from "../core/mining-engine";
 import { tripPhaseFor } from "../core/trip-phase";
@@ -14,7 +15,7 @@ import {
   HAULER_MARK_X,
   HAULER_WALK_PX_PER_MS,
 } from "./pane-layout";
-import { tripLeftFor } from "./mine-presenter";
+import { tripLeftFor } from "./trip-position";
 
 export type HaulerPhase = "pickup" | "unload" | HaulAnimPhase;
 
@@ -36,14 +37,19 @@ export interface HaulerChoreography {
   /** Current sprite left — the presenter's Ore-picking origin until the
       follow-up slice. */
   readonly leftPx: number;
+}
+
+/** Presenter-only seam until frame index and mid-Lift snap move into stance. */
+export interface HaulerChoreographyPresenterSeam {
   frameIndexAt(nowMs: number, swingFraction: number): number;
   setDigRate(digRate: number): void;
   snapToWalkTarget(): void;
+  willEnterBackLeg(snapshot: MiningSnapshot): boolean;
 }
 
 export function createHaulerChoreography(options: {
   digRate: number;
-}): HaulerChoreography {
+}): HaulerChoreography & HaulerChoreographyPresenterSeam {
   const hauler: DwarfAnimController = createDwarfAnimController({
     digRate: options.digRate,
   });
@@ -192,7 +198,16 @@ export function createHaulerChoreography(options: {
     return { animation: hauler.animation, facing: hauler.facing };
   }
 
-  const api: HaulerChoreography = {
+  function enteredBackLegFrame(snapshot: MiningSnapshot): boolean {
+    const halfTravel = HAUL_TRAVEL_MS / 2;
+    return (
+      snapshot.haulRemainingMs > 0 &&
+      prevHaulRemainingMs > halfTravel &&
+      snapshot.haulRemainingMs <= halfTravel
+    );
+  }
+
+  const api: HaulerChoreography & HaulerChoreographyPresenterSeam = {
     get leftPx() {
       return leftPx;
     },
@@ -204,6 +219,9 @@ export function createHaulerChoreography(options: {
     },
     setDigRate(digRate: number): void {
       hauler.setDigRate(digRate);
+    },
+    willEnterBackLeg(snapshot: MiningSnapshot): boolean {
+      return enteredBackLegFrame(snapshot);
     },
     frameIndexAt(nowMs: number, swingFraction: number): number {
       if (hauler.animation === "swing") {
