@@ -10,7 +10,10 @@ from __future__ import annotations
 import pathlib
 import subprocess
 
-from scripts.select_changed_tests import Selection, select_test_files
+import pytest
+
+from pipeline import corpus_paths as cp
+from scripts.select_changed_tests import Selection, _mapped_module_name, select_test_files
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
 
@@ -82,6 +85,16 @@ def test_a_changed_pipeline_module_selects_its_test_and_split_variants() -> None
 
     assert result.kind == "selected"
     assert result.files == ("tests/test_asset_pack.py", "tests/test_asset_pack_cli.py")
+
+
+def test_mapped_module_name_follows_corpus_root(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(cp, "CORPUS_ROOT", pathlib.Path("corpus/live"))
+
+    assert _mapped_module_name(pathlib.PurePosixPath("corpus/live/corpus.py")) == "corpus"
+    assert (
+        _mapped_module_name(pathlib.PurePosixPath("prototype/strip-coherence/corpus.py"))
+        is None
+    )
 
 
 def test_a_changed_prototype_module_selects_its_test_and_split_variants() -> None:

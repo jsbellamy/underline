@@ -103,6 +103,36 @@ def _coh_idle_silhouette_fail() -> dict:
     }
 
 
+def test_bare_inbox_filename_resolves_through_corpus_root(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path,
+) -> None:
+    from pipeline import corpus_paths as cp
+
+    shutil.copytree(ROOT / "gate-controls", tmp_path / "gate-controls")
+    inbox = tmp_path / "corpus" / "live" / "inbox"
+    inbox.mkdir(parents=True)
+    shutil.copy(IDLE_CONTROL, inbox / IDLE_CONTROL.name)
+
+    monkeypatch.setattr(cp, "CORPUS_ROOT", Path("corpus/live"))
+    monkeypatch.setattr(gc, "REPO_ROOT", tmp_path)
+
+    result = gc.main(
+        [
+            IDLE_CONTROL.name,
+            "--motion-class",
+            "idle",
+            "--target-gate",
+            "silhouette_budget",
+            "--recorded-at",
+            "2026-07-27T12:00:00+00:00",
+            "--scorer-commit",
+            "testcommit",
+        ]
+    )
+
+    assert result in (0, 1)
+
+
 def test_canonical_score_command_emits_equivalent_json() -> None:
     assert IDLE_CONTROL.is_file()
     env = {**dict(__import__("os").environ), "PYTHONPATH": str(ROOT)}
