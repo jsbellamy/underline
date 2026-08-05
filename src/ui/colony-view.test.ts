@@ -13,6 +13,7 @@ import {
   nextUnloadSpeedUpgradeCost,
 } from "../core/mining-engine";
 import { toWireSnapshot } from "../core/wire-snapshot";
+import { UPGRADE_CATALOGUE } from "../data/upgrade-catalogue";
 import { mountColonyView } from "./colony-view";
 
 describe("Colony Dock surface", () => {
@@ -499,6 +500,30 @@ describe("mountColonyView", () => {
     ]);
     for (let i = 0; i < selectors.length; i += 1) {
       expect(children[i]?.matches(selectors[i]!)).toBe(true);
+    }
+    view.destroy();
+  });
+
+  it("lays out upgrade buttons in catalogue order", () => {
+    const datasetSelectors: Record<string, string> = {
+      digRate: "[data-buy-upgrade]",
+      pickDamage: "[data-buy-pick-damage-upgrade]",
+      smelter: "[data-buy-smelter-upgrade]",
+      carryCapacity: "[data-buy-carry-capacity-upgrade]",
+      haulSpeed: "[data-buy-haul-speed-upgrade]",
+      grabSize: "[data-buy-grab-size-upgrade]",
+      unloadSpeed: "[data-buy-unload-speed-upgrade]",
+      hireHauler: "[data-hire-hauler]",
+    };
+    const host = document.createElement("div");
+    const view = mountColonyView(host);
+    view.render(toWireSnapshot({ ...initialSnapshot(), crewSize: 2 }));
+    const row = host.querySelector(".dock-colony-upgrade");
+    const buttons = Array.from(row?.children ?? []);
+    expect(buttons).toHaveLength(UPGRADE_CATALOGUE.length);
+    for (let i = 0; i < UPGRADE_CATALOGUE.length; i += 1) {
+      const spec = UPGRADE_CATALOGUE[i]!;
+      expect(buttons[i]?.matches(datasetSelectors[spec.id]!)).toBe(true);
     }
     view.destroy();
   });
