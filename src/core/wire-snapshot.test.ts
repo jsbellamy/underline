@@ -5,7 +5,11 @@ import {
   advance,
   initialSnapshot,
 } from "./mining-engine";
-import { buildOfflineSummary, toWireSnapshot } from "./wire-snapshot";
+import {
+  buildOfflineSummary,
+  toWireSnapshot,
+  wireSnapshotChanged,
+} from "./wire-snapshot";
 
 describe("wire Snapshot", () => {
   it("projects save-authoritative fields for the Dock", () => {
@@ -90,5 +94,44 @@ describe("wire Snapshot", () => {
       offlineMs: 60_000,
     });
     expect(summary.oreProduced).toBe(7);
+  });
+
+  describe("wire Snapshot change detection", () => {
+    const base = toWireSnapshot(initialSnapshot());
+
+    it("treats a missing prior Snapshot as changed", () => {
+      expect(wireSnapshotChanged(null, base)).toBe(true);
+    });
+
+    it("ignores identical wire Snapshots", () => {
+      expect(wireSnapshotChanged(base, { ...base })).toBe(false);
+    });
+
+    it("detects Face swing progress drift between wire Snapshots", () => {
+      expect(
+        wireSnapshotChanged(base, { ...base, faceSwingProgress: base.faceSwingProgress + 1 }),
+      ).toBe(true);
+    });
+
+    it("detects offlineSummary arriving on the wire", () => {
+      const summary = buildOfflineSummary({
+        before: initialSnapshot(),
+        after: advance(initialSnapshot(), 10_000),
+        offlineMs: 10_000,
+      });
+      expect(
+        wireSnapshotChanged(base, toWireSnapshot(initialSnapshot(), summary)),
+      ).toBe(true);
+    });
+
+    it("detects offlineSummary clearing from the wire", () => {
+      const summary = buildOfflineSummary({
+        before: initialSnapshot(),
+        after: advance(initialSnapshot(), 10_000),
+        offlineMs: 10_000,
+      });
+      const withSummary = toWireSnapshot(initialSnapshot(), summary);
+      expect(wireSnapshotChanged(withSummary, base)).toBe(true);
+    });
   });
 });

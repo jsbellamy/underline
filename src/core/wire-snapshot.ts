@@ -64,6 +64,50 @@ export function toWireSnapshot(
   return wire;
 }
 
+function offlineSummaryEqual(
+  a: OfflineSummary | undefined,
+  b: OfflineSummary | undefined,
+): boolean {
+  if (a === b) {
+    return true;
+  }
+  if (!a || !b) {
+    return false;
+  }
+  return (
+    a.offlineMs === b.offlineMs &&
+    a.advanceGained === b.advanceGained &&
+    a.oreProduced === b.oreProduced &&
+    a.oreSmelted === b.oreSmelted &&
+    a.oreBacklog === b.oreBacklog
+  );
+}
+
+export function wireSnapshotChanged(
+  previous: WireSnapshot | null,
+  next: WireSnapshot,
+): boolean {
+  if (previous === null) {
+    return true;
+  }
+  const keys = new Set([
+    ...Object.keys(previous),
+    ...Object.keys(next),
+  ]) as Set<keyof WireSnapshot>;
+  for (const key of keys) {
+    if (key === "offlineSummary") {
+      if (!offlineSummaryEqual(previous.offlineSummary, next.offlineSummary)) {
+        return true;
+      }
+      continue;
+    }
+    if (previous[key] !== next[key]) {
+      return true;
+    }
+  }
+  return false;
+}
+
 export function buildOfflineSummary(args: {
   before: MiningSnapshot;
   after: MiningSnapshot;

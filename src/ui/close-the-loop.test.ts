@@ -242,6 +242,139 @@ describe("Pane↔Dock close-the-loop bus", () => {
     commandSpy.close();
   });
 
+  it("republishes when Face swing progress changes without economy fields moving", async () => {
+    const channel = `underline-face-swing-${crypto.randomUUID()}`;
+    const store = memoryStore();
+    const session = createMiningSession({
+      store,
+      now: () => 0,
+      snapshot: initialSnapshot(),
+    });
+
+    let clock = 0;
+    const rafCallbacks: FrameRequestCallback[] = [];
+    const intervalCallbacks: Array<() => void> = [];
+    let intervalId = 0;
+    const doc = {
+      hidden: false,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    } as unknown as Document;
+
+    const paneRoot = document.createElement("main");
+    const dockRoot = document.createElement("main");
+    const dockSnapshots: Extract<BusMessage, { type: "snapshot" }>[] = [];
+
+    const pane = mountPaneShell(paneRoot, {
+      session,
+      deferPump: true,
+      dockWindow: {
+        open: vi.fn(async () => {}),
+        close: vi.fn(async () => {}),
+        toggle: vi.fn(async () => true),
+        isOpen: () => false,
+        reposition: vi.fn(async () => {}),
+        syncPositionFromPane: vi.fn(async () => {}),
+        destroy: vi.fn(),
+      },
+      busFactory: (handlers) => createBusEndpoint(handlers, channel),
+      pumpSchedule: {
+        now: () => clock,
+        requestAnimationFrame: (callback: FrameRequestCallback) => {
+          rafCallbacks.push(callback);
+          return rafCallbacks.length;
+        },
+        cancelAnimationFrame: vi.fn(),
+        setInterval: ((callback: TimerHandler) => {
+          const fn = typeof callback === "function" ? callback : () => {};
+          intervalCallbacks.push(fn as () => void);
+          intervalId += 1;
+          return intervalId;
+        }) as typeof setInterval,
+        clearInterval: vi.fn(),
+        document: doc,
+      },
+    });
+
+    const dock = mountDockShell(dockRoot, {
+      busFactory: (handlers) =>
+        createBusEndpoint(
+          {
+            ...handlers,
+            snapshot(message) {
+              dockSnapshots.push(message);
+              handlers.snapshot?.(message);
+            },
+          },
+          channel,
+        ),
+    });
+
+    await flushBus();
+    const economyBefore = {
+      advance: session.snapshot.advance,
+      ore: session.snapshot.ore,
+      ingots: session.snapshot.ingots,
+      digRateUpgradeCount: session.snapshot.digRateUpgradeCount,
+      smelterUpgradeCount: session.snapshot.smelterUpgradeCount,
+      bagLoads: session.snapshot.bagLoads,
+      bagOre: session.snapshot.bagOre,
+      carryCapacityUpgradeCount: session.snapshot.carryCapacityUpgradeCount,
+      crewSize: session.snapshot.crewSize,
+      heapLoads: session.snapshot.heapLoads,
+      haulSpeedUpgradeCount: session.snapshot.haulSpeedUpgradeCount,
+      grabSizeUpgradeCount: session.snapshot.grabSizeUpgradeCount,
+      unloadSpeedUpgradeCount: session.snapshot.unloadSpeedUpgradeCount,
+    };
+    const faceBefore = session.snapshot.faceSwingProgress;
+    const publishedBeforeTick = dockSnapshots.length;
+
+    pane.startPump();
+    clock = PUMP_INTERVAL_MS;
+    for (const callback of [...intervalCallbacks]) {
+      callback();
+    }
+    const callbacks = rafCallbacks.splice(0);
+    for (const callback of callbacks) {
+      callback(clock);
+    }
+    await flushBus();
+
+    expect(session.snapshot.faceSwingProgress).toBeGreaterThan(faceBefore);
+    expect(session.snapshot.advance).toBe(economyBefore.advance);
+    expect(session.snapshot.ore).toBe(economyBefore.ore);
+    expect(session.snapshot.ingots).toBe(economyBefore.ingots);
+    expect(session.snapshot.digRateUpgradeCount).toBe(
+      economyBefore.digRateUpgradeCount,
+    );
+    expect(session.snapshot.smelterUpgradeCount).toBe(
+      economyBefore.smelterUpgradeCount,
+    );
+    expect(session.snapshot.bagLoads).toBe(economyBefore.bagLoads);
+    expect(session.snapshot.bagOre).toBe(economyBefore.bagOre);
+    expect(session.snapshot.carryCapacityUpgradeCount).toBe(
+      economyBefore.carryCapacityUpgradeCount,
+    );
+    expect(session.snapshot.crewSize).toBe(economyBefore.crewSize);
+    expect(session.snapshot.heapLoads).toBe(economyBefore.heapLoads);
+    expect(session.snapshot.haulSpeedUpgradeCount).toBe(
+      economyBefore.haulSpeedUpgradeCount,
+    );
+    expect(session.snapshot.grabSizeUpgradeCount).toBe(
+      economyBefore.grabSizeUpgradeCount,
+    );
+    expect(session.snapshot.unloadSpeedUpgradeCount).toBe(
+      economyBefore.unloadSpeedUpgradeCount,
+    );
+    expect(dockSnapshots.length).toBeGreaterThan(publishedBeforeTick);
+    expect(dockSnapshots[dockSnapshots.length - 1]?.snapshot.faceSwingProgress).toBe(
+      session.snapshot.faceSwingProgress,
+    );
+
+    pane.destroy();
+    dock.destroy();
+  });
+
   it("republishes when Bag loads change so the Dock tracks live play", async () => {
     const channel = `underline-bag-${crypto.randomUUID()}`;
     const store = memoryStore();
