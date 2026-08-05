@@ -142,11 +142,13 @@ spawn `gate-blind-review` twice in separate sessions before `/code-review`.
 
 ### Evidence
 
-There is no browser or native harness in this repo yet. Every claim is proved by
-a command whose output is text:
+The Tauri shell lives at `src-tauri/`; Vitest with happy-dom is the DOM harness.
+Every claim is proved by a command whose output is text:
 
 ```bash
-npm test                                # test suites (pytest today; TS tests as they land)
+npm test                                # test suites
+npm run test:unit                       # Vitest suites for the TypeScript game
+npm run typecheck                       # TypeScript compiler check (no emit)
 npm run test:fast                       # same, minus the slow budget-CLI tests — inner loop only
 npm run test:changed                    # tests mapped from the diff against main — the local pre-publish gate
 npm run prototype:strip:corpus          # score inbox/ against prompts/manifest.json
