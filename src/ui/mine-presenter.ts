@@ -52,7 +52,7 @@ import {
 
 export type TunnelHaulPhase = "none" | HaulAnimPhase | "unload";
 export type HaulerPhase = "pickup" | "unload" | HaulAnimPhase;
-export type TripLeg = "out" | "unload" | "back";
+type TripLeg = "out" | "unload" | "back";
 
 export interface HaulerSnapshot {
   animation: DwarfAnimId;
@@ -146,7 +146,7 @@ function tripLeg(
   return "back";
 }
 
-function tripLeftFor(
+export function tripLeftFor(
   haulRemainingMs: number,
   departureStation: number,
   unloadSpeedUpgradeCount: number,
@@ -599,13 +599,21 @@ export function createMinePresenter(
       }
       return;
     }
-    miner.setHauling(
-      haulAnimPhase(
-        session.snapshot.haulRemainingMs,
-        session.snapshot.unloadSpeedUpgradeCount,
-      ),
-      simNowMs,
+    const leg = tripLeg(
+      session.snapshot.haulRemainingMs,
+      session.snapshot.unloadSpeedUpgradeCount,
     );
+    if (leg === "unload") {
+      miner.stopMining(simNowMs);
+      miner.setHauling(null, simNowMs);
+      return;
+    }
+    if (leg === "out" || leg === "back") {
+      miner.setHauling(leg, simNowMs);
+      return;
+    }
+    miner.startMining(simNowMs);
+    miner.setHauling(null, simNowMs);
   }
 
   function syncHaulerAnim(): void {

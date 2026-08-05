@@ -37,9 +37,10 @@ Ore on arrival), and returns.
 
 - One Haul Speed Upgrade lifts the Hauler to 0.096154 L/s; two reach 0.100000
   L/s, exactly the opening Miner.
-- **Interim presentation:** the Pane still interpolates both Dwarves' Haul as a
-  50/50 out-and-back arc, so Cart arrival no longer coincides with delivery.
-  Issue #5 replaces that arc with the constant-speed lane and the unload dwell.
+- **Pane presentation (#475):** every Dwarf leg walks at
+  `HAULER_WALK_PX_PER_MS` (Cart mark to Heap bin east wall in one out-leg).
+  Leftover round-trip time is an idle unload dwell at `CART_MARK_X`. The
+  presenter owns `minerLeft` and `hauler.left`; the Tunnel reads those fields.
 
 ## Consequences
 
@@ -55,7 +56,6 @@ Ore on arrival), and returns.
 - Discrete simulation peaks the Heap near half capacity before the first Face
   break; the 2200 s row is the constant-rate equilibrium time, not a literal
   `heapLoads === 20` snapshot at that horizon once Advance rises.
-- Cart arrival and Ore credit diverge until #5 lands the lane presentation.
 
 ## Rejected alternatives
 

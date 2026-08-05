@@ -18,7 +18,7 @@ import {
 import type { MiningEvent } from "../core/mining-events";
 import { SWING_IMPACT_FRAME } from "../data/dwarf-animation-timing";
 import { createHeapPileSim } from "../core/heap-pile-sim";
-import { createMinePresenter, FACE_SLIDE_MS, SPILL_LIFETIME_MS } from "./mine-presenter";
+import { createMinePresenter, FACE_SLIDE_MS, SPILL_LIFETIME_MS, tripLeftFor } from "./mine-presenter";
 import type { MiningAudio } from "./mining-audio";
 import {
   heapOreContentCenter,
@@ -48,30 +48,21 @@ const OPENING_PICKUP_MS = pickupMsPerLoad(0);
 const PICKUP_QUARTER_MS = OPENING_PICKUP_MS * 0.25;
 const PICKUP_THREE_QUARTER_MS = OPENING_PICKUP_MS * 0.75;
 
-function tripLeftAtRemaining(
-  haulRemainingMs: number,
-  departureStation: number,
-  unloadMs: number,
-): number {
-  const halfTravel = HAUL_TRAVEL_MS / 2;
-  const walkPxPerMs = HAULER_WALK_PX_PER_MS;
-  const tripMs = HAUL_TRAVEL_MS + unloadMs;
-
-  if (haulRemainingMs > unloadMs + halfTravel) {
-    return Math.max(
-      CART_MARK_X,
-      Math.round(
-        departureStation - (tripMs - haulRemainingMs) * walkPxPerMs,
-      ),
-    );
-  }
-  if (haulRemainingMs > halfTravel) {
-    return CART_MARK_X;
-  }
-  return Math.min(
-    departureStation,
-    Math.round(CART_MARK_X + (halfTravel - haulRemainingMs) * walkPxPerMs),
-  );
+function twoDwarfPresenterForTrip(
+  snapshotOverrides: Record<string, unknown> = {},
+) {
+  const session = createMiningSession({
+    store: memoryStore(),
+    now: () => 0,
+    snapshot: {
+      ...initialSnapshot(),
+      crewSize: 2,
+      ...snapshotOverrides,
+    },
+  });
+  const presenter = createMinePresenter(session);
+  presenter.start();
+  return { session, presenter };
 }
 
 function memoryStore() {
@@ -1023,26 +1014,9 @@ describe("mine presenter", () => {
     });
   });
 
-  describe("Trip walk speed and Cart dwell", () => {
-    const twoDwarfBase = {
-      ...initialSnapshot(),
-      crewSize: 2,
-    };
+  describe("Trip Haul Speed and Cart dwell", () => {
     const stepMs = 100;
     const walkStepPx = Math.round(stepMs * HAULER_WALK_PX_PER_MS);
-
-    function twoDwarfPresenter(
-      snapshotOverrides: Record<string, unknown> = {},
-    ) {
-      const session = createMiningSession({
-        store: memoryStore(),
-        now: () => 0,
-        snapshot: { ...twoDwarfBase, ...snapshotOverrides },
-      });
-      const presenter = createMinePresenter(session);
-      presenter.start();
-      return { session, presenter };
-    }
 
     function startHaulFromStand(presenter: ReturnType<typeof createMinePresenter>) {
       presenter.advanceMs(PICKUP_THREE_QUARTER_MS);
@@ -1050,7 +1024,7 @@ describe("mine presenter", () => {
     }
 
     it("walks every leg at HAULER_WALK_PX_PER_MS and dwells at the Cart", () => {
-      const { presenter, session } = twoDwarfPresenter({ heapLoads: 3 });
+      const { presenter, session } = twoDwarfPresenterForTrip({ heapLoads: 3 });
       startHaulFromStand(presenter);
       expect(session.snapshot.haulRemainingMs).toBe(haulRoundTripMsFor(0));
 
@@ -1102,7 +1076,7 @@ describe("mine presenter", () => {
         ).toBe(station);
       }
 
-      const { presenter, session } = twoDwarfPresenter({ heapLoads: 3 });
+      const { presenter, session } = twoDwarfPresenterForTrip({ heapLoads: 3 });
       startHaulFromStand(presenter);
       const departure = presenter.snapshot().hauler!.left;
       while (session.snapshot.haulRemainingMs > 0) {
@@ -1112,15 +1086,14 @@ describe("mine presenter", () => {
       expect(atReturn.hauler!.phase).toBe("pickup");
       expect(atReturn.hauler!.left).toBe(departure);
 
-      for (const station of [345, 220]) {
-        expect(
-          tripLeftAtRemaining(0, station, unloadMsFor(0)),
-        ).toBe(station);
-      }
+      expect(tripLeftFor(0, 345, 0)).toBe(345);
+      expect(tripLeftFor(0, 220, 0)).toBe(220);
+      expect(tripLeftFor(6_000, 345, 0)).toBe(CART_MARK_X);
+      expect(tripLeftFor(4_000, 345, 0)).toBe(CART_MARK_X);
     });
 
     it("idles the Hauler at its station when the Heap is empty", () => {
-      const { presenter } = twoDwarfPresenter({ heapLoads: 0 });
+      const { presenter } = twoDwarfPresenterForTrip({ heapLoads: 0 });
       const a = presenter.snapshot();
       presenter.advanceMs(500);
       const b = presenter.snapshot();
@@ -1131,7 +1104,7 @@ describe("mine presenter", () => {
     it("walks on both legs and idles through the unload window", () => {
       const U = unloadMsFor(0);
       const halfTravel = HAUL_TRAVEL_MS / 2;
-      const { presenter, session } = twoDwarfPresenter({ heapLoads: 2 });
+      const { presenter, session } = twoDwarfPresenterForTrip({ heapLoads: 2 });
       startHaulFromStand(presenter);
 
       const seen: Array<{ animation: string; phase: string; remaining: number }> =
@@ -1170,11 +1143,29 @@ describe("mine presenter", () => {
       presenter.advanceMs(100_000);
       expect(session.snapshot.haulRemainingMs).toBeGreaterThan(0);
 
-      const snap = presenter.snapshot();
-      expect(snap.minerLeft).toBeDefined();
-      expect(snap.haulRemainingMs).toBe(session.snapshot.haulRemainingMs);
-      expect(snap.minerLeft).toBeLessThanOrEqual(MINING_MARK_X);
-      expect(snap.minerLeft).toBeGreaterThanOrEqual(CART_MARK_X);
+      const lefts: number[] = [];
+      const animations: string[] = [];
+      while (session.snapshot.haulRemainingMs > 0) {
+        const snap = presenter.snapshot();
+        lefts.push(snap.minerLeft);
+        animations.push(snap.animation);
+        presenter.advanceMs(stepMs);
+      }
+
+      for (let i = 1; i < lefts.length; i += 1) {
+        const delta = lefts[i]! - lefts[i - 1]!;
+        if (delta === 0 || animations[i - 1] !== "walk") {
+          continue;
+        }
+        expect(Math.abs(delta)).toBeLessThanOrEqual(walkStepPx);
+        expect(Math.abs(delta)).toBeGreaterThan(0);
+      }
+      expect(lefts.filter((l) => l === CART_MARK_X).length).toBeGreaterThan(0);
+      expect(
+        lefts.filter((l, i) => l === CART_MARK_X && animations[i] === "idle")
+          .length,
+      ).toBeGreaterThanOrEqual(Math.floor(unloadMsFor(0) / stepMs) - 1);
+      expect(tripLeftFor(0, MINING_MARK_X, 0)).toBe(MINING_MARK_X);
     });
   });
 
