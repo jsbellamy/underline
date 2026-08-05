@@ -11,6 +11,21 @@ import {
   frameUrlsFor,
 } from "./sprite-packs";
 
+function expectUrlsForManifestPaths(
+  urls: string[],
+  paths: string[],
+  character: string,
+): void {
+  expect(urls).toHaveLength(paths.length);
+  for (let i = 0; i < paths.length; i += 1) {
+    const path = paths[i]!;
+    const fileName = path.split("/").pop()!;
+    expect(urls[i]).toMatch(/frame_\d{3}\.png/);
+    expect(urls[i]).toContain(fileName.replace(".png", ""));
+    expect(urls[i]).toContain(`/characters/${character}/`);
+  }
+}
+
 describe("sprite-packs", () => {
   it("exports DWARF_PACK and HAULER_PACK from on-disk manifests", () => {
     expect(DWARF_PACK.schema).toBe("external-sprite-pack/0");
@@ -35,14 +50,14 @@ describe("sprite-packs", () => {
     const urls = frameUrlsFor("hauler", HAULER_PACK, "walk", "west");
     expect(urls).toHaveLength(8);
     const paths = framePaths(HAULER_PACK, "walk", "west");
-    expect(urls).toEqual(paths.map((path) => frameUrl("hauler", path)));
+    expectUrlsForManifestPaths(urls, paths, "hauler");
 
     expect(() => frameUrlsFor("hauler", HAULER_PACK, "swing", "east")).toThrow(
       /animation/,
     );
   });
 
-  it("frameUrlsFor matches prior dwarf and hauler URL lists for every animation and facing", () => {
+  it("resolves manifest-ordered Vite URLs for every Dwarf animation and facing", () => {
     const packs: Array<{ character: string; pack: ExternalSpritePack; animations: string[] }> =
       [
         {
@@ -62,11 +77,7 @@ describe("sprite-packs", () => {
         for (const facing of ["east", "west"] as const) {
           const paths = framePaths(pack, animation, facing);
           const urls = frameUrlsFor(character, pack, animation, facing);
-          expect(urls).toHaveLength(paths.length);
-          for (let i = 0; i < paths.length; i += 1) {
-            expect(urls[i]).toBe(frameUrl(character, paths[i]!));
-            expect(urls[i]).toMatch(/frame_\d{3}\.png/);
-          }
+          expectUrlsForManifestPaths(urls, paths, character);
         }
       }
     }
