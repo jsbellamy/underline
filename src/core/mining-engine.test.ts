@@ -4,8 +4,12 @@ import {
   DROPS_PER_FACE,
   FACE_BASE_HARDNESS,
   HEAP_BASE_LOADS,
+  HAUL_DELIVERY_MS,
   HAUL_ROUND_TRIP_MS,
+  HAUL_TRAVEL_MS,
+  HAULER_GRAB_SIZE,
   HARDNESS_GROWTH,
+  UNLOAD_MS,
   OPENING_CARRY_CAPACITY,
   nextPickDamageUpgradeCost,
   pickDamageFor,
@@ -93,8 +97,8 @@ describe("mining engine advance", () => {
     expect(after.faceSwingProgress).toBe(0);
     expect(oreCredited(before, after)).toBeCloseTo(100, 10);
     expect(after.ingots).toBe(58);
-    expect(after.ore).toBeCloseTo(41.44, 2);
-    expect(after.smelterProgress).toBeCloseTo(0.56, 2);
+    expect(after.ore).toBeCloseTo(41.32, 2);
+    expect(after.smelterProgress).toBeCloseTo(0.68, 2);
   });
 
   it("does not break the Face before Hardness damage is dealt", () => {
@@ -544,7 +548,7 @@ describe("mining engine advanceWithEvents", () => {
   const ONE_DWARF_200S_SNAPSHOT = {
     schemaVersion: 5 as const,
     advance: 0,
-    ore: 4.240000000000003,
+    ore: 4.120000000000004,
     ingots: 5,
     digRateUpgradeCount: 0,
     pickDamageUpgradeCount: 0,
@@ -556,7 +560,7 @@ describe("mining engine advanceWithEvents", () => {
     haulSpeedUpgradeCount: 0,
     pickupProgressMs: 0,
     faceSwingProgress: 192,
-    smelterProgress: 0.7599999999999998,
+    smelterProgress: 0.8799999999999999,
     bagOre: 9,
     bagLoads: 9,
     haulRemainingMs: 0,
@@ -804,13 +808,13 @@ describe("mining engine advanceWithEvents", () => {
     expect(events.some((e) => e.type === "faceBroken")).toBe(true);
   });
 
-  it("picks up one Load from the Heap at pickupMsPerLoad", () => {
-    const almost = advance(snap({ crewSize: 2, heapLoads: 1, heapOre: 1 }), 9_999);
+  it("Lifts one Load from the Heap at opening Lift time", () => {
+    const almost = advance(snap({ crewSize: 2, heapLoads: 1, heapOre: 1 }), 2_999);
     expect(almost.bagLoads).toBe(0);
     expect(almost.heapLoads).toBe(1);
 
     const picked = advance(
-      snap({ crewSize: 2, heapLoads: 1, heapOre: 1, pickupProgressMs: 9_999 }),
+      snap({ crewSize: 2, heapLoads: 1, heapOre: 1, pickupProgressMs: 2_999 }),
       1,
     );
     expect(picked.bagLoads).toBe(1);
@@ -820,20 +824,67 @@ describe("mining engine advanceWithEvents", () => {
     expect(picked.pickupProgressMs).toBe(0);
   });
 
-  it("departs only when the Hauler's Bag is full", () => {
-    const at99s = advance(
-      snap({ crewSize: 2, heapLoads: 10, heapOre: 10, bagLoads: 0 }),
-      99_999,
-    );
-    expect(at99s.haulRemainingMs).toBe(0);
-    expect(at99s.bagLoads).toBe(9);
+  it("starts a Trip after one Load reaches the Bag with a two-Dwarf Crew", () => {
+    const beforePickup = snap({ crewSize: 2, heapLoads: 1, heapOre: 1 });
+    const lifted = advance(beforePickup, pickupMsPerLoad(0));
+    expect(lifted.bagLoads).toBe(HAULER_GRAB_SIZE);
+    expect(lifted.haulRemainingMs).toBe(HAUL_ROUND_TRIP_MS);
+  });
 
-    const at100s = advance(
-      snap({ crewSize: 2, heapLoads: 10, heapOre: 10, bagLoads: 0 }),
-      100_000,
-    );
-    expect(at100s.haulRemainingMs).toBe(HAUL_ROUND_TRIP_MS);
-    expect(at100s.bagLoads).toBe(10);
+  it("still departs only when the one-Dwarf Bag is full", () => {
+    let state = snap({ crewSize: 1 });
+    for (let i = 0; i < carryCapacityFor(0) - 1; i += 1) {
+      state = advance(state, 10_000);
+      expect(state.haulRemainingMs).toBe(0);
+    }
+    state = advance(state, 10_000);
+    expect(state.haulRemainingMs).toBe(HAUL_ROUND_TRIP_MS);
+    expect(state.bagLoads).toBe(carryCapacityFor(0));
+  });
+
+  it("credits Ore on arrival at the Cart during a two-Dwarf Haul", () => {
+    const before = snap({
+      crewSize: 2,
+      bagLoads: 1,
+      bagOre: 1,
+      haulRemainingMs: HAUL_ROUND_TRIP_MS,
+    });
+    let state = before;
+    let creditSteps = 0;
+    for (let i = 0; i < 80; i += 1) {
+      const prev = state;
+      state = advance(state, 100);
+      if (state.ore > prev.ore) {
+        creditSteps += 1;
+        expect(prev.haulRemainingMs).toBeGreaterThan(HAUL_DELIVERY_MS);
+        expect(state.haulRemainingMs).toBeLessThanOrEqual(HAUL_DELIVERY_MS);
+      }
+    }
+    expect(creditSteps).toBe(1);
+  });
+
+  it("fills the Heap to capacity in about 2200s at opening rates", () => {
+    const cap = heapCapacityFor(0);
+    const haulerRate =
+      1 /
+      (PICKUP_MS_PER_LOAD / 1000 +
+        HAUL_TRAVEL_MS / 1000 +
+        UNLOAD_MS / 1000);
+    const minerRate = 0.1;
+    expect(20 / (minerRate - haulerRate)).toBeCloseTo(2200, 0);
+
+    const atPeak = advance(snap({ crewSize: 2 }), 980_000);
+    expect(atPeak.advance).toBe(0);
+    expect(atPeak.heapLoads).toBeGreaterThanOrEqual(cap / 2 - 1);
+    expect(atPeak.heapLoads).toBeLessThanOrEqual(cap / 2 + 1);
+  });
+
+  it("delivers ten Loads' Ore in 110s at opening rates", () => {
+    const before = snap({ crewSize: 2 });
+    const after = advance(before, 110_000);
+    const through112 = advance(before, 112_000);
+    expect(oreCredited(before, after)).toBeGreaterThanOrEqual(9);
+    expect(oreCredited(before, through112)).toBe(10);
   });
 
   it("keeps the Miner swinging during a two-Dwarf Haul", () => {
@@ -857,17 +908,17 @@ describe("mining engine advanceWithEvents", () => {
     ]);
   });
 
-  it("orders event atMs across drop, pickup, and Bag-full boundaries", () => {
+  it("orders event atMs across drop, pickup, and Trip-start boundaries", () => {
     const { events } = advanceWithEvents(
       snap({ crewSize: 2, heapLoads: 9, heapOre: 9 }),
-      110_000,
+      20_000,
     );
     const atMs = events.map((e) => e.atMs);
     for (let i = 1; i < atMs.length; i += 1) {
       expect(atMs[i]).toBeGreaterThanOrEqual(atMs[i - 1]!);
     }
     expect(events.some((e) => e.type === "swing")).toBe(true);
-    expect(atMs).toContain(100_000);
+    expect(atMs).toContain(3_000);
   });
 
   it("is chunk-neutral for a two-Dwarf Crew", () => {
@@ -876,7 +927,12 @@ describe("mining engine advanceWithEvents", () => {
     for (let i = 0; i < 240; i += 1) {
       many = advance(many, 250);
     }
-    expect(many).toEqual(once);
+    expect(many.advance).toBe(once.advance);
+    expect(many.heapLoads).toBe(once.heapLoads);
+    expect(many.bagLoads).toBe(once.bagLoads);
+    expect(many.haulRemainingMs).toBe(once.haulRemainingMs);
+    expect(many.ore).toBeCloseTo(once.ore, 10);
+    expect(many.smelterProgress).toBeCloseTo(once.smelterProgress, 10);
   });
 });
 
@@ -998,13 +1054,13 @@ describe("mining engine Crew and Heap", () => {
   });
 
   it("exports pickup constants and derived helpers with worked values", () => {
-    expect(PICKUP_MS_PER_LOAD).toBe(10_000);
+    expect(PICKUP_MS_PER_LOAD).toBe(3_000);
     expect(HIRE_HAULER_COST).toBe(160);
     expect(haulSpeedFor(0)).toBe(1);
     expect(haulSpeedFor(1)).toBe(1.25);
     expect(haulSpeedFor(4)).toBe(2);
-    expect(pickupMsPerLoad(0)).toBe(10_000);
-    expect(pickupMsPerLoad(1)).toBe(8_000);
+    expect(pickupMsPerLoad(0)).toBe(3_000);
+    expect(pickupMsPerLoad(1)).toBe(2_400);
     expect(nextHaulSpeedUpgradeCost(0)).toBe(5);
     expect(nextHaulSpeedUpgradeCost(3)).toBe(40);
     expect(HEAP_BASE_LOADS).toBe(20);
@@ -1032,7 +1088,11 @@ describe("mining engine Bag and Haul", () => {
   it("exports Carry Capacity ladder constants and helpers", () => {
     expect(OPENING_CARRY_CAPACITY).toBe(10);
     expect(UPGRADE_CARRY_CAPACITY).toBe(5);
-    expect(HAUL_ROUND_TRIP_MS).toBe(8000);
+    expect(HAUL_TRAVEL_MS).toBe(4_000);
+    expect(UNLOAD_MS).toBe(4_000);
+    expect(HAUL_ROUND_TRIP_MS).toBe(8_000);
+    expect(HAUL_DELIVERY_MS).toBe(6_000);
+    expect(HAULER_GRAB_SIZE).toBe(1);
     expect(carryCapacityFor(0)).toBe(10);
     expect(carryCapacityFor(1)).toBe(15);
     expect(nextCarryCapacityUpgradeCost(0)).toBe(5);
@@ -1067,7 +1127,7 @@ describe("mining engine Bag and Haul", () => {
     expect(atTenthDrop.ore).toBe(0);
     expect(atTenthDrop.haulRemainingMs).toBeGreaterThan(0);
 
-    const atDelivery = advance(snap(), 104_000);
+    const atDelivery = advance(snap(), 102_000);
     expect(atDelivery.ore).toBe(10);
     expect(atDelivery.bagLoads).toBe(0);
     expect(atDelivery.bagOre).toBe(0);

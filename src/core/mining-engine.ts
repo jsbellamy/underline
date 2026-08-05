@@ -44,22 +44,29 @@ export const UPGRADE_CARRY_CAPACITY = 5;
 /** Opening Heap capacity in Loads before Upgrades. */
 export const HEAP_BASE_LOADS = 20;
 
-/** Haul round trip in ms (`2 × leg distance / Haul Speed`; distance and speed owned by the Pane). */
-export const HAUL_ROUND_TRIP_MS = 8000;
+/** Both Haul legs combined; the Pane sizes its walk speed from this. */
+export const HAUL_TRAVEL_MS = 4_000;
+/** Fixed dwell at the Cart while the Bag empties. */
+export const UNLOAD_MS = 4_000;
+/** Haul round trip in ms (`HAUL_TRAVEL_MS + UNLOAD_MS`). */
+export const HAUL_ROUND_TRIP_MS = HAUL_TRAVEL_MS + UNLOAD_MS;
+/** Haul countdown at which the Bag is credited — arrival at the Cart. */
+export const HAUL_DELIVERY_MS = UNLOAD_MS + HAUL_TRAVEL_MS / 2;
+
+/** Loads the Hauler carries per Trip (two-Dwarf Crew only). */
+export const HAULER_GRAB_SIZE = 1;
 
 /** First Upgrade cost in Ingots; doubles each buy. */
 export const FIRST_UPGRADE_COST = 5;
 
 /** Ms to lift one Load from the Heap before Haul Speed upgrades. */
-export const PICKUP_MS_PER_LOAD = 10_000;
+export const PICKUP_MS_PER_LOAD = 3_000;
 
 /** Ingots to hire the second Dwarf (Hauler). */
 export const HIRE_HAULER_COST = 160;
 
 /** Offline catch-up rate vs live. */
 export const OFFLINE_RATE_SCALE = 0.5;
-
-const HAUL_DELIVERY_MS = HAUL_ROUND_TRIP_MS / 2;
 
 export type UpgradeId =
   | "digRate"
@@ -228,8 +235,8 @@ function collectMiningEvents(
 /**
  * Event-jump mining for `dtMs` with per-segment Smelter drain (ADR 0012).
  * One-Dwarf Crew: Ore drops fill the Bag; a full Bag suspends mining for a Haul.
- * Two-Dwarf Crew: Miner drops into the capped Heap; Hauler picks Loads into the
- * Bag and departs only when full (ADR 0014).
+ * Two-Dwarf Crew: Miner drops into the capped Heap; Hauler lifts one Load per
+ * Trip, travels, unloads at the Cart, and returns (ADR 0017).
  */
 export function advanceWithEvents(
   snapshot: MiningSnapshot,
@@ -293,7 +300,8 @@ export function advanceWithEvents(
   };
 
   const startHaulIfBagFull = (): void => {
-    if (bagLoads >= capacity) {
+    const departureLoads = isTwoDwarf ? HAULER_GRAB_SIZE : capacity;
+    if (bagLoads >= departureLoads) {
       haulRemainingMs = HAUL_ROUND_TRIP_MS;
     }
   };
@@ -334,11 +342,12 @@ export function advanceWithEvents(
   };
 
   const pickupAllowed = (): boolean => {
+    const bagRoom = isTwoDwarf ? HAULER_GRAB_SIZE : capacity;
     return (
       isTwoDwarf &&
       haulRemainingMs === 0 &&
       heapLoads > 0 &&
-      bagLoads < capacity
+      bagLoads < bagRoom
     );
   };
 

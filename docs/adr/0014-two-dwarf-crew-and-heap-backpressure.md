@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted (2026-08-03)
+Accepted (2026-08-03); **superseded in part** by [ADR 0017](0017-trip-based-hauling.md)
+(Trip-based hauling — one-Load departure, Lift/Travel/Unload cadence, and
+Cart-arrival delivery).
 
 ## Context
 
@@ -15,6 +17,10 @@ without rewriting Load semantics or desyncing Pane travel speed from economy
 state.
 
 ## Decision
+
+> **Superseded in part by [ADR 0017](0017-trip-based-hauling.md):** Trip-based hauling (one-Load
+> departure, 3 s Lift, Cart-arrival delivery) replaces the full-Bag model and opening pickup
+> cost below. The following records the pre-0017 decision for history.
 
 - **Miner → Heap → Hauler → Cart** are two independently-rated stages joined by
   the capped Heap (Carry Capacity in Loads).

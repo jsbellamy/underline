@@ -30,6 +30,7 @@ not delete history.
 | [0014](0014-two-dwarf-crew-and-heap-backpressure.md) | Two-dwarf crew and Heap backpressure |
 | [0015](0015-presentational-heap-pile-physics.md) | Presentational Heap pile physics |
 | [0016](0016-heap-spill-and-the-unstalled-miner.md) | Heap Spill and the unstalled Miner |
+| [0017](0017-trip-based-hauling.md) | Trip-based hauling |
 
 Earlier decisions settled only in `docs/strip-acquisition-contract.md` or
 `prototype/strip-coherence/NOTES.md` should be promoted here when they start
