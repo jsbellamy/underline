@@ -7,8 +7,10 @@ import {
   HIRE_HAULER_COST,
   nextCarryCapacityUpgradeCost,
   nextDigRateUpgradeCost,
+  nextGrabSizeUpgradeCost,
   nextHaulSpeedUpgradeCost,
   nextSmelterUpgradeCost,
+  nextUnloadSpeedUpgradeCost,
   SCHEMA_VERSION,
 } from "../core/mining-engine";
 import { createBusEndpoint, type BusMessage } from "./bus";
@@ -519,6 +521,164 @@ describe("Pane↔Dock close-the-loop bus", () => {
     expect(session.snapshot.haulSpeedUpgradeCount).toBe(0);
     expect(session.snapshot.ingots).toBe(nextHaulSpeedUpgradeCost(0) - 1);
     expect(btn?.disabled).toBe(true);
+
+    pane.destroy();
+    dock.destroy();
+  });
+
+  it("lets the Dock buy a Grab Size Upgrade and re-render with doubled cost", async () => {
+    const channel = `underline-grab-size-${crypto.randomUUID()}`;
+    const store = memoryStore();
+    const session = createMiningSession({
+      store,
+      now: () => 1_000,
+      snapshot: {
+        ...initialSnapshot(),
+        crewSize: 2,
+        ingots: nextGrabSizeUpgradeCost(0),
+      },
+    });
+    const syncDigRate = vi.fn();
+    const paneRoot = document.createElement("main");
+    const dockRoot = document.createElement("main");
+    const commands: BusMessage[] = [];
+
+    const pane = mountPaneShell(paneRoot, {
+      session,
+      deferPump: true,
+      presenter: {
+        ...createMinePresenter(session),
+        syncDigRate,
+      },
+      dockWindow: {
+        open: vi.fn(async () => {}),
+        close: vi.fn(async () => {}),
+        toggle: vi.fn(async () => true),
+        isOpen: () => false,
+        reposition: vi.fn(async () => {}),
+        syncPositionFromPane: vi.fn(async () => {}),
+        destroy: vi.fn(),
+      },
+      busFactory: (handlers) => {
+        const endpoint = createBusEndpoint(
+          {
+            ...handlers,
+            command(message) {
+              commands.push(message);
+              handlers.command?.(message);
+            },
+          },
+          channel,
+        );
+        return endpoint;
+      },
+    });
+
+    const dock = mountDockShell(dockRoot, {
+      busFactory: (handlers) => createBusEndpoint(handlers, channel),
+    });
+
+    await flushBus();
+    const btn = dockRoot.querySelector<HTMLButtonElement>(
+      "[data-buy-grab-size-upgrade]",
+    );
+    expect(btn?.textContent).toBe(
+      `Buy Grab Size Upgrade (+1 Grab Size) — ${nextGrabSizeUpgradeCost(0)} Ingots`,
+    );
+    btn?.click();
+    await flushBus();
+
+    expect(commands).toContainEqual({
+      type: "command",
+      command: { schemaVersion: SCHEMA_VERSION, name: "buyUpgrade", upgrade: "grabSize" },
+    });
+    expect(session.snapshot.grabSizeUpgradeCount).toBe(1);
+    expect(session.snapshot.ingots).toBe(0);
+    expect(btn?.textContent).toBe(
+      `Buy Grab Size Upgrade (+1 Grab Size) — ${nextGrabSizeUpgradeCost(1)} Ingots`,
+    );
+    expect(syncDigRate).not.toHaveBeenCalled();
+
+    pane.destroy();
+    dock.destroy();
+  });
+
+  it("lets the Dock buy an Unload Speed Upgrade and re-render with doubled cost", async () => {
+    const channel = `underline-unload-speed-${crypto.randomUUID()}`;
+    const store = memoryStore();
+    const session = createMiningSession({
+      store,
+      now: () => 1_000,
+      snapshot: {
+        ...initialSnapshot(),
+        crewSize: 2,
+        ingots: nextUnloadSpeedUpgradeCost(0),
+      },
+    });
+    const syncDigRate = vi.fn();
+    const paneRoot = document.createElement("main");
+    const dockRoot = document.createElement("main");
+    const commands: BusMessage[] = [];
+
+    const pane = mountPaneShell(paneRoot, {
+      session,
+      deferPump: true,
+      presenter: {
+        ...createMinePresenter(session),
+        syncDigRate,
+      },
+      dockWindow: {
+        open: vi.fn(async () => {}),
+        close: vi.fn(async () => {}),
+        toggle: vi.fn(async () => true),
+        isOpen: () => false,
+        reposition: vi.fn(async () => {}),
+        syncPositionFromPane: vi.fn(async () => {}),
+        destroy: vi.fn(),
+      },
+      busFactory: (handlers) => {
+        const endpoint = createBusEndpoint(
+          {
+            ...handlers,
+            command(message) {
+              commands.push(message);
+              handlers.command?.(message);
+            },
+          },
+          channel,
+        );
+        return endpoint;
+      },
+    });
+
+    const dock = mountDockShell(dockRoot, {
+      busFactory: (handlers) => createBusEndpoint(handlers, channel),
+    });
+
+    await flushBus();
+    const btn = dockRoot.querySelector<HTMLButtonElement>(
+      "[data-buy-unload-speed-upgrade]",
+    );
+    expect(btn?.textContent).toBe(
+      `Buy Unload Speed Upgrade (+0.5 Unload Speed) — ${nextUnloadSpeedUpgradeCost(0)} Ingots`,
+    );
+    btn?.click();
+    await flushBus();
+
+    expect(commands).toContainEqual({
+      type: "command",
+      command: {
+        schemaVersion: SCHEMA_VERSION,
+        name: "buyUpgrade",
+        upgrade: "unloadSpeed",
+      },
+    });
+    expect(session.snapshot.unloadSpeedUpgradeCount).toBe(1);
+    expect(session.snapshot.ingots).toBe(0);
+    expect(btn?.textContent).toBe(
+      `Buy Unload Speed Upgrade (+0.5 Unload Speed) — ${nextUnloadSpeedUpgradeCost(1)} Ingots`,
+    );
+    expect(syncDigRate).not.toHaveBeenCalled();
 
     pane.destroy();
     dock.destroy();

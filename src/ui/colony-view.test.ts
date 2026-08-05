@@ -6,9 +6,11 @@ import {
   HIRE_HAULER_COST,
   initialSnapshot,
   nextCarryCapacityUpgradeCost,
+  nextGrabSizeUpgradeCost,
   nextHaulSpeedUpgradeCost,
   nextPickDamageUpgradeCost,
   nextSmelterUpgradeCost,
+  nextUnloadSpeedUpgradeCost,
 } from "../core/mining-engine";
 import { toWireSnapshot } from "../core/wire-snapshot";
 import { mountColonyView } from "./colony-view";
@@ -267,6 +269,16 @@ describe("mountColonyView", () => {
     view.destroy();
   });
 
+  it("hides the Bag row for a two-Dwarf Crew and shows it for a solo Dwarf", () => {
+    const host = document.createElement("div");
+    const view = mountColonyView(host);
+    view.render(toWireSnapshot({ ...initialSnapshot(), crewSize: 2 }));
+    expect(host.querySelector("[data-bag]")).toBeNull();
+    view.render(toWireSnapshot({ ...initialSnapshot(), crewSize: 1 }));
+    expect(host.querySelector("[data-bag]")?.textContent).toBe("0 / 10 loads");
+    view.destroy();
+  });
+
   it("shows Crew as 1 Dwarf or 2 Dwarves with roles", () => {
     const host = document.createElement("div");
     const view = mountColonyView(host);
@@ -338,6 +350,108 @@ describe("mountColonyView", () => {
     view.destroy();
   });
 
+  it("shows Grab Size and Unload Speed upgrades only for a two-Dwarf Crew", () => {
+    const host = document.createElement("div");
+    const view = mountColonyView(host);
+    view.render(toWireSnapshot({ ...initialSnapshot(), crewSize: 1 }));
+    expect(
+      host.querySelector<HTMLButtonElement>("[data-buy-grab-size-upgrade]")?.hidden,
+    ).toBe(true);
+    expect(
+      host.querySelector<HTMLButtonElement>("[data-buy-unload-speed-upgrade]")?.hidden,
+    ).toBe(true);
+    view.render(toWireSnapshot({ ...initialSnapshot(), crewSize: 2 }));
+    expect(
+      host.querySelector<HTMLButtonElement>("[data-buy-grab-size-upgrade]")?.hidden,
+    ).toBe(false);
+    expect(
+      host.querySelector<HTMLButtonElement>("[data-buy-unload-speed-upgrade]")?.hidden,
+    ).toBe(false);
+    view.destroy();
+  });
+
+  it("shows the Grab Size Upgrade offer and disables it when Ingots are short", () => {
+    const host = document.createElement("div");
+    const view = mountColonyView(host);
+    view.render(
+      toWireSnapshot({
+        ...initialSnapshot(),
+        crewSize: 2,
+        grabSizeUpgradeCount: 0,
+        ingots: 4,
+      }),
+    );
+    const btn = host.querySelector<HTMLButtonElement>("[data-buy-grab-size-upgrade]");
+    expect(btn?.textContent).toBe(
+      `Buy Grab Size Upgrade (+1 Grab Size) — ${nextGrabSizeUpgradeCost(0)} Ingots`,
+    );
+    expect(btn?.disabled).toBe(true);
+    view.render(
+      toWireSnapshot({
+        ...initialSnapshot(),
+        crewSize: 2,
+        grabSizeUpgradeCount: 0,
+        ingots: 5,
+      }),
+    );
+    expect(btn?.disabled).toBe(false);
+    view.render(
+      toWireSnapshot({
+        ...initialSnapshot(),
+        crewSize: 2,
+        grabSizeUpgradeCount: 1,
+        ingots: 9,
+      }),
+    );
+    expect(btn?.textContent).toBe(
+      `Buy Grab Size Upgrade (+1 Grab Size) — ${nextGrabSizeUpgradeCost(1)} Ingots`,
+    );
+    expect(btn?.disabled).toBe(true);
+    view.destroy();
+  });
+
+  it("shows the Unload Speed Upgrade offer and disables it when Ingots are short", () => {
+    const host = document.createElement("div");
+    const view = mountColonyView(host);
+    view.render(
+      toWireSnapshot({
+        ...initialSnapshot(),
+        crewSize: 2,
+        unloadSpeedUpgradeCount: 0,
+        ingots: 4,
+      }),
+    );
+    const btn = host.querySelector<HTMLButtonElement>(
+      "[data-buy-unload-speed-upgrade]",
+    );
+    expect(btn?.textContent).toBe(
+      `Buy Unload Speed Upgrade (+0.5 Unload Speed) — ${nextUnloadSpeedUpgradeCost(0)} Ingots`,
+    );
+    expect(btn?.disabled).toBe(true);
+    view.render(
+      toWireSnapshot({
+        ...initialSnapshot(),
+        crewSize: 2,
+        unloadSpeedUpgradeCount: 0,
+        ingots: 5,
+      }),
+    );
+    expect(btn?.disabled).toBe(false);
+    view.render(
+      toWireSnapshot({
+        ...initialSnapshot(),
+        crewSize: 2,
+        unloadSpeedUpgradeCount: 1,
+        ingots: 9,
+      }),
+    );
+    expect(btn?.textContent).toBe(
+      `Buy Unload Speed Upgrade (+0.5 Unload Speed) — ${nextUnloadSpeedUpgradeCost(1)} Ingots`,
+    );
+    expect(btn?.disabled).toBe(true);
+    view.destroy();
+  });
+
   it("shows Hire a Hauler and disables it once hired", () => {
     const host = document.createElement("div");
     const view = mountColonyView(host);
@@ -357,10 +471,10 @@ describe("mountColonyView", () => {
     view.destroy();
   });
 
-  it("orders upgrade buttons Dig Rate, Pick Damage, Smelter, Carry Capacity, Haul Speed, Hire Hauler", () => {
+  it("orders upgrade buttons Dig Rate, Pick Damage, Smelter, Carry Capacity, Haul Speed, Grab Size, Unload Speed, Hire Hauler", () => {
     const host = document.createElement("div");
     const view = mountColonyView(host);
-    view.render(toWireSnapshot(initialSnapshot()));
+    view.render(toWireSnapshot({ ...initialSnapshot(), crewSize: 2 }));
     const row = host.querySelector(".dock-colony-upgrade");
     const selectors = [
       "[data-buy-upgrade]",
@@ -368,10 +482,14 @@ describe("mountColonyView", () => {
       "[data-buy-smelter-upgrade]",
       "[data-buy-carry-capacity-upgrade]",
       "[data-buy-haul-speed-upgrade]",
+      "[data-buy-grab-size-upgrade]",
+      "[data-buy-unload-speed-upgrade]",
       "[data-hire-hauler]",
     ];
     const children = Array.from(row?.children ?? []);
     expect(children.map((el) => el.matches(selectors.join(", ")))).toEqual([
+      true,
+      true,
       true,
       true,
       true,
@@ -393,6 +511,30 @@ describe("mountColonyView", () => {
     host.querySelector<HTMLButtonElement>("[data-buy-haul-speed-upgrade]")?.click();
     expect(onBuy).toHaveBeenCalledOnce();
     expect(onBuy).toHaveBeenCalledWith("haulSpeed");
+    view.destroy();
+  });
+
+  it("fires onBuyUpgrade with grabSize when the Grab Size Upgrade is pressed", () => {
+    const onBuy = vi.fn();
+    const host = document.createElement("div");
+    const view = mountColonyView(host, { onBuyUpgrade: onBuy });
+    view.render(toWireSnapshot({ ...initialSnapshot(), crewSize: 2, ingots: 5 }));
+    host.querySelector<HTMLButtonElement>("[data-buy-grab-size-upgrade]")?.click();
+    expect(onBuy).toHaveBeenCalledOnce();
+    expect(onBuy).toHaveBeenCalledWith("grabSize");
+    view.destroy();
+  });
+
+  it("fires onBuyUpgrade with unloadSpeed when the Unload Speed Upgrade is pressed", () => {
+    const onBuy = vi.fn();
+    const host = document.createElement("div");
+    const view = mountColonyView(host, { onBuyUpgrade: onBuy });
+    view.render(toWireSnapshot({ ...initialSnapshot(), crewSize: 2, ingots: 5 }));
+    host
+      .querySelector<HTMLButtonElement>("[data-buy-unload-speed-upgrade]")
+      ?.click();
+    expect(onBuy).toHaveBeenCalledOnce();
+    expect(onBuy).toHaveBeenCalledWith("unloadSpeed");
     view.destroy();
   });
 
