@@ -856,7 +856,7 @@ def test_validate_review_dir_resolves_legacy_recorded_corpus_path(
     live_good = tmp_path / "corpus/live/inbox/binding-good.png"
     live_good.parent.mkdir(parents=True, exist_ok=True)
     live_good.write_bytes(fx["good_path"].read_bytes())
-    recorded_good = "prototype/strip-coherence/inbox/binding-good.png"
+    recorded_good = f"{cp.LEGACY_CORPUS_PREFIXES[0]}/inbox/binding-good.png"
     packet = gr.build_promotion_verification_packet(
         root=fx["root"],
         promotion_id=fx["promo_id"],

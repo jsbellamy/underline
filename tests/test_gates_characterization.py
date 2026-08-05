@@ -21,19 +21,12 @@ carried over from either the #173 or #208 issue text.
 from __future__ import annotations
 
 import json
-import pathlib
 
 import pytest
 from pipeline import strip as S
+from tests.support.corpus_paths import CORPUS_ROOT, INBOX
 
-INBOX = pathlib.Path(__file__).resolve().parents[1] / "prototype" / "strip-coherence" / "inbox"
-MANIFEST = (
-    pathlib.Path(__file__).resolve().parents[1]
-    / "prototype"
-    / "strip-coherence"
-    / "prompts"
-    / "manifest.json"
-)
+MANIFEST = CORPUS_ROOT / "prompts" / "manifest.json"
 TOLERANCE = 0.002
 
 MOTION_CLASS = {

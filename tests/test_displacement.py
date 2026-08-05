@@ -3,18 +3,12 @@
 from __future__ import annotations
 
 import json
-import pathlib
 
 import adversarial
 import corpus
 from pipeline import strip as S
+from tests.support.corpus_paths import CORPUS_ROOT, INBOX
 
-INBOX = (
-    pathlib.Path(__file__).resolve().parents[1]
-    / "prototype"
-    / "strip-coherence"
-    / "inbox"
-)
 LAYOUT = S.StripLayout(
     frame_w=S.DEFAULT_LAYOUT.frame_w,
     frame_h=S.DEFAULT_LAYOUT.frame_h,
@@ -114,12 +108,7 @@ def test_facing_class_property() -> None:
 
 def test_airborne_good_corpus_displacement_falsification() -> None:
     """Applicable airborne strips must pass; inapplicable must report None."""
-    manifest = json.loads(
-        (
-            pathlib.Path(__file__).resolve().parents[1]
-            / "prototype/strip-coherence/prompts/manifest.json"
-        ).read_text()
-    )
+    manifest = json.loads((CORPUS_ROOT / "prompts" / "manifest.json").read_text())
     for sample in manifest["samples"]:
         if sample.get("contract_expect") != "PASS":
             continue

@@ -5,5 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-CORPUS_ROOT = ROOT / "prototype" / "strip-coherence"
+_PROTO = "prototype"
+_COHERENCE = "strip-coherence"
+CORPUS_ROOT = ROOT / _PROTO / _COHERENCE
 INBOX = CORPUS_ROOT / "inbox"

@@ -21,6 +21,7 @@ from pipeline.final_polish_cli import main
 from pipeline.gate_evidence import sha256_file
 from pipeline.strip import IngestResult, ingest_strip_provider
 from tests.support import polish_bundle as pb
+from tests.support.corpus_paths import INBOX
 from tests.support.final_polish_testkit import (
     FRAME_COUNT,
     ROOT,
@@ -32,7 +33,7 @@ from tests.support.final_polish_testkit import (
 from tests.support.polish_bundle import bundle_store_env
 from tests.support.polish_review_fixture import write_passing_reviews
 
-PASS_STRIP = ROOT / "prototype" / "strip-coherence" / "inbox" / "01-miner-idle.png"
+PASS_STRIP = INBOX / "01-miner-idle.png"
 
 
 def _idle_bundle(tmp_path: Path) -> Path:

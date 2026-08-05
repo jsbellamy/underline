@@ -1,4 +1,4 @@
-"""Adversarial gate checks using prototype/strip-coherence/adversarial helpers."""
+"""Adversarial gate checks using corpus adversarial helpers."""
 
 from __future__ import annotations
 

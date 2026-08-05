@@ -12,9 +12,9 @@ import pytest
 from pipeline.final_polish import check_bundle
 from pipeline.final_polish_cli import main as final_polish_cli_main
 from tests.support import polish_bundle as pb
+from tests.support.corpus_paths import INBOX
 
 ROOT = Path(__file__).resolve().parents[1]
-INBOX = ROOT / "prototype" / "strip-coherence" / "inbox"
 PASS_STRIP = INBOX / "01-miner-idle.png"
 WALK_STRIP = INBOX / "05-miner-walk.png"
 
