@@ -161,6 +161,8 @@ export function mountPaneShell(
   let lastPublishedCrewSize = session.snapshot.crewSize;
   let lastPublishedHeapLoads = session.snapshot.heapLoads;
   let lastPublishedHaulSpeedUpgrades = session.snapshot.haulSpeedUpgradeCount;
+  let lastPublishedGrabSizeUpgrades = session.snapshot.grabSizeUpgradeCount;
+  let lastPublishedUnloadSpeedUpgrades = session.snapshot.unloadSpeedUpgradeCount;
 
   const pane = document.createElement("div");
   pane.className = "pane";
@@ -213,6 +215,8 @@ export function mountPaneShell(
     lastPublishedCrewSize = session.snapshot.crewSize;
     lastPublishedHeapLoads = session.snapshot.heapLoads;
     lastPublishedHaulSpeedUpgrades = session.snapshot.haulSpeedUpgradeCount;
+    lastPublishedGrabSizeUpgrades = session.snapshot.grabSizeUpgradeCount;
+    lastPublishedUnloadSpeedUpgrades = session.snapshot.unloadSpeedUpgradeCount;
   }
 
   function handleCommand(
@@ -276,7 +280,9 @@ export function mountPaneShell(
       snap.carryCapacityUpgradeCount !== lastPublishedCarryCapacityUpgrades ||
       snap.crewSize !== lastPublishedCrewSize ||
       snap.heapLoads !== lastPublishedHeapLoads ||
-      snap.haulSpeedUpgradeCount !== lastPublishedHaulSpeedUpgrades
+      snap.haulSpeedUpgradeCount !== lastPublishedHaulSpeedUpgrades ||
+      snap.grabSizeUpgradeCount !== lastPublishedGrabSizeUpgrades ||
+      snap.unloadSpeedUpgradeCount !== lastPublishedUnloadSpeedUpgrades
     ) {
       publishSnapshot();
     }

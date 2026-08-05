@@ -10,7 +10,9 @@ import {
   nextPickDamageUpgradeCost,
   nextSmelterUpgradeCost,
   nextCarryCapacityUpgradeCost,
+  nextGrabSizeUpgradeCost,
   nextHaulSpeedUpgradeCost,
+  nextUnloadSpeedUpgradeCost,
   pickDamageFor,
   smelterThroughputFor,
   HIRE_HAULER_COST,
@@ -163,6 +165,20 @@ export function mountColonyView(
   haulSpeedUpgradeBtn.addEventListener("click", () => {
     options.onBuyUpgrade?.("haulSpeed");
   });
+  const grabSizeUpgradeBtn = document.createElement("button");
+  grabSizeUpgradeBtn.type = "button";
+  grabSizeUpgradeBtn.className = "dock-buy-grab-size-upgrade";
+  grabSizeUpgradeBtn.dataset["buyGrabSizeUpgrade"] = "";
+  grabSizeUpgradeBtn.addEventListener("click", () => {
+    options.onBuyUpgrade?.("grabSize");
+  });
+  const unloadSpeedUpgradeBtn = document.createElement("button");
+  unloadSpeedUpgradeBtn.type = "button";
+  unloadSpeedUpgradeBtn.className = "dock-buy-unload-speed-upgrade";
+  unloadSpeedUpgradeBtn.dataset["buyUnloadSpeedUpgrade"] = "";
+  unloadSpeedUpgradeBtn.addEventListener("click", () => {
+    options.onBuyUpgrade?.("unloadSpeed");
+  });
   const hireHaulerBtn = document.createElement("button");
   hireHaulerBtn.type = "button";
   hireHaulerBtn.className = "dock-hire-hauler";
@@ -176,6 +192,8 @@ export function mountColonyView(
     smelterUpgradeBtn,
     carryCapacityUpgradeBtn,
     haulSpeedUpgradeBtn,
+    grabSizeUpgradeBtn,
+    unloadSpeedUpgradeBtn,
     hireHaulerBtn,
   );
 
@@ -211,6 +229,10 @@ export function mountColonyView(
       snapshot.carryCapacityUpgradeCount,
     );
     const haulSpeedCost = nextHaulSpeedUpgradeCost(snapshot.haulSpeedUpgradeCount);
+    const grabSizeCost = nextGrabSizeUpgradeCost(snapshot.grabSizeUpgradeCount);
+    const unloadSpeedCost = nextUnloadSpeedUpgradeCost(
+      snapshot.unloadSpeedUpgradeCount,
+    );
     const throughput = smelterThroughputFor(snapshot.smelterUpgradeCount);
     const capacity = carryCapacityFor(snapshot.carryCapacityUpgradeCount);
     const heapCapacity = heapCapacityFor(snapshot.carryCapacityUpgradeCount);
@@ -223,12 +245,18 @@ export function mountColonyView(
     ingotsDd.textContent = formatAmount(snapshot.ingots);
     smelterDd.textContent = `${formatRate(throughput)} Ore/sec`;
     hardnessDd.textContent = String(Math.round(hardnessFor(snapshot.advance)));
-    bagDd.textContent = `${snapshot.bagLoads} / ${capacity} loads`;
     if (snapshot.crewSize === 1) {
+      if (!bagDt.isConnected) {
+        status.insertBefore(bagDt, crewDt);
+        status.insertBefore(bagDd, crewDt);
+      }
+      bagDd.textContent = `${snapshot.bagLoads} / ${capacity} loads`;
       crewDd.textContent = "1 Dwarf";
       heapDd.textContent = "—";
       delete heapDd.dataset["heapFull"];
     } else {
+      bagDt.remove();
+      bagDd.remove();
       crewDd.textContent = "2 Dwarves — Miner, Hauler";
       heapDd.textContent = `${snapshot.heapLoads} / ${heapCapacity} loads`;
       if (snapshot.heapLoads >= heapCapacity) {
@@ -252,6 +280,15 @@ export function mountColonyView(
     haulSpeedUpgradeBtn.textContent =
       `Buy Haul Speed Upgrade (+0.25 Haul Speed) — ${haulSpeedCost} Ingots`;
     haulSpeedUpgradeBtn.disabled = snapshot.ingots < haulSpeedCost;
+    haulSpeedUpgradeBtn.hidden = snapshot.crewSize !== 2;
+    grabSizeUpgradeBtn.textContent =
+      `Buy Grab Size Upgrade (+1 Grab Size) — ${grabSizeCost} Ingots`;
+    grabSizeUpgradeBtn.disabled = snapshot.ingots < grabSizeCost;
+    grabSizeUpgradeBtn.hidden = snapshot.crewSize !== 2;
+    unloadSpeedUpgradeBtn.textContent =
+      `Buy Unload Speed Upgrade (+0.5 Unload Speed) — ${unloadSpeedCost} Ingots`;
+    unloadSpeedUpgradeBtn.disabled = snapshot.ingots < unloadSpeedCost;
+    unloadSpeedUpgradeBtn.hidden = snapshot.crewSize !== 2;
     if (snapshot.crewSize === 1) {
       hireHaulerBtn.textContent = `Hire a Hauler — ${HIRE_HAULER_COST} Ingots`;
       hireHaulerBtn.disabled = snapshot.ingots < HIRE_HAULER_COST;
