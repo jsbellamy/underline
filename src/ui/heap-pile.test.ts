@@ -1,12 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { fallingOrePosition, haulerPickupTargetX } from "./heap-pile";
+import { fallingOrePosition } from "./heap-pile";
 import {
-  DWARF_FRAME_W,
-  DWARF_SCALE,
   FACE_X,
-  HAULER_GRAB_X,
   HAULER_MARK_X,
-  HAULER_PICKUP_X,
   HEAP_BIN_CEILING_Y,
   HEAP_BIN_EAST_X,
   HEAP_BIN_FLOOR_Y,
@@ -40,7 +36,6 @@ describe("pane-layout heap exports", () => {
     expect(HEAP_BIN_EAST_X).toBe(432);
     expect(HEAP_BIN_CEILING_Y).toBe(112);
     expect(HEAP_SPAWN_X).toBe(416);
-    expect(HAULER_GRAB_X).toBe(361);
     expect(HEAP_GRAB_Y).toBe(24);
     expect(HEAP_GRAB_Y).toBe(HEAP_BIN_FLOOR_Y + ORE_SIZE / 2);
     expect(HEAP_PILE_SEED).toBe(1);
@@ -49,9 +44,6 @@ describe("pane-layout heap exports", () => {
     expect(HEAP_BIN_EAST_X).toBe(FACE_X);
     expect(HEAP_BIN_CEILING_Y).toBe(PANE_HEIGHT);
     expect(HEAP_SPAWN_X).toBe(FACE_X - ORE_SIZE / 2);
-    expect(HAULER_GRAB_X).toBe(
-      HAULER_PICKUP_X + (DWARF_FRAME_W * DWARF_SCALE) / 2,
-    );
   });
 });
 
@@ -84,24 +76,5 @@ describe("fallingOrePosition", () => {
   it("throws when progress is outside 0…1", () => {
     expect(() => fallingOrePosition(0, -0.1)).toThrow();
     expect(() => fallingOrePosition(0, 1.1)).toThrow();
-  });
-});
-
-describe("haulerPickupTargetX", () => {
-  it("defines a fixed pickup mark 130 px east of the Hauler stand", () => {
-    expect(HAULER_PICKUP_X).toBe(322);
-  });
-
-  const representativeDepths = [1, 3, 5, 6, 10, 20];
-
-  for (const heapLoads of representativeDepths) {
-    it(`returns the fixed pickup mark when heapLoads is ${heapLoads}`, () => {
-      expect(haulerPickupTargetX(heapLoads)).toBe(322);
-    });
-  }
-
-  it("throws when heapLoads is zero or negative", () => {
-    expect(() => haulerPickupTargetX(0)).toThrow();
-    expect(() => haulerPickupTargetX(-1)).toThrow();
   });
 });

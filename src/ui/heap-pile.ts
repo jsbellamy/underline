@@ -1,7 +1,6 @@
 import {
   DWARF_FRAME_W,
   DWARF_SCALE,
-  HAULER_PICKUP_X,
   HEAP_BOTTOM,
   HEAP_EAST_X,
   MINING_MARK_X,
@@ -30,11 +29,4 @@ export function fallingOrePosition(
     throw new Error(`Invalid fall progress: ${progress}`);
   }
   return bagOrePosition(progress);
-}
-
-export function haulerPickupTargetX(heapLoads: number): number {
-  if (!Number.isInteger(heapLoads) || heapLoads <= 0) {
-    throw new Error(`Invalid heapLoads for hauler pickup: ${heapLoads}`);
-  }
-  return HAULER_PICKUP_X;
 }

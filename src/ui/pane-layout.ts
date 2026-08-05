@@ -4,7 +4,7 @@ Composition (#318): no Dig Rate chrome — Tunnel uses the full 480×112;
 Dig Rate / Ore / Ingots readouts are Dock-only. Dwarf draws at 3× integer scale.
 */
 
-import { HAUL_ROUND_TRIP_MS } from "../core/mining-engine";
+import { HAUL_ROUND_TRIP_MS, HAUL_TRAVEL_MS } from "../core/mining-engine";
 
 export const PANE_WIDTH = 480;
 export const PANE_HEIGHT = 112;
@@ -60,12 +60,26 @@ export const MINING_MARK_X = FACE_X - dwarfW;
 
 /** The Hauler's stand while lifting Loads — east of the Cart mark. */
 export const HAULER_MARK_X = CART_MARK_X + CART_WIDTH;
-/** Fixed pickup destination east of the stand — 130 px one-way excursion. */
-export const HAULER_PICKUP_X = HAULER_MARK_X + 130;
 /** Heap bin west edge — aligns with the Hauler stand. */
 export const HEAP_BIN_WEST_X = HAULER_MARK_X;
-/** Hauler sprite centre at the far end of its fixed pickup excursion. */
-export const HAULER_GRAB_X = HAULER_PICKUP_X + (DWARF_FRAME_W * DWARF_SCALE) / 2;
+
+/** One walk speed for every Dwarf leg; sized so the widest possible lane
+    (Cart mark to the Heap bin's east wall) crosses in one travel leg. */
+export const HAULER_WALK_PX_PER_MS =
+  (HEAP_BIN_EAST_X - CART_MARK_X) / (HAUL_TRAVEL_MS / 2);
+
+/** Converts a pile body's Pane x into the sprite left where the Hauler's
+    hands meet it, clamped inside the Tunnel. */
+export function haulerStationFor(bodyX: number): number {
+  const dwarfW = DWARF_FRAME_W * DWARF_SCALE;
+  return Math.max(
+    CART_MARK_X,
+    Math.min(
+      Math.round(bodyX - HAULER_HAND_DX - ORE_SIZE / 2),
+      HEAP_BIN_EAST_X - dwarfW,
+    ),
+  );
+}
 
 /** Presentation Haul speed derived from the engine's one Haul duration. */
 export const HAUL_SPEED_PX_PER_MS =
