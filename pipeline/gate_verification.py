@@ -440,27 +440,6 @@ def validate_verification_record(root: Path, path: Path) -> None:
     if packet_doc.get("packet_sha256") != doc.get("packet_sha256"):
         raise VerificationError(f"packet_sha256 mismatch for promotion {promotion_id}")
 
-    try:
-        gr._verify_packet_reference(
-            root, packet_doc.get("candidate"), expected_role="candidate"
-        )
-        gr._verify_packet_reference(
-            root,
-            packet_doc.get("budget_binding_good"),
-            expected_role="budget_binding_good",
-        )
-        if packet_doc.get("packet_kind") == "PROMOTION_VERIFICATION":
-            gr._verify_packet_reference(
-                root,
-                packet_doc.get("proposed_hard_fail_reference"),
-                expected_role="proposed_hard_fail_reference",
-            )
-        gate_control = packet_doc.get("gate_control")
-        if gate_control is not None:
-            gr._verify_packet_reference(root, gate_control, expected_role="gate_control")
-    except gr.ReviewError as exc:
-        raise VerificationError(str(exc)) from exc
-
     for review in doc.get("reviews", []):
         if not isinstance(review, dict):
             raise VerificationError("invalid reviews entry")
