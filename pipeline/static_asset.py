@@ -12,7 +12,7 @@ from typing import Any, Literal, Sequence
 from pipeline import canonical
 from pipeline.cell_raster import RasterError, write_cells
 from pipeline.cell_raster import read_cells as _read_cells
-from pipeline.gate_evidence import EvidenceError, sha256_bytes, sha256_file, write_json_immutable
+from pipeline.gate_evidence import EvidenceError, manifest_sha256, sha256_bytes, sha256_file, write_json_immutable
 from pipeline.recovery import MIN_GRID_SCORE, detect_pitch, key, raw_clipping, raw_gates, sample_cells
 from pipeline.strip import Cell
 
@@ -385,10 +385,6 @@ def _load_manifest(bundle_root: Path) -> dict[str, Any]:
     return doc
 
 
-def _manifest_sha256(bundle_root: Path) -> str:
-    return sha256_file(bundle_root / "manifest.json")
-
-
 def _fingerprint_polished_hashes(polished_hashes: Sequence[str]) -> str:
     joined = ":".join(polished_hashes)
     return sha256_bytes(joined.encode("utf-8"))
@@ -758,7 +754,7 @@ def check_static_bundle(bundle_root: Path) -> StaticAssetCheckResult:
         outcome=outcome,
         structural=structural,
         delta=delta,
-        manifest_sha256=_manifest_sha256(bundle_root),
+        manifest_sha256=manifest_sha256(bundle_root),
         provider_sha256=sha256_file(bundle_root / manifest["provider"]["relative_path"]),
         spec_sha256=sha256_file(bundle_root / "spec.json"),
         palette_sha256=sha256_file(bundle_root / "palette.json"),
@@ -869,10 +865,6 @@ def _ensure_release_items(bundle_root: Path, result: StaticAssetCheckResult) -> 
     return release_paths
 
 
-def _canonical_json(value: object) -> object:
-    return json.loads(json.dumps(value, sort_keys=True))
-
-
 def finalize_static_bundle(bundle_root: Path) -> tuple[Path, list[Path]]:
     """Write an immutable report; on PASS, copy polished items to release/."""
     check = check_static_bundle(bundle_root)
@@ -881,7 +873,7 @@ def finalize_static_bundle(bundle_root: Path) -> tuple[Path, list[Path]]:
 
     if report_path.exists():
         existing = json.loads(report_path.read_text())
-        if _canonical_json(existing) != _canonical_json(payload):
+        if canonical.canonical_value(existing) != canonical.canonical_value(payload):
             raise InvalidBundleError(
                 f"immutable report conflict: {report_path.name}",
                 reason_code="report_conflict",

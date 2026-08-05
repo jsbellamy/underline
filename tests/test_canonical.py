@@ -42,6 +42,12 @@ def test_packet_bytes_matches_compact_sorted_form() -> None:
     assert canonical.packet_bytes(doc) == expected
 
 
+def test_canonical_value_round_trip() -> None:
+    payload = {"z": 1, "a": {"b": 2}, "tags": ["x", "y"]}
+    expected = json.loads(json.dumps(payload, sort_keys=True))
+    assert canonical.canonical_value(payload) == expected
+
+
 def test_canonical_module_does_not_import_gate_evidence() -> None:
     source = inspect.getsource(canonical)
     assert "gate_evidence" not in source

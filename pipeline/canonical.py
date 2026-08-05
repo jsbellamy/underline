@@ -9,6 +9,7 @@ from typing import Any, Mapping
 
 __all__ = [
     "BindingError",
+    "canonical_value",
     "manifest_bytes",
     "packet_bytes",
     "self_excluding_digest",
@@ -26,6 +27,10 @@ class BindingError(ValueError):
 
 def packet_bytes(doc: Mapping[str, Any]) -> bytes:
     return json.dumps(dict(doc), sort_keys=True, separators=(",", ":")).encode()
+
+
+def canonical_value(value: object) -> object:
+    return json.loads(json.dumps(value, sort_keys=True))
 
 
 def manifest_bytes(doc: Mapping[str, Any]) -> bytes:

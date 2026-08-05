@@ -11,6 +11,7 @@ from unittest.mock import patch
 import pytest
 
 from pipeline import evidence_store as es
+from pipeline.gate_evidence import manifest_sha256, sha256_file
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -92,6 +93,14 @@ def test_module_performs_no_file_io() -> None:
     assert "write_text" not in source
     assert "open(" not in source
     assert "json." not in source
+
+
+def test_manifest_sha256_matches_manifest_file(tmp_path: Path) -> None:
+    bundle_root = tmp_path / "bundle"
+    bundle_root.mkdir()
+    manifest = bundle_root / "manifest.json"
+    manifest.write_text('{"schema": "test/0", "value": 1}\n')
+    assert manifest_sha256(bundle_root) == sha256_file(manifest)
 
 
 def test_id_helpers_match_acquire_formats() -> None:
