@@ -35,7 +35,7 @@ Swinging while overflow Ore is destroyed instead of entering the economy.
   so the Heap's buffer and the Bag's size tune independently. The cap is
   `20 + 5n` and still grows by `UPGRADE_CARRY_CAPACITY` per Carry Capacity
   Upgrade, preserving ADR 0014's "Carry Capacity buys Heap buffer" property.
-- **Known consequence:** the cap exceeds `HEAP_RENDER_CEILING` 24 from the first
+- **Known consequence:** the cap exceeds `HEAP_RENDER_CEILING` 20 from the first
   Carry Capacity Upgrade, so past that point the drawn pile tops out before the
   Heap is economically full. Accepted: the falling-and-vanishing Spill body is
   the tell, not the pile's height.
