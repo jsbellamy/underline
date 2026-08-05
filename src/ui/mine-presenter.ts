@@ -704,11 +704,7 @@ export function createMinePresenter(
     }
     const snap = session.snapshot;
     if (snap.haulRemainingMs > 0) {
-      const tripPhase = tripPhaseFor(snap);
-      if (!tripPhase) {
-        return;
-      }
-      const leg = tripPhase.leg;
+      const leg = tripPhaseFor(snap)!.leg;
       if (leg === "unload") {
         hauler.setHauling(null, simNowMs);
         return;

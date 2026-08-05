@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { initialSnapshot } from "./mining-engine";
+import { HAUL_TRAVEL_MS, initialSnapshot, unloadMsFor } from "./mining-engine";
 import { tripPhaseFor } from "./trip-phase";
 
 function snap(haulRemainingMs: number, unloadSpeedUpgradeCount = 0) {
@@ -40,16 +40,29 @@ describe("tripPhaseFor", () => {
     });
   });
 
-  describe("one Unload Speed upgrade (unloadMs ≈ 2667, round trip ≈ 6667)", () => {
-    const cases: Array<[number, "out" | "unload" | "back"]> = [
-      [4667, "out"],
-      [4666, "unload"],
-      [2001, "unload"],
-      [2000, "back"],
-    ];
+  describe("one Unload Speed upgrade (thresholds from unloadMsFor + HAUL_TRAVEL_MS)", () => {
+    const unloadMs = unloadMsFor(1);
+    const halfTravel = HAUL_TRAVEL_MS / 2;
+    const outUnloadEdge = unloadMs + halfTravel;
 
-    it.each(cases)("haulRemainingMs %i → %s", (haulRemainingMs, leg) => {
-      expect(tripPhaseFor(snap(haulRemainingMs, 1))!.leg).toBe(leg);
+    it("out leg above unloadMs + halfTravel", () => {
+      expect(tripPhaseFor(snap(Math.ceil(outUnloadEdge) + 1, 1))!.leg).toBe(
+        "out",
+      );
+    });
+
+    it("unload leg at unloadMs + halfTravel", () => {
+      expect(tripPhaseFor(snap(Math.floor(outUnloadEdge), 1))!.leg).toBe(
+        "unload",
+      );
+    });
+
+    it("unload leg above halfTravel", () => {
+      expect(tripPhaseFor(snap(halfTravel + 1, 1))!.leg).toBe("unload");
+    });
+
+    it("back leg at halfTravel", () => {
+      expect(tripPhaseFor(snap(halfTravel, 1))!.leg).toBe("back");
     });
   });
 });
