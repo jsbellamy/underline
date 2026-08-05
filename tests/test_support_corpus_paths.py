@@ -9,7 +9,6 @@ from tests.support.corpus_paths import CORPUS_ROOT, INBOX, ROOT
 _ALLOWED_INLINE_CORPUS_PATH_FILES = frozenset(
     {
         "tests/test_afk_operational_docs.py",
-        "tests/test_ci_surfaces.py",
         "tests/test_select_changed_tests.py",
     }
 )
@@ -18,7 +17,7 @@ _ALLOWED_INLINE_CORPUS_PATH_FILES = frozenset(
 def test_corpus_root_is_strip_coherence_directory() -> None:
     assert CORPUS_ROOT.is_dir()
     assert CORPUS_ROOT.name == "strip-coherence"
-    assert CORPUS_ROOT.parent.name == "prototype"
+    assert CORPUS_ROOT.parent.name == "corpus"
 
 
 def test_inbox_is_corpus_inbox_directory() -> None:

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-CORPUS_ROOT: Path = Path("prototype/strip-coherence")
+CORPUS_ROOT: Path = Path("corpus/strip-coherence")
 
 LEGACY_CORPUS_PREFIXES: tuple[str, ...] = ("prototype/strip-coherence",)
 

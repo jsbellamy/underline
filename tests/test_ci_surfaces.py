@@ -107,7 +107,7 @@ def test_non_game_surfaces_each_need_the_pipeline_suite() -> None:
         "pipeline/strip.py",
         "tests/test_strip.py",
         "scripts/run_isolated_tests.py",
-        "prototype/strip-coherence/corpus.py",
+        "corpus/strip-coherence/corpus.py",
         "assets/miner/idle/strip.png",
         "gate-controls/idle/report.json",
         "docs/strip-acquisition-contract.md",

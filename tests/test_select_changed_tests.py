@@ -99,7 +99,7 @@ def test_mapped_module_name_follows_corpus_root(monkeypatch: pytest.MonkeyPatch)
 
 def test_a_changed_prototype_module_selects_its_test_and_split_variants() -> None:
     result = select_test_files(
-        ["prototype/strip-coherence/corpus.py"],
+        ["corpus/strip-coherence/corpus.py"],
         existing_tests={"tests/test_corpus.py", "tests/test_derive_budgets.py"},
     )
 

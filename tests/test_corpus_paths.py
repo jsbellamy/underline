@@ -9,7 +9,7 @@ from pipeline import corpus_paths as cp
 
 def test_corpus_root_is_current_strip_coherence_location() -> None:
     assert cp.CORPUS_ROOT.name == "strip-coherence"
-    assert cp.CORPUS_ROOT.parts[-2] == "prototype"
+    assert cp.CORPUS_ROOT.parts[-2] == "corpus"
 
 
 def test_legacy_corpus_prefixes_contains_strip_coherence() -> None:
