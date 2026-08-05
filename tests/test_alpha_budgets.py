@@ -10,8 +10,9 @@ import sys
 
 import pytest
 
-ROOT = pathlib.Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "prototype" / "strip-coherence"))
+from tests.support.corpus_paths import CORPUS_ROOT, ROOT
+
+sys.path.insert(0, str(CORPUS_ROOT))
 
 from pipeline.numeric_policy import canonical_metric  # noqa: E402
 from pipeline.strip import ALPHA, derive_separated_budget  # noqa: E402

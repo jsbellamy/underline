@@ -9,8 +9,9 @@ import sys
 
 import pytest
 
-ROOT = pathlib.Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT / "prototype" / "strip-coherence"))
+from tests.support.corpus_paths import CORPUS_ROOT, ROOT
+
+sys.path.insert(0, str(CORPUS_ROOT))
 
 from derive_budgets import _derive  # noqa: E402
 import derive_budgets  # noqa: E402

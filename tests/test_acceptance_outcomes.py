@@ -17,7 +17,7 @@ from pipeline.strip import (
     evaluate_continuous_gate_outcome,
 )
 
-ROOT = Path(__file__).resolve().parents[1]
+from tests.support.corpus_paths import CORPUS_ROOT, INBOX, ROOT
 PROFILES = ROOT / "gate-controls" / "acceptance-profiles.json"
 MANIFEST = ROOT / "gate-controls" / "manifest.json"
 
@@ -154,7 +154,7 @@ def test_lazy_acceptance_policy_rebuilds_per_gate_controls_root(
 
 
 def test_recovery_failure_yields_structural_fail() -> None:
-    path = ROOT / "prototype" / "strip-coherence" / "inbox" / "09-NEG-no-gutter.png"
+    path = INBOX / "09-NEG-no-gutter.png"
     layout = S.StripLayout(
         frame_w=16,
         frame_h=24,
@@ -196,7 +196,7 @@ def test_inapplicable_gates_omitted_from_gate_outcomes() -> None:
 
 
 def test_airborne_displacement_undecidable_records_caveat_without_gate_outcome() -> None:
-    path = ROOT / "prototype" / "strip-coherence" / "inbox" / "04-bat-flap.png"
+    path = INBOX / "04-bat-flap.png"
     layout = S.StripLayout(
         frame_w=16,
         frame_h=24,
@@ -220,7 +220,7 @@ def test_airborne_displacement_false_yields_review_not_fail() -> None:
     import adversarial
     import corpus
 
-    sys.path.insert(0, str(ROOT / "prototype" / "strip-coherence"))
+    sys.path.insert(0, str(CORPUS_ROOT))
     path = corpus.find_png("16-moth-flap")
     assert path is not None
     layout = S.StripLayout(
@@ -253,7 +253,7 @@ def test_structural_dimension_mismatch_fails_over_review_band() -> None:
 
 
 def test_palette_drift_at_hard_fail_boundary_is_fail() -> None:
-    path = ROOT / "prototype" / "strip-coherence" / "inbox" / "07-NEG-palette-drift.png"
+    path = INBOX / "07-NEG-palette-drift.png"
     layout = S.StripLayout(
         frame_w=16,
         frame_h=24,
