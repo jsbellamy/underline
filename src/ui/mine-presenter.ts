@@ -13,10 +13,12 @@ import {
   grabSizeFor,
   HAUL_TRAVEL_MS,
   haulRoundTripMsFor,
+  initialSnapshot,
   pickDamageFor,
   pickupMsPerLoad,
   unloadMsFor,
 } from "../core/mining-engine";
+import { tripPhaseFor } from "../core/trip-phase";
 import type { MiningSession } from "../core/mining-session";
 import type { SaveStore } from "../core/mining-save";
 import { loadSettings } from "../core/settings-save";
@@ -52,7 +54,6 @@ import {
 
 export type TunnelHaulPhase = "none" | HaulAnimPhase | "unload";
 export type HaulerPhase = "pickup" | "unload" | HaulAnimPhase;
-type TripLeg = "out" | "unload" | "back";
 
 export interface HaulerSnapshot {
   animation: DwarfAnimId;
@@ -128,24 +129,6 @@ export interface MinePresenterOptions {
   createAudioContext?: () => AudioContext;
 }
 
-function tripLeg(
-  haulRemainingMs: number,
-  unloadSpeedUpgradeCount: number,
-): TripLeg | null {
-  if (haulRemainingMs === 0) {
-    return null;
-  }
-  const unloadMs = unloadMsFor(unloadSpeedUpgradeCount);
-  const halfTravel = HAUL_TRAVEL_MS / 2;
-  if (haulRemainingMs > unloadMs + halfTravel) {
-    return "out";
-  }
-  if (haulRemainingMs > halfTravel) {
-    return "unload";
-  }
-  return "back";
-}
-
 export function tripLeftFor(
   haulRemainingMs: number,
   departureStation: number,
@@ -153,45 +136,30 @@ export function tripLeftFor(
   destinationMark: number = CART_MARK_X,
   returnStation: number = departureStation,
 ): number {
+  const leg =
+    tripPhaseFor({
+      ...initialSnapshot(),
+      haulRemainingMs,
+      unloadSpeedUpgradeCount,
+    })?.leg ?? "back";
   const unloadMs = unloadMsFor(unloadSpeedUpgradeCount);
   const halfTravel = HAUL_TRAVEL_MS / 2;
   const walkPxPerMs = HAULER_WALK_PX_PER_MS;
   const tripMs = HAUL_TRAVEL_MS + unloadMs;
 
-  if (haulRemainingMs > unloadMs + halfTravel) {
+  if (leg === "out") {
     return Math.max(
       destinationMark,
       Math.round(departureStation - (tripMs - haulRemainingMs) * walkPxPerMs),
     );
   }
-  if (haulRemainingMs > halfTravel) {
+  if (leg === "unload") {
     return destinationMark;
   }
   return Math.min(
     returnStation,
     Math.round(destinationMark + (halfTravel - haulRemainingMs) * walkPxPerMs),
   );
-}
-
-function haulProgress(
-  haulRemainingMs: number,
-  unloadSpeedUpgradeCount: number,
-): number {
-  if (haulRemainingMs === 0) {
-    return 0;
-  }
-  const roundTripMs = haulRoundTripMsFor(unloadSpeedUpgradeCount);
-  return 1 - haulRemainingMs / roundTripMs;
-}
-
-function haulerPhase(
-  haulRemainingMs: number,
-  unloadSpeedUpgradeCount: number,
-): HaulerPhase {
-  if (haulRemainingMs > 0) {
-    return tripLeg(haulRemainingMs, unloadSpeedUpgradeCount) ?? "pickup";
-  }
-  return "pickup";
 }
 
 function pickupProgressFraction(
@@ -555,10 +523,7 @@ export function createMinePresenter(
     trackHaulDeparture(nowMs);
     ensureHaulDepartureStation();
 
-    const haulLeg =
-      snap.haulRemainingMs > 0
-        ? tripLeg(snap.haulRemainingMs, snap.unloadSpeedUpgradeCount)
-        : null;
+    const haulLeg = tripPhaseFor(snap)?.leg ?? null;
     if (haulLeg === "back" && haulReturnStation === null) {
       assignHeldOre(pickHeldBody(HAULER_MARK_X, excluded) ?? undefined);
       haulReturnStation = heldWalkStationPx ?? HAULER_MARK_X;
@@ -719,10 +684,7 @@ export function createMinePresenter(
       miner.startMining(simNowMs);
       return;
     }
-    const leg = tripLeg(
-      session.snapshot.haulRemainingMs,
-      session.snapshot.unloadSpeedUpgradeCount,
-    );
+    const leg = tripPhaseFor(session.snapshot)?.leg;
     if (leg === "unload") {
       miner.stopMining(simNowMs);
       miner.setHauling(null, simNowMs);
@@ -742,7 +704,11 @@ export function createMinePresenter(
     }
     const snap = session.snapshot;
     if (snap.haulRemainingMs > 0) {
-      const leg = tripLeg(snap.haulRemainingMs, snap.unloadSpeedUpgradeCount);
+      const tripPhase = tripPhaseFor(snap);
+      if (!tripPhase) {
+        return;
+      }
+      const leg = tripPhase.leg;
       if (leg === "unload") {
         hauler.setHauling(null, simNowMs);
         return;
@@ -812,7 +778,8 @@ export function createMinePresenter(
             snap.haulRemainingMs + Math.max(0, simNowMs - nowMs),
           )
         : 0;
-    const phase = haulerPhase(remaining, snap.unloadSpeedUpgradeCount);
+    const tripPhase = tripPhaseFor({ ...snap, haulRemainingMs: remaining });
+    const phase: HaulerPhase = tripPhase?.leg ?? "pickup";
     const travelling = remaining > 0;
     const swingFrac = swingFractionAt(nowMs, travelling);
 
@@ -875,9 +842,7 @@ export function createMinePresenter(
       frameIndex,
       left,
       phase,
-      haulProgress: travelling
-        ? haulProgress(remaining, snap.unloadSpeedUpgradeCount)
-        : 0,
+      haulProgress: travelling ? (tripPhase?.tripProgress ?? 0) : 0,
       pickupProgress: pickupProgressFraction(
         remaining,
         snap.pickupProgressMs,
@@ -894,9 +859,10 @@ export function createMinePresenter(
     const whole = Math.floor(snap.faceSwingProgress / pickDamage);
     const remaining = snap.haulRemainingMs;
     const twoDwarf = isTwoDwarf();
-    const phase = twoDwarf
+    const tripPhase = twoDwarf
       ? null
-      : tripLeg(remaining, snap.unloadSpeedUpgradeCount);
+      : tripPhaseFor({ ...snap, haulRemainingMs: remaining });
+    const phase = tripPhase?.leg ?? null;
     const hauling = twoDwarf ? false : remaining > 0;
 
     let swingFraction = 0;
@@ -926,9 +892,7 @@ export function createMinePresenter(
           : phase === "unload"
             ? "unload"
             : phase,
-      haulProgress: twoDwarf
-        ? 0
-        : haulProgress(remaining, snap.unloadSpeedUpgradeCount),
+      haulProgress: twoDwarf ? 0 : (tripPhase?.tripProgress ?? 0),
       faceSlide,
       ...(haulerSnap !== undefined ? { hauler: haulerSnap } : {}),
       crewSize: snap.crewSize,
