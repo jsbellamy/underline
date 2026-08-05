@@ -8,6 +8,8 @@ from pathlib import Path
 
 import pytest
 
+from pipeline import canonical
+from pipeline import corpus_paths as cp
 from pipeline import gate_evidence as ge
 from pipeline import gate_review as gr
 
@@ -843,3 +845,68 @@ def test_validate_review_dir_rejects_first_review_leak_into_second(tmp_path: Pat
     gr.write_second_review_input(review_dir / "review-input--02.json", blinded)
     with pytest.raises(gr.ReviewError, match="leaked prior review"):
         gr.validate_review_dir(review_dir)
+
+
+def test_validate_review_dir_resolves_legacy_recorded_corpus_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """C4: frozen legacy corpus prefix resolves to the live corpus root."""
+    monkeypatch.setattr(cp, "CORPUS_ROOT", Path("corpus/live"))
+    fx = _evidence(tmp_path)
+    live_good = tmp_path / "corpus/live/inbox/binding-good.png"
+    live_good.parent.mkdir(parents=True, exist_ok=True)
+    live_good.write_bytes(fx["good_path"].read_bytes())
+    recorded_good = "prototype/strip-coherence/inbox/binding-good.png"
+    packet = gr.build_promotion_verification_packet(
+        root=fx["root"],
+        promotion_id=fx["promo_id"],
+        budget_binding_good=fx["good_path"],
+    )
+    packet_dict = packet.to_manifest()
+    packet_dict["budget_binding_good"]["path"] = recorded_good
+    packet_dict["packet_sha256"] = canonical.self_excluding_digest(
+        packet_dict, field="packet_sha256"
+    )
+    review_dir = fx["gc"] / "reviews" / fx["attempt_id"]
+    _write(review_dir / "packet.json", packet_dict)
+    recorded_packet = gr.review_packet_from_manifest(packet_dict)
+    for review_id, identity in (
+        ("review--01", "cursor-agent/issue-488/review-01"),
+        ("review--02", "cursor-agent/issue-488/review-02"),
+    ):
+        audit = gr.make_audit_record(
+            packet=recorded_packet,
+            review_id=review_id,
+            verdict="APPROVE",
+            frames=[0, 1],
+            observed_feature="pose transition",
+            rationale=f"rationale for {review_id}",
+            reviewer_identity=identity,
+            model_identity="cursor-grok-4.5",
+            model_version="grok-4.5",
+            timestamp="2026-07-27T00:00:00+00:00",
+            second_review_triggers=["metric_at_or_beyond_midpoint"],
+        )
+        gr.write_audit_record(review_dir / f"{review_id}.json", audit)
+    blinded = gr.blinded_packet_for_second_review(
+        recorded_packet,
+        first_review=gr.make_audit_record(
+            packet=recorded_packet,
+            review_id="review--01",
+            verdict="APPROVE",
+            frames=[0, 1],
+            observed_feature="pose transition",
+            rationale="first",
+            reviewer_identity="cursor-agent/issue-488/review-01",
+            model_identity="cursor-grok-4.5",
+            model_version="grok-4.5",
+            timestamp="2026-07-27T00:00:00+00:00",
+            second_review_triggers=["metric_at_or_beyond_midpoint"],
+        ),
+        second_review_id="review--02",
+        second_reviewer_identity="cursor-agent/issue-488/review-02",
+    )
+    gr.write_second_review_input(review_dir / "review-input--02.json", blinded)
+    report = gr.validate_review_dir(review_dir, root=fx["root"])
+    assert report["ok"] is True
+    assert packet_dict["budget_binding_good"]["path"] == recorded_good

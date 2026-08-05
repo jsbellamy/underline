@@ -9,6 +9,8 @@ from unittest.mock import patch
 
 import pytest
 
+from pipeline import canonical
+from pipeline import corpus_paths as cp
 from pipeline import gate_control as gc
 from pipeline import gate_evidence as ge
 from pipeline import gate_review as gr
@@ -111,9 +113,33 @@ def test_validate_verification_record_rejects_active_without_manifest_match(
     provenance_path = gc / "provenance" / "p.json"
     provenance_path.parent.mkdir(parents=True)
     provenance_path.write_text("{}\n")
+    raw_path = gc / "raw" / "candidate.png"
+    raw_path.parent.mkdir(parents=True)
+    raw_path.write_bytes(b"raw")
+    good_path = gc / "raw" / "binding-good.png"
+    good_path.write_bytes(b"good")
     packet_path = gc / "reviews" / "x" / "packet.json"
     packet_path.parent.mkdir(parents=True)
-    packet_doc = {"packet_sha256": "d" * 64}
+    packet_doc = {
+        "schema": "gate-review-packet/0",
+        "packet_kind": "PROMOTION_VERIFICATION",
+        "candidate": {
+            "role": "candidate",
+            "path": "gate-controls/raw/candidate.png",
+            "raw_sha256": ge.sha256_file(raw_path),
+        },
+        "budget_binding_good": {
+            "role": "budget_binding_good",
+            "path": "gate-controls/raw/binding-good.png",
+            "raw_sha256": ge.sha256_file(good_path),
+        },
+        "proposed_hard_fail_reference": {
+            "role": "proposed_hard_fail_reference",
+            "path": "gate-controls/raw/candidate.png",
+            "raw_sha256": ge.sha256_file(raw_path),
+        },
+        "packet_sha256": "d" * 64,
+    }
     packet_path.write_text(json.dumps(packet_doc) + "\n")
     review_paths = []
     for name in ("review--01.json", "review--02.json"):
@@ -637,3 +663,82 @@ def test_checked_in_gate_controls_unchanged_after_temp_verification(
         )
     after = ge.fingerprint_tree(ROOT / "gate-controls")
     assert after == before
+
+
+def test_validate_verification_record_resolves_legacy_packet_corpus_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """C5: verification validation resolves frozen corpus paths from packet.json."""
+    monkeypatch.setattr(cp, "CORPUS_ROOT", Path("corpus/live"))
+    promotion_id = "promo--idle--silhouette_budget"
+    gc_root = _seed_manifest_promotion_candidate(tmp_path, promotion_id=promotion_id)
+    attempt_id = "idle--silhouette_budget--099"
+    review_dir = gc_root / "reviews" / attempt_id
+    live_good = tmp_path / "corpus/live/inbox/07-NEG-palette-drift.png"
+    live_good.parent.mkdir(parents=True, exist_ok=True)
+    live_good.write_bytes(BINDING_GOOD.read_bytes())
+    packet_doc = json.loads((review_dir / "packet.json").read_text())
+    recorded_good = "prototype/strip-coherence/inbox/07-NEG-palette-drift.png"
+    packet_doc["budget_binding_good"]["path"] = recorded_good
+    packet_doc["packet_sha256"] = canonical.self_excluding_digest(
+        packet_doc, field="packet_sha256"
+    )
+    (review_dir / "packet.json").write_text(
+        json.dumps(packet_doc, indent=2, sort_keys=True) + "\n"
+    )
+    manifest_path = gc_root / "manifest.json"
+    manifest_doc = json.loads(manifest_path.read_text())
+    manifest_doc["promotions"][0]["status"] = gv.ACTIVE_STATUS
+    manifest_path.write_text(json.dumps(manifest_doc, indent=2) + "\n")
+    measurement_rel = manifest_doc["promotions"][0]["measurement_path"]
+    provenance_rel = f"gate-controls/provenance/{attempt_id}.json"
+    measurement_path = tmp_path / measurement_rel
+    provenance_path = tmp_path / provenance_rel
+    review_paths = [
+        review_dir / "review--01.json",
+        review_dir / "review--02.json",
+    ]
+    bound = gv.manifest_sha256_at_binding(
+        manifest_path,
+        promotion_id=promotion_id,
+        status=gv.PENDING_STATUS,
+    )
+    record = {
+        "schema": gv.VERIFICATION_SCHEMA,
+        "promotion_id": promotion_id,
+        "specification_id": manifest_doc["promotions"][0]["specification_id"],
+        "attempt_id": attempt_id,
+        "measurement_path": measurement_rel,
+        "measurement_sha256": ge.sha256_file(measurement_path),
+        "provenance_path": provenance_rel,
+        "provenance_sha256": ge.sha256_file(provenance_path),
+        "raw_sha256": ge.sha256_file(tmp_path / f"gate-controls/raw/{attempt_id}.png"),
+        "packet_path": f"reviews/{attempt_id}/packet.json",
+        "packet_sha256": packet_doc["packet_sha256"],
+        "reviews": [
+            {
+                "review_id": "review--01",
+                "path": f"reviews/{attempt_id}/review--01.json",
+                "sha256": ge.sha256_file(review_paths[0]),
+                "verdict": "APPROVE",
+            },
+            {
+                "review_id": "review--02",
+                "path": f"reviews/{attempt_id}/review--02.json",
+                "sha256": ge.sha256_file(review_paths[1]),
+                "verdict": "APPROVE",
+            },
+        ],
+        "manifest_sha256": bound,
+        "repository_commit": "deadbeef",
+        "commands": [
+            {"command": "npm test", "exit_code": 0, "evidence_row": "1 passed"}
+        ],
+        "recorded_at": "2026-07-27T12:00:00+00:00",
+        "status": gv.ACTIVE_STATUS,
+        "failure_reason": None,
+    }
+    verification_path = gc_root / "verification" / f"{promotion_id}.json"
+    verification_path.write_text(json.dumps(record, indent=2, sort_keys=True) + "\n")
+    gv.validate_verification_record(tmp_path, verification_path)
+    assert packet_doc["budget_binding_good"]["path"] == recorded_good

@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from pipeline import canonical
+from pipeline import corpus_paths as cp
 from pipeline import gate_evidence as ge
 from pipeline.verdicts import GATE_REVIEW_VERDICTS, GateReviewVerdict
 
@@ -188,13 +189,20 @@ def _profile_entry(
     return class_gates[gate]
 
 
+def _filesystem_path(root: Path, path: Path) -> Path:
+    if path.is_absolute():
+        return path.resolve()
+    return cp.resolve_recorded_path(str(path), root=root).resolve()
+
+
 def _reference(root: Path, role: str, path: Path) -> PacketReference:
-    if not path.is_file():
-        raise ReviewError(f"missing required file for packet role {role}: {path}")
+    fs_path = _filesystem_path(root, path)
+    if not fs_path.is_file():
+        raise ReviewError(f"missing required file for packet role {role}: {fs_path}")
     return PacketReference(
         role=role,
-        path=_relpath(root, path),
-        raw_sha256=ge.sha256_file(path),
+        path=_relpath(root, fs_path),
+        raw_sha256=ge.sha256_file(fs_path),
     )
 
 
@@ -707,7 +715,7 @@ def _verify_packet_reference(
         raise ReviewError(f"missing path for packet role {expected_role!r}")
     if not isinstance(digest, str) or not digest:
         raise ReviewError(f"missing raw_sha256 for packet role {expected_role!r}")
-    path = (root / rel).resolve()
+    path = cp.resolve_recorded_path(rel, root=root).resolve()
     if not path.is_file():
         raise ReviewError(f"missing required file for packet role {expected_role}: {path}")
     actual = ge.sha256_file(path)
