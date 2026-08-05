@@ -295,7 +295,7 @@ _Avoid_: worker, unit, character
 
 **Miner**:
 The job of holding the Face and Swinging. The Miner never leaves the Face; it
-drops Ore into the Heap and stalls when the Heap is full.
+drops Ore into the Heap and never stalls; Ore dropped into a full Heap Spills.
 _Avoid_: digger, driller
 
 **Tunnel**:
@@ -315,9 +315,15 @@ front, wall, target
 
 **Heap**:
 Ore accumulated at the Face awaiting a Hauler, counted in Loads and capped at
-Carry Capacity. A full Heap stalls the Miner; this is the Tunnel's second
-backpressure point, after the Smelter.
+a base of 20 Loads plus Carry Capacity Upgrades; a full Heap Spills rather than
+stalling the Miner; this is the Tunnel's second backpressure point, after the
+Smelter.
 _Avoid_: pile, stockpile, buffer, queue
+
+**Spill**:
+A Load produced against a full Heap and destroyed on arrival — its Ore never
+enters the economy, and the Heap's count does not move.
+_Avoid_: waste, overflow, drop (a Spill is not a Load that landed), loss
 
 **Swing**:
 One strike of the Dwarf's pick against the Face. The pipeline's `swing` Motion

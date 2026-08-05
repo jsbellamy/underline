@@ -166,8 +166,20 @@ def test_game_language_miner_holds_face_and_swings() -> None:
     assert "holding the Face and Swinging" in body
     assert "never leaves the Face" in body
     assert "drops Ore into the Heap" in body
-    assert "stalls when the Heap is full" in body
+    assert "never stalls" in body
+    assert "Ore dropped into a full Heap Spills" in body
     assert "_Avoid_: digger, driller" in body
+
+
+def test_game_language_spill_is_destroyed_load_on_full_heap() -> None:
+    section = _game_language_section()
+    raw_body = _entry_body(section, "Spill")
+    body = _normalized(raw_body.replace("**", ""))
+    assert "Load produced against a full Heap" in body
+    assert "destroyed on arrival" in body
+    assert "Ore never enters the economy" in body
+    assert "Heap's count does not move" in body
+    assert "_Avoid_: waste, overflow, drop (a Spill is not a Load that landed), loss" in body
 
 
 def test_game_language_hauler_moves_heap_to_cart() -> None:
@@ -185,7 +197,8 @@ def test_game_language_heap_is_face_backpressure() -> None:
     assert "Ore accumulated at the Face" in body
     assert "counted in Loads" in body
     assert "Carry Capacity" in body
-    assert "full Heap stalls the Miner" in body
+    assert "base of 20 Loads plus Carry Capacity Upgrades" in body
+    assert "full Heap Spills rather than stalling the Miner" in body
     assert "second backpressure point" in body
     assert "Smelter" in body
     assert "_Avoid_: pile, stockpile, buffer, queue" in body
