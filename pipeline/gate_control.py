@@ -20,6 +20,7 @@ from typing import Any, Mapping
 from PIL import Image, ImageDraw
 
 from pipeline import canonical
+from pipeline import corpus_paths as cp
 from pipeline import strip as S
 from pipeline.gate_evidence import (
     EvidenceError,
@@ -719,7 +720,7 @@ def main(argv: list[str] | None = None) -> int:
 
     path = args.png
     if not path.is_file():
-        candidate = REPO_ROOT / "prototype" / "strip-coherence" / "inbox" / path.name
+        candidate = REPO_ROOT / cp.CORPUS_ROOT / "inbox" / path.name
         if candidate.is_file():
             path = candidate
 

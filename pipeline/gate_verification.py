@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from pipeline import canonical
+from pipeline import corpus_paths as cp
 from pipeline import gate_evidence as ge
 from pipeline import gate_review as gr
 from pipeline.verdicts import GATE_REVIEW_VERDICTS, GateReviewVerdict, IsolationVerdict
@@ -346,8 +347,8 @@ def build_verification_record(
             else:
                 failure_reason = "verification_command_failed"
 
-    measurement_path = root / promo.measurement_path
-    provenance_path = root / attempt.provenance_path
+    measurement_path = cp.resolve_recorded_path(promo.measurement_path, root=root)
+    provenance_path = cp.resolve_recorded_path(attempt.provenance_path, root=root)
 
     return {
         "schema": VERIFICATION_SCHEMA,
@@ -422,13 +423,13 @@ def validate_verification_record(root: Path, path: Path) -> None:
             f"record {doc.get('manifest_sha256')} != bound {bound_manifest}"
         )
 
-    measurement_path = root / str(doc["measurement_path"])
+    measurement_path = cp.resolve_recorded_path(str(doc["measurement_path"]), root=root)
     if ge.sha256_file(measurement_path) != doc.get("measurement_sha256"):
         raise VerificationError(
             f"measurement_sha256 mismatch for promotion {promotion_id}"
         )
 
-    provenance_path = root / str(doc["provenance_path"])
+    provenance_path = cp.resolve_recorded_path(str(doc["provenance_path"]), root=root)
     if ge.sha256_file(provenance_path) != doc.get("provenance_sha256"):
         raise VerificationError(
             f"provenance_sha256 mismatch for promotion {promotion_id}"

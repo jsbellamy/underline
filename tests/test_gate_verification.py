@@ -9,6 +9,8 @@ from unittest.mock import patch
 
 import pytest
 
+from pipeline import canonical
+from pipeline import corpus_paths as cp
 from pipeline import gate_control as gc
 from pipeline import gate_evidence as ge
 from pipeline import gate_review as gr
@@ -637,3 +639,58 @@ def test_checked_in_gate_controls_unchanged_after_temp_verification(
         )
     after = ge.fingerprint_tree(ROOT / "gate-controls")
     assert after == before
+
+
+def test_verify_promotion_resolves_legacy_packet_corpus_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """C5: verify_promotion resolves frozen corpus paths from packet.json."""
+    monkeypatch.setattr(cp, "CORPUS_ROOT", Path("corpus/live"))
+    promotion_id = "promo--idle--silhouette_budget"
+    gc_root = _seed_manifest_promotion_candidate(tmp_path, promotion_id=promotion_id)
+    attempt_id = "idle--silhouette_budget--099"
+    review_dir = gc_root / "reviews" / attempt_id
+    live_good = tmp_path / "corpus/live/inbox/07-NEG-palette-drift.png"
+    live_good.parent.mkdir(parents=True, exist_ok=True)
+    live_good.write_bytes(BINDING_GOOD.read_bytes())
+    packet_doc = json.loads((review_dir / "packet.json").read_text())
+    recorded_good = "prototype/strip-coherence/inbox/07-NEG-palette-drift.png"
+    packet_doc["budget_binding_good"]["path"] = recorded_good
+    packet_doc["packet_sha256"] = canonical.self_excluding_digest(
+        packet_doc, field="packet_sha256"
+    )
+    (review_dir / "packet.json").write_text(
+        json.dumps(packet_doc, indent=2, sort_keys=True) + "\n"
+    )
+    for review_id in ("review--01", "review--02"):
+        review_doc = json.loads((review_dir / f"{review_id}.json").read_text())
+        review_doc["packet_sha256"] = packet_doc["packet_sha256"]
+        (review_dir / f"{review_id}.json").write_text(
+            json.dumps(review_doc, indent=2, sort_keys=True) + "\n"
+        )
+    blinded = json.loads((review_dir / "review-input--02.json").read_text())
+    blinded["packet_sha256"] = packet_doc["packet_sha256"]
+    (review_dir / "review-input--02.json").write_text(
+        json.dumps(blinded, indent=2, sort_keys=True) + "\n"
+    )
+    commands = [
+        gv.CommandResult(command="npm test", exit_code=0, evidence_row="1 passed"),
+        gv.CommandResult(
+            command="npm run prototype:strip:corpus",
+            exit_code=0,
+            evidence_row="scored 1/1",
+        ),
+        gv.CommandResult(
+            command="npm run prototype:strip:adversarial",
+            exit_code=0,
+            evidence_row="Separated=17",
+        ),
+        gv.CommandResult(
+            command="npm run prototype:strip:alpha-budgets",
+            exit_code=0,
+            evidence_row="Separated=17",
+        ),
+    ]
+    record = gv.verify_promotion(tmp_path, promotion_id, commands=commands)
+    assert record["review_report"]["ok"] is True
+    assert packet_doc["budget_binding_good"]["path"] == recorded_good
