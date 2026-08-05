@@ -33,7 +33,7 @@ import {
   HEAP_BIN_EAST_X,
   HEAP_BIN_FLOOR_Y,
   HEAP_BIN_WEST_X,
-  HEAP_GRAB_REACH_PX,
+  HEAP_GRAB_Y,
   HEAP_PILE_SEED,
   HEAP_RENDER_CEILING,
   HEAP_SPAWN_X,
@@ -270,7 +270,7 @@ export function createMinePresenter(
     } else if (target < count) {
       const toRemove = count - target;
       for (let i = 0; i < toRemove; i += 1) {
-        const removedId = pile.removeGrabbed(HAULER_GRAB_X, HEAP_GRAB_REACH_PX);
+        const removedId = pile.removeGrabbed(HAULER_GRAB_X, HEAP_GRAB_Y);
         if (removedId !== null) {
           carriedVariantIndex = variantByBodyId.get(removedId);
           variantByBodyId.delete(removedId);

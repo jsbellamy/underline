@@ -26,6 +26,8 @@ import {
   HEAP_BIN_EAST_X,
   HEAP_BIN_FLOOR_Y,
   HEAP_BIN_WEST_X,
+  HAULER_GRAB_X,
+  HEAP_GRAB_Y,
   HEAP_PILE_SEED,
   HEAP_SPAWN_X,
   ORE_FALL_MS,
@@ -961,9 +963,41 @@ describe("mine presenter", () => {
       expect(snap.carriedVariantIndex).toBeDefined();
     });
 
-    it("caps visible Heap Ore at 24 Loads while heapLoads keeps counting", () => {
+    it("grabs the nearest Heap Ore for carriedVariantIndex at HEAP_PILE_SEED", () => {
+      const { presenter } = twoDwarfPresenter({
+        heapLoads: 5,
+        pickupProgressMs: 0,
+      });
+      presenter.advanceMs(7_500);
+      const snap = presenter.snapshot();
+
+      const oracle = createHeapPileSim({
+        bin: {
+          floorY: HEAP_BIN_FLOOR_Y,
+          westX: HEAP_BIN_WEST_X,
+          eastX: HEAP_BIN_EAST_X,
+          ceilingY: HEAP_BIN_CEILING_Y,
+        },
+        seed: HEAP_PILE_SEED,
+      });
+      const variantByBodyId = new Map<number, number>();
+      for (let v = 0; v < 5; v += 1) {
+        const id = oracle.spawnJittered(
+          heapOreRadius(v),
+          HEAP_SPAWN_X,
+          ORE_SPAWN_BOTTOM,
+        );
+        variantByBodyId.set(id, v);
+      }
+      oracle.settle();
+      const removedId = oracle.removeGrabbed(HAULER_GRAB_X, HEAP_GRAB_Y);
+      expect(removedId).not.toBeNull();
+      expect(snap.carriedVariantIndex).toBe(variantByBodyId.get(removedId!));
+    });
+
+    it("caps visible Heap Ore at 20 Loads while heapLoads keeps counting", () => {
       const { presenter } = twoDwarfPresenter({ heapLoads: 40 });
-      expect(presenter.snapshot().heapOre).toHaveLength(24);
+      expect(presenter.snapshot().heapOre).toHaveLength(20);
     });
 
     it("keeps pile target unchanged when heapLoads decrements at return-leg end", () => {

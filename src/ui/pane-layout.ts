@@ -31,15 +31,15 @@ export const ORE_SIZE = 32;
 /** Heap floor band — rests on the 8px floor. */
 export const HEAP_BOTTOM = 8;
 /** Vertical cap for pile rendering — ~36% bin coverage at radii 6–14. */
-export const HEAP_RENDER_CEILING = 24;
+export const HEAP_RENDER_CEILING = 20;
 /** Heap bin floor and ceiling in Pane coordinates. */
 export const HEAP_BIN_FLOOR_Y = HEAP_BOTTOM;
 export const HEAP_BIN_EAST_X = FACE_X;
 export const HEAP_BIN_CEILING_Y = PANE_HEIGHT;
 /** Horizontal spawn for Ore entering the Heap bin from the Face. */
 export const HEAP_SPAWN_X = FACE_X - ORE_SIZE / 2;
-/** Horizontal reach for Heap grab interactions. */
-export const HEAP_GRAB_REACH_PX = 48;
+/** Hauler's hand height — one Ore radius above the bin floor. */
+export const HEAP_GRAB_Y = HEAP_BIN_FLOOR_Y + ORE_SIZE / 2;
 /** Seeded RNG stream for Heap pile layout (#455). */
 export const HEAP_PILE_SEED = 1;
 /** Slot 0 hugs the Face column. */

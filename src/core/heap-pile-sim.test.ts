@@ -255,40 +255,51 @@ describe("heap pile sim seeded jitter", () => {
 });
 
 describe("heap pile sim grab selection", () => {
-  it("chooses the topmost body inside reach", () => {
+  const grabX = 104;
+  const grabY = 24;
+
+  it("chooses a low near body over a higher body the old reach-and-topmost rule would pick", () => {
     const sim = createHeapPileSim({ bin: wideBin(), seed: 1, startMs: 0 });
     sim.spawn(6, 100, 20, 0, 0);
     sim.spawn(6, 105, 40, 0, 0);
     sim.spawn(6, 200, 50, 0, 0);
-    expect(sim.removeGrabbed(104, 8)).toBe(2);
+    expect(sim.removeGrabbed(grabX, grabY)).toBe(1);
   });
 
-  it("falls back to the topmost overall when nothing is in reach", () => {
+  it("chooses a body just outside the old 48 px reach when it is nearest", () => {
     const sim = createHeapPileSim({ bin: wideBin(), seed: 1, startMs: 0 });
-    sim.spawn(6, 50, 20, 0, 0);
-    sim.spawn(6, 180, 45, 0, 0);
-    expect(sim.removeGrabbed(10, 5)).toBe(2);
+    sim.spawn(6, 312, 24, 0, 0);
+    sim.spawn(6, 350, 80, 0, 0);
+    expect(sim.removeGrabbed(361, 24)).toBe(1);
   });
 
-  it("breaks height ties to the smallest x then smallest id", () => {
+  it("breaks distance ties to the smallest id", () => {
     const sim = createHeapPileSim({ bin: wideBin(), seed: 1, startMs: 0 });
-    sim.spawn(6, 120, 30, 0, 0);
-    sim.spawn(6, 80, 30, 0, 0);
-    sim.spawn(6, 80, 30, 0, 0);
-    expect(sim.removeGrabbed(100, 50)).toBe(2);
+    sim.spawn(6, 90, 24, 0, 0);
+    sim.spawn(6, 110, 24, 0, 0);
+    expect(sim.removeGrabbed(100, 24)).toBe(1);
   });
 
   it("returns null on an empty pile", () => {
     const sim = createHeapPileSim({ bin: wideBin(), seed: 1, startMs: 0 });
-    expect(sim.removeGrabbed(100, 20)).toBeNull();
+    expect(sim.removeGrabbed(100, 24)).toBeNull();
+  });
+
+  it("drops body count by exactly one per call", () => {
+    const sim = createHeapPileSim({ bin: wideBin(), seed: 1, startMs: 0 });
+    sim.spawn(6, 100, 20, 0, 0);
+    sim.spawn(6, 105, 40, 0, 0);
+    expect(sim.bodies.length).toBe(2);
+    sim.removeGrabbed(grabX, grabY);
+    expect(sim.bodies.length).toBe(1);
   });
 });
 
 describe("heap pile sim settling", () => {
-  it("rests 24 bodies inside the settle cap without advancing nowMs", () => {
+  it("rests 20 bodies inside the settle cap without advancing nowMs", () => {
     const bin = wideBin();
     const sim = createHeapPileSim({ bin, seed: 99, startMs: 500 });
-    const radii = [6, 7, 8, 9, 10, 11, 12, 13, 14, 6, 7, 8, 9, 10, 11, 12, 13, 14, 6, 7, 8, 9, 10, 11];
+    const radii = [6, 7, 8, 9, 10, 11, 12, 13, 14, 6, 7, 8, 9, 10, 11, 12, 13, 14, 6, 7];
     for (let i = 0; i < radii.length; i++) {
       sim.spawnJittered(radii[i]!, 30 + i * 8, 90);
     }
@@ -298,6 +309,7 @@ describe("heap pile sim settling", () => {
     for (const body of sim.bodies) {
       expect(Math.abs(body.vx)).toBeLessThan(HEAP_REST_SPEED);
       expect(Math.abs(body.vy)).toBeLessThan(HEAP_REST_SPEED);
+      expect(body.y + body.radius).toBeLessThanOrEqual(bin.ceilingY);
     }
   });
 });
@@ -309,7 +321,7 @@ describe("heap pile sim conservation", () => {
     const id2 = sim.spawnJittered(8, 80, 60);
     expect(sim.bodies.length).toBe(2);
 
-    const removed = sim.removeGrabbed(80, 20);
+    const removed = sim.removeGrabbed(80, 24);
     expect(removed).toBe(id2);
     expect(sim.bodies.length).toBe(1);
 

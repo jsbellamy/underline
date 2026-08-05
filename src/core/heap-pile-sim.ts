@@ -39,7 +39,7 @@ export interface HeapPileSim {
   readonly nowMs: number;
   spawn(radius: number, x: number, y: number, vx: number, vy: number): number;
   spawnJittered(radius: number, x: number, y: number): number;
-  removeGrabbed(grabX: number, reachPx: number): number | null;
+  removeGrabbed(grabX: number, grabY: number): number | null;
   stepTo(nowMs: number): void;
   settle(): void;
   clear(): void;
@@ -238,24 +238,22 @@ export function createHeapPileSim(options: HeapPileSimOptions): HeapPileSim {
         rng() * (HEAP_SPAWN_VX_MAX - HEAP_SPAWN_VX_MIN);
       return spawnInternal(radius, x + jitter, y, vx, 0);
     },
-    removeGrabbed(grabX, reachPx) {
+    removeGrabbed(grabX, grabY) {
       if (bodies.length === 0) {
         return null;
       }
 
-      const inReach = bodies.filter(
-        (b) => Math.abs(b.x - grabX) <= reachPx,
-      );
-      const pool = inReach.length > 0 ? inReach : bodies;
-
-      let best = pool[0]!;
-      for (const body of pool) {
-        if (
-          body.y > best.y ||
-          (body.y === best.y && body.x < best.x) ||
-          (body.y === best.y && body.x === best.x && body.id < best.id)
-        ) {
+      let best = bodies[0]!;
+      let bestDistSq =
+        (best.x - grabX) * (best.x - grabX) +
+        (best.y - grabY) * (best.y - grabY);
+      for (const body of bodies) {
+        const distSq =
+          (body.x - grabX) * (body.x - grabX) +
+          (body.y - grabY) * (body.y - grabY);
+        if (distSq < bestDistSq || (distSq === bestDistSq && body.id < best.id)) {
           best = body;
+          bestDistSq = distSq;
         }
       }
 

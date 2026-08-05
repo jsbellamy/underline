@@ -13,7 +13,7 @@ import {
   HEAP_BIN_WEST_X,
   HEAP_BOTTOM,
   HEAP_EAST_X,
-  HEAP_GRAB_REACH_PX,
+  HEAP_GRAB_Y,
   HEAP_PILE_SEED,
   HEAP_RENDER_CEILING,
   HEAP_SPAWN_X,
@@ -34,14 +34,15 @@ describe("pane-layout heap exports", () => {
   });
 
   it("exports heap bin and pile constants with worked values", () => {
-    expect(HEAP_RENDER_CEILING).toBe(24);
+    expect(HEAP_RENDER_CEILING).toBe(20);
     expect(HEAP_BIN_FLOOR_Y).toBe(8);
     expect(HEAP_BIN_WEST_X).toBe(192);
     expect(HEAP_BIN_EAST_X).toBe(432);
     expect(HEAP_BIN_CEILING_Y).toBe(112);
     expect(HEAP_SPAWN_X).toBe(416);
     expect(HAULER_GRAB_X).toBe(361);
-    expect(HEAP_GRAB_REACH_PX).toBe(48);
+    expect(HEAP_GRAB_Y).toBe(24);
+    expect(HEAP_GRAB_Y).toBe(HEAP_BIN_FLOOR_Y + ORE_SIZE / 2);
     expect(HEAP_PILE_SEED).toBe(1);
     expect(HEAP_BIN_FLOOR_Y).toBe(HEAP_BOTTOM);
     expect(HEAP_BIN_WEST_X).toBe(HAULER_MARK_X);
