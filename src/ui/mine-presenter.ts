@@ -10,10 +10,8 @@ import {
 import { createHeapPileSim, type HeapPileSim } from "../core/heap-pile-sim";
 import {
   digRateFor,
-  grabSizeFor,
   haulRoundTripMsFor,
   pickDamageFor,
-  pickupMsPerLoad,
 } from "../core/mining-engine";
 import { tripPhaseFor } from "../core/trip-phase";
 import type { MiningSession } from "../core/mining-session";
@@ -29,11 +27,6 @@ import {
   type MiningAudio,
 } from "./mining-audio";
 import {
-  FLOOR_Y,
-  HAULER_HAND_DX,
-  HAULER_HAND_DY,
-  HAULER_MARK_X,
-  haulerStationFor,
   HEAP_BIN_CEILING_Y,
   HEAP_BIN_EAST_X,
   HEAP_BIN_FLOOR_Y,
@@ -43,14 +36,15 @@ import {
   HEAP_SPAWN_X,
   MINING_MARK_X,
   ORE_FALL_MS,
-  ORE_SIZE,
   ORE_SPAWN_BOTTOM,
 } from "./pane-layout";
 import {
   createHaulerChoreography,
+  pickupProgressFraction,
   type HaulerChoreography,
   type HaulerChoreographyPresenterSeam,
   type HaulerPhase,
+  type HeapBody,
 } from "./hauler-choreography";
 import { tripLeftFor } from "./trip-position";
 
@@ -132,37 +126,6 @@ export interface MinePresenterOptions {
   createAudioContext?: () => AudioContext;
 }
 
-function pickupProgressFraction(
-  haulRemainingMs: number,
-  pickupProgressMs: number,
-  haulSpeedUpgradeCount: number,
-): number {
-  if (haulRemainingMs > 0) {
-    return 0;
-  }
-  const pickupMs = pickupMsPerLoad(haulSpeedUpgradeCount);
-  return Math.min(1, Math.max(0, pickupProgressMs / pickupMs));
-}
-
-function isPickupLifted(
-  haulRemainingMs: number,
-  heapLoads: number,
-  pickupProgressMs: number,
-  haulSpeedUpgradeCount: number,
-  atGrabStation: boolean = true,
-): boolean {
-  return (
-    haulRemainingMs === 0 &&
-    heapLoads >= 1 &&
-    atGrabStation &&
-    pickupProgressFraction(
-      haulRemainingMs,
-      pickupProgressMs,
-      haulSpeedUpgradeCount,
-    ) > 0.5
-  );
-}
-
 export function createMinePresenter(
   session: MiningSession,
   options: MinePresenterOptions = {},
@@ -207,11 +170,6 @@ export function createMinePresenter(
   const variantByBodyId = new Map<number, number>();
   const spillExpiryByBodyId = new Map<number, number>();
   let carriedVariantIndexes: number[] = [];
-  let heldBodyId: number | undefined;
-  /** Walk target locked when the held Ore is chosen — pile settle must not
-      retarget the Hauler mid-approach (idle↔walk thrash). */
-  let heldWalkStationPx: number | null = null;
-  let removedHeldBody = false;
 
   function minerLeftFor(_nowMs: number): number {
     const snap = session.snapshot;
@@ -228,31 +186,22 @@ export function createMinePresenter(
     return MINING_MARK_X;
   }
 
-  function atGrabStation(): boolean {
-    return (
-      heldWalkStationPx !== null &&
-      haulerChoreography.leftPx === heldWalkStationPx
-    );
-  }
-
-  function pileTargetCount(): number {
+  function pileTargetCount(liftedLoadCount: number): number {
     const snap = session.snapshot;
     if (snap.crewSize !== 2) {
       return 0;
     }
-    const liftedLoads = isPickupLifted(
-      snap.haulRemainingMs,
-      snap.heapLoads,
-      snap.pickupProgressMs,
-      snap.haulSpeedUpgradeCount,
-      atGrabStation(),
-    )
-      ? Math.min(snap.heapLoads, grabSizeFor(snap.grabSizeUpgradeCount))
-      : 0;
     return Math.min(
-      Math.max(0, snap.heapLoads - liftedLoads),
+      Math.max(0, snap.heapLoads - liftedLoadCount),
       HEAP_RENDER_CEILING,
     );
+  }
+
+  function heapBodiesForChoreography(): readonly HeapBody[] {
+    const excluded = spillBodyIds();
+    return pile.bodies
+      .filter((b) => !excluded.has(b.id))
+      .map((b) => ({ id: b.id, x: b.x, y: b.y }));
   }
 
   function spawnPileBody(): number {
@@ -281,118 +230,34 @@ export function createMinePresenter(
     }
   }
 
-  function haulerHandPoint(left: number): { x: number; y: number } {
-    return {
-      x: left + HAULER_HAND_DX + ORE_SIZE / 2,
-      y: FLOOR_Y + HAULER_HAND_DY,
-    };
-  }
-
-  function pickHeldBody(
-    left: number,
+  function applyLiftResult(
+    lift: { liftedIds: readonly number[]; carrying: boolean },
     excluded: ReadonlySet<number>,
-  ): number | null {
-    return pickHeldBodies(left, excluded, 1)[0] ?? null;
-  }
-
-  function pickHeldBodies(
-    left: number,
-    excluded: ReadonlySet<number>,
-    count: number,
-  ): readonly number[] {
-    const { x: handX, y: handY } = haulerHandPoint(left);
-    return pile.bodies
-      .filter((body) => !excluded.has(body.id))
-      .sort((a, b) => {
-        const aDist = (a.x - handX) ** 2 + (a.y - handY) ** 2;
-        const bDist = (b.x - handX) ** 2 + (b.y - handY) ** 2;
-        return aDist - bDist || a.id - b.id;
-      })
-      .slice(0, count)
-      .map((body) => body.id);
-  }
-
-  function heldBodyStation(): number | null {
-    if (heldBodyId === undefined) {
-      return null;
-    }
-    const body = pile.bodies.find((b) => b.id === heldBodyId);
-    if (!body) {
-      return null;
-    }
-    return haulerStationFor(body.x);
-  }
-
-  /** Interim seam: the follow-up slice moves Ore choice inside the module and
-      deletes `setWalkTarget`. */
-  function clearHeldOre(): void {
-    heldBodyId = undefined;
-    heldWalkStationPx = null;
-    haulerChoreography.setWalkTarget(null);
-  }
-
-  function assignHeldOre(bodyId: number | undefined): void {
-    heldBodyId = bodyId;
-    if (bodyId === undefined) {
-      haulerChoreography.setWalkTarget(null);
-      return;
-    }
-    heldWalkStationPx = heldBodyStation();
-    // Interim seam — follow-up slice moves this choice into hauler-choreography.
-    haulerChoreography.setWalkTarget(heldWalkStationPx);
-    removedHeldBody = false;
-    // Seeded / restored mid-Lift: stand at the Ore rather than walking from the
-    // Cart after the progress midpoint has already elapsed.
-    const snap = session.snapshot;
-    if (
-      heldWalkStationPx !== null &&
-      haulerChoreography.leftPx === HAULER_MARK_X &&
-      snap.haulRemainingMs === 0 &&
-      pickupProgressFraction(
-        0,
-        snap.pickupProgressMs,
-        snap.haulSpeedUpgradeCount,
-      ) > 0.5
-    ) {
-      haulerChoreography.snapToWalkTarget();
-    }
-  }
-
-  function takeCarriedFromPile(
-    excluded: ReadonlySet<number>,
-    count: number,
-    liftedLoads: number,
-    target: number,
+    liftedLoadCount: number,
   ): void {
-    if (heldBodyId === undefined || removedHeldBody) {
+    if (!lift.carrying) {
+      carriedVariantIndexes = [];
       return;
     }
+
+    const target = pileTargetCount(liftedLoadCount);
+    const count = pile.bodies.filter((b) => !excluded.has(b.id)).length;
+
+    if (lift.liftedIds.length === 0) {
+      return;
+    }
+
     if (!(count > target)) {
       if (carriedVariantIndexes.length === 0) {
-        const variant = variantByBodyId.get(heldBodyId);
+        const variant = variantByBodyId.get(lift.liftedIds[0]!);
         if (variant !== undefined) {
           carriedVariantIndexes = [variant];
         }
       }
       return;
     }
-    // Lift the Ore we walked to first; fill remaining Grab Size from nearest.
-    const grabbed = new Set<number>();
-    const bodyIds: number[] = [];
-    if (pile.bodies.some((b) => b.id === heldBodyId && !excluded.has(b.id))) {
-      bodyIds.push(heldBodyId);
-      grabbed.add(heldBodyId);
-    }
-    if (bodyIds.length < liftedLoads) {
-      bodyIds.push(
-        ...pickHeldBodies(
-          haulerChoreography.leftPx,
-          new Set([...excluded, ...grabbed]),
-          liftedLoads - bodyIds.length,
-        ),
-      );
-    }
-    for (const bodyId of bodyIds) {
+
+    for (const bodyId of lift.liftedIds) {
       if (!pile.remove(bodyId)) {
         continue;
       }
@@ -402,7 +267,6 @@ export function createMinePresenter(
         variantByBodyId.delete(bodyId);
       }
     }
-    removedHeldBody = true;
   }
 
   function reconcilePile(nowMs: number): void {
@@ -410,52 +274,23 @@ export function createMinePresenter(
 
     const snap = session.snapshot;
     const excluded = spillBodyIds();
-    const inPickup = snap.haulRemainingMs === 0 && snap.heapLoads > 0;
 
-    if (snap.heapLoads === 0 && snap.haulRemainingMs === 0) {
-      clearHeldOre();
-      removedHeldBody = false;
-    }
-
-    const haulLeg = tripPhaseFor(snap)?.leg ?? null;
-    if (isTwoDwarf() && haulerChoreography.willEnterBackLeg(snap)) {
-      assignHeldOre(pickHeldBody(HAULER_MARK_X, excluded) ?? undefined);
-    }
-
-    if (inPickup) {
-      const heldMissing =
-        heldBodyId !== undefined &&
-        !pile.bodies.some((b) => b.id === heldBodyId);
-      const progressLifted = isPickupLifted(
-        snap.haulRemainingMs,
-        snap.heapLoads,
-        snap.pickupProgressMs,
-        snap.haulSpeedUpgradeCount,
-        true,
-      );
-      // Acquire a target anytime we have none. Retarget only between Lifts —
-      // during the Lift window the held body is removed and must not be
-      // replaced by a neighbour (that caused idle↔walk thrash at the Ore).
-      if (heldBodyId === undefined || (!progressLifted && heldMissing)) {
-        assignHeldOre(
-          pickHeldBody(haulerChoreography.leftPx, excluded) ?? undefined,
-        );
-      }
-    }
-
+    let lift = {
+      liftedIds: [] as readonly number[],
+      carrying: false,
+    };
     if (isTwoDwarf()) {
-      haulerChoreography.advanceTo(snap, nowMs);
+      lift = haulerChoreography.advanceTo(
+        snap,
+        nowMs,
+        heapBodiesForChoreography(),
+      );
     }
 
-    const lifted = isPickupLifted(
-      snap.haulRemainingMs,
-      snap.heapLoads,
-      snap.pickupProgressMs,
-      snap.haulSpeedUpgradeCount,
-      atGrabStation(),
-    );
-
-    const target = pileTargetCount();
+    const liftedLoadCount = isTwoDwarf()
+      ? haulerChoreography.liftedLoadCountForPile(snap)
+      : 0;
+    const target = pileTargetCount(liftedLoadCount);
     const count = pile.bodies.filter((b) => !excluded.has(b.id)).length;
 
     if (target > count) {
@@ -468,43 +303,7 @@ export function createMinePresenter(
       }
     }
 
-    const grabSize = grabSizeFor(snap.grabSizeUpgradeCount);
-    // Safety net: if the engine already departed mid-walk before the visual
-    // Lift, still take the Ore so the out-leg is never empty-handed.
-    const forceTripGrab =
-      haulLeg === "out" &&
-      carriedVariantIndexes.length === 0 &&
-      heldBodyId !== undefined &&
-      !removedHeldBody;
-    const liftedLoads = lifted
-      ? Math.min(snap.heapLoads, grabSize)
-      : forceTripGrab
-        ? Math.min(
-            Math.max(1, snap.bagLoads),
-            grabSize,
-            pile.bodies.filter((b) => !excluded.has(b.id)).length || 1,
-          )
-        : 0;
-
-    if ((lifted || forceTripGrab) && heldBodyId !== undefined) {
-      const pileCount = pile.bodies.filter((b) => !excluded.has(b.id)).length;
-      const pileTarget = lifted
-        ? target
-        : Math.max(0, pileCount - liftedLoads);
-      takeCarriedFromPile(excluded, pileCount, liftedLoads, pileTarget);
-    }
-
-    // Deposit at the Cart stand during out (incl. early arrival), while still
-    // facing west — avoids the east-facing hand jump that read as a shake.
-    let atCartStand = false;
-    if (haulLeg === "out" && isTwoDwarf()) {
-      const outStance = haulerChoreography.stanceAt(snap, nowMs);
-      atCartStand = outStance.left === HAULER_MARK_X;
-    }
-    const showCarried = lifted || (haulLeg === "out" && !atCartStand);
-    if (!showCarried) {
-      carriedVariantIndexes = [];
-    }
+    applyLiftResult(lift, excluded, liftedLoadCount);
 
     pile.stepTo(Math.max(pile.nowMs, nowMs));
   }
@@ -522,7 +321,7 @@ export function createMinePresenter(
     });
   }
 
-  const initialTarget = pileTargetCount();
+  const initialTarget = pileTargetCount(0);
   for (let i = 0; i < initialTarget; i += 1) {
     spawnPileBody();
   }
@@ -710,7 +509,7 @@ export function createMinePresenter(
     start() {
       if (isTwoDwarf()) {
         syncMinerAnim();
-        haulerChoreography.advanceTo(session.snapshot, simNowMs);
+        reconcilePile(simNowMs);
       } else {
         miner.startMining(simNowMs);
       }
