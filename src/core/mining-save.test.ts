@@ -33,7 +33,7 @@ describe("mining save seam", () => {
     store = memoryStore();
   });
 
-  it("round-trips authoritative v5 fields through underline-save-v1", () => {
+  it("round-trips authoritative v6 fields through underline-save-v1", () => {
     const snap: MiningSnapshot = {
       schemaVersion: SCHEMA_VERSION,
       advance: 3,
@@ -325,7 +325,7 @@ describe("mining save seam", () => {
     expect(loaded.savedAtMs).toBe(1_700_000_000_000);
   });
 
-  it("rewrites v5 on persist after loading a v1 save", () => {
+  it("rewrites v6 on persist after loading a v1 save", () => {
     store.setItem(
       SAVE_KEY,
       JSON.stringify({
