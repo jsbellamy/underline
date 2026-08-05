@@ -46,6 +46,8 @@ function stubPresenter(setSoundEnabled = vi.fn()) {
     heapLoads: 0,
     heapOre: [],
     fallingOre: [],
+    minerLeft: 354,
+    haulRemainingMs: 0,
   });
   return {
     anim,
@@ -308,6 +310,8 @@ describe("mountPaneShell mining Pane", () => {
       heapLoads: 0,
       heapOre: [],
       fallingOre: [],
+      minerLeft: 354,
+      haulRemainingMs: 0,
     };
 
     tunnel.render({ ...base, advance: 0 });
@@ -353,6 +357,8 @@ describe("mountPaneShell mining Pane", () => {
             heapLoads: 0,
             heapOre: [],
             fallingOre: [],
+            minerLeft: 354,
+            haulRemainingMs: 0,
           };
         },
         start: vi.fn(),
@@ -401,6 +407,8 @@ describe("mountPaneShell mining Pane", () => {
             heapLoads: 0,
             heapOre: [],
             fallingOre: [],
+            minerLeft: 354,
+            haulRemainingMs: 0,
           };
         },
         start: vi.fn(),
@@ -464,6 +472,8 @@ describe("mountPaneShell mining Pane", () => {
             heapLoads: 0,
             heapOre: [],
             fallingOre: [],
+            minerLeft: 354,
+            haulRemainingMs: 0,
           };
         },
         start: vi.fn(),
@@ -521,6 +531,8 @@ describe("mountPaneShell mining Pane", () => {
         heapLoads: 0,
         heapOre: [],
         fallingOre: [],
+        minerLeft: 354,
+        haulRemainingMs: 0,
       }));
       const presenter = {
         anim: createDwarfAnimController({ digRate: 1 }),
@@ -585,6 +597,8 @@ describe("mountPaneShell mining Pane", () => {
         heapLoads: 0,
         heapOre: [],
         fallingOre: [],
+        minerLeft: 354,
+        haulRemainingMs: 0,
       }));
       let simNowMs = 0;
       const presenter = {

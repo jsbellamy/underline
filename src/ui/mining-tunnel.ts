@@ -17,7 +17,6 @@ import {
 import {
   BLOCK_SIZE,
   CART_HEIGHT,
-  CART_MARK_X,
   CART_WIDTH,
   CART_X,
   DWARF_SCALE,
@@ -25,8 +24,6 @@ import {
   FLOOR_Y,
   HAULER_HAND_DX,
   HAULER_HAND_DY,
-  HAULER_MARK_X,
-  MINING_MARK_X,
   ORE_SIZE,
   PANE_HEIGHT,
   PANE_WIDTH,
@@ -175,6 +172,8 @@ function snapEquals(a: TunnelSnapshot, b: TunnelSnapshot): boolean {
     a.haulProgress === b.haulProgress &&
     a.faceSlide === b.faceSlide &&
     a.crewSize === b.crewSize &&
+    a.minerLeft === b.minerLeft &&
+    a.haulRemainingMs === b.haulRemainingMs &&
     carriedIndexesEqual(a.carriedVariantIndexes, b.carriedVariantIndexes) &&
     heapOreEqual(a.heapOre, b.heapOre) &&
     fallingOreEqual(a.fallingOre, b.fallingOre) &&
@@ -187,18 +186,7 @@ function faceLeft(faceSlide: number): number {
 }
 
 function dwarfLeft(snap: TunnelSnapshot): number {
-  if (snap.hauler !== undefined) {
-    return MINING_MARK_X;
-  }
-  if (snap.faceSlide < 1) {
-    return MINING_MARK_X;
-  }
-  const span = MINING_MARK_X - CART_MARK_X;
-  const t = snap.haulProgress;
-  if (t <= 0.5) {
-    return Math.round(MINING_MARK_X - (t / 0.5) * span);
-  }
-  return Math.round(CART_MARK_X + ((t - 0.5) / 0.5) * span);
+  return snap.minerLeft;
 }
 
 function haulerLeft(snap: TunnelSnapshot): number {
@@ -206,15 +194,7 @@ function haulerLeft(snap: TunnelSnapshot): number {
   if (!hauler) {
     throw new Error("haulerLeft requires a Hauler snapshot");
   }
-  if (hauler.phase === "pickup") {
-    return hauler.left;
-  }
-  const span = HAULER_MARK_X - CART_MARK_X;
-  const t = hauler.haulProgress;
-  if (t <= 0.5) {
-    return Math.round(HAULER_MARK_X - (t / 0.5) * span);
-  }
-  return Math.round(CART_MARK_X + ((t - 0.5) / 0.5) * span);
+  return hauler.left;
 }
 
 export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {

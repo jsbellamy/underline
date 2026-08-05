@@ -4,7 +4,7 @@ Composition (#318): no Dig Rate chrome — Tunnel uses the full 480×112;
 Dig Rate / Ore / Ingots readouts are Dock-only. Dwarf draws at 3× integer scale.
 */
 
-import { HAUL_ROUND_TRIP_MS, HAUL_TRAVEL_MS } from "../core/mining-engine";
+import { HAUL_TRAVEL_MS } from "../core/mining-engine";
 
 export const PANE_WIDTH = 480;
 export const PANE_HEIGHT = 112;
@@ -80,7 +80,3 @@ export function haulerStationFor(bodyX: number): number {
     ),
   );
 }
-
-/** Presentation Haul speed derived from the engine's one Haul duration. */
-export const HAUL_SPEED_PX_PER_MS =
-  (MINING_MARK_X - CART_MARK_X) / (HAUL_ROUND_TRIP_MS / 2);
