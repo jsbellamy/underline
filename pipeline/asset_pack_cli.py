@@ -7,7 +7,6 @@ import pathlib
 import sys
 from typing import Any
 
-from pipeline.cli_support import emit_json
 from pipeline.asset_pack import (
     AssetPackCheckResult,
     AssetPackError,
@@ -17,6 +16,7 @@ from pipeline.asset_pack import (
     load_asset_pack,
     render_pack_preview,
 )
+from pipeline.cli_support import emit_json
 
 
 def _check_json_payload(result: AssetPackCheckResult) -> dict[str, Any]:
