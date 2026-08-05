@@ -30,7 +30,7 @@ issue #458 switched the renderer to those bodies and retired the slot grid.
 - **Bodies are circles** sized from `content_box` mean half-extent, because with no
   rotation a circle proxy is invisible at 32 px while axis-aligned boxes stack like
   brickwork.
-- **Rendered bodies are capped** at `HEAP_RENDER_CEILING` 24 while `heapLoads` keeps
+- **Rendered bodies are capped** at `HEAP_RENDER_CEILING` 20 while `heapLoads` keeps
   counting, which also closes the existing defect where grid slot 18 rendered at `bottom`
   110 inside a 112 px Pane.
 - The renderer reconciles DOM from `heapOre` keyed by solver body id and paints
