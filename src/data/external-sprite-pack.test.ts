@@ -6,7 +6,7 @@ import { describe, expect, it } from "vitest";
 import dwarfManifest from "../../assets/characters/dwarf/manifest.json";
 import haulerManifest from "../../assets/characters/hauler/manifest.json";
 import {
-  dwarfFramePaths,
+  framePaths,
   dwarfLayout,
   type ExternalSpriteFrame,
   type ExternalSpritePack,
@@ -135,25 +135,25 @@ describe("external-sprite-pack dwarf", () => {
   });
 
   it("resolves swing/east frame paths from the manifest, not hard-coded strings", () => {
-    const paths = dwarfFramePaths(pack, "swing", "east");
+    const paths = framePaths(pack, "swing", "east");
     expect(paths).toHaveLength(9);
     expect(paths[0]).toBe("swing/east/frame_000.png");
     expect(paths[8]).toBe("swing/east/frame_008.png");
   });
 
   it("resolves walk and idle facings from the same contract", () => {
-    expect(dwarfFramePaths(pack, "idle", "east")).toEqual([
+    expect(framePaths(pack, "idle", "east")).toEqual([
       "idle/east/frame_000.png",
     ]);
-    expect(dwarfFramePaths(pack, "walk", "west")).toHaveLength(8);
-    expect(dwarfFramePaths(pack, "walk", "west")[0]).toBe(
+    expect(framePaths(pack, "walk", "west")).toHaveLength(8);
+    expect(framePaths(pack, "walk", "west")[0]).toBe(
       "walk/west/frame_000.png",
     );
   });
 
   it("rejects unknown animation or facing", () => {
-    expect(() => dwarfFramePaths(pack, "lunge", "east")).toThrow(/animation/);
-    expect(() => dwarfFramePaths(pack, "swing", "north")).toThrow(/facing/);
+    expect(() => framePaths(pack, "lunge", "east")).toThrow(/animation/);
+    expect(() => framePaths(pack, "swing", "north")).toThrow(/facing/);
   });
 
   describe("hauler pack", () => {
@@ -166,14 +166,14 @@ describe("external-sprite-pack dwarf", () => {
       expect(haulerPack.animations["swing"]).toBeUndefined();
       expect(haulerPack.animations["idle"]?.frame_count).toBe(1);
       expect(haulerPack.animations["walk"]?.frame_count).toBe(8);
-      expect(dwarfFramePaths(haulerPack, "idle", "east")).toEqual([
+      expect(framePaths(haulerPack, "idle", "east")).toEqual([
         "idle/east/frame_000.png",
       ]);
-      expect(dwarfFramePaths(haulerPack, "idle", "west")).toEqual([
+      expect(framePaths(haulerPack, "idle", "west")).toEqual([
         "idle/west/frame_000.png",
       ]);
-      expect(dwarfFramePaths(haulerPack, "walk", "east")).toHaveLength(8);
-      expect(dwarfFramePaths(haulerPack, "walk", "west")).toHaveLength(8);
+      expect(framePaths(haulerPack, "walk", "east")).toHaveLength(8);
+      expect(framePaths(haulerPack, "walk", "west")).toHaveLength(8);
     });
 
     it("ships 26×18 frames with feet on the shared bottom row and the Miner crop box", () => {

@@ -41,7 +41,7 @@ export function dwarfLayout(pack: ExternalSpritePack): DwarfLayout {
   return { frameW, frameH };
 }
 
-export function dwarfFramePaths(
+export function framePaths(
   pack: ExternalSpritePack,
   animationId: string,
   facing: string,

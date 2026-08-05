@@ -1,17 +1,15 @@
 // @vitest-environment happy-dom
 
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
-import dwarfManifest from "../../assets/characters/dwarf/manifest.json";
 import { browserSaveStore } from "../core/mining-save";
 import { createMiningSession } from "../core/mining-session";
 import { initialSnapshot } from "../core/mining-engine";
 import { persistSettings, SETTINGS_KEY } from "../core/settings-save";
 import { createDwarfAnimController } from "../core/dwarf-anim-state";
 import {
-  dwarfFramePaths,
-  type ExternalSpritePack,
+  framePaths,
 } from "../data/external-sprite-pack";
-import { dwarfFrameUrl, dwarfFrameUrlsFor } from "./dwarf-frames";
+import { DWARF_PACK, frameUrl, frameUrlsFor } from "./sprite-packs";
 import { mountPaneShell } from "./pane-root";
 import { mountMiningTunnel } from "./mining-tunnel";
 import { tunnelArtPath } from "../data/tunnel-art-pack";
@@ -154,17 +152,17 @@ function createPanePumpSchedule() {
   };
 }
 
-describe("dwarfFrameUrl", () => {
-  const pack = dwarfManifest as ExternalSpritePack;
+describe("frameUrl", () => {
+  const pack = DWARF_PACK;
 
   it("resolves every manifest relative_path via the pack glob, not hard-coded URLs", () => {
     for (const animation of ["idle", "swing", "walk"] as const) {
       for (const facing of ["east", "west"] as const) {
-        const paths = dwarfFramePaths(pack, animation, facing);
-        const urls = dwarfFrameUrlsFor(pack, animation, facing);
+        const paths = framePaths(pack, animation, facing);
+        const urls = frameUrlsFor("dwarf", pack, animation, facing);
         expect(urls).toHaveLength(paths.length);
         for (let i = 0; i < paths.length; i += 1) {
-          expect(urls[i]).toBe(dwarfFrameUrl(paths[i]!));
+          expect(urls[i]).toBe(frameUrl("dwarf", paths[i]!));
           expect(urls[i]).toMatch(/frame_\d{3}\.png/);
         }
       }
