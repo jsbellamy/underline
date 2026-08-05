@@ -14,6 +14,23 @@ The original prototype question and its answer are recorded in
 Agents: start at [AGENTS.md](AGENTS.md), then [CONTEXT.md](CONTEXT.md) and
 the contract above.
 
+## Game
+
+The TypeScript game lives under `src/`:
+
+- `src/core/` — headless simulation (pure TypeScript, injected time and RNG)
+- `src/data/` — content data and its aggregate validator
+- `src/ui/` — renderers driven by the simulation's serializable output
+
+The Tauri desktop shell is at `src-tauri/`. Common commands:
+
+```bash
+npm run dev          # Vite dev server for the game UI
+npm run build        # production build (tsc + Vite)
+npm run typecheck    # TypeScript compiler check (no emit)
+npm run test:unit    # Vitest suites for the TypeScript game
+```
+
 ## Gate-control production path
 
 Operational Gate-control work uses the production modules under `pipeline/` and

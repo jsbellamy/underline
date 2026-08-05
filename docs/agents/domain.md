@@ -25,7 +25,7 @@ This is a single-context project:
 └── pipeline/     # the asset pipeline (Python)
 ```
 
-`src/` does not exist yet. The asset pipeline lives at `pipeline/` with its tests
+`src/` holds the TypeScript game. The asset pipeline lives at `pipeline/` with its tests
 in `tests/`; `prototype/strip-coherence/` holds the standing corpus and the
 historical proof runners over that pipeline.
 
