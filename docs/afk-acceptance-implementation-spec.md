@@ -423,7 +423,7 @@ Production modules live under `pipeline/` with canonical npm commands (§12):
 4. `pipeline/gate_verification.py` — manifest-backed full-repository verification
    (`gate-control:verify`).
 
-The temporary `corpus/strip-coherence/` compatibility shims were retired
+The temporary compatibility shims beside the corpus runners were retired
 after the production commands landed.
 
 Remaining polish (non-blocking for the checked-in cohort): tighter acquisition

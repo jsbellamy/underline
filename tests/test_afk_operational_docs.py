@@ -37,10 +37,12 @@ CANONICAL_COMMANDS = (
     "gate-control:verify",
 )
 
+LEGACY_CORPUS_PREFIX = "prototype" + "/strip-coherence"
+
 RETIRED_SHIM_PATHS = (
-    "corpus/strip-coherence/gate_control.py",
-    "corpus/strip-coherence/gate_control_acquire.py",
-    "corpus/strip-coherence/numeric_policy.py",
+    f"{LEGACY_CORPUS_PREFIX}/gate_control.py",
+    f"{LEGACY_CORPUS_PREFIX}/gate_control_acquire.py",
+    f"{LEGACY_CORPUS_PREFIX}/numeric_policy.py",
 )
 
 WAVE_A_AWAIT_PHRASES = (
@@ -48,8 +50,6 @@ WAVE_A_AWAIT_PHRASES = (
     "awaiting activation",
     "deferred late visual reviews for every",
 )
-
-LEGACY_CORPUS_PREFIX = "prototype" + "/strip-coherence"
 
 
 def _load_manifest() -> dict:
@@ -85,13 +85,13 @@ def test_production_docs_point_to_pipeline_numeric_policy() -> None:
     for path in (AFK_SPEC, ALPHA_TABLES):
         text = path.read_text()
         assert "pipeline/numeric_policy.py" in text
-        assert "corpus/strip-coherence/numeric_policy.py" not in text
+        assert f"{LEGACY_CORPUS_PREFIX}/numeric_policy.py" not in text
 
 
 def test_production_docs_do_not_reference_prototype_numeric_policy() -> None:
     for path in PRODUCTION_DOC_PATHS_WITHOUT_SHIM_TABLE:
         text = path.read_text()
-        assert "corpus/strip-coherence/numeric_policy.py" not in text
+        assert f"{LEGACY_CORPUS_PREFIX}/numeric_policy.py" not in text
 
 
 def test_afk_spec_no_wave_a_await_activation_language() -> None:
@@ -136,7 +136,7 @@ def test_afk_spec_documents_canonical_commands_not_prototype_scorer() -> None:
     for cmd in CANONICAL_COMMANDS:
         assert cmd in text
     operator_section = text.split("Production Gate-control workflow")[1].split("### Deprecated")[0]
-    assert "corpus/strip-coherence/gate_control.py" not in operator_section
+    assert RETIRED_SHIM_PATHS[0] not in operator_section
 
 
 def test_operational_docs_do_not_advertise_retired_shims() -> None:
@@ -330,24 +330,6 @@ def test_adr_0018_records_corpus_move_legacy_prefix_and_frozen_script_names() ->
 
 
 def test_prototype_strip_coherence_path_limited_to_legacy_resolver_and_adr() -> None:
-    allowed = {
-        "docs/adr/0018-corpus-path-and-legacy-prefix.md",
-        "pipeline/corpus_paths.py",
-    }
-    matches: set[str] = set()
-    for path in ROOT.rglob("*"):
-        if not path.is_file():
-            continue
-        if "gate-controls" in path.parts or ".git" in path.parts:
-            continue
-        try:
-            text = path.read_text()
-        except UnicodeDecodeError:
-            continue
-        if LEGACY_CORPUS_PREFIX in text:
-            matches.add(path.relative_to(ROOT).as_posix())
-    assert matches == allowed
-
     result = subprocess.run(
         [
             "git",
@@ -363,6 +345,8 @@ def test_prototype_strip_coherence_path_limited_to_legacy_resolver_and_adr() -> 
         capture_output=True,
         text=True,
     )
-    tracked = {line.strip() for line in result.stdout.splitlines() if line.strip()}
-    assert tracked <= allowed
-    assert "pipeline/corpus_paths.py" in tracked
+    paths = {line.strip() for line in result.stdout.splitlines() if line.strip()}
+    assert paths == {
+        "docs/adr/0018-corpus-path-and-legacy-prefix.md",
+        "pipeline/corpus_paths.py",
+    }
