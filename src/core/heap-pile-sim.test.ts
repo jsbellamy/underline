@@ -268,7 +268,7 @@ describe("heap pile sim grab exclusion", () => {
     expect(sim.removeGrabbed(grabX, grabY, new Set([id1, 3]))).toBeNull();
   });
 
-  it("preserves #463 selection when excludeIds is omitted", () => {
+  it("chooses the nearest body when no Spill ids are excluded", () => {
     const sim = createHeapPileSim({ bin: wideBin(), seed: 1, startMs: 0 });
     sim.spawn(6, 100, 20, 0, 0);
     sim.spawn(6, 105, 40, 0, 0);

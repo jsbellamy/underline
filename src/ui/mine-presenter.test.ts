@@ -1177,7 +1177,7 @@ describe("mine presenter", () => {
       return { session, presenter, cap };
     }
 
-    it("uses a 900 ms spill lifetime from spawn", () => {
+    it("defines spill body lifetime as 900 ms", () => {
       expect(SPILL_LIFETIME_MS).toBe(900);
     });
 
@@ -1304,13 +1304,14 @@ describe("mine presenter", () => {
       });
       const presenter = createMinePresenter(session);
       presenter.start();
+      const beforeIds = new Set(presenter.snapshot().heapOre.map((o) => o.id));
       vi.spyOn(session, "advanceLive").mockReturnValueOnce({
         snapshot: session.snapshot,
         events: [{ type: "loadSpilled", atMs: 0 }],
       });
       presenter.advanceMs(1);
-      const snap = presenter.snapshot();
-      const spillId = snap.heapOre.find((o) => o.bottom > 40)!.id;
+      const snap = presenter.snapshot(1);
+      const spillId = snap.heapOre.find((o) => !beforeIds.has(o.id))!.id;
       expect(snap.heapOre.some((o) => o.id === spillId)).toBe(true);
       expect(snap.carriedVariantIndex).toBeDefined();
       expect(
