@@ -25,7 +25,7 @@ from pipeline.cell_delta import (
 from pipeline.cell_raster import RasterError, write_cells
 from pipeline.cell_raster import read_cells as _read_cells
 from pipeline.cell_raster import write_silhouette_gif, write_silhouette_strip
-from pipeline.gate_evidence import EvidenceError, sha256_bytes, sha256_file, write_json_immutable
+from pipeline.gate_evidence import EvidenceError, manifest_sha256, sha256_bytes, sha256_file, write_json_immutable
 from pipeline.palette_quantize import load_master_palette
 from pipeline.identity_lock import (
     IDENTITY_LOCK_NEAR_MISS_SCHEMA,
@@ -501,10 +501,6 @@ def load_polish_brief(bundle_root: Path) -> dict[str, Any]:
         "editing_rules": profile["editing_rules"],
         "audit_workflow": profile["audit_workflow"],
     }
-
-
-def _manifest_sha256(bundle_root: Path) -> str:
-    return sha256_file(bundle_root / "manifest.json")
 
 
 def _ordered_frame_hashes(bundle_root: Path, layer: str) -> tuple[str, ...]:
@@ -1570,7 +1566,7 @@ def _resolve_bundle_attestation(
         reason_code="invalid_attempt_ledger",
         error_class=InvalidBundleError,
     )
-    if _canonical_json(_ledger_attestation_view(committed_ledger)) != _canonical_json(
+    if canonical.canonical_value(_ledger_attestation_view(committed_ledger)) != canonical.canonical_value(
         _ledger_attestation_view(expected_ledger)
     ):
         raise InvalidBundleError(
@@ -2817,7 +2813,7 @@ def check_bundle(bundle_root: Path) -> FinalPolishCheckResult:
     """Validate provenance, logical Frames, structure, delta, and coherence."""
     manifest = _load_manifest(bundle_root)
     profile = _load_bound_profile(bundle_root, manifest)
-    manifest_hash = _manifest_sha256(bundle_root)
+    manifest_hash = manifest_sha256(bundle_root)
     provider_outcome, attestation = _verify_provider_and_drafts(bundle_root, manifest)
     profile_id = None if profile is None else str(profile["id"])
     provider_post_edit = _verify_provider_post_edit(
@@ -2996,10 +2992,6 @@ def _ensure_release_frames(bundle_root: Path, result: FinalPolishCheckResult) ->
         shutil.copy2(source, dest)
 
 
-def _canonical_json(value: object) -> object:
-    return json.loads(json.dumps(value, sort_keys=True))
-
-
 def finalize_bundle(bundle_root: Path) -> Path:
     """Write an immutable report; on PASS, copy polished Frames to release/."""
     check = check_bundle(bundle_root)
@@ -3014,7 +3006,7 @@ def finalize_bundle(bundle_root: Path) -> Path:
 
     if report_path.exists():
         existing = json.loads(report_path.read_text())
-        if _canonical_json(existing) != _canonical_json(payload):
+        if canonical.canonical_value(existing) != canonical.canonical_value(payload):
             raise InvalidBundleError(
                 f"immutable report conflict: {report_path.name}",
                 reason_code="report_conflict",

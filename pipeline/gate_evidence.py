@@ -43,6 +43,10 @@ def sha256_file(path: Path) -> str:
     return sha256_bytes(path.read_bytes())
 
 
+def manifest_sha256(bundle_root: Path) -> str:
+    return sha256_file(bundle_root / "manifest.json")
+
+
 def fingerprint_tree(root: Path) -> dict[str, str]:
     """Relative-path → SHA-256 map for every regular file under ``root``."""
     if not root.exists():
