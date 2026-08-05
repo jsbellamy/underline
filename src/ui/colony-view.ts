@@ -6,19 +6,16 @@ import {
   hardnessFor,
   carryCapacityFor,
   heapCapacityFor,
-  nextDigRateUpgradeCost,
-  nextPickDamageUpgradeCost,
-  nextSmelterUpgradeCost,
-  nextCarryCapacityUpgradeCost,
-  nextGrabSizeUpgradeCost,
-  nextHaulSpeedUpgradeCost,
-  nextUnloadSpeedUpgradeCost,
   pickDamageFor,
   smelterThroughputFor,
-  HIRE_HAULER_COST,
   DROPS_PER_FACE,
   type UpgradeId,
 } from "../core/mining-engine";
+import {
+  UPGRADE_CATALOGUE,
+  upgradeCostFor,
+  type UpgradeSpec,
+} from "../data/upgrade-catalogue";
 import type { WireSnapshot } from "../core/wire-snapshot";
 
 export interface ColonyView {
@@ -30,6 +27,39 @@ export interface ColonyView {
 export interface ColonyViewOptions {
   onBuyUpgrade?: (upgrade: UpgradeId) => void;
   onDismissOffline?: () => void;
+}
+
+const DOCK_UPGRADE_PRESENTATION: Record<
+  UpgradeId,
+  { readonly className: string; readonly datasetKey: string }
+> = {
+  digRate: { className: "dock-buy-upgrade", datasetKey: "buyUpgrade" },
+  pickDamage: {
+    className: "dock-buy-pick-damage-upgrade",
+    datasetKey: "buyPickDamageUpgrade",
+  },
+  smelter: { className: "dock-buy-smelter-upgrade", datasetKey: "buySmelterUpgrade" },
+  carryCapacity: {
+    className: "dock-buy-carry-capacity-upgrade",
+    datasetKey: "buyCarryCapacityUpgrade",
+  },
+  haulSpeed: {
+    className: "dock-buy-haul-speed-upgrade",
+    datasetKey: "buyHaulSpeedUpgrade",
+  },
+  grabSize: { className: "dock-buy-grab-size-upgrade", datasetKey: "buyGrabSizeUpgrade" },
+  unloadSpeed: {
+    className: "dock-buy-unload-speed-upgrade",
+    datasetKey: "buyUnloadSpeedUpgrade",
+  },
+  hireHauler: { className: "dock-hire-hauler", datasetKey: "hireHauler" },
+};
+
+function ownedCount(snapshot: WireSnapshot, spec: UpgradeSpec): number {
+  if (spec.effect.kind === "raiseCount") {
+    return snapshot[spec.effect.field];
+  }
+  return 0;
 }
 
 function formatRate(n: number): string {
@@ -130,72 +160,19 @@ export function mountColonyView(
 
   const upgradeRow = document.createElement("div");
   upgradeRow.className = "dock-colony-upgrade";
-  const digRateUpgradeBtn = document.createElement("button");
-  digRateUpgradeBtn.type = "button";
-  digRateUpgradeBtn.className = "dock-buy-upgrade";
-  digRateUpgradeBtn.dataset["buyUpgrade"] = "";
-  digRateUpgradeBtn.addEventListener("click", () => {
-    options.onBuyUpgrade?.("digRate");
-  });
-  const pickDamageUpgradeBtn = document.createElement("button");
-  pickDamageUpgradeBtn.type = "button";
-  pickDamageUpgradeBtn.className = "dock-buy-pick-damage-upgrade";
-  pickDamageUpgradeBtn.dataset["buyPickDamageUpgrade"] = "";
-  pickDamageUpgradeBtn.addEventListener("click", () => {
-    options.onBuyUpgrade?.("pickDamage");
-  });
-  const smelterUpgradeBtn = document.createElement("button");
-  smelterUpgradeBtn.type = "button";
-  smelterUpgradeBtn.className = "dock-buy-smelter-upgrade";
-  smelterUpgradeBtn.dataset["buySmelterUpgrade"] = "";
-  smelterUpgradeBtn.addEventListener("click", () => {
-    options.onBuyUpgrade?.("smelter");
-  });
-  const carryCapacityUpgradeBtn = document.createElement("button");
-  carryCapacityUpgradeBtn.type = "button";
-  carryCapacityUpgradeBtn.className = "dock-buy-carry-capacity-upgrade";
-  carryCapacityUpgradeBtn.dataset["buyCarryCapacityUpgrade"] = "";
-  carryCapacityUpgradeBtn.addEventListener("click", () => {
-    options.onBuyUpgrade?.("carryCapacity");
-  });
-  const haulSpeedUpgradeBtn = document.createElement("button");
-  haulSpeedUpgradeBtn.type = "button";
-  haulSpeedUpgradeBtn.className = "dock-buy-haul-speed-upgrade";
-  haulSpeedUpgradeBtn.dataset["buyHaulSpeedUpgrade"] = "";
-  haulSpeedUpgradeBtn.addEventListener("click", () => {
-    options.onBuyUpgrade?.("haulSpeed");
-  });
-  const grabSizeUpgradeBtn = document.createElement("button");
-  grabSizeUpgradeBtn.type = "button";
-  grabSizeUpgradeBtn.className = "dock-buy-grab-size-upgrade";
-  grabSizeUpgradeBtn.dataset["buyGrabSizeUpgrade"] = "";
-  grabSizeUpgradeBtn.addEventListener("click", () => {
-    options.onBuyUpgrade?.("grabSize");
-  });
-  const unloadSpeedUpgradeBtn = document.createElement("button");
-  unloadSpeedUpgradeBtn.type = "button";
-  unloadSpeedUpgradeBtn.className = "dock-buy-unload-speed-upgrade";
-  unloadSpeedUpgradeBtn.dataset["buyUnloadSpeedUpgrade"] = "";
-  unloadSpeedUpgradeBtn.addEventListener("click", () => {
-    options.onBuyUpgrade?.("unloadSpeed");
-  });
-  const hireHaulerBtn = document.createElement("button");
-  hireHaulerBtn.type = "button";
-  hireHaulerBtn.className = "dock-hire-hauler";
-  hireHaulerBtn.dataset["hireHauler"] = "";
-  hireHaulerBtn.addEventListener("click", () => {
-    options.onBuyUpgrade?.("hireHauler");
-  });
-  upgradeRow.append(
-    digRateUpgradeBtn,
-    pickDamageUpgradeBtn,
-    smelterUpgradeBtn,
-    carryCapacityUpgradeBtn,
-    haulSpeedUpgradeBtn,
-    grabSizeUpgradeBtn,
-    unloadSpeedUpgradeBtn,
-    hireHaulerBtn,
-  );
+  const upgradeButtons = new Map<UpgradeId, HTMLButtonElement>();
+  for (const spec of UPGRADE_CATALOGUE) {
+    const presentation = DOCK_UPGRADE_PRESENTATION[spec.id];
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = presentation.className;
+    btn.dataset[presentation.datasetKey] = "";
+    btn.addEventListener("click", () => {
+      options.onBuyUpgrade?.(spec.id);
+    });
+    upgradeButtons.set(spec.id, btn);
+    upgradeRow.append(btn);
+  }
 
   const offline = document.createElement("aside");
   offline.className = "dock-offline-summary";
@@ -222,17 +199,6 @@ export function mountColonyView(
 
   function render(snapshot: WireSnapshot): void {
     const digRate = digRateFor(snapshot.digRateUpgradeCount);
-    const digCost = nextDigRateUpgradeCost(snapshot.digRateUpgradeCount);
-    const pickDamageCost = nextPickDamageUpgradeCost(snapshot.pickDamageUpgradeCount);
-    const smelterCost = nextSmelterUpgradeCost(snapshot.smelterUpgradeCount);
-    const carryCapacityCost = nextCarryCapacityUpgradeCost(
-      snapshot.carryCapacityUpgradeCount,
-    );
-    const haulSpeedCost = nextHaulSpeedUpgradeCost(snapshot.haulSpeedUpgradeCount);
-    const grabSizeCost = nextGrabSizeUpgradeCost(snapshot.grabSizeUpgradeCount);
-    const unloadSpeedCost = nextUnloadSpeedUpgradeCost(
-      snapshot.unloadSpeedUpgradeCount,
-    );
     const throughput = smelterThroughputFor(snapshot.smelterUpgradeCount);
     const capacity = carryCapacityFor(snapshot.carryCapacityUpgradeCount);
     const heapCapacity = heapCapacityFor(snapshot.carryCapacityUpgradeCount);
@@ -266,34 +232,20 @@ export function mountColonyView(
       }
     }
     faceDd.textContent = `${snapshot.advance + 1} — ${facePercent}%`;
-    digRateUpgradeBtn.textContent = `Buy Upgrade (+0.25 Dig Rate) — ${digCost} Ingots`;
-    digRateUpgradeBtn.disabled = snapshot.ingots < digCost;
-    pickDamageUpgradeBtn.textContent =
-      `Buy Pick Damage Upgrade (×1.5 Pick Damage) — ${pickDamageCost} Ingots`;
-    pickDamageUpgradeBtn.disabled = snapshot.ingots < pickDamageCost;
-    smelterUpgradeBtn.textContent =
-      `Buy Smelter Upgrade (×1.5 Ore/sec) — ${smelterCost} Ingots`;
-    smelterUpgradeBtn.disabled = snapshot.ingots < smelterCost;
-    carryCapacityUpgradeBtn.textContent =
-      `Buy Carry Capacity Upgrade (+5 loads) — ${carryCapacityCost} Ingots`;
-    carryCapacityUpgradeBtn.disabled = snapshot.ingots < carryCapacityCost;
-    haulSpeedUpgradeBtn.textContent =
-      `Buy Haul Speed Upgrade (+0.25 Haul Speed) — ${haulSpeedCost} Ingots`;
-    haulSpeedUpgradeBtn.disabled = snapshot.ingots < haulSpeedCost;
-    grabSizeUpgradeBtn.textContent =
-      `Buy Grab Size Upgrade (+1 Grab Size) — ${grabSizeCost} Ingots`;
-    grabSizeUpgradeBtn.disabled = snapshot.ingots < grabSizeCost;
-    grabSizeUpgradeBtn.hidden = snapshot.crewSize !== 2;
-    unloadSpeedUpgradeBtn.textContent =
-      `Buy Unload Speed Upgrade (+0.5 Unload Speed) — ${unloadSpeedCost} Ingots`;
-    unloadSpeedUpgradeBtn.disabled = snapshot.ingots < unloadSpeedCost;
-    unloadSpeedUpgradeBtn.hidden = snapshot.crewSize !== 2;
-    if (snapshot.crewSize === 1) {
-      hireHaulerBtn.textContent = `Hire a Hauler — ${HIRE_HAULER_COST} Ingots`;
-      hireHaulerBtn.disabled = snapshot.ingots < HIRE_HAULER_COST;
-    } else {
-      hireHaulerBtn.textContent = "Hauler hired";
-      hireHaulerBtn.disabled = true;
+    for (const spec of UPGRADE_CATALOGUE) {
+      const btn = upgradeButtons.get(spec.id);
+      if (!btn) {
+        continue;
+      }
+      const cost = upgradeCostFor(spec.id, ownedCount(snapshot, spec));
+      btn.hidden = !spec.offeredAtCrewSize.includes(snapshot.crewSize);
+      if (spec.id === "hireHauler" && snapshot.crewSize >= 2) {
+        btn.textContent = "Hauler hired";
+        btn.disabled = true;
+      } else {
+        btn.textContent = `${spec.label} — ${cost} Ingots`;
+        btn.disabled = snapshot.ingots < cost;
+      }
     }
 
     constants.textContent =

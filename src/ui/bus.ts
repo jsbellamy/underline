@@ -9,6 +9,7 @@ BroadcastChannel endpoint for Pane↔Dock. Channel `underline`; payloads follow
 */
 
 import type { WireSnapshot } from "../core/wire-snapshot";
+import { isUpgradeId } from "../data/upgrade-catalogue";
 import { SCHEMA_VERSION, type UpgradeId } from "../core/mining-engine";
 
 export const UNDERLINE_BUS_CHANNEL = "underline";
@@ -34,19 +35,6 @@ export interface BusEndpoint {
 
 function isSchemaVersion(value: unknown): value is typeof SCHEMA_VERSION {
   return value === SCHEMA_VERSION;
-}
-
-function isUpgradeId(value: unknown): value is UpgradeId {
-  return (
-    value === "digRate" ||
-    value === "smelter" ||
-    value === "carryCapacity" ||
-    value === "haulSpeed" ||
-    value === "hireHauler" ||
-    value === "pickDamage" ||
-    value === "grabSize" ||
-    value === "unloadSpeed"
-  );
 }
 
 /** True when a Dock command carries schemaVersion 2. */
