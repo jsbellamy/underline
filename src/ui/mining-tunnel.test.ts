@@ -17,7 +17,11 @@ import {
   CART_MARK_X,
   CART_WIDTH,
   CART_X,
+  DWARF_FRAME_W,
+  DWARF_SCALE,
   FACE_X,
+  FLOOR_Y,
+  HAULER_HAND_DX,
   HAULER_MARK_X,
   MINING_MARK_X,
   ORE_SIZE,
@@ -378,6 +382,24 @@ describe("mountMiningTunnel", () => {
     tunnel.destroy();
   });
 
+  it("stands the Miner, Hauler, and Cart on FLOOR_Y", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    tunnel.render(twoDwarfSnap({ advance: 1 }));
+
+    const cart = host.querySelector<HTMLElement>(".pane-cart")!;
+    const dwarf = host.querySelector<HTMLElement>("[data-dwarf]")!;
+    const hauler = host.querySelector<HTMLElement>("[data-hauler]")!;
+    const floorBottom = `${FLOOR_Y}px`;
+
+    expect(FLOOR_Y).toBe(8);
+    expect(cart.style.bottom).toBe(floorBottom);
+    expect(dwarf.style.bottom).toBe(floorBottom);
+    expect(hauler.style.bottom).toBe(floorBottom);
+
+    tunnel.destroy();
+  });
+
   it("places the Dwarf at MINING_MARK_X when not hauling", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
@@ -543,6 +565,75 @@ describe("mountMiningTunnel", () => {
     tunnel.destroy();
   });
 
+  it("anchors the carried Load to the Hauler's hands facing east", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    const haulerX = 257;
+
+    tunnel.render(
+      twoDwarfSnap({
+        heapLoads: 5,
+        heapOre: twoDwarfHeapOre(4),
+        carriedVariantIndex: 2,
+        hauler: { phase: "pickup", pickupProgress: 0.75, facing: "east" },
+      }),
+    );
+
+    const hauler = host.querySelector<HTMLElement>("[data-hauler]")!;
+    const carried = host.querySelector<HTMLElement>("[data-ore-carried]")!;
+    expect(Number(hauler.style.left.replace("px", ""))).toBe(haulerX);
+    expect(carried.style.left).toBe(`${haulerX + HAULER_HAND_DX}px`);
+
+    tunnel.destroy();
+  });
+
+  it("mirrors the carried Load hand anchor when the Hauler faces west", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+    const haulerX = 257;
+    const dwarfW = DWARF_FRAME_W * DWARF_SCALE;
+    const westHandDx = dwarfW - ORE_SIZE - HAULER_HAND_DX;
+
+    tunnel.render(
+      twoDwarfSnap({
+        heapLoads: 5,
+        heapOre: twoDwarfHeapOre(4),
+        carriedVariantIndex: 2,
+        hauler: { phase: "pickup", pickupProgress: 0.75, facing: "west" },
+      }),
+    );
+
+    const hauler = host.querySelector<HTMLElement>("[data-hauler]")!;
+    const carried = host.querySelector<HTMLElement>("[data-ore-carried]")!;
+    expect(Number(hauler.style.left.replace("px", ""))).toBe(haulerX);
+    expect(westHandDx).toBe(6);
+    expect(carried.style.left).toBe(`${haulerX + westHandDx}px`);
+
+    tunnel.destroy();
+  });
+
+  it("paints the carried Load above the Hauler sprite", () => {
+    const host = document.createElement("div");
+    const tunnel = mountMiningTunnel(host);
+
+    tunnel.render(
+      twoDwarfSnap({
+        heapLoads: 4,
+        heapOre: twoDwarfHeapOre(3),
+        carriedVariantIndex: 1,
+        hauler: { phase: "pickup", pickupProgress: 0.75 },
+      }),
+    );
+
+    const carried = host.querySelector<HTMLElement>("[data-ore-carried]")!;
+    expect(carried.classList.contains("pane-ore-carried")).toBe(true);
+
+    const css = readFileSync(resolve("src/styles.css"), "utf8");
+    expect(css).toMatch(/\.pane-ore-carried\s*\{[^}]*z-index:\s*6/);
+
+    tunnel.destroy();
+  });
+
   it("aligns carried Ore with the Hauler on the pickup return leg", () => {
     const host = document.createElement("div");
     const tunnel = mountMiningTunnel(host);
@@ -560,7 +651,9 @@ describe("mountMiningTunnel", () => {
     const hauler = host.querySelector<HTMLElement>("[data-hauler]")!;
     const carried = host.querySelector<HTMLElement>("[data-ore-carried]")!;
     expect(carried).not.toBeNull();
-    expect(carried!.style.left).toBe(hauler.style.left);
+    expect(carried!.style.left).toBe(
+      `${Number(hauler.style.left.replace("px", "")) + HAULER_HAND_DX}px`,
+    );
 
     tunnel.destroy();
   });

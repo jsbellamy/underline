@@ -78,7 +78,6 @@ html.dock-window body {
 
 .pane-cart {
   position: absolute;
-  bottom: 8px;
   z-index: 4;
 }
 
@@ -91,6 +90,10 @@ html.dock-window body {
 
 .pane-ore {
   position: absolute;
+}
+
+.pane-ore-carried {
+  z-index: 6;
 }
 
 .pane-dwarf {

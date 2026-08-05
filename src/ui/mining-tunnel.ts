@@ -22,6 +22,9 @@ import {
   CART_X,
   DWARF_SCALE,
   FACE_X,
+  FLOOR_Y,
+  HAULER_HAND_DX,
+  HAULER_HAND_DY,
   HAULER_MARK_X,
   MINING_MARK_X,
   ORE_SIZE,
@@ -237,6 +240,7 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
   cart.style.left = `${CART_X}px`;
   cart.style.width = `${CART_WIDTH}px`;
   cart.style.height = `${CART_HEIGHT}px`;
+  cart.style.bottom = `${FLOOR_Y}px`;
   cart.style.background = CART_FILL;
 
   const heap = document.createElement("div");
@@ -266,9 +270,8 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
   hauler.style.height = `${dwarfH}px`;
   hauler.style.imageRendering = "pixelated";
 
-  const dwarfBottom = 10;
-  dwarf.style.bottom = `${dwarfBottom}px`;
-  hauler.style.bottom = `${dwarfBottom}px`;
+  dwarf.style.bottom = `${FLOOR_Y}px`;
+  hauler.style.bottom = `${FLOOR_Y}px`;
 
   const urlCache = new Map<string, string[]>();
   function urlsFor(
@@ -387,7 +390,7 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
 
     if (!carriedOre) {
       carriedOre = document.createElement("div");
-      carriedOre.className = "pane-ore";
+      carriedOre.className = "pane-ore pane-ore-carried";
       carriedOre.dataset["oreCarried"] = "";
       carriedOre.style.width = `${ORE_SIZE}px`;
       carriedOre.style.height = `${ORE_SIZE}px`;
@@ -395,8 +398,14 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
     }
 
     const artKey = heapOreArtKey(variantIndex);
-    paintHeapOre(carriedOre, artKey, dwarfBottom);
-    carriedOre.style.left = `${haulerLeft(snap)}px`;
+    paintHeapOre(carriedOre, artKey, FLOOR_Y + HAULER_HAND_DY);
+    const left = haulerLeft(snap);
+    const facing = snap.hauler?.facing ?? "east";
+    const handDx =
+      facing === "west"
+        ? dwarfW - ORE_SIZE - HAULER_HAND_DX
+        : HAULER_HAND_DX;
+    carriedOre.style.left = `${left + handDx}px`;
   }
 
   function mountHauler(): void {
