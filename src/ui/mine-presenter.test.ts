@@ -830,11 +830,12 @@ describe("mine presenter", () => {
     });
     const haulPresenter = createMinePresenter(hauling);
     haulPresenter.start();
-    // Departure defaults to the stand — out-leg has zero length, so idle.
+    // Departure defaults to the stand — out-leg has zero length, so idle facing Cart.
     const outAtStand = haulPresenter.snapshot();
     expect(outAtStand.hauler!.phase).toBe("out");
     expect(outAtStand.hauler!.left).toBe(HAULER_MARK_X);
     expect(outAtStand.hauler!.animation).toBe("idle");
+    expect(outAtStand.hauler!.facing).toBe("west");
     expect(outAtStand.hauler!.pickupProgress).toBe(0);
 
     // A live pickup walk leaves departure east of the stand → walk west.
@@ -1576,6 +1577,64 @@ describe("mine presenter", () => {
       }
       expect(presenter.snapshot().hauler!.phase).toBe("back");
       expect(presenter.snapshot().carriedVariantIndexes).toBeUndefined();
+    });
+
+    it("idles facing west at early out arrival and deposits on the stand", () => {
+      const { presenter } = twoDwarfPresenterForTrip({ heapLoads: 1 });
+      presenter.advanceMs(2_000);
+      expect(presenter.snapshot().hauler!.left).toBeGreaterThan(HAULER_MARK_X + 40);
+      presenter.advanceMs(OPENING_PICKUP_MS - 2_000);
+      expect(presenter.snapshot().hauler!.phase).toBe("out");
+      expect(presenter.snapshot().carriedVariantIndexes).toHaveLength(1);
+      expect(presenter.snapshot().hauler!.left).toBeGreaterThan(HAULER_MARK_X);
+
+      while (presenter.snapshot().hauler!.left > HAULER_MARK_X) {
+        presenter.advanceMs(16);
+      }
+      const arrived = presenter.snapshot();
+      expect(arrived.hauler!.phase).toBe("out");
+      expect(arrived.hauler!.left).toBe(HAULER_MARK_X);
+      expect(arrived.hauler!.animation).toBe("idle");
+      expect(arrived.hauler!.facing).toBe("west");
+      expect(arrived.carriedVariantIndexes).toBeUndefined();
+    });
+
+    it("does not Lift Heap Ore until the Hauler reaches the grab station", () => {
+      const { presenter } = twoDwarfPresenter({
+        heapLoads: 1,
+        haulSpeedUpgradeCount: 1,
+      });
+      presenter.snapshot();
+      presenter.advanceMs(pickupMsPerLoad(1) / 2 + 50);
+      const midApproach = presenter.snapshot();
+      expect(midApproach.hauler!.animation).toBe("walk");
+      expect(midApproach.hauler!.left).toBeGreaterThan(HAULER_MARK_X);
+      expect(midApproach.carriedVariantIndexes).toBeUndefined();
+      expect(midApproach.heapOre).toHaveLength(1);
+
+      while (presenter.snapshot().hauler!.animation === "walk") {
+        presenter.advanceMs(16);
+      }
+      const atOre = presenter.snapshot();
+      expect(atOre.hauler!.animation).toBe("idle");
+      expect(atOre.carriedVariantIndexes).toHaveLength(1);
+      expect(atOre.heapOre).toHaveLength(0);
+    });
+
+    it("still carries Ore on Trip start if the Lift window was missed mid-walk", () => {
+      const { presenter, session } = twoDwarfPresenter({
+        heapLoads: 1,
+        haulSpeedUpgradeCount: 3,
+      });
+      presenter.snapshot();
+      while (session.snapshot.haulRemainingMs === 0) {
+        presenter.advanceMs(16);
+        presenter.snapshot();
+      }
+      const departed = presenter.snapshot();
+      expect(departed.hauler!.phase).toBe("out");
+      expect(departed.carriedVariantIndexes).toHaveLength(1);
+      expect(departed.heapOre).toHaveLength(0);
     });
 
     it("grabs up to capacity in one Lift before one Cart pass", () => {

@@ -211,10 +211,12 @@ function isPickupLifted(
   heapLoads: number,
   pickupProgressMs: number,
   haulSpeedUpgradeCount: number,
+  atGrabStation: boolean = true,
 ): boolean {
   return (
     haulRemainingMs === 0 &&
     heapLoads >= 1 &&
+    atGrabStation &&
     pickupProgressFraction(
       haulRemainingMs,
       pickupProgressMs,
@@ -335,6 +337,12 @@ export function createMinePresenter(
     return MINING_MARK_X;
   }
 
+  function atGrabStation(): boolean {
+    return (
+      heldWalkStationPx !== null && haulerLeftPx === heldWalkStationPx
+    );
+  }
+
   function pileTargetCount(): number {
     const snap = session.snapshot;
     if (snap.crewSize !== 2) {
@@ -345,6 +353,7 @@ export function createMinePresenter(
       snap.heapLoads,
       snap.pickupProgressMs,
       snap.haulSpeedUpgradeCount,
+      atGrabStation(),
     )
       ? Math.min(snap.heapLoads, grabSizeFor(snap.grabSizeUpgradeCount))
       : 0;
@@ -441,6 +450,68 @@ export function createMinePresenter(
     }
     heldWalkStationPx = heldBodyStation();
     removedHeldBody = false;
+    // Seeded / restored mid-Lift: stand at the Ore rather than walking from the
+    // Cart after the progress midpoint has already elapsed.
+    const snap = session.snapshot;
+    if (
+      heldWalkStationPx !== null &&
+      haulerLeftPx === HAULER_MARK_X &&
+      snap.haulRemainingMs === 0 &&
+      pickupProgressFraction(
+        0,
+        snap.pickupProgressMs,
+        snap.haulSpeedUpgradeCount,
+      ) > 0.5
+    ) {
+      haulerLeftPx = heldWalkStationPx;
+    }
+  }
+
+  function takeCarriedFromPile(
+    excluded: ReadonlySet<number>,
+    count: number,
+    liftedLoads: number,
+    target: number,
+  ): void {
+    if (heldBodyId === undefined || removedHeldBody) {
+      return;
+    }
+    if (!(count > target)) {
+      if (carriedVariantIndexes.length === 0) {
+        const variant = variantByBodyId.get(heldBodyId);
+        if (variant !== undefined) {
+          carriedVariantIndexes = [variant];
+        }
+      }
+      return;
+    }
+    // Lift the Ore we walked to first; fill remaining Grab Size from nearest.
+    const grabbed = new Set<number>();
+    const bodyIds: number[] = [];
+    if (pile.bodies.some((b) => b.id === heldBodyId && !excluded.has(b.id))) {
+      bodyIds.push(heldBodyId);
+      grabbed.add(heldBodyId);
+    }
+    if (bodyIds.length < liftedLoads) {
+      bodyIds.push(
+        ...pickHeldBodies(
+          haulerLeftPx,
+          new Set([...excluded, ...grabbed]),
+          liftedLoads - bodyIds.length,
+        ),
+      );
+    }
+    for (const bodyId of bodyIds) {
+      if (!pile.remove(bodyId)) {
+        continue;
+      }
+      const variant = variantByBodyId.get(bodyId);
+      if (variant !== undefined) {
+        carriedVariantIndexes.push(variant);
+        variantByBodyId.delete(bodyId);
+      }
+    }
+    removedHeldBody = true;
   }
 
   function advanceHaulerLeft(nowMs: number): void {
@@ -484,6 +555,44 @@ export function createMinePresenter(
     trackHaulDeparture(nowMs);
     ensureHaulDepartureStation();
 
+    const haulLeg =
+      snap.haulRemainingMs > 0
+        ? tripLeg(snap.haulRemainingMs, snap.unloadSpeedUpgradeCount)
+        : null;
+    if (haulLeg === "back" && haulReturnStation === null) {
+      assignHeldOre(pickHeldBody(HAULER_MARK_X, excluded) ?? undefined);
+      haulReturnStation = heldWalkStationPx ?? HAULER_MARK_X;
+    }
+
+    if (inPickup) {
+      const heldMissing =
+        heldBodyId !== undefined &&
+        !pile.bodies.some((b) => b.id === heldBodyId);
+      const progressLifted = isPickupLifted(
+        snap.haulRemainingMs,
+        snap.heapLoads,
+        snap.pickupProgressMs,
+        snap.haulSpeedUpgradeCount,
+        true,
+      );
+      // Acquire a target anytime we have none. Retarget only between Lifts —
+      // during the Lift window the held body is removed and must not be
+      // replaced by a neighbour (that caused idle↔walk thrash at the Ore).
+      if (heldBodyId === undefined || (!progressLifted && heldMissing)) {
+        assignHeldOre(pickHeldBody(haulerLeftPx, excluded) ?? undefined);
+      }
+    }
+
+    advanceHaulerLeft(nowMs);
+
+    const lifted = isPickupLifted(
+      snap.haulRemainingMs,
+      snap.heapLoads,
+      snap.pickupProgressMs,
+      snap.haulSpeedUpgradeCount,
+      atGrabStation(),
+    );
+
     const target = pileTargetCount();
     const count = pile.bodies.filter((b) => !excluded.has(b.id)).length;
 
@@ -497,64 +606,46 @@ export function createMinePresenter(
       }
     }
 
-    const haulLeg =
-      snap.haulRemainingMs > 0
-        ? tripLeg(snap.haulRemainingMs, snap.unloadSpeedUpgradeCount)
-        : null;
-    if (haulLeg === "back" && haulReturnStation === null) {
-      assignHeldOre(pickHeldBody(HAULER_MARK_X, excluded) ?? undefined);
-      haulReturnStation = heldWalkStationPx ?? HAULER_MARK_X;
-    }
-
-    const lifted = isPickupLifted(
-      snap.haulRemainingMs,
-      snap.heapLoads,
-      snap.pickupProgressMs,
-      snap.haulSpeedUpgradeCount,
-    );
-
-    if (inPickup) {
-      const heldMissing =
-        heldBodyId !== undefined &&
-        !pile.bodies.some((b) => b.id === heldBodyId);
-      // Acquire a target anytime we have none. Retarget only between Lifts —
-      // during the Lift window the held body is removed and must not be
-      // replaced by a neighbour (that caused idle↔walk thrash at the Ore).
-      if (heldBodyId === undefined || (!lifted && heldMissing)) {
-        assignHeldOre(pickHeldBody(haulerLeftPx, excluded) ?? undefined);
-      }
-    }
-
-    advanceHaulerLeft(nowMs);
-
+    const grabSize = grabSizeFor(snap.grabSizeUpgradeCount);
+    // Safety net: if the engine already departed mid-walk before the visual
+    // Lift, still take the Ore so the out-leg is never empty-handed.
+    const forceTripGrab =
+      haulLeg === "out" &&
+      carriedVariantIndexes.length === 0 &&
+      heldBodyId !== undefined &&
+      !removedHeldBody;
     const liftedLoads = lifted
-      ? Math.min(snap.heapLoads, grabSizeFor(snap.grabSizeUpgradeCount))
-      : 0;
-    if (lifted && heldBodyId !== undefined) {
-      if (count > target && !removedHeldBody) {
-        const bodyIds = pickHeldBodies(haulerLeftPx, excluded, liftedLoads);
-        for (const bodyId of bodyIds) {
-          if (!pile.remove(bodyId)) {
-            continue;
-          }
-          const variant = variantByBodyId.get(bodyId);
-          if (variant !== undefined) {
-            carriedVariantIndexes.push(variant);
-            variantByBodyId.delete(bodyId);
-          }
-        }
-        removedHeldBody = true;
-      } else if (carriedVariantIndexes.length === 0) {
-        const variant = variantByBodyId.get(heldBodyId);
-        if (variant !== undefined) {
-          carriedVariantIndexes = [variant];
-        }
-      }
+      ? Math.min(snap.heapLoads, grabSize)
+      : forceTripGrab
+        ? Math.min(
+            Math.max(1, snap.bagLoads),
+            grabSize,
+            pile.bodies.filter((b) => !excluded.has(b.id)).length || 1,
+          )
+        : 0;
+
+    if ((lifted || forceTripGrab) && heldBodyId !== undefined) {
+      const pileCount = pile.bodies.filter((b) => !excluded.has(b.id)).length;
+      const pileTarget = lifted
+        ? target
+        : Math.max(0, pileCount - liftedLoads);
+      takeCarriedFromPile(excluded, pileCount, liftedLoads, pileTarget);
     }
 
-    // The grabbed batch stays visible until Cart arrival, where the engine
-    // credits it and the unload phase begins.
-    const showCarried = lifted || haulLeg === "out";
+    // Deposit at the Cart stand during out (incl. early arrival), while still
+    // facing west — avoids the east-facing hand jump that read as a shake.
+    let atCartStand = false;
+    if (haulLeg === "out" && haulDepartureStation !== null) {
+      const outLeft = tripLeftFor(
+        snap.haulRemainingMs,
+        haulDepartureStation,
+        snap.unloadSpeedUpgradeCount,
+        HAULER_MARK_X,
+        haulReturnStation ?? haulDepartureStation,
+      );
+      atCartStand = outLeft === HAULER_MARK_X;
+    }
+    const showCarried = lifted || (haulLeg === "out" && !atCartStand);
     if (!showCarried) {
       carriedVariantIndexes = [];
     }
@@ -672,7 +763,12 @@ export function createMinePresenter(
             )
           : haulerLeftPx;
       // Arrived early for this leg — idle rather than walk-in-place stutter.
+      // Keep west-facing on out arrival so carried Ore does not jump east.
       if (left === dest) {
+        if (leg === "out") {
+          hauler.setHauling("out", simNowMs);
+          return;
+        }
         hauler.setHauling(null, simNowMs);
         return;
       }
@@ -746,9 +842,13 @@ export function createMinePresenter(
         );
       }
       // Mirror syncHaulerAnim: early arrival on out/back is idle, not walk.
+      // Out/unload idle faces the Cart (west) until after deposit.
       if (phase === "out" && left === HAULER_MARK_X) {
         animation = "idle";
-        facing = "east";
+        facing = "west";
+      } else if (phase === "unload") {
+        animation = "idle";
+        facing = "west";
       } else if (
         phase === "back" &&
         left === (haulReturnStation ?? haulDepartureStation)
@@ -764,10 +864,15 @@ export function createMinePresenter(
       }
     }
 
+    const frameIndex =
+      animation === "idle" && (phase === "out" || phase === "unload")
+        ? 0
+        : frameIndexFor(hauler, nowMs, swingFrac);
+
     return {
       animation,
       facing,
-      frameIndex: frameIndexFor(hauler, nowMs, swingFrac),
+      frameIndex,
       left,
       phase,
       haulProgress: travelling
