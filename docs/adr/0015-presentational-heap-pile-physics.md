@@ -34,22 +34,22 @@ issue #458 switched the renderer to those bodies and retired the slot grid.
   counting, which also closes the existing defect where grid slot 18 rendered at `bottom`
   110 inside a 112 px Pane.
 - The renderer reconciles DOM from `heapOre` keyed by solver body id and paints
-  `carriedVariantIndexes` for lifted Loads. Settled pile elements use presenter positions
-  directly; bag-bound falls for a one-Dwarf Crew keep the Bag arc via `fallingOre`.
+  pane-ready `carriedOre` positions for lifted Loads. Settled pile elements use presenter
+  positions directly; bag-bound falls for a one-Dwarf Crew keep the Bag arc via `fallingOre`.
 
 ## Consequences
 
 ### Positive
 
 - `TunnelSnapshot` carries pane-ready `heapOre` positions keyed by stable solver body ids.
-- Pickup midpoint lift matches `pileTargetCount` and `carriedVariantIndexes` on the snapshot.
+- Pickup midpoint lift matches `pileTargetCount` and pane-ready `carriedOre` on the snapshot.
 - Offline catch-up and construction pre-settle from `HEAP_PILE_SEED` without special cases.
 - Mid-pile removal keeps surviving DOM nodes and variants because elements are keyed by id.
 
 ### Negative
 
 - `snapEquals` no longer compares `heapLoads`; the renderer reads `heapOre` and
-  `carriedVariantIndexes` instead.
+  `carriedOre` instead.
 
 ## Rejected alternatives
 

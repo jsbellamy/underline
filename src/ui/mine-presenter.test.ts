@@ -21,9 +21,12 @@ import { createHeapPileSim } from "../core/heap-pile-sim";
 import { createMinePresenter, FACE_SLIDE_MS, SPILL_LIFETIME_MS, tripLeftFor } from "./mine-presenter";
 import type { MiningAudio } from "./mining-audio";
 import {
+  heapOreArtKey,
   heapOreContentCenter,
   heapOreRadius,
 } from "./heap-ore-variants";
+import { tunnelArtContentBottomGap } from "../data/tunnel-art-pack";
+import { TUNNEL_ART_PACK } from "./tunnel-art";
 import {
   FLOOR_Y,
   HAULER_HAND_DX,
@@ -41,6 +44,8 @@ import {
   ORE_SIZE,
   ORE_SPAWN_BOTTOM,
   ORE_FALL_MS,
+  DWARF_FRAME_W,
+  DWARF_SCALE,
 } from "./pane-layout";
 import { PUMP_INTERVAL_MS } from "./pump";
 
@@ -994,17 +999,19 @@ describe("mine presenter", () => {
       return { session, presenter };
     }
 
-    it("exposes hauler.left and carriedVariantIndexes on the snapshot", () => {
+    it("exposes hauler.left and carriedOre on the snapshot", () => {
       const { presenter } = twoDwarfPresenter({
         heapLoads: 3,
         pickupProgressMs: PICKUP_THREE_QUARTER_MS,
       });
       const snap = presenter.snapshot();
       expect(typeof snap.hauler!.left).toBe("number");
-      expect(snap.carriedVariantIndexes).toEqual(
-        expect.arrayContaining([expect.any(Number)]),
+      expect(snap.carriedOre).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ variantIndex: expect.any(Number) }),
+        ]),
       );
-      expect(snap.carriedVariantIndexes!.length).toBe(1);
+      expect(snap.carriedOre).toHaveLength(1);
     });
   });
 
@@ -1226,6 +1233,66 @@ describe("mine presenter", () => {
       return { session, presenter };
     }
 
+    function expectedCarriedOreHandPosition(
+      haulerLeft: number,
+      facing: "east" | "west",
+      variantIndex: number,
+    ): { left: number; bottom: number } {
+      const dwarfW = DWARF_FRAME_W * DWARF_SCALE;
+      const handDx =
+        facing === "west"
+          ? dwarfW - ORE_SIZE - HAULER_HAND_DX
+          : HAULER_HAND_DX;
+      const artKey = heapOreArtKey(variantIndex);
+      const slotBottom = FLOOR_Y + HAULER_HAND_DY;
+      return {
+        left: haulerLeft + handDx,
+        bottom:
+          slotBottom -
+          tunnelArtContentBottomGap(TUNNEL_ART_PACK, artKey, ORE_SIZE),
+      };
+    }
+
+    it("projects carried Ore at pane-ready hand positions for east and west facings", () => {
+      const { presenter: eastPresenter } = twoDwarfPresenter({
+        heapLoads: 5,
+        pickupProgressMs: PICKUP_THREE_QUARTER_MS,
+      });
+      const eastSnap = eastPresenter.snapshot();
+      expect(eastSnap.hauler!.facing).toBe("east");
+      expect(eastSnap.carriedOre).toHaveLength(1);
+      const eastVariant = eastSnap.carriedOre[0]!.variantIndex;
+      expect(eastSnap.carriedOre[0]).toEqual({
+        ...expectedCarriedOreHandPosition(
+          eastSnap.hauler!.left,
+          "east",
+          eastVariant,
+        ),
+        variantIndex: eastVariant,
+      });
+
+      const { presenter: westPresenter } = twoDwarfPresenter({
+        heapLoads: 2,
+        grabSizeUpgradeCount: 2,
+      });
+      westPresenter.advanceMs(PICKUP_THREE_QUARTER_MS);
+      westPresenter.advanceMs(OPENING_PICKUP_MS - PICKUP_THREE_QUARTER_MS);
+      westPresenter.advanceMs(500);
+      const westSnap = westPresenter.snapshot();
+      expect(westSnap.hauler!.facing).toBe("west");
+      expect(westSnap.carriedOre.length).toBeGreaterThan(0);
+      for (const entry of westSnap.carriedOre) {
+        expect(entry).toEqual({
+          ...expectedCarriedOreHandPosition(
+            westSnap.hauler!.left,
+            "west",
+            entry.variantIndex,
+          ),
+          variantIndex: entry.variantIndex,
+        });
+      }
+    });
+
     it("exposes settled Heap Ore on the Tunnel snapshot for a two-Dwarf Crew", () => {
       const { presenter } = twoDwarfPresenter({ heapLoads: 3 });
       const snap = presenter.snapshot();
@@ -1242,7 +1309,7 @@ describe("mine presenter", () => {
         expect(ore.variantIndex).toBeGreaterThanOrEqual(0);
         expect(ore.variantIndex).toBeLessThan(6);
       }
-      expect(snap.carriedVariantIndexes).toBeUndefined();
+      expect(snap.carriedOre).toEqual([]);
       expect(snap.heapLoads).toBe(3);
       expect(snap.crewSize).toBe(2);
       expect(snap.fallingOre).toEqual([]);
@@ -1268,7 +1335,7 @@ describe("mine presenter", () => {
       presenter.start();
       const snap = presenter.snapshot();
       expect(snap.heapOre).toEqual([]);
-      expect(snap.carriedVariantIndexes).toBeUndefined();
+      expect(snap.carriedOre).toEqual([]);
     });
 
     it("targets heapLoads mid-pickup below the midpoint", () => {
@@ -1286,10 +1353,10 @@ describe("mine presenter", () => {
       });
       const snap = presenter.snapshot();
       expect(snap.heapOre).toHaveLength(4);
-      expect(snap.carriedVariantIndexes).toBeDefined();
+      expect(snap.carriedOre.length).toBeGreaterThan(0);
     });
 
-    it("grabs the nearest Heap Ore for carriedVariantIndexes at HEAP_PILE_SEED", () => {
+    it("grabs the nearest Heap Ore for carriedOre at HEAP_PILE_SEED", () => {
       const { presenter } = twoDwarfPresenter({
         heapLoads: 5,
         pickupProgressMs: 0,
@@ -1333,7 +1400,7 @@ describe("mine presenter", () => {
           nearestId = body.id;
         }
       }
-      expect(snap.carriedVariantIndexes).toEqual([
+      expect(snap.carriedOre.map((o) => o.variantIndex)).toEqual([
         variantByBodyId.get(nearestId),
       ]);
     });
@@ -1421,9 +1488,13 @@ describe("mine presenter", () => {
       const first = presenter.snapshot();
       const second = presenter.snapshot();
       const third = presenter.snapshot(1_000);
-      expect(first.carriedVariantIndexes).toBeDefined();
-      expect(second.carriedVariantIndexes).toEqual(first.carriedVariantIndexes);
-      expect(third.carriedVariantIndexes).toEqual(first.carriedVariantIndexes);
+      expect(first.carriedOre.length).toBeGreaterThan(0);
+      expect(second.carriedOre.map((o) => o.variantIndex)).toEqual(
+        first.carriedOre.map((o) => o.variantIndex),
+      );
+      expect(third.carriedOre.map((o) => o.variantIndex)).toEqual(
+        first.carriedOre.map((o) => o.variantIndex),
+      );
     });
 
     it("hides carried Ore and credits the Colony at Cart arrival", () => {
@@ -1435,25 +1506,27 @@ describe("mine presenter", () => {
       presenter.snapshot();
       presenter.advanceMs(PICKUP_THREE_QUARTER_MS);
       const lifting = presenter.snapshot();
-      expect(lifting.carriedVariantIndexes).toHaveLength(2);
-      const carried = [...lifting.carriedVariantIndexes!];
+      expect(lifting.carriedOre).toHaveLength(2);
+      const carried = lifting.carriedOre.map((o) => o.variantIndex);
 
       presenter.advanceMs(OPENING_PICKUP_MS - PICKUP_THREE_QUARTER_MS);
       expect(session.snapshot.haulRemainingMs).toBeGreaterThan(0);
 
       const out = presenter.snapshot();
       expect(out.hauler!.phase).toBe("out");
-      expect(out.carriedVariantIndexes).toEqual(carried);
+      expect(out.carriedOre.map((o) => o.variantIndex)).toEqual(carried);
 
       // Mid out-leg
       presenter.advanceMs(500);
-      expect(presenter.snapshot().carriedVariantIndexes).toEqual(carried);
+      expect(presenter.snapshot().carriedOre.map((o) => o.variantIndex)).toEqual(
+        carried,
+      );
 
       // Unload dwell
       while (presenter.snapshot().hauler!.phase !== "unload") {
         presenter.advanceMs(100);
       }
-      expect(presenter.snapshot().carriedVariantIndexes).toBeUndefined();
+      expect(presenter.snapshot().carriedOre).toEqual([]);
       expect(session.snapshot.ore).toBe(2);
       expect(session.snapshot.bagLoads).toBe(0);
       expect(session.snapshot.bagOre).toBe(0);
@@ -1463,7 +1536,7 @@ describe("mine presenter", () => {
         presenter.advanceMs(100);
       }
       expect(presenter.snapshot().hauler!.phase).toBe("back");
-      expect(presenter.snapshot().carriedVariantIndexes).toBeUndefined();
+      expect(presenter.snapshot().carriedOre).toEqual([]);
     });
 
     it("idles facing west at early out arrival and deposits on the stand", () => {
@@ -1472,7 +1545,7 @@ describe("mine presenter", () => {
       expect(presenter.snapshot().hauler!.left).toBeGreaterThan(HAULER_MARK_X + 40);
       presenter.advanceMs(OPENING_PICKUP_MS - 2_000);
       expect(presenter.snapshot().hauler!.phase).toBe("out");
-      expect(presenter.snapshot().carriedVariantIndexes).toHaveLength(1);
+      expect(presenter.snapshot().carriedOre).toHaveLength(1);
       expect(presenter.snapshot().hauler!.left).toBeGreaterThan(HAULER_MARK_X);
 
       while (presenter.snapshot().hauler!.left > HAULER_MARK_X) {
@@ -1483,7 +1556,7 @@ describe("mine presenter", () => {
       expect(arrived.hauler!.left).toBe(HAULER_MARK_X);
       expect(arrived.hauler!.animation).toBe("idle");
       expect(arrived.hauler!.facing).toBe("west");
-      expect(arrived.carriedVariantIndexes).toBeUndefined();
+      expect(arrived.carriedOre).toEqual([]);
     });
 
     it("does not Lift Heap Ore until the Hauler reaches the grab station", () => {
@@ -1496,7 +1569,7 @@ describe("mine presenter", () => {
       const midApproach = presenter.snapshot();
       expect(midApproach.hauler!.animation).toBe("walk");
       expect(midApproach.hauler!.left).toBeGreaterThan(HAULER_MARK_X);
-      expect(midApproach.carriedVariantIndexes).toBeUndefined();
+      expect(midApproach.carriedOre).toEqual([]);
       expect(midApproach.heapOre).toHaveLength(1);
 
       while (presenter.snapshot().hauler!.animation === "walk") {
@@ -1504,7 +1577,7 @@ describe("mine presenter", () => {
       }
       const atOre = presenter.snapshot();
       expect(atOre.hauler!.animation).toBe("idle");
-      expect(atOre.carriedVariantIndexes).toHaveLength(1);
+      expect(atOre.carriedOre).toHaveLength(1);
       expect(atOre.heapOre).toHaveLength(0);
     });
 
@@ -1520,7 +1593,7 @@ describe("mine presenter", () => {
       }
       const departed = presenter.snapshot();
       expect(departed.hauler!.phase).toBe("out");
-      expect(departed.carriedVariantIndexes).toHaveLength(1);
+      expect(departed.carriedOre).toHaveLength(1);
       expect(departed.heapOre).toHaveLength(0);
     });
 
@@ -1543,7 +1616,7 @@ describe("mine presenter", () => {
       expect(session.snapshot.heapLoads).toBe(1);
       expect(session.snapshot.haulRemainingMs).toBeGreaterThan(0);
       expect(presenter.snapshot().hauler!.phase).toBe("out");
-      expect(presenter.snapshot().carriedVariantIndexes).toHaveLength(2);
+      expect(presenter.snapshot().carriedOre).toHaveLength(2);
     });
 
     it("returns directly to the next Grab station without a second approach", () => {
@@ -1574,7 +1647,7 @@ describe("mine presenter", () => {
         }
       }
 
-      expect(presenter.snapshot().carriedVariantIndexes).toHaveLength(2);
+      expect(presenter.snapshot().carriedOre).toHaveLength(2);
       expect(presenter.snapshot().hauler!.phase).toBe("out");
     });
 
@@ -1829,7 +1902,7 @@ describe("mine presenter", () => {
       presenter.advanceMs(1);
       const snap = presenter.snapshot(1);
       const spillId = snap.heapOre.find((o) => !beforeIds.has(o.id))!.id;
-      expect(snap.carriedVariantIndexes).toBeDefined();
+      expect(snap.carriedOre.length).toBeGreaterThan(0);
       expect(snap.heapOre.some((o) => o.id === spillId)).toBe(true);
     });
 

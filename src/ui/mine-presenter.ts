@@ -19,6 +19,7 @@ import type { SaveStore } from "../core/mining-save";
 import { loadSettings } from "../core/settings-save";
 import {
   HEAP_ORE_VARIANT_COUNT,
+  heapOreArtKey,
   heapOreContentCenter,
   heapOreRadius,
 } from "./heap-ore-variants";
@@ -34,8 +35,14 @@ import {
   HEAP_PILE_SEED,
   HEAP_RENDER_CEILING,
   HEAP_SPAWN_X,
+  DWARF_FRAME_W,
+  DWARF_SCALE,
+  FLOOR_Y,
+  HAULER_HAND_DX,
+  HAULER_HAND_DY,
   MINING_MARK_X,
   ORE_FALL_MS,
+  ORE_SIZE,
   ORE_SPAWN_BOTTOM,
 } from "./pane-layout";
 import {
@@ -47,6 +54,8 @@ import {
   type HeapBody,
 } from "./hauler-choreography";
 import { tripLeftFor } from "./trip-position";
+import { tunnelArtContentBottomGap } from "../data/tunnel-art-pack";
+import { TUNNEL_ART_PACK } from "./tunnel-art";
 
 export type TunnelHaulPhase = "none" | HaulAnimPhase | "unload";
 export type { HaulerPhase };
@@ -73,6 +82,12 @@ export interface HeapOreSnapshot {
   variantIndex: number;
 }
 
+export interface CarriedOreSnapshot {
+  readonly left: number;
+  readonly bottom: number;
+  readonly variantIndex: number;
+}
+
 export interface TunnelSnapshot {
   animation: DwarfAnimId;
   facing: DwarfFacing;
@@ -96,8 +111,8 @@ export interface TunnelSnapshot {
   heapLoads: number;
   /** Settled Heap Ore bodies, ascending by `id`; empty for a one-Dwarf Crew. */
   heapOre: readonly HeapOreSnapshot[];
-  /** Variants of Loads in the Hauler's hands, ascending by pickup order. */
-  carriedVariantIndexes?: readonly number[];
+  /** Loads in the Hauler's hands, ascending by pickup order; empty when none. */
+  readonly carriedOre: readonly CarriedOreSnapshot[];
   /** Ore still falling toward the Bag; empty when nothing is in flight. */
   fallingOre: readonly { slot: number; progress: number }[];
   /** Miner sprite left in Pane px — presenter-owned horizontal position. */
@@ -308,6 +323,36 @@ export function createMinePresenter(
     pile.stepTo(Math.max(pile.nowMs, nowMs));
   }
 
+  function adjustedCarriedOreBottom(
+    slotBottom: number,
+    variantIndex: number,
+  ): number {
+    const artKey = heapOreArtKey(variantIndex);
+    return (
+      slotBottom -
+      tunnelArtContentBottomGap(TUNNEL_ART_PACK, artKey, ORE_SIZE)
+    );
+  }
+
+  function projectCarriedOre(
+    hauler: HaulerSnapshot | undefined,
+  ): readonly CarriedOreSnapshot[] {
+    if (!hauler || carriedVariantIndexes.length === 0) {
+      return [];
+    }
+    const dwarfW = DWARF_FRAME_W * DWARF_SCALE;
+    const handDx =
+      hauler.facing === "west"
+        ? dwarfW - ORE_SIZE - HAULER_HAND_DX
+        : HAULER_HAND_DX;
+    const slotBottom = FLOOR_Y + HAULER_HAND_DY;
+    return carriedVariantIndexes.map((variantIndex) => ({
+      left: hauler.left + handDx,
+      bottom: adjustedCarriedOreBottom(slotBottom, variantIndex),
+      variantIndex,
+    }));
+  }
+
   function projectHeapOre(): readonly HeapOreSnapshot[] {
     return pile.bodies.map((body) => {
       const v = variantByBodyId.get(body.id)!;
@@ -491,9 +536,7 @@ export function createMinePresenter(
       crewSize: snap.crewSize,
       heapLoads: snap.heapLoads,
       heapOre: projectHeapOre(),
-      ...(carriedVariantIndexes.length > 0
-        ? { carriedVariantIndexes: [...carriedVariantIndexes] }
-        : {}),
+      carriedOre: projectCarriedOre(haulerSnap),
       fallingOre: projectFallingOre(nowMs),
       minerLeft: minerLeftFor(nowMs),
       haulRemainingMs: remaining,
