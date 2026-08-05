@@ -1,4 +1,4 @@
-"""Pytest configuration for the underline prototype."""
+"""Pytest configuration for the Underline asset pipeline."""
 
 from __future__ import annotations
 
@@ -13,7 +13,9 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-STRIP_COHERENCE = ROOT / "prototype" / "strip-coherence"
+from tests.support.corpus_paths import CORPUS_ROOT
+
+STRIP_COHERENCE = CORPUS_ROOT
 
 
 # Recovering and ingesting a corpus strip is pure with respect to the PNG on
@@ -73,17 +75,17 @@ def _install_strip_read_cache() -> None:
 _install_strip_read_cache()
 
 
-def _load_prototype_module(name: str) -> None:
+def _load_corpus_module(name: str) -> None:
     if name in sys.modules:
         return
     path = STRIP_COHERENCE / f"{name}.py"
     spec = importlib.util.spec_from_file_location(name, path)
     if spec is None or spec.loader is None:
-        raise ImportError(f"cannot load prototype module {name}")
+        raise ImportError(f"cannot load corpus module {name}")
     module = importlib.util.module_from_spec(spec)
     sys.modules[name] = module
     spec.loader.exec_module(module)
 
 
 for _name in ("corpus", "adversarial"):
-    _load_prototype_module(_name)
+    _load_corpus_module(_name)

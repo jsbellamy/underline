@@ -25,10 +25,8 @@ from pipeline.final_polish_cli import main as final_polish_cli_main
 from pipeline.gate_evidence import sha256_bytes, sha256_file
 from pipeline.identity_lock import build_identity_seed, magenta_pad_generation_source_png
 from pipeline.strip import DEFAULT_LAYOUT, StripLayout, layout_for_motion_class
+from tests.support.corpus_paths import INBOX, ROOT
 from tests.support.polish_bundle import bundle_store_env_context
-
-ROOT = Path(__file__).resolve().parents[2]
-INBOX = ROOT / "prototype" / "strip-coherence" / "inbox"
 PASS_STRIP = INBOX / "01-miner-idle.png"
 IDLE_STORE_ATTEMPT_KWARGS = {
     "motion_class": "idle",

@@ -26,8 +26,7 @@ from pipeline.gate_evidence import sha256_bytes, sha256_file
 from pipeline.identity_lock import build_identity_seed, magenta_pad_generation_source_png
 from pipeline.strip import ingest_strip_provider, layout_for_motion_class, load_provider_frames
 
-ROOT = Path(__file__).resolve().parents[2]
-INBOX = ROOT / "prototype" / "strip-coherence" / "inbox"
+from tests.support.corpus_paths import INBOX, ROOT
 PASS_STRIP = INBOX / "01-miner-idle.png"
 WALK_STRIP = INBOX / "05-miner-walk.png"
 SWING_STRIP = INBOX / "06-miner-swing.png"
