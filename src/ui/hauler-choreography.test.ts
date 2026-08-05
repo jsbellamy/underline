@@ -420,6 +420,42 @@ describe("hauler choreography", () => {
     expect(outAtStand.carrying).toBe(false);
   });
 
+  it("does not Lift a Load until the Hauler stands at the grab station", () => {
+    const choreography = createHaulerChoreography({ digRate: 1 });
+    const bodies = settledBodies(1);
+    const snap = {
+      ...twoDwarfSnap(),
+      heapLoads: 1,
+      haulSpeedUpgradeCount: 1,
+    };
+    advanceChoreography(choreography, snap, 0, bodies);
+    const midApproach = advanceChoreography(
+      choreography,
+      { ...snap, pickupProgressMs: pickupMsPerLoad(1) / 2 + 50 },
+      pickupMsPerLoad(1) / 2 + 50,
+      bodies,
+    );
+    expect(midApproach.liftedIds).toHaveLength(0);
+    expect(midApproach.carrying).toBe(false);
+
+    let nowMs = pickupMsPerLoad(1) / 2 + 50;
+    let atStation = midApproach;
+    while (atStation.liftedIds.length === 0) {
+      nowMs += 16;
+      atStation = advanceChoreography(
+        choreography,
+        { ...snap, pickupProgressMs: nowMs },
+        nowMs,
+        bodies,
+      );
+      if (nowMs > pickupMsPerLoad(1) * 2) {
+        break;
+      }
+    }
+    expect(atStation.liftedIds).toHaveLength(1);
+    expect(atStation.carrying).toBe(true);
+  });
+
   it("does not thrash idle/walk chasing a settling Ore station", () => {
     const choreography = createHaulerChoreography({ digRate: 1 });
     const bodies = settledBodies(8);
