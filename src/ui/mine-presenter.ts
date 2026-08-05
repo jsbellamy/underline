@@ -522,7 +522,7 @@ export function createMinePresenter(
         if (pile.remove(heldBodyId)) {
           const variant = variantByBodyId.get(heldBodyId);
           if (variant !== undefined) {
-            carriedVariantIndexes = [variant];
+            carriedVariantIndexes.push(variant);
             variantByBodyId.delete(heldBodyId);
           }
         }
@@ -535,14 +535,17 @@ export function createMinePresenter(
       }
     }
 
-    // Keep carried Ore through the out-leg and unload dwell; clear on the back
-    // leg (bag already delivered) or once pickup is idle again.
+    // Keep accumulated Ore between consecutive Lifts and through the out-leg
+    // and unload dwell; clear once the delivered Bag starts the back leg.
     const haulLeg =
       snap.haulRemainingMs > 0
         ? tripLeg(snap.haulRemainingMs, snap.unloadSpeedUpgradeCount)
         : null;
     const showCarried =
-      lifted || haulLeg === "out" || haulLeg === "unload";
+      lifted ||
+      snap.bagLoads > 0 ||
+      haulLeg === "out" ||
+      haulLeg === "unload";
     if (!showCarried) {
       carriedVariantIndexes = [];
     }
@@ -696,7 +699,13 @@ export function createMinePresenter(
       return undefined;
     }
     const snap = session.snapshot;
-    const remaining = snap.haulRemainingMs;
+    const remaining =
+      snap.haulRemainingMs > 0
+        ? Math.min(
+            haulRoundTripMsFor(snap.unloadSpeedUpgradeCount),
+            snap.haulRemainingMs + Math.max(0, simNowMs - nowMs),
+          )
+        : 0;
     const phase = haulerPhase(remaining, snap.unloadSpeedUpgradeCount);
     const travelling = remaining > 0;
     const swingFrac = swingFractionAt(nowMs, travelling);

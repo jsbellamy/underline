@@ -511,9 +511,9 @@ describe("mountMiningTunnel", () => {
     tunnel.destroy();
   });
 
-  it("defines HAULER_MARK_X east of the Cart mark", () => {
-    expect(HAULER_MARK_X).toBe(192);
-    expect(HAULER_MARK_X).toBeGreaterThan(CART_X + CART_WIDTH);
+  it("rests the Hauler beside the Cart at CART_MARK_X", () => {
+    expect(HAULER_MARK_X).toBe(CART_MARK_X);
+    expect(HAULER_MARK_X).toBe(CART_X + CART_WIDTH + 8);
     expect(dwarfLayout(HAULER_PACK)).toEqual(dwarfLayout(DWARF_PACK));
   });
 

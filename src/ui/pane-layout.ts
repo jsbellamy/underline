@@ -58,10 +58,10 @@ export const CART_MARK_X = CART_X + CART_WIDTH + 8;
 const dwarfW = DWARF_FRAME_W * DWARF_SCALE;
 export const MINING_MARK_X = FACE_X - dwarfW;
 
-/** The Hauler's stand while lifting Loads — east of the Cart mark. */
-export const HAULER_MARK_X = CART_MARK_X + CART_WIDTH;
-/** Heap bin west edge — aligns with the Hauler stand. */
-export const HEAP_BIN_WEST_X = HAULER_MARK_X;
+/** The Hauler's resting and Unload station beside the Cart. */
+export const HAULER_MARK_X = CART_MARK_X;
+/** Heap bin west edge — independent of the Hauler's resting station. */
+export const HEAP_BIN_WEST_X = CART_MARK_X + CART_WIDTH;
 
 /** One walk speed for every Dwarf leg; sized so the widest possible lane
     (Cart mark to the Heap bin's east wall) crosses in one travel leg. */

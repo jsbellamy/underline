@@ -1055,11 +1055,11 @@ describe("mine presenter", () => {
       expect(removedId).toBe(nearestId);
     });
 
-    it("faces west while walking to Ore west of the stand", () => {
+    it("faces east while walking from the Cart rest station to Ore", () => {
       const { presenter } = twoDwarfPresenter({ heapLoads: 15 });
       const snap = presenter.snapshot();
       expect(snap.hauler!.animation).toBe("walk");
-      expect(snap.hauler!.facing).toBe("west");
+      expect(snap.hauler!.facing).toBe("east");
     });
 
     it("advances hauler.left toward the station at HAULER_WALK_PX_PER_MS", async () => {
@@ -1256,6 +1256,31 @@ describe("mine presenter", () => {
       expect(seen.some((r) => r.phase === "back" && r.animation === "walk")).toBe(
         true,
       );
+    });
+
+    it("interpolates the return leg between 250 ms simulation ticks", () => {
+      const { presenter, session } = twoDwarfPresenterForTrip({ heapLoads: 1 });
+      presenter.advanceMs(2_000);
+      expect(presenter.snapshot().hauler!.left).toBeGreaterThan(
+        HAULER_MARK_X + 40,
+      );
+      presenter.advanceMs(OPENING_PICKUP_MS - 2_000);
+      expect(session.snapshot.haulRemainingMs).toBeGreaterThan(0);
+
+      while (presenter.snapshot().hauler!.phase !== "back") {
+        presenter.advanceMs(PUMP_INTERVAL_MS);
+      }
+      presenter.advanceMs(PUMP_INTERVAL_MS);
+
+      const windowStart = presenter.simNowMs - PUMP_INTERVAL_MS;
+      const atStart = presenter.snapshot(windowStart).hauler!.left;
+      const atMiddle = presenter.snapshot(
+        windowStart + PUMP_INTERVAL_MS / 2,
+      ).hauler!.left;
+      const atEnd = presenter.snapshot(presenter.simNowMs).hauler!.left;
+
+      expect(atStart).toBeLessThan(atMiddle);
+      expect(atMiddle).toBeLessThan(atEnd);
     });
 
     it("publishes minerLeft on the Trip timeline for a one-Dwarf Crew", () => {
@@ -1545,6 +1570,37 @@ describe("mine presenter", () => {
       }
       expect(presenter.snapshot().hauler!.phase).toBe("back");
       expect(presenter.snapshot().carriedVariantIndexes).toBeUndefined();
+    });
+
+    it("keeps accumulated Ore visible between consecutive Lifts", () => {
+      const { presenter, session } = twoDwarfPresenter({
+        heapLoads: 3,
+        grabSizeUpgradeCount: 1,
+      });
+
+      for (
+        let elapsed = 0;
+        elapsed < OPENING_PICKUP_MS;
+        elapsed += PUMP_INTERVAL_MS
+      ) {
+        presenter.advanceMs(PUMP_INTERVAL_MS);
+        presenter.snapshot();
+      }
+      expect(session.snapshot.bagLoads).toBe(1);
+      expect(session.snapshot.haulRemainingMs).toBe(0);
+      expect(presenter.snapshot().carriedVariantIndexes).toHaveLength(1);
+
+      for (
+        let elapsed = 0;
+        elapsed < OPENING_PICKUP_MS;
+        elapsed += PUMP_INTERVAL_MS
+      ) {
+        presenter.advanceMs(PUMP_INTERVAL_MS);
+        presenter.snapshot();
+      }
+      expect(session.snapshot.bagLoads).toBe(2);
+      expect(session.snapshot.haulRemainingMs).toBeGreaterThan(0);
+      expect(presenter.snapshot().carriedVariantIndexes).toHaveLength(2);
     });
 
     it("idles at the stand when the out-leg arrives before the unload window", () => {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { fallingOrePosition } from "./heap-pile";
 import {
   CART_MARK_X,
+  CART_WIDTH,
   FACE_X,
   HAULER_MARK_X,
   HAULER_WALK_PX_PER_MS,
@@ -58,7 +59,8 @@ describe("pane-layout heap exports", () => {
     expect(HEAP_GRAB_Y).toBe(HEAP_BIN_FLOOR_Y + ORE_SIZE / 2);
     expect(HEAP_PILE_SEED).toBe(1);
     expect(HEAP_BIN_FLOOR_Y).toBe(HEAP_BOTTOM);
-    expect(HEAP_BIN_WEST_X).toBe(HAULER_MARK_X);
+    expect(HAULER_MARK_X).toBe(CART_MARK_X);
+    expect(HEAP_BIN_WEST_X).toBe(CART_MARK_X + CART_WIDTH);
     expect(HEAP_BIN_EAST_X).toBe(FACE_X);
     expect(HEAP_BIN_CEILING_Y).toBe(PANE_HEIGHT);
     expect(HEAP_SPAWN_X).toBe(FACE_X - ORE_SIZE / 2);
