@@ -45,7 +45,7 @@ at **0.0698** (raw). Under [Choose bounded numeric quantization for isolation ve
 Rescored Measurement run (schema `gate-control-measurement/1`):
 
 ```bash
-PYTHONPATH=. python3 prototype/strip-coherence/rescore_measurement.py \
+PYTHONPATH=. python3 corpus/strip-coherence/rescore_measurement.py \
   gate-controls/reports/idle--min_pair_cohort_pass--011/2026-07-26T16-29-49+00-00.json
 ```
 

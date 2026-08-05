@@ -9,7 +9,6 @@ from tests.support.corpus_paths import CORPUS_ROOT, INBOX, ROOT
 _ALLOWED_INLINE_CORPUS_PATH_FILES = frozenset(
     {
         "tests/test_afk_operational_docs.py",
-        "tests/test_select_changed_tests.py",
     }
 )
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -37,9 +38,9 @@ CANONICAL_COMMANDS = (
 )
 
 RETIRED_SHIM_PATHS = (
-    "prototype/strip-coherence/gate_control.py",
-    "prototype/strip-coherence/gate_control_acquire.py",
-    "prototype/strip-coherence/numeric_policy.py",
+    "corpus/strip-coherence/gate_control.py",
+    "corpus/strip-coherence/gate_control_acquire.py",
+    "corpus/strip-coherence/numeric_policy.py",
 )
 
 WAVE_A_AWAIT_PHRASES = (
@@ -47,6 +48,8 @@ WAVE_A_AWAIT_PHRASES = (
     "awaiting activation",
     "deferred late visual reviews for every",
 )
+
+LEGACY_CORPUS_PREFIX = "prototype" + "/strip-coherence"
 
 
 def _load_manifest() -> dict:
@@ -82,13 +85,13 @@ def test_production_docs_point_to_pipeline_numeric_policy() -> None:
     for path in (AFK_SPEC, ALPHA_TABLES):
         text = path.read_text()
         assert "pipeline/numeric_policy.py" in text
-        assert "prototype/strip-coherence/numeric_policy.py" not in text
+        assert "corpus/strip-coherence/numeric_policy.py" not in text
 
 
 def test_production_docs_do_not_reference_prototype_numeric_policy() -> None:
     for path in PRODUCTION_DOC_PATHS_WITHOUT_SHIM_TABLE:
         text = path.read_text()
-        assert "prototype/strip-coherence/numeric_policy.py" not in text
+        assert "corpus/strip-coherence/numeric_policy.py" not in text
 
 
 def test_afk_spec_no_wave_a_await_activation_language() -> None:
@@ -133,7 +136,7 @@ def test_afk_spec_documents_canonical_commands_not_prototype_scorer() -> None:
     for cmd in CANONICAL_COMMANDS:
         assert cmd in text
     operator_section = text.split("Production Gate-control workflow")[1].split("### Deprecated")[0]
-    assert "prototype/strip-coherence/gate_control.py" not in operator_section
+    assert "corpus/strip-coherence/gate_control.py" not in operator_section
 
 
 def test_operational_docs_do_not_advertise_retired_shims() -> None:
@@ -265,3 +268,101 @@ def test_afk_spec_does_not_name_blob_idle_slide_or_emissive_mirror_as_gaps() -> 
     gap_section = text.split("Adversarial suite")[1]
     assert "blob_idle" not in gap_section or "not known gaps" in gap_section.lower()
     assert "required rejection" in gap_section.lower()
+
+
+CORPUS_PATH_DOCS = (
+    README,
+    ROOT / "docs" / "strip-acquisition-contract.md",
+    ROOT / "docs" / "agents" / "code-style.md",
+    ROOT / "docs" / "agents" / "domain.md",
+    ROOT / "docs" / "adr" / "README.md",
+    AFK_SPEC,
+    ROOT / "docs" / "first-room-art-direction.md",
+    *ACCEPTANCE_PROFILES,
+    ROOT / "prompts" / "production" / "animation-strip.md",
+    STRIP_README,
+    ROOT / "corpus" / "strip-coherence" / "NOTES.md",
+)
+
+ADR_0018 = ROOT / "docs" / "adr" / "0018-corpus-path-and-legacy-prefix.md"
+CODE_STYLE = ROOT / "docs" / "agents" / "code-style.md"
+DOMAIN = ROOT / "docs" / "agents" / "domain.md"
+
+
+@pytest.mark.parametrize("doc_path", CORPUS_PATH_DOCS)
+def test_corpus_path_docs_use_corpus_strip_coherence_not_prototype(doc_path: Path) -> None:
+    text = doc_path.read_text()
+    assert LEGACY_CORPUS_PREFIX not in text
+    if doc_path in (STRIP_README, ROOT / "corpus" / "strip-coherence" / "NOTES.md"):
+        assert "corpus/strip-coherence" in text or "prototype:strip:" in text
+    else:
+        assert "corpus/strip-coherence" in text
+
+
+def test_code_style_exempts_standing_corpus_runners_from_probe_deletion() -> None:
+    style_rules = CODE_STYLE.read_text().split("## Style rules")[1]
+    python_rules = style_rules.split("### Python (asset pipeline)")[1].split("### Both")[0]
+    normalized = _collapse_whitespace(python_rules)
+    assert "corpus/strip-coherence/" in normalized
+    assert "permanent evidence tooling" in normalized.lower() or "standing corpus" in normalized.lower()
+    assert "exempt" in normalized.lower()
+    assert "One-off probe scripts are deleted" in python_rules
+
+
+def test_domain_layout_shows_corpus_strip_coherence_tree() -> None:
+    layout = DOMAIN.read_text().split("## Layout")[1].split("## Use the glossary")[0]
+    assert "corpus/strip-coherence/" in layout
+    assert "standing corpus" in layout.lower()
+    assert "proof runners" in layout.lower()
+    assert LEGACY_CORPUS_PREFIX not in layout
+
+
+def test_adr_0018_records_corpus_move_legacy_prefix_and_frozen_script_names() -> None:
+    text = ADR_0018.read_text()
+    normalized = _collapse_whitespace(text)
+    assert "corpus/strip-coherence" in text
+    assert LEGACY_CORPUS_PREFIX in text
+    assert "LEGACY_CORPUS_PREFIXES" in text
+    assert "prototype:strip:" in text
+    assert "REQUIRED_COMMANDS" in text
+    adr_readme = (ROOT / "docs" / "adr" / "README.md").read_text()
+    assert "[0018](0018-corpus-path-and-legacy-prefix.md)" in adr_readme
+
+
+def test_prototype_strip_coherence_path_limited_to_legacy_resolver_and_adr() -> None:
+    allowed = {
+        "docs/adr/0018-corpus-path-and-legacy-prefix.md",
+        "pipeline/corpus_paths.py",
+    }
+    matches: set[str] = set()
+    for path in ROOT.rglob("*"):
+        if not path.is_file():
+            continue
+        if "gate-controls" in path.parts or ".git" in path.parts:
+            continue
+        try:
+            text = path.read_text()
+        except UnicodeDecodeError:
+            continue
+        if LEGACY_CORPUS_PREFIX in text:
+            matches.add(path.relative_to(ROOT).as_posix())
+    assert matches == allowed
+
+    result = subprocess.run(
+        [
+            "git",
+            "grep",
+            "-l",
+            LEGACY_CORPUS_PREFIX,
+            "--",
+            ".",
+            ":!gate-controls",
+        ],
+        cwd=ROOT,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    tracked = {line.strip() for line in result.stdout.splitlines() if line.strip()}
+    assert tracked <= allowed
+    assert "pipeline/corpus_paths.py" in tracked

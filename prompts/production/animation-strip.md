@@ -177,7 +177,7 @@ regions stay fixed.
 | Fresh text-to-image from `identity.png` or a prompt alone | Loses provider-detail canvas; breaks `/2` image-edit evidence |
 | Upscaling `identity.png` (16×24) into a generation canvas | Ingest-reduced Cells discard provider detail; not reversible; rejected as `edit_source_not_generation_source` |
 | Tiling `identity.png` into a four-Frame “seed” | Same failure mode as upscaling; must use idle provider bytes |
-| `prototype/strip-coherence/inbox/*` corpus Strips as the edit source | Motion evidence only — see `docs/first-room-art-direction.md` |
+| `corpus/strip-coherence/inbox/*` corpus Strips as the edit source | Motion evidence only — see `docs/first-room-art-direction.md` |
 | Mechanical merge of corpus motion + identity upper body without a ledgered Attempt | Bypasses provenance and does not replace a clean image-edit Attempt |
 | Reusing the pre-`/2` walk `provider/source.png` from issues #110/#111 | Those bundles were text-to-image acquisitions, not image-edit from the idle seed |
 | Post-editing `provider/source.png` after generation to clear Gates (near-magenta wipe to exact `#FF00FF`, Frame shifts for baseline, painting/stamping Identity Lock or flat identity colors into pitch sample centers or locked regions) | Produces hard flat lock blocks and seams that confuse cell recovery; Identity Lock PASS no longer proves a clean idle-seed edit. `check_bundle` rejects magenta wipe with `provider_magenta_wipe` and reports edit-source lock continuity as `provider_post_edit` / `edit_source_continuity_fail`. Regenerate until lock/baseline pass without provider painting |
@@ -250,7 +250,7 @@ geometry constraints. It emits authored logical Frames and a replayable
 | Fresh text-to-image from `identity.png` or a prompt alone | No provider raster; breaks cell-author provenance |
 | Upscaling `identity.png` into a generation canvas | Identity anchor is validation evidence only |
 | Newly generated pose reference images | Out of scope; corpus and PR #169 are reference evidence only |
-| `prototype/strip-coherence/inbox/*` corpus Strips as edit source | Motion evidence only — not a substitute for Cell-authored Frames |
+| `corpus/strip-coherence/inbox/*` corpus Strips as edit source | Motion evidence only — not a substitute for Cell-authored Frames |
 | Reusing the pre-`/2` swing `provider/source.png` from issues #110/#111 | Legacy text-to-image acquisition, not Cell-authored |
 
 Identity Lock rules live in `assets/first-room/dwarf/identity-locks.json`.

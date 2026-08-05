@@ -19,6 +19,7 @@ This is a single-context project:
 ```text
 /
 ├── CONTEXT.md
+├── corpus/strip-coherence/  # standing corpus + proof runners
 ├── docs/adr/
 ├── docs/strip-acquisition-contract.md
 ├── src/          # the game (TypeScript)
@@ -26,8 +27,8 @@ This is a single-context project:
 ```
 
 `src/` holds the TypeScript game. The asset pipeline lives at `pipeline/` with its tests
-in `tests/`; `prototype/strip-coherence/` holds the standing corpus and the
-historical proof runners over that pipeline.
+in `tests/`; `corpus/strip-coherence/` holds the standing corpus and the
+proof runners over that pipeline.
 
 ## Use the glossary's vocabulary
 

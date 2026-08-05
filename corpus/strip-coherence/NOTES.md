@@ -323,7 +323,7 @@ alignment question is settled — `align.py` and `sweep.py` are deleted.
 
 1. ~~**Port into Underline.**~~ **Closed** (#9 `pipeline/recovery.py`, #10
    `pipeline/strip.py`, #11 `pipeline/ingest_strip.py` CLI). Grid recovery and
-   the gate library live under `pipeline/`; prototype runners import them for
+   the gate library live under `pipeline/`; corpus runners import them for
    corpus scoring and budget derivation.
    (If Nightglass ever wants strips, that is a separate ask under its own frozen
    contract — do not conflate them again.)

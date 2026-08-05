@@ -143,7 +143,7 @@ generating new pose concepts is out of scope. Full rules:
 
 ## Corpus miner Strips — motion evidence, not identity
 
-The provisional corpus miner Strips in `prototype/strip-coherence/prompts/`
+The provisional corpus miner Strips in `corpus/strip-coherence/prompts/`
 (`01-miner-idle`, `05-miner-walk`, `06-miner-swing`, `14-lantern-flicker`) are
 **motion and pipeline evidence** — they exercise ingest gates, budgets, and
 Polish profiles. They are **not** the production art identity for the first-room

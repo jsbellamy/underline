@@ -423,7 +423,7 @@ Production modules live under `pipeline/` with canonical npm commands (§12):
 4. `pipeline/gate_verification.py` — manifest-backed full-repository verification
    (`gate-control:verify`).
 
-The temporary `prototype/strip-coherence/` compatibility shims were retired
+The temporary `corpus/strip-coherence/` compatibility shims were retired
 after the production commands landed.
 
 Remaining polish (non-blocking for the checked-in cohort): tighter acquisition
@@ -476,7 +476,7 @@ npm run prototype:strip:sharpness
 Rescoring an existing Measurement run under the numeric policy:
 
 ```bash
-PYTHONPATH=. python3 prototype/strip-coherence/rescore_measurement.py \
+PYTHONPATH=. python3 corpus/strip-coherence/rescore_measurement.py \
   gate-controls/reports/<attempt>/<measurement>.json
 ```
 
