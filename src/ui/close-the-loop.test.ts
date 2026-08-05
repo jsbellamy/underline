@@ -9,6 +9,7 @@ import {
   nextDigRateUpgradeCost,
   nextHaulSpeedUpgradeCost,
   nextSmelterUpgradeCost,
+  SCHEMA_VERSION,
 } from "../core/mining-engine";
 import { createBusEndpoint, type BusMessage } from "./bus";
 import { mountDockShell } from "./dock-root";
@@ -91,7 +92,7 @@ describe("Pane↔Dock close-the-loop bus", () => {
 
     expect(commands).toContainEqual({
       type: "command",
-      command: { schemaVersion: 5, name: "buyUpgrade", upgrade: "digRate" },
+      command: { schemaVersion: SCHEMA_VERSION, name: "buyUpgrade", upgrade: "digRate" },
     });
     expect(session.snapshot.digRateUpgradeCount).toBe(1);
     expect(session.snapshot.ingots).toBe(0);
@@ -162,7 +163,7 @@ describe("Pane↔Dock close-the-loop bus", () => {
 
     expect(commands).toContainEqual({
       type: "command",
-      command: { schemaVersion: 5, name: "buyUpgrade", upgrade: "smelter" },
+      command: { schemaVersion: SCHEMA_VERSION, name: "buyUpgrade", upgrade: "smelter" },
     });
     expect(session.snapshot.smelterUpgradeCount).toBe(1);
     expect(session.snapshot.ingots).toBe(0);
@@ -228,7 +229,7 @@ describe("Pane↔Dock close-the-loop bus", () => {
 
     expect(commands).toContainEqual({
       type: "command",
-      command: { schemaVersion: 5, name: "buyUpgrade", upgrade: "carryCapacity" },
+      command: { schemaVersion: SCHEMA_VERSION, name: "buyUpgrade", upgrade: "carryCapacity" },
     });
     expect(session.snapshot.carryCapacityUpgradeCount).toBe(1);
     expect(session.snapshot.ingots).toBe(0);
@@ -463,7 +464,7 @@ describe("Pane↔Dock close-the-loop bus", () => {
 
     expect(commands).toContainEqual({
       type: "command",
-      command: { schemaVersion: 5, name: "buyUpgrade", upgrade: "haulSpeed" },
+      command: { schemaVersion: SCHEMA_VERSION, name: "buyUpgrade", upgrade: "haulSpeed" },
     });
     expect(session.snapshot.haulSpeedUpgradeCount).toBe(1);
     expect(session.snapshot.ingots).toBe(0);
@@ -580,7 +581,7 @@ describe("Pane↔Dock close-the-loop bus", () => {
 
     expect(commands).toContainEqual({
       type: "command",
-      command: { schemaVersion: 5, name: "buyUpgrade", upgrade: "hireHauler" },
+      command: { schemaVersion: SCHEMA_VERSION, name: "buyUpgrade", upgrade: "hireHauler" },
     });
     expect(session.snapshot.crewSize).toBe(2);
     expect(session.snapshot.ingots).toBe(0);

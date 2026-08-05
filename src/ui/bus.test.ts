@@ -22,6 +22,8 @@ describe("isDockCommand", () => {
     { upgrade: "haulSpeed" as const },
     { upgrade: "hireHauler" as const },
     { upgrade: "pickDamage" as const },
+    { upgrade: "grabSize" as const },
+    { upgrade: "unloadSpeed" as const },
   ])("accepts buyUpgrade with upgrade $upgrade", ({ upgrade }) => {
     expect(
       isDockCommand({ schemaVersion: SCHEMA_VERSION, name: "buyUpgrade", upgrade }),

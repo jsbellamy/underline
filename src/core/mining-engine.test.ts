@@ -7,9 +7,15 @@ import {
   HAUL_DELIVERY_MS,
   HAUL_ROUND_TRIP_MS,
   HAUL_TRAVEL_MS,
-  HAULER_GRAB_SIZE,
+  grabSizeFor,
+  haulDeliveryMsFor,
+  haulRoundTripMsFor,
   HARDNESS_GROWTH,
+  nextGrabSizeUpgradeCost,
+  nextUnloadSpeedUpgradeCost,
+  OPENING_GRAB_SIZE,
   UNLOAD_MS,
+  unloadMsFor,
   OPENING_CARRY_CAPACITY,
   nextPickDamageUpgradeCost,
   pickDamageFor,
@@ -151,6 +157,97 @@ describe("mining engine Smelter", () => {
     expect(after.advance).toBe(0);
     expect(oreCredited(before, after)).toBeGreaterThan(after.ingots - before.ingots);
     expect(after.ore).toBeGreaterThan(0);
+  });
+});
+
+describe("mining engine Grab Size and Unload Speed upgrades", () => {
+  it("initializes grabSizeUpgradeCount and unloadSpeedUpgradeCount to 0", () => {
+    const s = initialSnapshot();
+    expect(s.grabSizeUpgradeCount).toBe(0);
+    expect(s.unloadSpeedUpgradeCount).toBe(0);
+  });
+
+  it("derives Grab Size and cost from grabSizeUpgradeCount", () => {
+    expect(OPENING_GRAB_SIZE).toBe(1);
+    expect(grabSizeFor(0)).toBe(1);
+    expect(grabSizeFor(1)).toBe(2);
+    expect(grabSizeFor(2)).toBe(3);
+    expect(grabSizeFor(3)).toBe(4);
+    expect(nextGrabSizeUpgradeCost(0)).toBe(5);
+    expect(nextGrabSizeUpgradeCost(1)).toBe(10);
+    expect(nextGrabSizeUpgradeCost(2)).toBe(20);
+    expect(nextGrabSizeUpgradeCost(3)).toBe(40);
+  });
+
+  it("derives Unload dwell and cost from unloadSpeedUpgradeCount", () => {
+    expect(unloadMsFor(0)).toBe(4_000);
+    expect(unloadMsFor(1)).toBeCloseTo(2666.67, 2);
+    expect(unloadMsFor(2)).toBe(2_000);
+    expect(unloadMsFor(3)).toBe(1_600);
+    expect(nextUnloadSpeedUpgradeCost(0)).toBe(5);
+    expect(nextUnloadSpeedUpgradeCost(1)).toBe(10);
+    expect(nextUnloadSpeedUpgradeCost(2)).toBe(20);
+    expect(nextUnloadSpeedUpgradeCost(3)).toBe(40);
+  });
+
+  it("derives Trip length and delivery from unloadSpeedUpgradeCount", () => {
+    expect(haulRoundTripMsFor(2)).toBe(6_000);
+    expect(haulDeliveryMsFor(2)).toBe(4_000);
+  });
+
+  it("buys Grab Size when Ingots cover the cost", () => {
+    const rich = snap({ ingots: 5 });
+    const bought = buyUpgrade(rich, "grabSize");
+    expect(bought.ingots).toBe(0);
+    expect(bought.grabSizeUpgradeCount).toBe(1);
+    expect(grabSizeFor(bought.grabSizeUpgradeCount)).toBe(2);
+  });
+
+  it("throws when Grab Size is unaffordable", () => {
+    expect(() => buyUpgrade(snap({ ingots: 4 }), "grabSize")).toThrow(/Upgrade/);
+  });
+
+  it("buys Unload Speed when Ingots cover the cost", () => {
+    const rich = snap({ ingots: 5 });
+    const bought = buyUpgrade(rich, "unloadSpeed");
+    expect(bought.ingots).toBe(0);
+    expect(bought.unloadSpeedUpgradeCount).toBe(1);
+    expect(unloadMsFor(bought.unloadSpeedUpgradeCount)).toBeCloseTo(2666.67, 2);
+  });
+
+  it("throws when Unload Speed is unaffordable", () => {
+    expect(() => buyUpgrade(snap({ ingots: 4 }), "unloadSpeed")).toThrow(/Upgrade/);
+  });
+
+  it("starts a Trip at upgraded round-trip ms and credits at upgraded delivery ms", () => {
+    const beforePickup = snap({
+      crewSize: 2,
+      heapLoads: 1,
+      heapOre: 1,
+      unloadSpeedUpgradeCount: 2,
+    });
+    const lifted = advance(beforePickup, pickupMsPerLoad(0));
+    expect(lifted.haulRemainingMs).toBe(haulRoundTripMsFor(2));
+
+    const before = snap({
+      crewSize: 2,
+      bagLoads: 1,
+      bagOre: 1,
+      haulRemainingMs: haulRoundTripMsFor(2),
+      unloadSpeedUpgradeCount: 2,
+    });
+    let state = before;
+    let creditSteps = 0;
+    for (let i = 0; i < 80; i += 1) {
+      const prev = state;
+      state = advance(state, 100);
+      if (state.ore > prev.ore) {
+        creditSteps += 1;
+        expect(prev.haulRemainingMs).toBeGreaterThan(haulDeliveryMsFor(2));
+        expect(state.haulRemainingMs).toBeLessThanOrEqual(haulDeliveryMsFor(2));
+      }
+    }
+    expect(creditSteps).toBe(1);
   });
 });
 
@@ -546,7 +643,7 @@ describe("mining engine advanceWithEvents", () => {
   });
 
   const ONE_DWARF_200S_SNAPSHOT = {
-    schemaVersion: 5 as const,
+    schemaVersion: 6 as const,
     advance: 0,
     ore: 4.120000000000004,
     ingots: 5,
@@ -558,6 +655,8 @@ describe("mining engine advanceWithEvents", () => {
     heapLoads: 0,
     heapOre: 0,
     haulSpeedUpgradeCount: 0,
+    grabSizeUpgradeCount: 0,
+    unloadSpeedUpgradeCount: 0,
     pickupProgressMs: 0,
     faceSwingProgress: 192,
     smelterProgress: 0.8799999999999999,
@@ -827,7 +926,7 @@ describe("mining engine advanceWithEvents", () => {
   it("starts a Trip after one Load reaches the Bag with a two-Dwarf Crew", () => {
     const beforePickup = snap({ crewSize: 2, heapLoads: 1, heapOre: 1 });
     const lifted = advance(beforePickup, pickupMsPerLoad(0));
-    expect(lifted.bagLoads).toBe(HAULER_GRAB_SIZE);
+    expect(lifted.bagLoads).toBe(grabSizeFor(0));
     expect(lifted.haulRemainingMs).toBe(HAUL_ROUND_TRIP_MS);
   });
 
@@ -1076,9 +1175,9 @@ describe("mining engine Crew and Heap", () => {
 });
 
 describe("mining engine Bag and Haul", () => {
-  it("initializes Bag fields and sets SCHEMA_VERSION to 5", () => {
+  it("initializes Bag fields and sets SCHEMA_VERSION to 6", () => {
     const s = initialSnapshot();
-    expect(s.schemaVersion).toBe(5);
+    expect(s.schemaVersion).toBe(6);
     expect(s.bagOre).toBe(0);
     expect(s.bagLoads).toBe(0);
     expect(s.haulRemainingMs).toBe(0);
@@ -1092,7 +1191,8 @@ describe("mining engine Bag and Haul", () => {
     expect(UNLOAD_MS).toBe(4_000);
     expect(HAUL_ROUND_TRIP_MS).toBe(8_000);
     expect(HAUL_DELIVERY_MS).toBe(6_000);
-    expect(HAULER_GRAB_SIZE).toBe(1);
+    expect(OPENING_GRAB_SIZE).toBe(1);
+    expect(grabSizeFor(0)).toBe(1);
     expect(carryCapacityFor(0)).toBe(10);
     expect(carryCapacityFor(1)).toBe(15);
     expect(nextCarryCapacityUpgradeCost(0)).toBe(5);

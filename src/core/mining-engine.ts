@@ -6,7 +6,7 @@ Authority: `docs/research/tick-snapshot-save-model.md`,
 
 import type { MiningEvent } from "./mining-events";
 
-export const SCHEMA_VERSION = 5 as const;
+export const SCHEMA_VERSION = 6 as const;
 
 /** Face damage capacity at Advance 0 on the exponential curve. */
 export const FACE_BASE_HARDNESS = 1000;
@@ -48,13 +48,13 @@ export const HEAP_BASE_LOADS = 20;
 export const HAUL_TRAVEL_MS = 4_000;
 /** Fixed dwell at the Cart while the Bag empties. */
 export const UNLOAD_MS = 4_000;
-/** Haul round trip in ms (`HAUL_TRAVEL_MS + UNLOAD_MS`). */
+/** Haul round trip in ms at zero Unload Speed upgrades (`HAUL_TRAVEL_MS + UNLOAD_MS`). */
 export const HAUL_ROUND_TRIP_MS = HAUL_TRAVEL_MS + UNLOAD_MS;
-/** Haul countdown at which the Bag is credited — arrival at the Cart. */
+/** Haul countdown at which the Bag is credited — arrival at the Cart (zero Unload Speed upgrades). */
 export const HAUL_DELIVERY_MS = UNLOAD_MS + HAUL_TRAVEL_MS / 2;
 
-/** Loads the Hauler carries per Trip (two-Dwarf Crew only). */
-export const HAULER_GRAB_SIZE = 1;
+/** Loads the Hauler carries per Trip at Advance 0 before Upgrades. */
+export const OPENING_GRAB_SIZE = 1;
 
 /** First Upgrade cost in Ingots; doubles each buy. */
 export const FIRST_UPGRADE_COST = 5;
@@ -74,7 +74,9 @@ export type UpgradeId =
   | "carryCapacity"
   | "haulSpeed"
   | "hireHauler"
-  | "pickDamage";
+  | "pickDamage"
+  | "grabSize"
+  | "unloadSpeed";
 
 export interface MiningSnapshot {
   schemaVersion: typeof SCHEMA_VERSION;
@@ -92,6 +94,8 @@ export interface MiningSnapshot {
   /** Ore those Loads carry. */
   heapOre: number;
   haulSpeedUpgradeCount: number;
+  grabSizeUpgradeCount: number;
+  unloadSpeedUpgradeCount: number;
   /** Elapsed ms toward lifting the current Load out of the Heap. */
   pickupProgressMs: number;
   /** Damage dealt to the current Face (`0…hardnessFor(advance)`); equals Swings spent when Pick Damage is 1. */
@@ -137,6 +141,8 @@ export function initialSnapshot(): MiningSnapshot {
     heapLoads: 0,
     heapOre: 0,
     haulSpeedUpgradeCount: 0,
+    grabSizeUpgradeCount: 0,
+    unloadSpeedUpgradeCount: 0,
     pickupProgressMs: 0,
     faceSwingProgress: 0,
     smelterProgress: 0,
@@ -166,6 +172,35 @@ export function haulSpeedFor(haulSpeedUpgradeCount: number): number {
 
 export function pickupMsPerLoad(haulSpeedUpgradeCount: number): number {
   return PICKUP_MS_PER_LOAD / haulSpeedFor(haulSpeedUpgradeCount);
+}
+
+/** Loads the Hauler carries per Trip. */
+export function grabSizeFor(grabSizeUpgradeCount: number): number {
+  return OPENING_GRAB_SIZE + grabSizeUpgradeCount;
+}
+
+export function nextGrabSizeUpgradeCost(grabSizeUpgradeCount: number): number {
+  return FIRST_UPGRADE_COST * 2 ** grabSizeUpgradeCount;
+}
+
+export function unloadSpeedFor(unloadSpeedUpgradeCount: number): number {
+  return 1 + 0.5 * unloadSpeedUpgradeCount;
+}
+
+export function unloadMsFor(unloadSpeedUpgradeCount: number): number {
+  return UNLOAD_MS / unloadSpeedFor(unloadSpeedUpgradeCount);
+}
+
+export function nextUnloadSpeedUpgradeCost(unloadSpeedUpgradeCount: number): number {
+  return FIRST_UPGRADE_COST * 2 ** unloadSpeedUpgradeCount;
+}
+
+export function haulRoundTripMsFor(unloadSpeedUpgradeCount: number): number {
+  return HAUL_TRAVEL_MS + unloadMsFor(unloadSpeedUpgradeCount);
+}
+
+export function haulDeliveryMsFor(unloadSpeedUpgradeCount: number): number {
+  return unloadMsFor(unloadSpeedUpgradeCount) + HAUL_TRAVEL_MS / 2;
 }
 
 export function nextHaulSpeedUpgradeCost(haulSpeedUpgradeCount: number): number {
@@ -266,6 +301,8 @@ export function advanceWithEvents(
     heapLoads,
     heapOre,
     haulSpeedUpgradeCount,
+    grabSizeUpgradeCount,
+    unloadSpeedUpgradeCount,
     pickupProgressMs,
     faceSwingProgress,
     smelterProgress,
@@ -281,6 +318,9 @@ export function advanceWithEvents(
   const capacity = carryCapacityFor(carryCapacityUpgradeCount);
   const heapCapacity = heapCapacityFor(carryCapacityUpgradeCount);
   const pickupMs = pickupMsPerLoad(haulSpeedUpgradeCount);
+  const grabSize = grabSizeFor(grabSizeUpgradeCount);
+  const haulRoundTripMs = haulRoundTripMsFor(unloadSpeedUpgradeCount);
+  const haulDeliveryMs = haulDeliveryMsFor(unloadSpeedUpgradeCount);
   const isTwoDwarf = crewSize === 2;
 
   const feedSmelter = (segmentSec: number): void => {
@@ -300,9 +340,9 @@ export function advanceWithEvents(
   };
 
   const startHaulIfBagFull = (): void => {
-    const departureLoads = isTwoDwarf ? HAULER_GRAB_SIZE : capacity;
+    const departureLoads = isTwoDwarf ? grabSize : capacity;
     if (bagLoads >= departureLoads) {
-      haulRemainingMs = HAUL_ROUND_TRIP_MS;
+      haulRemainingMs = haulRoundTripMs;
     }
   };
 
@@ -342,7 +382,7 @@ export function advanceWithEvents(
   };
 
   const pickupAllowed = (): boolean => {
-    const bagRoom = isTwoDwarf ? HAULER_GRAB_SIZE : capacity;
+    const bagRoom = isTwoDwarf ? grabSize : capacity;
     return (
       isTwoDwarf &&
       haulRemainingMs === 0 &&
@@ -353,7 +393,7 @@ export function advanceWithEvents(
 
   while (gameMs > 0) {
     if (!isTwoDwarf && bagLoads >= capacity && haulRemainingMs === 0) {
-      haulRemainingMs = HAUL_ROUND_TRIP_MS;
+      haulRemainingMs = haulRoundTripMs;
       continue;
     }
 
@@ -361,8 +401,8 @@ export function advanceWithEvents(
 
     if (haulRemainingMs > 0) {
       const msToHaulEvent =
-        haulRemainingMs > HAUL_DELIVERY_MS
-          ? haulRemainingMs - HAUL_DELIVERY_MS
+        haulRemainingMs > haulDeliveryMs
+          ? haulRemainingMs - haulDeliveryMs
           : haulRemainingMs;
       candidates.push(msToHaulEvent);
     }
@@ -403,7 +443,7 @@ export function advanceWithEvents(
     const atPickupBoundary =
       pickupAllowed() && segmentMs >= pickupMs - pickupProgressMs - 1e-9;
     const hauling = haulRemainingMs > 0;
-    const wasAboveDelivery = hauling && haulRemainingMs > HAUL_DELIVERY_MS;
+    const wasAboveDelivery = hauling && haulRemainingMs > haulDeliveryMs;
 
     if (miningAllowed()) {
       if (atMiningBoundary) {
@@ -441,7 +481,7 @@ export function advanceWithEvents(
 
     if (hauling) {
       haulRemainingMs -= segmentMs;
-      if (wasAboveDelivery && haulRemainingMs <= HAUL_DELIVERY_MS) {
+      if (wasAboveDelivery && haulRemainingMs <= haulDeliveryMs) {
         deliverBag();
       }
     }
@@ -500,6 +540,8 @@ export function advanceWithEvents(
       heapLoads,
       heapOre,
       haulSpeedUpgradeCount,
+      grabSizeUpgradeCount,
+      unloadSpeedUpgradeCount,
       pickupProgressMs,
       faceSwingProgress,
       smelterProgress,
@@ -536,6 +578,32 @@ export function buyUpgrade(
       schemaVersion: SCHEMA_VERSION,
       ingots: snapshot.ingots - cost,
       crewSize: 2,
+    };
+  }
+
+  if (upgrade === "grabSize") {
+    const cost = nextGrabSizeUpgradeCost(snapshot.grabSizeUpgradeCount);
+    if (snapshot.ingots < cost) {
+      throw new Error(`Upgrade costs ${cost} Ingots; have ${snapshot.ingots}`);
+    }
+    return {
+      ...snapshot,
+      schemaVersion: SCHEMA_VERSION,
+      ingots: snapshot.ingots - cost,
+      grabSizeUpgradeCount: snapshot.grabSizeUpgradeCount + 1,
+    };
+  }
+
+  if (upgrade === "unloadSpeed") {
+    const cost = nextUnloadSpeedUpgradeCost(snapshot.unloadSpeedUpgradeCount);
+    if (snapshot.ingots < cost) {
+      throw new Error(`Upgrade costs ${cost} Ingots; have ${snapshot.ingots}`);
+    }
+    return {
+      ...snapshot,
+      schemaVersion: SCHEMA_VERSION,
+      ingots: snapshot.ingots - cost,
+      unloadSpeedUpgradeCount: snapshot.unloadSpeedUpgradeCount + 1,
     };
   }
 

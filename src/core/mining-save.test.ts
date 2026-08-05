@@ -47,6 +47,8 @@ describe("mining save seam", () => {
       heapLoads: 3,
       heapOre: 7,
       haulSpeedUpgradeCount: 2,
+      grabSizeUpgradeCount: 0,
+      unloadSpeedUpgradeCount: 0,
       pickupProgressMs: 4_200,
       faceSwingProgress: 1.25,
       smelterProgress: 0.4,
@@ -92,6 +94,8 @@ describe("mining save seam", () => {
       heapLoads: 0,
       heapOre: 0,
       haulSpeedUpgradeCount: 0,
+      grabSizeUpgradeCount: 0,
+      unloadSpeedUpgradeCount: 0,
       pickupProgressMs: 0,
       faceSwingProgress: 1.25,
       smelterProgress: 0.4,
@@ -130,6 +134,8 @@ describe("mining save seam", () => {
       heapLoads: 0,
       heapOre: 0,
       haulSpeedUpgradeCount: 0,
+      grabSizeUpgradeCount: 0,
+      unloadSpeedUpgradeCount: 0,
       pickupProgressMs: 0,
       faceSwingProgress: 1.25,
       smelterProgress: 0.4,
@@ -173,6 +179,8 @@ describe("mining save seam", () => {
       heapLoads: 0,
       heapOre: 0,
       haulSpeedUpgradeCount: 0,
+      grabSizeUpgradeCount: 0,
+      unloadSpeedUpgradeCount: 0,
       pickupProgressMs: 0,
       faceSwingProgress: 1.25,
       smelterProgress: 0.4,
@@ -221,6 +229,8 @@ describe("mining save seam", () => {
       heapLoads: 3,
       heapOre: 7,
       haulSpeedUpgradeCount: 2,
+      grabSizeUpgradeCount: 0,
+      unloadSpeedUpgradeCount: 0,
       pickupProgressMs: 4_200,
       faceSwingProgress: 1.25,
       smelterProgress: 0.4,
@@ -292,6 +302,57 @@ describe("mining save seam", () => {
     const loaded = loadSave(store);
     expect(loaded.snapshot).toEqual(initialSnapshot());
     expect(loaded.savedAtMs).toBeUndefined();
+  });
+
+  it("migrates schemaVersion 5 to v6 with Grab Size and Unload Speed defaults", () => {
+    store.setItem(
+      SAVE_KEY,
+      JSON.stringify({
+        schemaVersion: 5,
+        savedAtMs: 1_700_000_000_000,
+        advance: 1,
+        ore: 0.5,
+        ingots: 2,
+        digRateUpgradeCount: 0,
+        pickDamageUpgradeCount: 0,
+        smelterUpgradeCount: 0,
+        carryCapacityUpgradeCount: 0,
+        crewSize: 1,
+        heapLoads: 0,
+        heapOre: 0,
+        haulSpeedUpgradeCount: 0,
+        pickupProgressMs: 0,
+        faceSwingProgress: 0.5,
+        smelterProgress: 0.1,
+        bagOre: 0,
+        bagLoads: 0,
+        haulRemainingMs: 0,
+      }),
+    );
+    const loaded = loadSave(store);
+    expect(loaded.snapshot).toEqual({
+      schemaVersion: SCHEMA_VERSION,
+      advance: 1,
+      ore: 0.5,
+      ingots: 2,
+      digRateUpgradeCount: 0,
+      pickDamageUpgradeCount: 0,
+      smelterUpgradeCount: 0,
+      carryCapacityUpgradeCount: 0,
+      crewSize: 1,
+      heapLoads: 0,
+      heapOre: 0,
+      haulSpeedUpgradeCount: 0,
+      grabSizeUpgradeCount: 0,
+      unloadSpeedUpgradeCount: 0,
+      pickupProgressMs: 0,
+      faceSwingProgress: 0.5,
+      smelterProgress: 0.1,
+      bagOre: 0,
+      bagLoads: 0,
+      haulRemainingMs: 0,
+    });
+    expect(loaded.savedAtMs).toBe(1_700_000_000_000);
   });
 
   it("clears the save key", () => {
