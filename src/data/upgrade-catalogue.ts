@@ -1,4 +1,5 @@
-/** Upgrade catalogue — one declaration per Upgrade (id, Ingot cost curve, effect).
+/** Upgrade catalogue — one declaration per Upgrade (id, cost curve, effect,
+Dock label, crew-size visibility).
 
 Content data only: no simulation imports. The mining engine resolves entries
 and applies declared effects.

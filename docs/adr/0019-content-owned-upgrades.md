@@ -18,15 +18,20 @@ requires that adding content must not require a core change.
 ## Decision
 
 - **`src/data/upgrade-catalogue.ts`** is the single declaration of each Upgrade:
-  id, Ingot cost curve, and effect (`raiseCount` on a snapshot count field, or
-  `hireHauler`).
+  id, Ingot cost curve, effect (`raiseCount` on a snapshot count field, or
+  `hireHauler`), Dock button label (without the cost clause), and crew sizes at
+  which the Dock offers the Upgrade (`offeredAtCrewSize`).
 - **`buyUpgrade`** resolves the catalogue entry, checks Ingots once, and applies
   the declared effect generically — no per-id branch in core.
 - **`nextXUpgradeCost` exports** remain on `mining-engine.ts` for existing
   importers but delegate to `upgradeCostFor` from the catalogue.
 - **`UpgradeId`, `FIRST_UPGRADE_COST`, and `HIRE_HAULER_COST`** live in the
-  catalogue; `mining-engine.ts` re-exports them so `bus.ts`, `mining-session.ts`,
-  and `colony-view.ts` need no import-path change in this wave.
+  catalogue; `mining-engine.ts` re-exports them so `mining-session.ts` and
+  other core callers need no import-path change.
+- **`isUpgradeId`** is exported from the catalogue; `bus.ts` validates Upgrade
+  ids by catalogue membership.
+- **`mountColonyView`** iterates `UPGRADE_CATALOGUE` for Upgrade buttons;
+  CSS classes and `data-*` attributes stay in `colony-view.ts` as presentation.
 
 ## Consequences
 
@@ -40,8 +45,9 @@ requires that adding content must not require a core change.
 ### Negative
 
 - `buyUpgrade` still lives in core because it mutates `MiningSnapshot`; only the
-  declaration moved. A later slice may migrate dock and bus to read the catalogue
-  directly.
+  declaration moved.
+- Dock labels live in the catalogue as content-owned copy; presentation hooks
+  (CSS classes, `data-*` attributes) remain in `colony-view.ts`.
 
 ## Rejected alternatives
 
