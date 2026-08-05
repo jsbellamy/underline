@@ -7,7 +7,7 @@ import json
 import adversarial
 import corpus
 from pipeline import strip as S
-from tests.support.corpus_paths import CORPUS_ROOT, INBOX
+from tests.support.corpus_paths import CORPUS_ROOT
 
 LAYOUT = S.StripLayout(
     frame_w=S.DEFAULT_LAYOUT.frame_w,

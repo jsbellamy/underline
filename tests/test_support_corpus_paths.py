@@ -36,5 +36,8 @@ def test_no_inline_prototype_strip_coherence_paths_outside_allowlist() -> None:
     )
     matched = frozenset(
         line for line in result.stdout.splitlines() if line.strip()
-    ) - {"tests/test_support_corpus_paths.py"}
+    ) - {
+        # The subprocess argv below embeds the grep pattern and self-matches.
+        "tests/test_support_corpus_paths.py",
+    }
     assert matched == _ALLOWED_INLINE_CORPUS_PATH_FILES
