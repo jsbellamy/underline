@@ -319,7 +319,6 @@ def test_domain_layout_shows_corpus_strip_coherence_tree() -> None:
 
 def test_adr_0018_records_corpus_move_legacy_prefix_and_frozen_script_names() -> None:
     text = ADR_0018.read_text()
-    normalized = _collapse_whitespace(text)
     assert "corpus/strip-coherence" in text
     assert LEGACY_CORPUS_PREFIX in text
     assert "LEGACY_CORPUS_PREFIXES" in text
