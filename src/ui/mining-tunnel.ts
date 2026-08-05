@@ -9,7 +9,7 @@ import { dwarfLayout, type ExternalSpritePack } from "../data/external-sprite-pa
 import { tunnelArtContentBottomGap, tunnelArtPath } from "../data/tunnel-art-pack";
 import { DWARF_PACK, dwarfFrameUrlsFor } from "./dwarf-frames";
 import { HAULER_PACK, haulerFrameUrlsFor } from "./hauler-frames";
-import { fallingOrePosition, haulerPickupTargetX } from "./heap-pile";
+import { fallingOrePosition } from "./heap-pile";
 import {
   HEAP_ORE_VARIANT_COUNT,
   heapOreArtKey,
@@ -99,7 +99,8 @@ function haulerFieldsEqual(
     a.frameIndex === b.frameIndex &&
     a.phase === b.phase &&
     a.haulProgress === b.haulProgress &&
-    a.pickupProgress === b.pickupProgress
+    a.pickupProgress === b.pickupProgress &&
+    a.left === b.left
   );
 }
 
@@ -143,6 +144,23 @@ function heapOreEqual(
   return true;
 }
 
+function carriedIndexesEqual(
+  a: TunnelSnapshot["carriedVariantIndexes"],
+  b: TunnelSnapshot["carriedVariantIndexes"],
+): boolean {
+  const left = a ?? [];
+  const right = b ?? [];
+  if (left.length !== right.length) {
+    return false;
+  }
+  for (let i = 0; i < left.length; i += 1) {
+    if (left[i] !== right[i]) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function snapEquals(a: TunnelSnapshot, b: TunnelSnapshot): boolean {
   return (
     a.animation === b.animation &&
@@ -157,7 +175,7 @@ function snapEquals(a: TunnelSnapshot, b: TunnelSnapshot): boolean {
     a.haulProgress === b.haulProgress &&
     a.faceSlide === b.faceSlide &&
     a.crewSize === b.crewSize &&
-    a.carriedVariantIndex === b.carriedVariantIndex &&
+    carriedIndexesEqual(a.carriedVariantIndexes, b.carriedVariantIndexes) &&
     heapOreEqual(a.heapOre, b.heapOre) &&
     fallingOreEqual(a.fallingOre, b.fallingOre) &&
     haulerFieldsEqual(a.hauler, b.hauler)
@@ -189,17 +207,7 @@ function haulerLeft(snap: TunnelSnapshot): number {
     throw new Error("haulerLeft requires a Hauler snapshot");
   }
   if (hauler.phase === "pickup") {
-    if (snap.heapLoads === 0) {
-      return HAULER_MARK_X;
-    }
-    const p = hauler.pickupProgress;
-    const target = haulerPickupTargetX(snap.heapLoads);
-    if (p <= 0.5) {
-      return Math.round(HAULER_MARK_X + (p / 0.5) * (target - HAULER_MARK_X));
-    }
-    return Math.round(
-      target - ((p - 0.5) / 0.5) * (target - HAULER_MARK_X),
-    );
+    return hauler.left;
   }
   const span = HAULER_MARK_X - CART_MARK_X;
   const t = hauler.haulProgress;
@@ -375,37 +383,41 @@ export function mountMiningTunnel(host: HTMLElement): MiningTunnelView {
   }
 
   let haulerMounted = false;
-  let carriedOre: HTMLElement | null = null;
+  const carriedOreBySlot: HTMLElement[] = [];
   let lastSnap: TunnelSnapshot | null = null;
 
   function reconcileCarriedOre(snap: TunnelSnapshot): void {
-    const variantIndex = snap.carriedVariantIndex;
-    if (variantIndex === undefined) {
-      if (carriedOre) {
-        carriedOre.remove();
-        carriedOre = null;
-      }
+    const indexes = snap.carriedVariantIndexes ?? [];
+    while (carriedOreBySlot.length > indexes.length) {
+      carriedOreBySlot.pop()!.remove();
+    }
+    while (carriedOreBySlot.length < indexes.length) {
+      const ore = document.createElement("div");
+      ore.className = "pane-ore pane-ore-carried";
+      ore.dataset["oreCarried"] = "";
+      ore.style.width = `${ORE_SIZE}px`;
+      ore.style.height = `${ORE_SIZE}px`;
+      tunnel.append(ore);
+      carriedOreBySlot.push(ore);
+    }
+
+    if (indexes.length === 0) {
       return;
     }
 
-    if (!carriedOre) {
-      carriedOre = document.createElement("div");
-      carriedOre.className = "pane-ore pane-ore-carried";
-      carriedOre.dataset["oreCarried"] = "";
-      carriedOre.style.width = `${ORE_SIZE}px`;
-      carriedOre.style.height = `${ORE_SIZE}px`;
-      tunnel.append(carriedOre);
-    }
-
-    const artKey = heapOreArtKey(variantIndex);
-    paintHeapOre(carriedOre, artKey, FLOOR_Y + HAULER_HAND_DY);
     const left = haulerLeft(snap);
     const facing = snap.hauler?.facing ?? "east";
     const handDx =
       facing === "west"
         ? dwarfW - ORE_SIZE - HAULER_HAND_DX
         : HAULER_HAND_DX;
-    carriedOre.style.left = `${left + handDx}px`;
+
+    for (let i = 0; i < indexes.length; i += 1) {
+      const ore = carriedOreBySlot[i]!;
+      const artKey = heapOreArtKey(indexes[i]!);
+      paintHeapOre(ore, artKey, FLOOR_Y + HAULER_HAND_DY);
+      ore.style.left = `${left + handDx}px`;
+    }
   }
 
   function mountHauler(): void {

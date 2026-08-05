@@ -28,16 +28,21 @@ import {
   type MiningAudio,
 } from "./mining-audio";
 import {
-  HAULER_GRAB_X,
+  FLOOR_Y,
+  HAULER_HAND_DX,
+  HAULER_HAND_DY,
+  HAULER_MARK_X,
+  HAULER_WALK_PX_PER_MS,
+  haulerStationFor,
   HEAP_BIN_CEILING_Y,
   HEAP_BIN_EAST_X,
   HEAP_BIN_FLOOR_Y,
   HEAP_BIN_WEST_X,
-  HEAP_GRAB_Y,
   HEAP_PILE_SEED,
   HEAP_RENDER_CEILING,
   HEAP_SPAWN_X,
   ORE_FALL_MS,
+  ORE_SIZE,
   ORE_SPAWN_BOTTOM,
 } from "./pane-layout";
 
@@ -48,6 +53,8 @@ export interface HaulerSnapshot {
   animation: DwarfAnimId;
   facing: DwarfFacing;
   frameIndex: number;
+  /** Sprite left in Pane px during pickup; travel arc ignores this. */
+  left: number;
   /** "pickup" while lifting a Load at the Face, else the travel phase. */
   phase: HaulerPhase;
   /** 0 at Haul start, 1 at round-trip end; 0 while picking up. */
@@ -86,8 +93,8 @@ export interface TunnelSnapshot {
   heapLoads: number;
   /** Settled Heap Ore bodies, ascending by `id`; empty for a one-Dwarf Crew. */
   heapOre: readonly HeapOreSnapshot[];
-  /** Variant of the Load in the Hauler's hands; absent when nothing is carried. */
-  carriedVariantIndex?: number;
+  /** Variants of Loads in the Hauler's hands, ascending by pickup order. */
+  carriedVariantIndexes?: readonly number[];
   /** Ore still falling toward the Bag; empty when nothing is in flight. */
   fallingOre: readonly { slot: number; progress: number }[];
 }
@@ -218,7 +225,11 @@ export function createMinePresenter(
   let spawnCount = 0;
   const variantByBodyId = new Map<number, number>();
   const spillExpiryByBodyId = new Map<number, number>();
-  let carriedVariantIndex: number | undefined;
+  let carriedVariantIndexes: number[] = [];
+  let haulerLeftPx = HAULER_MARK_X;
+  let haulerSteppedToMs = 0;
+  let heldBodyId: number | undefined;
+  let removedHeldBody = false;
 
   function pileTargetCount(): number {
     const snap = session.snapshot;
@@ -265,19 +276,97 @@ export function createMinePresenter(
     }
   }
 
+  function haulerHandPoint(left: number): { x: number; y: number } {
+    return {
+      x: left + HAULER_HAND_DX + ORE_SIZE / 2,
+      y: FLOOR_Y + HAULER_HAND_DY,
+    };
+  }
+
+  function pickHeldBody(
+    left: number,
+    excluded: ReadonlySet<number>,
+  ): number | null {
+    const { x: handX, y: handY } = haulerHandPoint(left);
+    const candidates = pile.bodies.filter((b) => !excluded.has(b.id));
+    if (candidates.length === 0) {
+      return null;
+    }
+
+    let best = candidates[0]!;
+    let bestDistSq =
+      (best.x - handX) * (best.x - handX) +
+      (best.y - handY) * (best.y - handY);
+    for (const body of candidates) {
+      const distSq =
+        (body.x - handX) * (body.x - handX) +
+        (body.y - handY) * (body.y - handY);
+      if (
+        distSq < bestDistSq ||
+        (distSq === bestDistSq && body.id < best.id)
+      ) {
+        best = body;
+        bestDistSq = distSq;
+      }
+    }
+    return best.id;
+  }
+
+  function heldBodyStation(): number | null {
+    if (heldBodyId === undefined) {
+      return null;
+    }
+    const body = pile.bodies.find((b) => b.id === heldBodyId);
+    if (!body) {
+      return null;
+    }
+    return haulerStationFor(body.x);
+  }
+
+  function advanceHaulerLeft(nowMs: number): void {
+    if (!isTwoDwarf()) {
+      return;
+    }
+    const snap = session.snapshot;
+    if (snap.haulRemainingMs > 0 || snap.heapLoads === 0) {
+      haulerSteppedToMs = nowMs;
+      return;
+    }
+
+    const dt = nowMs - haulerSteppedToMs;
+    if (dt <= 0) {
+      return;
+    }
+
+    const target = heldBodyStation();
+    if (target !== null) {
+      const maxMove = HAULER_WALK_PX_PER_MS * dt;
+      const delta = target - haulerLeftPx;
+      if (Math.abs(delta) <= maxMove) {
+        haulerLeftPx = target;
+      } else {
+        haulerLeftPx += Math.sign(delta) * maxMove;
+      }
+    }
+    haulerSteppedToMs = nowMs;
+  }
+
   function reconcilePile(nowMs: number): void {
     expireSpillBodies(nowMs);
 
     const snap = session.snapshot;
-    const target = pileTargetCount();
     const excluded = spillBodyIds();
+    const inPickup = snap.haulRemainingMs === 0 && snap.heapLoads > 0;
+
+    if (!inPickup) {
+      heldBodyId = undefined;
+      removedHeldBody = false;
+      haulerLeftPx = HAULER_MARK_X;
+      haulerSteppedToMs = nowMs;
+    }
+
+    const target = pileTargetCount();
     const count = pile.bodies.filter((b) => !excluded.has(b.id)).length;
-    const lifted = isPickupLifted(
-      snap.haulRemainingMs,
-      snap.heapLoads,
-      snap.pickupProgressMs,
-      snap.haulSpeedUpgradeCount,
-    );
 
     if (target > count) {
       const toSpawn = target - count;
@@ -287,25 +376,46 @@ export function createMinePresenter(
       if (toSpawn > 1) {
         pile.settle();
       }
-    } else if (target < count) {
-      const toRemove = count - target;
-      for (let i = 0; i < toRemove; i += 1) {
-        const removedId = pile.removeGrabbed(
-          HAULER_GRAB_X,
-          HEAP_GRAB_Y,
-          excluded,
-        );
-        if (removedId !== null) {
-          carriedVariantIndex = variantByBodyId.get(removedId);
-          variantByBodyId.delete(removedId);
+    }
+
+    if (inPickup) {
+      const heldMissing =
+        heldBodyId !== undefined &&
+        !pile.bodies.some((b) => b.id === heldBodyId);
+      if (heldBodyId === undefined || heldMissing) {
+        heldBodyId = pickHeldBody(haulerLeftPx, excluded) ?? undefined;
+      }
+    }
+
+    advanceHaulerLeft(nowMs);
+
+    const lifted = isPickupLifted(
+      snap.haulRemainingMs,
+      snap.heapLoads,
+      snap.pickupProgressMs,
+      snap.haulSpeedUpgradeCount,
+    );
+
+    if (lifted && heldBodyId !== undefined) {
+      if (count > target && !removedHeldBody) {
+        if (pile.remove(heldBodyId)) {
+          const variant = variantByBodyId.get(heldBodyId);
+          if (variant !== undefined) {
+            carriedVariantIndexes = [variant];
+            variantByBodyId.delete(heldBodyId);
+          }
+        }
+        removedHeldBody = true;
+      } else if (carriedVariantIndexes.length === 0) {
+        const variant = variantByBodyId.get(heldBodyId);
+        if (variant !== undefined) {
+          carriedVariantIndexes = [variant];
         }
       }
     }
 
     if (!lifted) {
-      carriedVariantIndex = undefined;
-    } else if (carriedVariantIndex === undefined) {
-      carriedVariantIndex = spawnCount % HEAP_ORE_VARIANT_COUNT;
+      carriedVariantIndexes = [];
     }
 
     pile.stepTo(Math.max(pile.nowMs, nowMs));
@@ -399,12 +509,12 @@ export function createMinePresenter(
       hauler.setHauling(null, simNowMs);
       return;
     }
-    const progress = pickupProgressFraction(
-      snap.haulRemainingMs,
-      snap.pickupProgressMs,
-      snap.haulSpeedUpgradeCount,
-    );
-    hauler.setHauling(progress <= 0.5 ? "back" : "out", simNowMs);
+    const target = heldBodyStation();
+    if (target !== null && haulerLeftPx !== target) {
+      hauler.setHauling(haulerLeftPx < target ? "out" : "back", simNowMs);
+      return;
+    }
+    hauler.setHauling(null, simNowMs);
   }
 
   function syncHaulAnim(): void {
@@ -434,10 +544,24 @@ export function createMinePresenter(
     const travelling = remaining > 0;
     const swingFrac = swingFractionAt(nowMs, travelling);
 
+    let animation = hauler.animation;
+    let facing = hauler.facing;
+    if (phase === "pickup" && !travelling && snap.heapLoads > 0) {
+      const target = heldBodyStation();
+      if (target !== null && haulerLeftPx !== target) {
+        animation = "walk";
+        facing = haulerLeftPx < target ? "east" : "west";
+      } else {
+        animation = "idle";
+        facing = "east";
+      }
+    }
+
     return {
-      animation: hauler.animation,
-      facing: hauler.facing,
+      animation,
+      facing,
       frameIndex: frameIndexFor(hauler, nowMs, swingFrac),
+      left: haulerLeftPx,
       phase,
       haulProgress: travelling ? haulProgress(remaining) : 0,
       pickupProgress: pickupProgressFraction(
@@ -487,8 +611,8 @@ export function createMinePresenter(
       crewSize: snap.crewSize,
       heapLoads: snap.heapLoads,
       heapOre: projectHeapOre(),
-      ...(carriedVariantIndex !== undefined
-        ? { carriedVariantIndex }
+      ...(carriedVariantIndexes.length > 0
+        ? { carriedVariantIndexes: [...carriedVariantIndexes] }
         : {}),
       fallingOre: projectFallingOre(nowMs),
     };
