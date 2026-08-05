@@ -399,6 +399,38 @@ describe("mining engine advanceWithEvents", () => {
     }
   });
 
+  it("is chunk-neutral for loadSpilled events live and offline", () => {
+    for (const rateScale of [1, OFFLINE_RATE_SCALE] as const) {
+      const dtMs = 25_000;
+      const stepMs = 250;
+      const cap = heapCapacityFor(0);
+      const bagCap = carryCapacityFor(0);
+      const start = snap({
+        crewSize: 2,
+        heapLoads: cap,
+        heapOre: cap,
+        bagLoads: bagCap,
+        bagOre: bagCap,
+        haulRemainingMs: 100_000,
+      });
+      const once = advanceWithEvents(start, dtMs, { rateScale });
+      const loadSpilledOnce = once.events.filter((e) => e.type === "loadSpilled");
+
+      let loadSpilledMany: MiningEvent[] = [];
+      let cursor = start;
+      for (let i = 0; i < dtMs / stepMs; i += 1) {
+        const step = advanceWithEvents(cursor, stepMs, { rateScale });
+        loadSpilledMany = loadSpilledMany.concat(
+          step.events
+            .filter((e) => e.type === "loadSpilled")
+            .map((e) => ({ ...e, atMs: e.atMs + i * stepMs })),
+        );
+        cursor = step.snapshot;
+      }
+      expect(loadSpilledMany).toEqual(loadSpilledOnce);
+    }
+  });
+
   it("emits swing at 800 and 1600 ms for Dig Rate 1.25 over 2000 ms", () => {
     const { events } = advanceWithEvents(
       snap({ digRateUpgradeCount: 1 }),
@@ -768,10 +800,6 @@ describe("mining engine advanceWithEvents", () => {
     });
     const { snapshot, events } = advanceWithEvents(before, 1_000_000);
     expect(snapshot.advance).toBeGreaterThan(before.advance);
-    expect(
-      snapshot.faceSwingProgress > before.faceSwingProgress ||
-        snapshot.advance > before.advance,
-    ).toBe(true);
     expect(events.some((e) => e.type === "swing")).toBe(true);
     expect(events.some((e) => e.type === "faceBroken")).toBe(true);
   });
@@ -956,7 +984,6 @@ describe("mining engine Heap spill", () => {
       (e) => e.type === "loadSpilled" || e.type === "loadDropped",
     );
     expect(loadEvents.length).toBeGreaterThan(0);
-    expect(events.length).toBeGreaterThanOrEqual(loadEvents.length);
   });
 });
 
